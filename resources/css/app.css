@@ -1,0 +1,104 @@
+@import 'tailwindcss';
+@import '@heroui/styles';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.{js,ts,jsx,tsx}';
+
+@theme {
+    --font-sans: 'Vazirmatn Variable', ui-sans-serif, system-ui, sans-serif;
+    --color-brand-50: #eef2ff;
+    --color-brand-100: #e0e7ff;
+    --color-brand-400: #818cf8;
+    --color-brand-500: #6366f1;
+    --color-brand-600: #4f46e5;
+    --color-brand-950: #1e1b4b;
+}
+
+[data-theme='dark'] {
+    color-scheme: dark;
+    font-family: var(--font-sans);
+    --background: #090d16;
+    --background-secondary: #0d1320;
+    --background-tertiary: #121a2a;
+    --foreground: #f8fafc;
+    --surface: #121927;
+    --surface-foreground: #f8fafc;
+    --surface-secondary: #182235;
+    --surface-secondary-foreground: #f1f5f9;
+    --surface-tertiary: #202c40;
+    --surface-tertiary-foreground: #f8fafc;
+    --overlay: #151e2f;
+    --overlay-foreground: #f8fafc;
+    --default: #263249;
+    --default-foreground: #f8fafc;
+    --muted: #a8b3c7;
+    --border: #35425a;
+    --separator: #28354a;
+    --field-background: #101827;
+    --field-foreground: #f8fafc;
+    --field-placeholder: #8995aa;
+    --field-border: #3b4962;
+    --field-border-width: 1px;
+    --accent: #7378f7;
+    --accent-foreground: #ffffff;
+    --focus: #8b8fff;
+    background: var(--background);
+    color: var(--foreground);
+}
+
+html {
+    direction: rtl;
+}
+
+body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    background:
+        radial-gradient(circle at 10% -10%, rgb(79 70 229 / 16%), transparent 32rem),
+        var(--background);
+}
+
+.admin-shell .text-slate-500,
+.admin-auth .text-slate-500 {
+    color: #a8b3c7;
+}
+
+.admin-shell .text-slate-600,
+.admin-auth .text-slate-600 {
+    color: #8793a8;
+}
+
+.admin-shell .text-slate-400,
+.admin-auth .text-slate-400 {
+    color: #c3cbd8;
+}
+
+.admin-shell input,
+.admin-shell textarea,
+.admin-auth input,
+.admin-auth textarea {
+    caret-color: var(--focus);
+}
+
+.admin-shell input::placeholder,
+.admin-shell textarea::placeholder,
+.admin-auth input::placeholder,
+.admin-auth textarea::placeholder {
+    color: var(--field-placeholder);
+    opacity: 1;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+* {
+    scrollbar-color: #334155 transparent;
+    scrollbar-width: thin;
+}
