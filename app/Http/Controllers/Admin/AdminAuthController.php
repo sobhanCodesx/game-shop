@@ -44,6 +44,14 @@ class AdminAuthController extends Controller
             ]);
         }
 
+        if ($request->user()->status !== 'active') {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'این حساب مدیریت غیرفعال یا مسدود شده است.',
+            ]);
+        }
+
         $request->user()->forceFill(['last_login_at' => now()])->save();
 
         return redirect()->intended(route('admin.dashboard'));

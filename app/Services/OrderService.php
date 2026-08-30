@@ -6,6 +6,7 @@ use App\Models\CouponRedemption;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Notifications\OrderActivityNotification;
@@ -17,26 +18,28 @@ class OrderService
 {
     public function __construct(private readonly CartService $carts, private readonly CouponService $coupons, private readonly CommerceSettings $settings) {}
 
-    public function preview(array $cart, User $user, ?string $couponCode = null, bool $useWallet = false): array
+    public function preview(array $cart, User $user, ?string $couponCode = null, bool $useWallet = false, ?int $exchangeRequestId = null): array
     {
         $items = $this->carts->resolve($cart, $user);
         if ($items->isEmpty()) {
             throw ValidationException::withMessages(['cart' => 'سبد خرید خالی است.']);
         }
         $summary = $this->carts->summary($items);
-        $coupon = $this->coupons->validate($couponCode, $summary['subtotal'], $user);
+        [, $exchangeUsed] = $this->resolveExchange($exchangeRequestId, $user, $items);
+        $afterExchange = max(0, $summary['subtotal'] - $exchangeUsed);
+        $coupon = $this->coupons->validate($couponCode, $afterExchange, $user);
         $commerce = $this->settings->all();
         $delivery = $summary['requires_shipping'] ? $commerce['delivery_fee'] : 0;
-        $eligible = max(0, $summary['subtotal'] - $coupon['discount']);
+        $eligible = max(0, $afterExchange - $coupon['discount']);
         $grand = $eligible + $delivery;
         $wallet = $useWallet ? min((int) $user->wallet_balance, $grand) : 0;
 
-        return [...$summary, 'items' => $items, 'coupon_discount' => $coupon['discount'], 'delivery_fee' => $delivery, 'grand_total' => $grand, 'wallet_used' => $wallet, 'payable_amount' => $grand - $wallet, 'cashback_percent' => $commerce['cashback_percent'], 'cashback_amount' => (int) floor($eligible * $commerce['cashback_percent'] / 100)];
+        return [...$summary, 'items' => $items, 'exchange_credit_used' => $exchangeUsed, 'coupon_discount' => $coupon['discount'], 'delivery_fee' => $delivery, 'grand_total' => $grand, 'wallet_used' => $wallet, 'payable_amount' => $grand - $wallet, 'cashback_percent' => $commerce['cashback_percent'], 'cashback_amount' => (int) floor($eligible * $commerce['cashback_percent'] / 100)];
     }
 
-    public function create(array $cart, User $user, array $address, ?string $couponCode, bool $useWallet): Order
+    public function create(array $cart, User $user, array $address, ?string $couponCode, bool $useWallet, ?int $exchangeRequestId = null): Order
     {
-        $order = DB::transaction(function () use ($cart, $user, $address, $couponCode, $useWallet) {
+        $order = DB::transaction(function () use ($cart, $user, $address, $couponCode, $useWallet, $exchangeRequestId) {
             $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
             $items = $this->carts->resolve($cart, $lockedUser);
             if ($items->isEmpty()) {
@@ -56,10 +59,12 @@ class OrderService
             }
 
             $summary = $this->carts->summary($items);
-            $couponResult = $this->coupons->validate($couponCode, $summary['subtotal'], $lockedUser, true);
+            [$exchange, $exchangeUsed, $exchangeItemKey] = $this->resolveExchange($exchangeRequestId, $lockedUser, $items, true);
+            $afterExchange = max(0, $summary['subtotal'] - $exchangeUsed);
+            $couponResult = $this->coupons->validate($couponCode, $afterExchange, $lockedUser, true);
             $commerce = $this->settings->all();
             $delivery = $summary['requires_shipping'] ? $commerce['delivery_fee'] : 0;
-            $eligible = max(0, $summary['subtotal'] - $couponResult['discount']);
+            $eligible = max(0, $afterExchange - $couponResult['discount']);
             $grand = $eligible + $delivery;
             $walletUsed = $useWallet ? min((int) $lockedUser->wallet_balance, $grand) : 0;
 
@@ -70,14 +75,16 @@ class OrderService
                 'number' => 'NP-'.now()->format('ymd').'-'.strtoupper(str()->random(7)), 'user_id' => $lockedUser->id,
                 'coupon_id' => $couponResult['coupon']?->id, 'coupon_code' => $couponResult['coupon']?->code,
                 'shipping_address' => $address, 'status' => 'pending', ...$summary,
+                'exchange_request_id' => $exchange?->id, 'exchange_credit_used' => $exchangeUsed,
                 'coupon_discount' => $couponResult['discount'], 'delivery_fee' => $delivery, 'grand_total' => $grand,
                 'wallet_used' => $walletUsed, 'payable_amount' => $grand - $walletUsed,
                 'cashback_percent' => $commerce['cashback_percent'], 'cashback_eligible_amount' => $eligible,
                 'cashback_amount' => (int) floor($eligible * $commerce['cashback_percent'] / 100),
             ]);
-            foreach ($items as $item) {
-                $order->items()->create(['product_id' => $item['product_id'], 'product_variant_id' => $item['variant_id'], 'title' => $item['title'], 'variant_name' => $item['variant'], 'sku' => $item['sku'], 'quantity' => $item['quantity'], 'regular_unit_price' => $item['regular_unit_price'], 'unit_price' => $item['unit_price'], 'discount_amount' => $item['discount_amount'], 'line_total' => $item['line_total'], 'requires_shipping' => $item['requires_shipping']]);
+            foreach ($items as $key => $item) {
+                $order->items()->create(['product_id' => $item['product_id'], 'product_variant_id' => $item['variant_id'], 'title' => $item['title'], 'variant_name' => $item['variant'], 'sku' => $item['sku'], 'quantity' => $item['quantity'], 'regular_unit_price' => $item['regular_unit_price'], 'unit_price' => $item['unit_price'], 'discount_amount' => $item['discount_amount'], 'line_total' => $item['line_total'], 'exchange_credit_used' => $key === $exchangeItemKey ? $exchangeUsed : 0, 'requires_shipping' => $item['requires_shipping']]);
             }
+            if ($exchange) $exchange->update(['exchange_status' => 'attached_to_order', 'exchange_order_id' => $order->id, 'exchange_credit_applied' => $exchangeUsed]);
 
             if ($walletUsed > 0) {
                 WalletTransaction::query()->create(['user_id' => $lockedUser->id, 'order_id' => $order->id, 'type' => 'order_payment', 'amount' => -$walletUsed, 'balance_after' => $lockedUser->wallet_balance, 'description' => 'برداشت بابت سفارش '.$order->number]);
@@ -108,7 +115,7 @@ class OrderService
     {
         $notify = false;
         $updated = DB::transaction(function () use ($order, $status, $actor, $note, &$notify) {
-            $order = Order::query()->with(['items', 'coupon'])->lockForUpdate()->findOrFail($order->id);
+            $order = Order::query()->with(['items', 'coupon', 'exchangeRequest'])->lockForUpdate()->findOrFail($order->id);
             $allowed = [
                 'pending' => ['approved', 'rejected', 'cancelled'],
                 'approved' => ['processing', 'shipped', 'delivered', 'cancelled'],
@@ -146,6 +153,11 @@ class OrderService
                     $order->coupon?->decrement('used_count');
                     CouponRedemption::query()->where('order_id', $order->id)->delete();
                 }
+                if ($order->exchangeRequest && $order->exchangeRequest->exchange_order_id === $order->id && in_array($order->exchangeRequest->exchange_status, ['attached_to_order', 'received'], true)) {
+                    $exchange = Ticket::query()->lockForUpdate()->find($order->exchange_request_id);
+                    $expired = $exchange->exchange_credit_expires_at?->isPast();
+                    $exchange->update(['exchange_status' => $expired ? 'expired' : 'accepted', 'exchange_order_id' => null, 'exchange_credit_applied' => 0, 'exchange_received_at' => null, 'exchange_expired_at' => $expired ? now() : null]);
+                }
             }
             $order->fill(['status' => $status, 'reviewed_by' => $actor->id, 'reviewed_at' => now(), 'admin_note' => $note])->save();
 
@@ -162,5 +174,24 @@ class OrderService
         }
 
         return $updated;
+    }
+
+    private function resolveExchange(?int $id, User $user, $items, bool $lock = false): array
+    {
+        if (! $id) return [null, 0, null];
+        $query = Ticket::query()->whereKey($id);
+        if ($lock) $query->lockForUpdate();
+        $exchange = $query->firstOrFail();
+        if ($exchange->type !== 'exchange' || $exchange->user_id !== $user->id || $exchange->exchange_status !== 'accepted' || $exchange->exchange_order_id || ! $exchange->target_product_id || ! $exchange->exchange_offer_amount) {
+            throw ValidationException::withMessages(['exchange_request_id' => 'اعتبار معاوضه انتخاب‌شده معتبر یا قابل استفاده نیست.']);
+        }
+        if ($exchange->exchange_credit_expires_at?->isPast()) {
+            if ($lock) $exchange->update(['exchange_status' => 'expired', 'exchange_expired_at' => now()]);
+            throw ValidationException::withMessages(['exchange_request_id' => 'مهلت استفاده از این اعتبار معاوضه تمام شده است.']);
+        }
+        $itemKey = $items->search(fn ($item) => (int) $item['product_id'] === (int) $exchange->target_product_id);
+        if ($itemKey === false) throw ValidationException::withMessages(['exchange_request_id' => 'این اعتبار فقط برای محصول هدف همان معاوضه قابل استفاده است.']);
+        $used = min((int) $exchange->exchange_offer_amount, (int) $items[$itemKey]['line_total']);
+        return [$exchange, $used, $itemKey];
     }
 }

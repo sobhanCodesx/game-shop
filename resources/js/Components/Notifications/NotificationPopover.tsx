@@ -12,6 +12,35 @@ import {
 
 import type { SharedPageProps } from "../../types";
 
+let pollSubscribers = 0;
+let pollTimer: number | undefined;
+const refreshNotifications = () => {
+    if (document.visibilityState === "visible" && navigator.onLine) router.reload({ only: ["notifications", "admin"] });
+};
+const schedulePoll = () => {
+    window.clearTimeout(pollTimer);
+    pollTimer = window.setTimeout(() => {
+        refreshNotifications();
+        schedulePoll();
+    }, document.visibilityState === "visible" ? 15_000 : 60_000);
+};
+const handleVisibility = () => { if (document.visibilityState === "visible") refreshNotifications(); schedulePoll(); };
+const startPolling = () => {
+    if (++pollSubscribers !== 1) return;
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", refreshNotifications);
+    window.addEventListener("online", refreshNotifications);
+    schedulePoll();
+};
+const stopPolling = () => {
+    if (--pollSubscribers > 0) return;
+    pollSubscribers = 0;
+    window.clearTimeout(pollTimer);
+    document.removeEventListener("visibilitychange", handleVisibility);
+    window.removeEventListener("focus", refreshNotifications);
+    window.removeEventListener("online", refreshNotifications);
+};
+
 export default function NotificationPopover({
     admin = false,
 }: {
@@ -21,6 +50,7 @@ export default function NotificationPopover({
         usePage<SharedPageProps>().props;
 
     const [open, setOpen] = useState(false);
+    const [navigating, setNavigating] = useState<string | null>(null);
 
     const root = useRef<HTMLDivElement>(null);
 
@@ -53,24 +83,17 @@ export default function NotificationPopover({
         };
     }, []);
 
-    useEffect(() => {
-        const timer = window.setInterval(() => {
-            router.reload({
-                only: ["notifications", "admin"],
-            });
-        }, 20_000);
-
-        return () => {
-            window.clearInterval(timer);
-        };
-    }, []);
+    useEffect(() => { startPolling(); return stopPolling; }, []);
 
     const read = (id: string) => {
+        setNavigating(id);
+        setOpen(false);
         router.patch(
             `/account/notifications/${id}`,
             {},
             {
                 preserveScroll: true,
+                onFinish: () => setNavigating(null),
             },
         );
     };
@@ -85,9 +108,7 @@ export default function NotificationPopover({
                 aria-expanded={open}
                 aria-haspopup="dialog"
                 aria-label="اعلان‌ها"
-                onClick={() =>
-                    setOpen((current) => !current)
-                }
+                onClick={() => { setOpen((current) => { if (!current) refreshNotifications(); return !current; }); }}
                 className={`
                     relative
                     inline-grid
@@ -228,6 +249,7 @@ export default function NotificationPopover({
                                     onClick={() =>
                                         read(item.id)
                                     }
+                                    disabled={navigating === item.id}
                                     className={`
                                         mb-1
                                         flex
@@ -276,6 +298,7 @@ export default function NotificationPopover({
                                                 item.message
                                             }
                                         </span>
+                                        <small className="mt-1 block text-[10px] opacity-45">{relativeTime(item.created_at)}</small>
                                     </span>
 
                                     <ExternalLink
@@ -297,4 +320,14 @@ export default function NotificationPopover({
             )}
         </div>
     );
+}
+
+function relativeTime(value: string): string {
+    const seconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+    if (seconds < 60) return "همین حالا";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes.toLocaleString("fa-IR")} دقیقه پیش`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours.toLocaleString("fa-IR")} ساعت پیش`;
+    return new Date(value).toLocaleDateString("fa-IR");
 }

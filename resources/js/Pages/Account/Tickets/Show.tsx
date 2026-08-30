@@ -1,15 +1,25 @@
 import { Head, router, useForm } from "@inertiajs/react";
-import { Send, ShoppingBag } from "lucide-react";
+import { ArrowRight, Headphones, Send, ShoppingBag } from "lucide-react";
 import { FormEvent, useEffect } from "react";
 import StorefrontLayout from "../../../Layouts/StorefrontLayout";
+import AttachmentPicker from "../../../Components/Tickets/AttachmentPicker";
+import TicketMessageBubble from "../../../Components/Tickets/TicketMessageBubble";
 const labels: Record<string, string> = {
     pending: "در انتظار پاسخ پشتیبانی",
     open: "در حال پیگیری",
     closed: "بسته‌شده",
 };
+const exchangeLabels: Record<string, string> = {
+    pending_review: "در انتظار بررسی",
+    offered: "پیشنهاد ثبت‌شده",
+    accepted: "پذیرفته‌شده",
+    rejected: "ردشده",
+    completed: "تکمیل‌شده",
+};
 export default function Show({ ticket }: { ticket: any }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         message: "",
+        attachments: [] as File[],
     });
     useEffect(() => {
         const id = setInterval(
@@ -27,87 +37,148 @@ export default function Show({ ticket }: { ticket: any }) {
     return (
         <StorefrontLayout>
             <Head title={ticket.subject} />
-            <main className="mx-auto max-w-4xl px-4 py-10">
-                <div className="rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-6">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                            <p className="text-xs text-indigo-500">
-                                {ticket.number}
-                            </p>
-                            <h1 className="mt-2 text-2xl font-black">
-                                {ticket.subject}
-                            </h1>
-                        </div>
-                        <span className="rounded-full bg-indigo-500/10 px-4 py-2 text-sm text-indigo-500">
-                            {labels[ticket.status]}
-                        </span>
-                    </div>
-                    {ticket.order && (
-                        <div className="mt-5 flex items-center gap-3 rounded-2xl bg-[var(--store-bg)] p-4">
-                            <ShoppingBag className="text-indigo-500" />
-                            <div>
-                                <strong>
-                                    {ticket.order_item?.title ??
-                                        ticket.product?.title}
-                                </strong>
-                                <p className="text-xs text-[var(--store-muted)]">
-                                    سفارش {ticket.order.number}
-                                    {ticket.order_item?.variant_name &&
-                                        ` · ${ticket.order_item.variant_name}`}
-                                </p>
+            <main className="mx-auto max-w-5xl px-3 py-5 sm:px-4 sm:py-8">
+                <div className="overflow-hidden rounded-[28px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-xl shadow-slate-950/5">
+                    <header className="sticky top-0 z-10 border-b border-[var(--store-border)] bg-[var(--store-surface)]/95 p-4 backdrop-blur-xl sm:p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <button
+                                    className="grid size-10 place-items-center rounded-full bg-[var(--store-bg)]"
+                                    onClick={() => history.back()}
+                                    type="button"
+                                >
+                                    <ArrowRight size={18} />
+                                </button>
+                                <span className="grid size-11 place-items-center rounded-full bg-indigo-600 text-white">
+                                    <Headphones size={21} />
+                                </span>
+                                <div>
+                                    <p className="text-xs text-indigo-500">
+                                        {ticket.number}
+                                    </p>
+                                    <h1 className="mt-2 text-2xl font-black">
+                                        {ticket.subject}
+                                    </h1>
+                                </div>
                             </div>
+                            <span className="rounded-full bg-indigo-500/10 px-4 py-2 text-sm text-indigo-500">
+                                {labels[ticket.status]}
+                            </span>
                         </div>
+                        {ticket.order && (
+                            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[var(--store-bg)] p-3">
+                                <ShoppingBag className="text-indigo-500" />
+                                <div>
+                                    <strong>
+                                        {ticket.order_item?.title ??
+                                            ticket.product?.title}
+                                    </strong>
+                                    <p className="text-xs text-[var(--store-muted)]">
+                                        سفارش {ticket.order.number}
+                                        {ticket.order_item?.variant_name &&
+                                            ` · ${ticket.order_item.variant_name}`}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </header>
+                    <section className="min-h-[420px] space-y-5 bg-[radial-gradient(circle_at_1px_1px,var(--store-border)_1px,transparent_0)] bg-[size:22px_22px] p-4 sm:p-7">
+                        {ticket.replies.map((reply: any) => (
+                            <TicketMessageBubble
+                                key={reply.id}
+                                mine={!reply.is_admin}
+                                reply={reply}
+                            />
+                        ))}
+                    </section>
+                    {ticket.type === "exchange" && (
+                        <section className="m-4 rounded-3xl border border-indigo-500/25 bg-indigo-500/5 p-5 sm:m-6">
+                            <h2 className="font-black">
+                                وضعیت معاوضه:{" "}
+                                {exchangeLabels[ticket.exchange_status]}
+                            </h2>
+                            {ticket.exchange_offer_amount && (
+                                <p className="mt-3 text-xl font-black text-indigo-500">
+                                    پیشنهاد:{" "}
+                                    {Number(
+                                        ticket.exchange_offer_amount,
+                                    ).toLocaleString("fa-IR")}{" "}
+                                    تومان
+                                </p>
+                            )}
+                            {ticket.exchange_status === "offered" && (
+                                <div className="mt-4 flex gap-3">
+                                    <button
+                                        className="rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white"
+                                        onClick={() =>
+                                            router.patch(
+                                                `/account/tickets/${ticket.id}/exchange-response`,
+                                                { decision: "accepted" },
+                                            )
+                                        }
+                                    >
+                                        پذیرفتن
+                                    </button>
+                                    <button
+                                        className="rounded-xl bg-rose-600 px-5 py-3 font-bold text-white"
+                                        onClick={() =>
+                                            router.patch(
+                                                `/account/tickets/${ticket.id}/exchange-response`,
+                                                { decision: "rejected" },
+                                            )
+                                        }
+                                    >
+                                        رد کردن
+                                    </button>
+                                </div>
+                            )}
+                            {ticket.exchange_status === "completed" && (
+                                <p className="mt-3 text-sm">
+                                    اعتبار معاوضه به کیف پول شما واریز شده و در
+                                    Checkout قابل استفاده است.
+                                </p>
+                            )}
+                        </section>
+                    )}
+                    {ticket.status !== "closed" && (
+                        <form
+                            className="sticky bottom-0 border-t border-[var(--store-border)] bg-[var(--store-surface)]/95 p-3 backdrop-blur-xl sm:p-4"
+                            onSubmit={submit}
+                        >
+                            <label className="sr-only">ارسال پاسخ</label>
+                            <textarea
+                                className="min-h-14 w-full resize-y rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-4 outline-none focus:border-indigo-500"
+                                placeholder="پیام خود را بنویسید..."
+                                onChange={(e) =>
+                                    setData("message", e.target.value)
+                                }
+                                value={data.message}
+                            />
+                            {errors.message && (
+                                <p className="mt-2 text-sm text-red-500">
+                                    {errors.message}
+                                </p>
+                            )}
+                            <AttachmentPicker
+                                files={data.attachments}
+                                onChange={(files) =>
+                                    setData("attachments", files)
+                                }
+                                error={
+                                    (errors as any).attachments ||
+                                    (errors as any)["attachments.0"]
+                                }
+                            />
+                            <button
+                                className="mt-3 flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 font-bold text-white shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+                                disabled={processing}
+                            >
+                                <Send size={17} />
+                                ارسال پاسخ
+                            </button>
+                        </form>
                     )}
                 </div>
-                <section className="relative mt-6 space-y-4 before:absolute before:bottom-6 before:right-6 before:top-6 before:w-px before:bg-[var(--store-border)]">
-                    {ticket.replies.map((reply: any) => (
-                        <article
-                            className={`relative mr-12 w-[calc(100%-3rem)] rounded-3xl border p-5 shadow-sm before:absolute before:-right-[34px] before:top-6 before:size-4 before:rounded-full before:ring-4 before:ring-[var(--store-bg)] ${reply.is_admin ? "border-indigo-500/25 bg-indigo-500/10 before:bg-indigo-500" : "border-[var(--store-border)] bg-[var(--store-surface)] before:bg-slate-400"}`}
-                            key={reply.id}
-                        >
-                            <div className="mb-2 flex justify-between gap-5 text-xs opacity-70">
-                                <strong>
-                                    {reply.is_admin
-                                        ? "پاسخ رسمی پشتیبانی"
-                                        : reply.user.name}
-                                </strong>
-                                <span>
-                                    {new Date(reply.created_at).toLocaleString(
-                                        "fa-IR",
-                                    )}
-                                </span>
-                            </div>
-                            <p className="whitespace-pre-wrap leading-8">
-                                {reply.message}
-                            </p>
-                        </article>
-                    ))}
-                </section>
-                {ticket.status !== "closed" && (
-                    <form
-                        className="mt-7 rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5"
-                        onSubmit={submit}
-                    >
-                        <label className="font-black">ارسال پاسخ</label>
-                        <textarea
-                            className="mt-3 min-h-32 w-full resize-y rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-4 outline-none focus:border-indigo-500"
-                            onChange={(e) => setData("message", e.target.value)}
-                            value={data.message}
-                        />
-                        {errors.message && (
-                            <p className="mt-2 text-sm text-red-500">
-                                {errors.message}
-                            </p>
-                        )}
-                        <button
-                            className="mt-3 flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white disabled:opacity-50"
-                            disabled={processing}
-                        >
-                            <Send size={17} />
-                            ارسال پاسخ
-                        </button>
-                    </form>
-                )}
             </main>
         </StorefrontLayout>
     );

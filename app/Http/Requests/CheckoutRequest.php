@@ -26,6 +26,7 @@ class CheckoutRequest extends FormRequest
             'address.address_line' => ['required_if:address_mode,new', 'string', 'max:1000'],
             'address.plaque' => ['nullable', 'string', 'max:20'], 'address.unit' => ['nullable', 'string', 'max:20'],
             'coupon_code' => ['nullable', 'string', 'max:50'], 'use_wallet' => ['boolean'], 'save_address' => ['boolean'],
+            'exchange_request_id' => ['nullable', 'integer'],
         ];
     }
 

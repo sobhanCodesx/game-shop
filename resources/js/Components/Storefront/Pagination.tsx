@@ -1,7 +1,7 @@
 import { Link } from "@inertiajs/react";
 import type { PaginationLink } from "../../types";
 
-export default function Pagination({ links }: { links: PaginationLink[] }) {
+export default function Pagination({ links, preserveState = false }: { links: PaginationLink[]; preserveState?: boolean }) {
     if (links.length <= 3) return null;
     return (
         <nav
@@ -15,6 +15,7 @@ export default function Pagination({ links }: { links: PaginationLink[] }) {
                         href={link.url}
                         key={index}
                         preserveScroll
+                        preserveState={preserveState}
                         dangerouslySetInnerHTML={{ __html: link.label }}
                     />
                 ) : (

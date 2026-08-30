@@ -85,4 +85,21 @@ class ProductFoundationManagementTest extends TestCase
         $this->actingAs($user)->post('/admin/product-types', [])->assertForbidden();
         $this->actingAs($user)->post('/admin/attributes', [])->assertForbidden();
     }
+
+    public function test_admin_can_toggle_product_exchange_directly_from_product_list(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $product = Product::factory()->create(['trade_enabled' => false]);
+
+        $this->actingAs($admin)->get('/admin/products')->assertOk()->assertInertia(fn ($page) => $page
+            ->where('items.0.id', $product->id)
+            ->where('items.0.tradeEnabled', false)
+            ->where('items.0.exchangeToggleUrl', route('admin.products.exchange.toggle', $product)));
+
+        $this->patch(route('admin.products.exchange.toggle', $product))->assertRedirect();
+        $this->assertTrue($product->fresh()->trade_enabled);
+
+        $this->patch(route('admin.products.exchange.toggle', $product))->assertRedirect();
+        $this->assertFalse($product->fresh()->trade_enabled);
+    }
 }

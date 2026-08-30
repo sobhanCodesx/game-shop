@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\Platform;
 use App\Models\SocialContent;
 use App\Services\ProductPriceService;
+use App\Services\StorefrontDataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Services\MediaStorage;
@@ -21,18 +22,13 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(Request $request, ProductPriceService $prices): Response
+    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront): Response
     {
         $settings = [...HomeSettingsController::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])];
         $limit = (int) $settings['products_limit'];
-        $productMap = fn (Product $product) => [
-            'title' => $product->title,
-            'slug' => $product->slug,
-            'category' => $product->category?->name,
-            'badge' => $product->badge,
-            'cover_url' => MediaStorage::url($product->coverMedia?->path),
-            'pricing' => $prices->forUser($product, $request->user()),
-        ];
+        $freshCutoff = now()->subDays(14);
+        $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
+        $productMap = fn (Product $product) => $storefront->product($product, $request->user());
 
         return Inertia::render('Home', [
             'settings' => $settings,
@@ -56,11 +52,11 @@ class HomeController extends Controller
                 ->limit(8)
                 ->get(['id', 'parent_id', 'name', 'slug', 'image'])
                 ->map(fn (Category $category) => $this->navigationCategory($category)),
-            'featuredProducts' => Product::query()->with(['category:id,name', 'coverMedia'])->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap),
-            'latestProducts' => Product::query()->with(['category:id,name', 'coverMedia'])->publiclyVisible()->latest()->limit($limit)->get()->map($productMap),
-            'contentSections' => HomeSection::query()->where('is_active', true)->orderBy('sort_order')->get()->map(function (HomeSection $section) use ($request, $prices) {
+            'featuredProducts' => Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap),
+            'latestProducts' => Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap),
+            'contentSections' => HomeSection::query()->where('is_active', true)->orderBy('sort_order')->get()->map(function (HomeSection $section) use ($request, $prices, $storefront, $cardRelations) {
                 if ($section->content_type === 'products') {
-                    $query = Product::query()->with(['category:id,name', 'coverMedia'])->publiclyVisible()
+                    $query = Product::query()->with($cardRelations)->publiclyVisible()
                         ->when($section->query_type === 'featured', fn ($query) => $query->where('featured', true))
                         ->when($section->query_type === 'popular', fn ($query) => $query->orderByDesc('sold_stock'))
                         ->when($section->query_type === 'category', fn ($query) => $query->where('category_id', $section->category_id))
@@ -78,6 +74,7 @@ class HomeController extends Controller
                         'badge' => $product->badge,
                         'image_url' => MediaStorage::url($product->coverMedia?->path),
                         'pricing' => $prices->forUser($product, $request->user()),
+                        'meta_badges' => $storefront->product($product, $request->user())['meta_badges'],
                     ]);
                 } elseif (in_array($section->content_type, ['categories', 'games', 'brands', 'platforms'], true)) {
                     $model = match ($section->content_type) {
@@ -140,6 +137,29 @@ class HomeController extends Controller
                     'items' => $items,
                 ];
             })->filter(fn (array $section) => $section['items']->isNotEmpty())->values(),
+            'freshContent' => Product::query()
+                ->with(['category:id,name', 'coverMedia'])
+                ->publiclyVisible()
+                ->where(fn ($query) => $query->where('published_at', '>=', $freshCutoff)->orWhere(fn ($query) => $query->whereNull('published_at')->where('created_at', '>=', $freshCutoff)))
+                ->orderByRaw('COALESCE(published_at, created_at) DESC')
+                ->limit(8)
+                ->get()
+                ->map(fn (Product $product) => [
+                    'key' => 'product-'.$product->id, 'type' => 'product', 'title' => $product->title,
+                    'url' => route('products.show', $product->slug, false),
+                    'image_url' => MediaStorage::url($product->coverMedia?->path),
+                    'eyebrow' => $product->category?->name ?? 'محصول گیمینگ',
+                    'published_at' => ($product->published_at ?? $product->created_at)->toISOString(),
+                    'pricing' => $prices->forUser($product, $request->user()),
+                ])
+                ->concat(SocialContent::query()->published()->where('type', 'video')->where('published_at', '>=', $freshCutoff)
+                    ->latest('published_at')->limit(8)->get()->map(fn (SocialContent $video) => [
+                        'key' => 'video-'.$video->id, 'type' => 'video', 'title' => $video->title,
+                        'url' => route('content.show', ['type' => 'videos', 'content' => $video->slug], false),
+                        'image_url' => MediaStorage::url($video->thumbnail), 'eyebrow' => 'ویدیوی بلند',
+                        'published_at' => $video->published_at->toISOString(), 'duration' => $video->duration, 'views' => $video->views,
+                    ]))
+                ->sortByDesc('published_at')->take(10)->values(),
         ]);
     }
 

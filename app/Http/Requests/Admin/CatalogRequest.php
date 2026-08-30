@@ -165,7 +165,7 @@ class CatalogRequest extends FormRequest
                 'variants' => ['exclude_unless:product_type,capacity_account', 'required_if:product_type,capacity_account', 'array', 'size:3'],
                 'variants.*.capacity' => ['required_if:product_type,capacity_account', 'integer', Rule::in([1, 2, 3]), 'distinct'],
                 'variants.*.sku' => ['required_if:product_type,capacity_account', 'string', 'max:100', 'distinct'],
-                'variants.*.price' => ['required_if:product_type,capacity_account', 'integer', 'min:0'],
+                'variants.*.price' => ['required_if:product_type,capacity_account', 'integer', 'min:1'],
                 'variants.*.discount_price' => ['nullable', 'integer', 'min:0'],
                 'variants.*.compare_price' => ['nullable', 'integer', 'min:0'],
                 'variants.*.partner_price' => ['nullable', 'integer', 'min:0'],
@@ -205,5 +205,17 @@ class CatalogRequest extends FormRequest
                 $validator->errors()->add('media', 'برای ذخیره محصول، بارگذاری حداقل یک تصویر کاور الزامی است.');
             }
         });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'variants.*.sku.required_if' => 'SKU هر سه ظرفیت الزامی است.',
+            'variants.*.sku.distinct' => 'SKU ظرفیت‌ها باید با یکدیگر متفاوت باشند.',
+            'variants.*.price.required_if' => 'قیمت مشتری برای هر سه ظرفیت الزامی است.',
+            'variants.*.price.min' => 'قیمت هر ظرفیت باید بیشتر از صفر باشد.',
+            'variants.*.stock.required_if' => 'موجودی هر سه ظرفیت الزامی است.',
+            'media.max' => 'حداکثر ۲۰ فایل رسانه برای هر محصول قابل ثبت است.',
+        ];
     }
 }

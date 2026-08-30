@@ -11,7 +11,9 @@ use App\Models\SocialContent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -82,6 +84,61 @@ class HomeSettingsTest extends TestCase
         HomeSlide::all()->each(
             fn (HomeSlide $slide) => Storage::disk('public')->assertExists($slide->desktop_image),
         );
+    }
+
+    public function test_replacing_and_deleting_banner_removes_obsolete_images(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['is_admin' => true]);
+        Storage::disk('public')->put('home/slides/old-desktop.jpg', 'old desktop');
+        Storage::disk('public')->put('home/slides/mobile/old-mobile.jpg', 'old mobile');
+        $slide = HomeSlide::query()->create([
+            'title' => 'بنر قبلی',
+            'desktop_image' => 'home/slides/old-desktop.jpg',
+            'mobile_image' => 'home/slides/mobile/old-mobile.jpg',
+            'alt' => 'بنر قبلی',
+            'link_type' => 'url',
+            'button_url' => '/products',
+            'text_position' => 'right',
+            'overlay' => 'dark',
+            'is_active' => true,
+        ]);
+        $replacement = UploadedFile::fake()->image('replacement.webp', 1920, 720);
+        $uploadToken = (string) Str::uuid();
+        $uploadDirectory = storage_path("app/private/uploads/{$admin->id}/{$uploadToken}");
+        File::ensureDirectoryExists($uploadDirectory);
+        File::copy($replacement->getPathname(), $uploadDirectory.'/assembled');
+        File::put($uploadDirectory.'/metadata.json', json_encode([
+            'name' => $replacement->getClientOriginalName(),
+            'mime' => $replacement->getMimeType(),
+            'size' => $replacement->getSize(),
+        ], JSON_THROW_ON_ERROR));
+
+        $this->actingAs($admin)->post('/admin/home', [
+            'settings' => $this->settings(),
+            'slides' => [[
+                ...$slide->only(['id', 'title', 'desktop_image', 'mobile_image', 'alt', 'link_type', 'button_url', 'text_position', 'overlay', 'is_active']),
+                'desktop_upload_token' => $uploadToken,
+            ]],
+            'sections' => [],
+        ])->assertSessionHasNoErrors();
+
+        $newDesktopPath = $slide->fresh()->desktop_image;
+        $this->assertNotSame('home/slides/old-desktop.jpg', $newDesktopPath);
+        Storage::disk('public')->assertMissing('home/slides/old-desktop.jpg');
+        Storage::disk('public')->assertExists($newDesktopPath);
+        Storage::disk('public')->assertExists('home/slides/mobile/old-mobile.jpg');
+        $this->assertDirectoryDoesNotExist($uploadDirectory);
+
+        $this->actingAs($admin)->post('/admin/home', [
+            'settings' => $this->settings(),
+            'slides' => [],
+            'sections' => [],
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseMissing('home_slides', ['id' => $slide->id]);
+        Storage::disk('public')->assertMissing($newDesktopPath);
+        Storage::disk('public')->assertMissing('home/slides/mobile/old-mobile.jpg');
     }
 
     public function test_home_settings_returns_persian_validation_errors_for_invalid_slides(): void

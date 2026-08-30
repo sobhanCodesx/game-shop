@@ -240,11 +240,23 @@ export default function Edit({
         post("/admin/home", {
             forceFormData: true,
             preserveScroll: true,
-            onSuccess: () =>
+            onSuccess: (page) => {
+                const fresh = page.props as unknown as Pick<
+                    Props,
+                    "settings" | "slides" | "sections"
+                >;
+                setData({
+                    settings: fresh.settings,
+                    slides: fresh.slides,
+                    sections: fresh.sections,
+                });
+                setUploadProgress({});
+                setUploadErrors({});
                 window.setTimeout(
                     () => feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
                     0,
-                ),
+                );
+            },
             onError: (validationErrors) => {
                 const fields = Object.keys(validationErrors);
                 if (fields.some((field) => field.startsWith("slides.")))
@@ -290,7 +302,6 @@ export default function Edit({
 
     return (
         <AdminLayout
-            actions={actions}
             description="بنرهای اسلایدری، ترتیب سکشن‌ها، پیام‌های بازاریابی و سئوی صفحه اول را مدیریت کنید."
             title="مدیریت صفحه اصلی"
         >
@@ -325,24 +336,31 @@ export default function Edit({
                     )}
                 </div>
 
-                <div className="grid gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 p-2 sm:grid-cols-3" role="tablist">
-                    {([
-                        ["banners", "بنرها", `${activeSlides.toLocaleString("fa-IR")} بنر فعال`],
-                        ["sections", "مدیریت سکشن‌ها", `${data.sections.length.toLocaleString("fa-IR")} سکشن`],
-                        ["general", "اطلاعات کلی سایت", "پیام‌ها، فروشگاه و سئو"],
-                    ] as const).map(([id, label, description]) => (
-                        <button
-                            aria-selected={activeTab === id}
-                            className={`rounded-xl px-4 py-3 text-right transition ${activeTab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/30" : "text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}
-                            key={id}
-                            onClick={() => setActiveTab(id)}
-                            role="tab"
-                            type="button"
-                        >
-                            <strong className="block text-sm">{label}</strong>
-                            <span className={`mt-1 block text-xs ${activeTab === id ? "text-indigo-100" : "text-slate-500"}`}>{description}</span>
-                        </button>
-                    ))}
+                <div className="sticky top-20 z-20 -mx-4 border-y border-slate-800/80 bg-[#080b12]/95 px-4 py-3 shadow-2xl shadow-black/20 backdrop-blur-xl sm:-mx-7 sm:px-7 lg:-mx-8 lg:px-8">
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                        <div className="grid flex-1 grid-cols-3 gap-2 rounded-2xl border border-slate-800 bg-slate-950/80 p-2" role="tablist">
+                            {([
+                                ["banners", "بنرها", `${activeSlides.toLocaleString("fa-IR")} بنر فعال`],
+                                ["sections", "مدیریت سکشن‌ها", `${data.sections.length.toLocaleString("fa-IR")} سکشن`],
+                                ["general", "اطلاعات کلی سایت", "پیام‌ها، فروشگاه و سئو"],
+                            ] as const).map(([id, label, description]) => (
+                                <button
+                                    aria-selected={activeTab === id}
+                                    className={`rounded-xl px-2 py-2.5 text-center transition sm:px-4 sm:py-3 sm:text-right ${activeTab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/30" : "text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}
+                                    key={id}
+                                    onClick={() => setActiveTab(id)}
+                                    role="tab"
+                                    type="button"
+                                >
+                                    <strong className="block text-[11px] sm:text-sm">{label}</strong>
+                                    <span className={`mt-1 hidden text-xs sm:block ${activeTab === id ? "text-indigo-100" : "text-slate-500"}`}>{description}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex shrink-0 items-center justify-end gap-2">
+                            {actions}
+                        </div>
+                    </div>
                 </div>
 
                 <Card

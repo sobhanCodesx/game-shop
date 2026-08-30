@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ticket extends Model
 {
-    protected $fillable = ['number', 'user_id', 'order_id', 'order_item_id', 'product_id', 'subject', 'status', 'priority', 'last_replied_at', 'created_by'];
+    public const EXCHANGE_STATUSES = ['pending_review', 'offered', 'accepted', 'rejected', 'completed'];
+
+    protected $fillable = ['number', 'user_id', 'order_id', 'order_item_id', 'product_id', 'target_product_id', 'subject', 'type', 'status', 'exchange_status', 'exchange_offer_amount', 'exchange_order_id', 'exchange_credit_applied', 'exchange_credit_expires_at', 'exchange_offer_responded_at', 'exchange_received_at', 'exchange_completed_at', 'exchange_credited_at', 'exchange_cancelled_at', 'exchange_expired_at', 'priority', 'last_replied_at', 'created_by'];
 
     protected function casts(): array
     {
-        return ['last_replied_at' => 'datetime'];
+        return ['last_replied_at' => 'datetime', 'exchange_offer_amount' => 'integer', 'exchange_credit_applied' => 'integer', 'exchange_credit_expires_at' => 'datetime', 'exchange_offer_responded_at' => 'datetime', 'exchange_received_at' => 'datetime', 'exchange_completed_at' => 'datetime', 'exchange_credited_at' => 'datetime', 'exchange_cancelled_at' => 'datetime', 'exchange_expired_at' => 'datetime'];
     }
 
     public function user(): BelongsTo
@@ -33,6 +35,16 @@ class Ticket extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function targetProduct(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'target_product_id');
+    }
+
+    public function exchangeOrder(): BelongsTo
+    {
+        return $this->belongsTo(Order::class, 'exchange_order_id');
     }
 
     public function creator(): BelongsTo

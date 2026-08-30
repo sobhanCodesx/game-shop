@@ -13,7 +13,11 @@ class ReplyTicketRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['message' => ['required', 'string', 'min:2', 'max:5000']];
+        return [
+            'message' => ['required', 'string', 'min:2', 'max:5000'],
+            'attachments' => ['nullable', 'array', 'max:5'],
+            'attachments.*' => ['file', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime', 'max:51200'],
+        ];
     }
 
     public function messages(): array

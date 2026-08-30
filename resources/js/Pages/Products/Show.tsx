@@ -20,6 +20,7 @@ import {
     Share2,
     ShieldCheck,
     ShoppingBag,
+    RefreshCw,
     Sparkles,
     Truck,
     X,
@@ -28,6 +29,7 @@ import { useMemo, useState } from "react";
 
 import Price from "../../Components/Storefront/Commerce/Price";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
+import RichText from "../../Components/Storefront/Shared/RichText";
 import type { SharedPageProps, StorefrontPricing } from "../../types";
 
 interface Media {
@@ -52,6 +54,7 @@ interface Props {
         short_description: string | null;
         description: string | null;
         availability: string;
+        trade_enabled: boolean;
         release_date: string | null;
         category: string | null;
         brand: string | null;
@@ -674,6 +677,15 @@ export default function ProductShow({ product }: Props) {
                                             ? "افزودن به سبد خرید"
                                             : "در حال حاضر ناموجود"}
                                     </Button>
+                                    {product.trade_enabled && (
+                                        <Link
+                                            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] font-black transition hover:border-indigo-500"
+                                            href={`/account/tickets/create?exchange_product=${product.id}`}
+                                        >
+                                            <RefreshCw size={18} /> درخواست
+                                            معاوضه
+                                        </Link>
+                                    )}
                                     <div className="grid grid-cols-3 gap-2 border-t border-[var(--store-border)] pt-5 text-center text-[10px] text-[var(--store-muted)]">
                                         <span>
                                             <Truck
@@ -712,19 +724,31 @@ export default function ProductShow({ product }: Props) {
                         />
                     )}
                     {(product.description || product.short_description) && (
-                        <section className="grid gap-6 lg:grid-cols-[220px_1fr]">
-                            <div>
-                                <span className="flex items-center gap-2 text-xs font-black text-indigo-500">
-                                    <Sparkles size={14} /> STORY
-                                </span>
-                                <h2 className="mt-2 text-2xl font-black md:text-3xl">
-                                    درباره این تجربه
-                                </h2>
+                        <section className="relative overflow-hidden rounded-[32px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-xl shadow-slate-950/5">
+                            <div className="absolute -left-20 -top-20 size-64 rounded-full bg-indigo-500/10 blur-3xl" />
+                            <div className="relative grid lg:grid-cols-[260px_1fr]">
+                                <div className="border-b border-[var(--store-border)] bg-gradient-to-bl from-indigo-500/10 to-transparent p-6 lg:border-b-0 lg:border-l lg:p-8">
+                                    <span className="flex items-center gap-2 text-xs font-black tracking-widest text-indigo-500">
+                                        <Sparkles size={14} /> PRODUCT STORY
+                                    </span>
+                                    <h2 className="mt-3 text-2xl font-black leading-9 md:text-3xl">
+                                        درباره این محصول
+                                    </h2>
+                                    <p className="mt-4 text-sm leading-7 text-[var(--store-muted)]">
+                                        جزئیات، ویژگی‌ها و نکاتی که پیش از خرید
+                                        باید بدانید.
+                                    </p>
+                                </div>
+                                <div className="p-6 sm:p-8 lg:p-10">
+                                    {product.description ? (
+                                        <RichText html={product.description} />
+                                    ) : (
+                                        <p className="text-base leading-9 text-[var(--store-muted)] md:text-lg">
+                                            {product.short_description}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                            <p className="max-w-3xl whitespace-pre-line text-base leading-9 text-[var(--store-muted)] md:text-lg">
-                                {product.description ??
-                                    product.short_description}
-                            </p>
                         </section>
                     )}
                     <section>

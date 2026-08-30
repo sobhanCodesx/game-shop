@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Services\ProductPriceService;
+use App\Support\RichText;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Services\MediaStorage;
@@ -25,9 +26,10 @@ class ProductController extends Controller
                 'id' => $product->id,
                 'title' => $product->title,
                 'slug' => $product->slug,
-                'short_description' => $product->short_description,
-                'description' => $product->description,
+                'short_description' => RichText::plainText($product->short_description),
+                'description' => RichText::sanitize($product->description),
                 'availability' => $product->availability,
+                'trade_enabled' => (bool) $product->trade_enabled,
                 'release_date' => $product->release_date?->format('Y-m-d'),
                 'category' => $product->category?->name,
                 'brand' => $product->brand?->name,

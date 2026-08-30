@@ -1,58 +1,55 @@
-# Repository Guidelines
+# AGENTS.md
 
-## Project overview
+## Project
+Laravel + Inertia + React + TypeScript + Vite + Tailwind + HeroUI.
+Laravel is the server. React is the Inertia client. This is not Next.js.
 
-This repository is a Persian, RTL game shop built with Laravel, Inertia.js, React, and TypeScript. Public pages live under `resources/js/Pages`; admin pages use `resources/js/Layouts/AdminLayout.tsx`. Backend controllers are in `app/Http/Controllers`, domain models in `app/Models`, and HTTP routes in `routes/web.php`.
+## Work efficiently
+- Do not scan the entire repository unless genuinely necessary.
+- Search for the relevant symbol/file first, then inspect only related code.
+- Do not repeatedly reread unchanged files.
+- For large files, locate the relevant section instead of reading the whole file.
+- Stop exploring once enough context exists to implement the task correctly.
 
-## Working conventions
+## Ignore by default
+- vendor/**
+- node_modules/**
+- public/build/**
+- storage/**
+- composer.lock
+- package-lock.json
+- binary/media/font files
+- .env
 
-- Preserve RTL layout, Persian copy, and UTF-8 encoding in all user-facing files.
-- Keep controllers focused on HTTP orchestration. Put reusable pricing or domain logic in a service under `app/Services`.
-- Use Form Request classes for validation, especially for admin mutations.
-- Do not expose internal prices (`buy_price` or `partner_price`) to ordinary customers.
-- Keep route names stable and use named routes in redirects and tests.
-- Preserve unrelated local changes; inspect `git status` before and after editing.
+## Changes
+- Stay focused on the requested feature.
+- Do not perform unrelated refactors or cleanup.
+- Reuse existing services, components, helpers and patterns when appropriate.
+- Create new files/components when they genuinely improve the implementation.
+- Do not add packages or upgrade dependencies unless required.
+- Preserve existing architecture and conventions.
 
-## Setup and validation
+## Architecture
+- Business logic belongs in existing Laravel Services where applicable.
+- Keep Controllers focused on request/response orchestration.
+- Use Form Requests for meaningful backend validation.
+- Use existing Eloquent relations/scopes and avoid N+1 queries.
+- Use Inertia patterns (`Link`, `router`, `useForm`) for existing Inertia flows.
+- Keep TypeScript strict and avoid unnecessary `any`.
+- Preserve RTL/Persian-first and responsive behavior.
 
-Run these commands from the repository root:
+## Creativity
+Be highly creative for UI/UX and feature design.
+Efficiency rules must not reduce solution quality or originality.
+Necessary complexity is allowed; unnecessary work is not.
 
-```powershell
-composer install
-npm.cmd install
-php artisan migrate --seed
-npm.cmd run dev
-php artisan serve
-```
+## Validation
+Run the smallest relevant validation/test first.
+Do not run the entire test suite or production build after every small change unless necessary.
 
-Before handing off a change, run the checks relevant to it:
-
-```powershell
-php artisan test
-npx.cmd tsc --noEmit
-npm.cmd run build
-```
-
-On Windows, prefer `npm.cmd` and `npx.cmd`; PowerShell may block the `.ps1` shims under restrictive execution policies.
-
-## Testing expectations
-
-- Add or update Feature tests for routes, authorization, validation, persistence, and Inertia props.
-- Add Unit tests for isolated services and calculations.
-- Use factories and `RefreshDatabase`; do not depend on records in the developer database.
-- Test both guest/regular-user denial and admin success for protected admin features.
-- For pricing changes, verify public, authenticated customer, and partner visibility separately.
-
-## Database and admin safety
-
-- Prefer additive migrations and never edit an already-deployed migration to change production data shape.
-- Seeders must be idempotent where practical (`updateOrCreate`, `updateOrInsert`, or `insertOrIgnore`).
-- Never commit real credentials. Admin seed credentials come from `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
-- Treat `.env` as local-only; document new variables in `.env.example`.
-
-## Frontend conventions
-
-- Keep page props typed in TypeScript and reuse shared types from `resources/js/types`.
-- Format Persian numbers through existing utilities where applicable.
-- Maintain keyboard access, visible focus states, useful labels, and responsive behavior.
-- Avoid hard-coded backend assumptions when a value can be passed as an Inertia prop.
+## Response
+Keep completion summaries concise:
+- what changed
+- files changed
+- validation performed
+- relevant caveats

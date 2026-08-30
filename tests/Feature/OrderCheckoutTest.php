@@ -111,6 +111,36 @@ class OrderCheckoutTest extends TestCase
         $this->assertSame('approved', $approved->fresh()->status);
     }
 
+    public function test_only_owner_can_view_invoice_for_delivered_order(): void
+    {
+        $user = User::factory()->create(['name' => 'خریدار فاکتور']);
+        $other = User::factory()->create();
+        $pending = $this->orderFor($user, 'pending', 'NP-INVOICE-PENDING');
+        $delivered = $this->orderFor($user, 'delivered', 'NP-INVOICE-FINAL', [
+            'shipping_address' => ['recipient_name' => 'تحویل گیرنده', 'phone' => '09120000000', 'province' => 'تهران', 'city' => 'تهران', 'address_line' => 'خیابان تست'],
+            'regular_subtotal' => 120_000,
+            'product_discount' => 20_000,
+            'subtotal' => 100_000,
+            'coupon_code' => 'FINAL10',
+            'coupon_discount' => 10_000,
+            'delivery_fee' => 5_000,
+            'grand_total' => 95_000,
+            'wallet_used' => 15_000,
+            'payable_amount' => 80_000,
+            'cashback_amount' => 2_000,
+        ]);
+        $delivered->items()->create(['title' => 'محصول فاکتور', 'sku' => 'SKU-1', 'quantity' => 1, 'regular_unit_price' => 120_000, 'unit_price' => 100_000, 'discount_amount' => 20_000, 'line_total' => 100_000, 'requires_shipping' => true]);
+
+        $this->actingAs($user)->get(route('orders.invoice', $pending))->assertNotFound();
+        $this->actingAs($other)->get(route('orders.invoice', $delivered))->assertNotFound();
+        $this->actingAs($user)->get(route('orders.invoice', $delivered))->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Orders/Invoice')
+            ->where('invoice.number', 'NP-INVOICE-FINAL')
+            ->where('invoice.status', 'delivered')
+            ->where('invoice.payable_amount', 80_000)
+            ->where('invoice.items.0.discount_amount', 20_000));
+    }
+
     public function test_admin_can_cancel_shipped_order_and_reverse_cashback(): void
     {
         $user = User::factory()->create(['wallet_balance' => 5_000]);

@@ -28,6 +28,7 @@ export interface StorefrontNavigationProps {
     categories: NavigationCategory[];
     stories?: StorefrontStory[];
     user: AuthUser | null;
+    freshContentAt?: string | null;
 }
 
 export type StorefrontTheme = "light" | "dark";

@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\EmailCodeService;
+use App\Services\MobileCodeService;
+use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -24,91 +27,201 @@ class AuthController extends Controller
         return Inertia::render('Auth/Register');
     }
 
-    public function verifyEmail(Request $request): Response|RedirectResponse
-    {
-        return $request->session()->has('verification_email') ? Inertia::render('Auth/VerifyEmail', ['email' => $request->session()->get('verification_email')]) : to_route('register');
-    }
-
     public function forgotPassword(): Response
     {
         return Inertia::render('Auth/ForgotPassword');
     }
 
+    public function verifyAccount(Request $request): Response|RedirectResponse
+    {
+        if ($email = $request->session()->get('verification_email')) {
+            return Inertia::render('Auth/VerifyCode', ['destination' => $email, 'channel' => 'email', 'purpose' => 'verify']);
+        }
+        if ($phone = $request->session()->get('verification_phone')) {
+            return Inertia::render('Auth/VerifyCode', ['destination' => $phone, 'channel' => 'mobile', 'purpose' => 'verify']);
+        }
+
+        return to_route('register');
+    }
+
+    public function passwordlessNotice(Request $request): Response|RedirectResponse
+    {
+        return $request->session()->has('login_phone') ? Inertia::render('Auth/VerifyCode', ['destination' => $request->session()->get('login_phone'), 'channel' => 'mobile', 'purpose' => 'login']) : to_route('login');
+    }
+
     public function resetPassword(Request $request): Response|RedirectResponse
     {
-        return $request->session()->has('reset_email') ? Inertia::render('Auth/ResetPassword', ['email' => $request->session()->get('reset_email')]) : to_route('password.request');
+        $identifier = $request->session()->get('reset_identifier', $request->session()->get('reset_email'));
+
+        return $identifier ? Inertia::render('Auth/ResetPassword', ['identifier' => $identifier, 'channel' => $request->session()->get('reset_channel', 'email')]) : to_route('password.request');
     }
 
-    public function storeRegistration(Request $request, EmailCodeService $codes): RedirectResponse
+    public function storeRegistration(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:100'], 'email' => ['required', 'email', 'max:255', 'unique:users,email'], 'password' => ['required', Password::min(8)->letters()->numbers(), 'confirmed']]);
-        $user = User::create([...$data, 'status' => 'active', 'role' => 'user']);
-        $codes->send($user, 'verify_email');
-        $request->session()->put('verification_email', $user->email);
+        $channel = $request->input('channel', $request->filled('phone') ? 'mobile' : 'email');
+        validator(['channel' => $channel], ['channel' => ['required', Rule::in(['email', 'mobile'])]])->validate();
+        $password = ['required', Password::min(8)->letters()->numbers(), 'confirmed'];
+        if ($channel === 'email') {
+            if ($request->hasAny(['first_name', 'last_name'])) {
+                $data = $request->validate(['first_name' => ['required', 'string', 'max:100'], 'last_name' => ['required', 'string', 'max:100'], 'email' => ['required', 'email', 'max:255', 'unique:users,email'], 'password' => $password]);
+                $data['name'] = trim($data['first_name'].' '.$data['last_name']);
+            } else {
+                // Keep older clients that submit the combined name field working.
+                $data = $request->validate(['name' => ['required', 'string', 'max:100'], 'email' => ['required', 'email', 'max:255', 'unique:users,email'], 'password' => $password]);
+            }
+            $user = User::create([...$data, 'status' => 'active', 'role' => 'user']);
+            $emails->send($user, 'verify_email');
+            $request->session()->put('verification_email', $user->email);
 
-        return to_route('verification.notice')->with('success', 'کد تأیید به ایمیل شما ارسال شد.');
-    }
-
-    public function authenticate(Request $request, EmailCodeService $codes): RedirectResponse
-    {
-        $data = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string'], 'remember' => ['boolean']], ['email.required' => 'وارد کردن ایمیل الزامی است.', 'email.email' => 'فرمت ایمیل صحیح نیست.', 'password.required' => 'وارد کردن رمز عبور الزامی است.']);
-        if (! Auth::attempt(['email' => $data['email'], 'password' => $data['password']], $request->boolean('remember'))) {
-            throw ValidationException::withMessages(['email' => 'ایمیل یا رمز عبور صحیح نیست.']);
+            return to_route('verification.notice')->with('success', 'کد تأیید به ایمیل شما ارسال شد.');
         }
-        if (! $request->user()->email_verified_at) {
-            $user = $request->user();
+        $data = $request->validate(['first_name' => ['required', 'string', 'max:100'], 'last_name' => ['required', 'string', 'max:100'], 'phone' => ['required', 'string'], 'password' => $password]);
+        $data['phone'] = PhoneNumber::normalize($data['phone']);
+        validator($data, ['phone' => ['unique:users,phone']])->validate();
+        $user = User::create([...$data, 'name' => trim($data['first_name'].' '.$data['last_name']), 'email' => null, 'status' => 'active', 'role' => 'user']);
+        try {
+            $mobiles->send($user->phone, 'verify_mobile');
+        } catch (\Throwable $e) {
+            $user->forceDelete();
+            throw $e;
+        }
+        $request->session()->put('verification_phone', $user->phone);
+
+        return to_route('verification.notice')->with('success', 'کد تأیید پیامکی ارسال شد.');
+    }
+
+    public function authenticate(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse
+    {
+        $request->merge(['identifier' => $request->input('identifier', $request->input('email'))]);
+        $data = $request->validate(['identifier' => ['required', 'string'], 'password' => ['required', 'string'], 'remember' => ['boolean']]);
+        $isEmail = (bool) filter_var($data['identifier'], FILTER_VALIDATE_EMAIL);
+        $field = $isEmail ? 'email' : 'phone';
+        $identifier = $isEmail ? mb_strtolower(trim($data['identifier'])) : PhoneNumber::normalize($data['identifier']);
+        if (! Auth::attempt([$field => $identifier, 'password' => $data['password']], $request->boolean('remember'))) {
+            throw ValidationException::withMessages(['identifier' => 'ایمیل/شماره موبایل یا رمز عبور صحیح نیست.']);
+        }
+        $user = $request->user();
+        if ($user->status !== 'active') {
             Auth::logout();
-            $codes->send($user, 'verify_email');
+            throw ValidationException::withMessages(['identifier' => 'این حساب غیرفعال یا مسدود شده است.']);
+        }
+        if ($field === 'email' && ! $user->email_verified_at) {
+            Auth::logout();
+            $emails->send($user, 'verify_email');
             $request->session()->put('verification_email', $user->email);
 
             return to_route('verification.notice')->with('error', 'ابتدا ایمیل حساب را تأیید کنید.');
         }
-        $request->session()->regenerate();
-        $request->user()->forceFill(['last_login_at' => now()])->save();
+        if ($field === 'phone' && ! $user->phone_verified_at) {
+            Auth::logout();
+            $mobiles->send($user->phone, 'verify_mobile');
+            $request->session()->put('verification_phone', $user->phone);
 
-        return redirect()->intended(route('home'));
+            return to_route('verification.notice')->with('error', 'ابتدا شماره موبایل را تأیید کنید.');
+        }
+
+        return $this->completeLogin($request, $user);
     }
 
-    public function confirmEmail(Request $request, EmailCodeService $codes): RedirectResponse
+    public function sendPasswordlessCode(Request $request, MobileCodeService $codes): RedirectResponse
     {
-        $email = (string) $request->session()->get('verification_email');
+        $phone = PhoneNumber::normalize((string) $request->validate(['phone' => ['required', 'string']])['phone']);
+        if (User::where('phone', $phone)->where('status', 'active')->exists()) {
+            $codes->send($phone, 'passwordless_login');
+        }
+        $request->session()->put('login_phone', $phone);
+
+        return to_route('login.otp.notice')->with('success', 'اگر حساب تأییدشده‌ای با این شماره وجود داشته باشد، کد ارسال شده است.');
+    }
+
+    public function confirmPasswordlessLogin(Request $request, MobileCodeService $codes): RedirectResponse
+    {
+        $phone = (string) $request->session()->get('login_phone');
         $data = $request->validate(['code' => ['required', 'digits:6']]);
-        $codes->verify($email, 'verify_email', $data['code']);
-        $user = User::where('email', $email)->firstOrFail();
-        $user->forceFill(['email_verified_at' => now()])->save();
+        $user = User::where('phone', $phone)->where('status', 'active')->firstOrFail();
+        $codes->verify($phone, 'passwordless_login', $data['code']);
+        if (! $user->phone_verified_at) {
+            $user->forceFill(['phone_verified_at' => now()])->save();
+        }
+        $request->session()->forget('login_phone');
         Auth::login($user);
-        $request->session()->forget('verification_email');
-        $request->session()->regenerate();
 
-        return to_route('home')->with('success', 'حساب شما با موفقیت فعال شد.');
+        return $this->completeLogin($request, $user);
     }
 
-    public function resendVerification(Request $request, EmailCodeService $codes): RedirectResponse
+    public function confirmAccount(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse
     {
-        $user = User::where('email', $request->session()->get('verification_email'))->firstOrFail();
-        $codes->send($user, 'verify_email');
+        $data = $request->validate(['code' => ['required', 'digits:6']]);
+        if ($email = $request->session()->get('verification_email')) {
+            $emails->verify($email, 'verify_email', $data['code']);
+            $user = User::where('email', $email)->firstOrFail();
+            $user->forceFill(['email_verified_at' => now()])->save();
+            $request->session()->forget('verification_email');
+        } else {
+            $phone = (string) $request->session()->get('verification_phone');
+            $mobiles->verify($phone, 'verify_mobile', $data['code']);
+            $user = User::where('phone', $phone)->firstOrFail();
+            $user->forceFill(['phone_verified_at' => now()])->save();
+            $request->session()->forget('verification_phone');
+        }
+        Auth::login($user);
+
+        return $this->completeLogin($request, $user)->with('success', 'حساب شما با موفقیت فعال شد.');
+    }
+
+    public function resendVerification(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse
+    {
+        if ($email = $request->session()->get('verification_email')) {
+            $emails->send(User::where('email', $email)->firstOrFail(), 'verify_email');
+        } else {
+            $phone = (string) $request->session()->get('verification_phone');
+            User::where('phone', $phone)->firstOrFail();
+            $mobiles->send($phone, 'verify_mobile');
+        }
 
         return back()->with('success', 'کد جدید ارسال شد.');
     }
 
-    public function sendResetCode(Request $request, EmailCodeService $codes): RedirectResponse
+    public function resendPasswordless(Request $request, MobileCodeService $codes): RedirectResponse
     {
-        $data = $request->validate(['email' => ['required', 'email']]);
-        if ($user = User::where('email', $data['email'])->first()) {
-            $codes->send($user, 'reset_password');
+        $phone = (string) $request->session()->get('login_phone');
+        if (User::where('phone', $phone)->where('status', 'active')->exists()) {
+            $codes->send($phone, 'passwordless_login');
         }
-        $request->session()->put('reset_email', $data['email']);
 
-        return to_route('password.reset')->with('success', 'اگر حسابی با این ایمیل وجود داشته باشد، کد ارسال شده است.');
+        return back()->with('success', 'در صورت وجود حساب، کد جدید ارسال شد.');
     }
 
-    public function updatePassword(Request $request, EmailCodeService $codes): RedirectResponse
+    public function sendResetCode(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse
     {
-        $email = (string) $request->session()->get('reset_email');
+        $request->merge(['identifier' => $request->input('identifier', $request->input('email'))]);
+        $identifier = (string) $request->validate(['identifier' => ['required', 'string']])['identifier'];
+        $isEmail = (bool) filter_var($identifier, FILTER_VALIDATE_EMAIL);
+        $identifier = $isEmail ? mb_strtolower(trim($identifier)) : PhoneNumber::normalize($identifier);
+        $user = User::where($isEmail ? 'email' : 'phone', $identifier)->first();
+        if ($user) {
+            $isEmail ? $emails->send($user, 'reset_password') : $mobiles->send($identifier, 'reset_password');
+        }
+        $request->session()->put(['reset_identifier' => $identifier, 'reset_channel' => $isEmail ? 'email' : 'mobile']);
+        if ($isEmail) {
+            $request->session()->put('reset_email', $identifier);
+        }
+
+        return to_route('password.reset')->with('success', 'اگر حسابی با این مشخصات وجود داشته باشد، کد ارسال شده است.');
+    }
+
+    public function updatePassword(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse
+    {
+        $identifier = (string) $request->session()->get('reset_identifier', $request->session()->get('reset_email'));
+        $channel = (string) $request->session()->get('reset_channel', 'email');
         $data = $request->validate(['code' => ['required', 'digits:6'], 'password' => ['required', Password::min(8)->letters()->numbers(), 'confirmed']]);
-        $codes->verify($email, 'reset_password', $data['code']);
-        User::where('email', $email)->firstOrFail()->update(['password' => $data['password']]);
-        $request->session()->forget('reset_email');
+        if ($channel === 'email') {
+            $emails->verify($identifier, 'reset_password', $data['code']);
+        } else {
+            $mobiles->verify($identifier, 'reset_password', $data['code']);
+        }
+        User::where($channel === 'email' ? 'email' : 'phone', $identifier)->firstOrFail()->update(['password' => $data['password']]);
+        $request->session()->forget(['reset_identifier', 'reset_channel', 'reset_email']);
 
         return to_route('login')->with('success', 'رمز عبور جدید ثبت شد؛ اکنون وارد شوید.');
     }
@@ -120,5 +233,17 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return to_route('home');
+    }
+
+    private function completeLogin(Request $request, User $user): RedirectResponse
+    {
+        $intended = (string) $request->session()->pull('url.intended', '');
+        $request->session()->regenerate();
+        $user->forceFill(['last_login_at' => now()])->save();
+
+        $path = '/'.ltrim((string) parse_url($intended, PHP_URL_PATH), '/');
+        $safeDestinations = ['/account', '/account/tickets', '/account/tickets/create', '/checkout'];
+
+        return redirect()->to(in_array($path, $safeDestinations, true) ? $intended : route('home'));
     }
 }

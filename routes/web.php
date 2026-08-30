@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ProductTypeController;
 use App\Http\Controllers\Admin\ShortController as AdminShortController;
 use App\Http\Controllers\Admin\TemporaryUploadController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\VideoController as AdminVideoController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
@@ -34,10 +35,14 @@ Route::get('media/{path}', MediaStreamController::class)->where('path', '.*')->n
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'login'])->name('login');
     Route::post('login', [AuthController::class, 'authenticate'])->middleware('throttle:5,1')->name('login.store');
+    Route::post('login/otp', [AuthController::class, 'sendPasswordlessCode'])->middleware('throttle:3,1')->name('login.otp.send');
+    Route::get('login/otp', [AuthController::class, 'passwordlessNotice'])->name('login.otp.notice');
+    Route::post('login/otp/verify', [AuthController::class, 'confirmPasswordlessLogin'])->middleware('throttle:8,1')->name('login.otp.verify');
+    Route::post('login/otp/resend', [AuthController::class, 'resendPasswordless'])->middleware('throttle:2,1')->name('login.otp.resend');
     Route::get('register', [AuthController::class, 'register'])->name('register');
     Route::post('register', [AuthController::class, 'storeRegistration'])->middleware('throttle:3,1')->name('register.store');
-    Route::get('verify-email', [AuthController::class, 'verifyEmail'])->name('verification.notice');
-    Route::post('verify-email', [AuthController::class, 'confirmEmail'])->middleware('throttle:8,1')->name('verification.verify');
+    Route::get('verify-email', [AuthController::class, 'verifyAccount'])->name('verification.notice');
+    Route::post('verify-email', [AuthController::class, 'confirmAccount'])->middleware('throttle:8,1')->name('verification.verify');
     Route::post('verify-email/resend', [AuthController::class, 'resendVerification'])->middleware('throttle:2,1')->name('verification.resend');
     Route::get('forgot-password', [AuthController::class, 'forgotPassword'])->name('password.request');
     Route::post('forgot-password', [AuthController::class, 'sendResetCode'])->middleware('throttle:3,1')->name('password.email');
@@ -45,6 +50,7 @@ Route::middleware('guest')->group(function () {
     Route::post('reset-password', [AuthController::class, 'updatePassword'])->middleware('throttle:8,1')->name('password.update');
 });
 Route::post('logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+Route::post('impersonation/stop', [AdminUserController::class, 'stopImpersonating'])->middleware('auth')->name('impersonation.stop');
 Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
     Route::get('/', [AccountController::class, 'index'])->name('dashboard');
     Route::patch('profile', [AccountController::class, 'updateProfile'])->name('profile.update');
@@ -57,6 +63,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::post('tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
     Route::post('tickets/{ticket}/replies', [TicketController::class, 'reply'])->name('tickets.reply');
+    Route::patch('tickets/{ticket}/exchange-response', [TicketController::class, 'respondToExchange'])->name('tickets.exchange-response');
     Route::get('notifications/{notification}', [AccountController::class, 'readNotification'])->name('notifications.read');
     Route::patch('notifications/{notification}', [AccountController::class, 'readNotification'])->name('notifications.mark-read');
     Route::patch('notifications', [AccountController::class, 'readAllNotifications'])->name('notifications.read-all');
@@ -83,6 +90,7 @@ Route::middleware('auth')->group(function () {
     Route::get('checkout', [CheckoutController::class, 'show'])->name('checkout.show');
     Route::post('checkout/preview', [CheckoutController::class, 'preview'])->name('checkout.preview');
     Route::post('checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+    Route::get('orders/{order}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
     Route::get('orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::patch('orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
 });
@@ -117,6 +125,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('tickets/{ticket}', [AdminTicketController::class, 'show'])->name('tickets.show');
         Route::post('tickets/{ticket}/replies', [AdminTicketController::class, 'reply'])->name('tickets.reply');
         Route::patch('tickets/{ticket}', [AdminTicketController::class, 'update'])->name('tickets.update');
+        Route::patch('tickets/{ticket}/exchange-offer', [AdminTicketController::class, 'offer'])->name('tickets.exchange-offer');
+        Route::patch('tickets/{ticket}/exchange-complete', [AdminTicketController::class, 'completeExchange'])->name('tickets.exchange-complete');
+        Route::post('tickets/{ticket}/exchange-adjustments', [AdminTicketController::class, 'adjustExchange'])->name('tickets.exchange-adjustments');
+        Route::delete('tickets/{ticket}/attachments', [AdminTicketController::class, 'destroyAttachments'])->name('tickets.attachments.destroy');
         Route::resource('coupons', AdminCouponController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::get('settings', [CommerceSettingsController::class, 'edit'])->name('settings.edit');
         Route::put('settings', [CommerceSettingsController::class, 'update'])->name('settings.update');
@@ -126,12 +138,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('products/{product}/media', [ProductMediaController::class, 'edit'])->name('products.media.edit');
         Route::post('products/{product}/media/upload', [ProductMediaController::class, 'upload'])->name('products.media.upload');
         Route::post('products/{product}/media', [ProductMediaController::class, 'update'])->name('products.media.update');
+        Route::patch('products/{product}/exchange', [CatalogController::class, 'toggleExchange'])->name('products.exchange.toggle');
         Route::resource('videos', AdminVideoController::class)->except('show');
         Route::resource('shorts', AdminShortController::class)
             ->parameters(['shorts' => 'short'])
             ->except('show');
         Route::post('uploads/chunk', [TemporaryUploadController::class, 'chunk'])->name('uploads.chunk');
         Route::post('uploads/complete', [TemporaryUploadController::class, 'complete'])->name('uploads.complete');
+        Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+        Route::patch('users/{user}', [AdminUserController::class, 'update'])->name('users.update');
+        Route::post('users/{user}/impersonate', [AdminUserController::class, 'impersonate'])->name('users.impersonate');
 
         Route::prefix('{catalog}')
             ->whereIn('catalog', ['categories', 'brands', 'games', 'platforms', 'products'])
@@ -147,7 +163,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             });
 
         Route::get('{resource}', AdminResourceController::class)
-            ->where('resource', 'users|creators|inventory|payments|reviews|trades|posts|videos|shorts|comments|reports|moderation|notifications|banners|pages|audit-logs|support')
+            ->where('resource', 'creators|inventory|payments|reviews|trades|posts|videos|shorts|comments|reports|moderation|notifications|banners|pages|audit-logs|support')
             ->name('resources.index');
     });
 });

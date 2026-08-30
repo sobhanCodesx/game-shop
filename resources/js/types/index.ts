@@ -12,6 +12,7 @@ export interface SharedPageProps {
     auth: { user: AuthUser | null };
     flash: { success: string | null; error: string | null };
     admin: { pending_orders_count: number; open_tickets_count: number } | null;
+    impersonation: { active: boolean; admin_name: string | null } | null;
     notifications: {
         unread_count: number;
         latest: {
@@ -20,12 +21,14 @@ export interface SharedPageProps {
             message: string;
             url?: string;
             read_at: string | null;
+            created_at: string;
         }[];
     } | null;
     cart: { item_count: number };
     storefront: {
         categories: import("../Components/Storefront/Navigation/types").NavigationCategory[];
         stories: import("../Components/Storefront/Navigation/types").StorefrontStory[];
+        fresh_content_at: string | null;
     };
     [key: string]: unknown;
 }
@@ -53,6 +56,12 @@ export interface StorefrontProduct {
     cover_alt: string;
     variants_count: number | null;
     pricing: StorefrontPricing;
+    meta_badges: Array<{
+        key: string;
+        label: string;
+        value: string;
+        tone: "success" | "danger" | "warning" | "accent" | "info" | "neutral";
+    }>;
 }
 
 export interface StorefrontContent {

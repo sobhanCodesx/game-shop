@@ -8,6 +8,8 @@ use App\Models\Product;
 use App\Models\ProductAttributeValue;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
+use App\Models\Game;
+use App\Models\Platform;
 use App\Models\SocialContent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -87,12 +89,63 @@ class StorefrontExperienceTest extends TestCase
             ->where('product.media.0.alt', 'کاور محصول تست'));
     }
 
+    public function test_product_cards_only_receive_prioritized_real_metadata(): void
+    {
+        $category = Category::factory()->create(['name' => 'بازی کنسول', 'status' => 'active']);
+        $game = Game::factory()->create(['developer' => 'Naughty Dog', 'publisher' => 'Sony']);
+        $platform = Platform::factory()->create(['name' => 'PlayStation 5']);
+        $product = Product::factory()->create([
+            'category_id' => $category->id, 'game_id' => $game->id,
+            'price' => 1_000_000, 'discount_price' => 800_000,
+            'stock' => 5, 'show_stock' => true,
+        ]);
+        $product->platforms()->attach($platform);
+        $edition = CategoryAttribute::query()->create(['category_id' => $category->id, 'name' => 'نسخه', 'slug' => 'edition', 'type' => 'text']);
+        ProductAttributeValue::query()->create(['product_id' => $product->id, 'category_attribute_id' => $edition->id, 'value' => 'Deluxe']);
+
+        $this->get(route('shop.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('products.data.0.meta_badges', 5)
+            ->where('products.data.0.meta_badges.0.value', 'موجود')
+            ->where('products.data.0.meta_badges.1.value', '20٪')
+            ->where('products.data.0.meta_badges.2.value', 'بازی کنسول')
+            ->where('products.data.0.meta_badges.3.value', 'PlayStation 5')
+            ->where('products.data.0.meta_badges.4.value', 'Deluxe'));
+
+        $this->get(route('home'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('latestProducts.0.id', $product->id)
+            ->has('latestProducts.0.meta_badges', 5)
+            ->where('latestProducts.0.meta_badges.3.value', 'PlayStation 5'));
+    }
+
     public function test_search_groups_real_results(): void
     {
         Product::factory()->create(['title' => 'بازی تست جستجو']);
 
         $this->get(route('search', ['q' => 'تست']))->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Search/Index')->where('query', 'تست')->has('products', 1));
+    }
+
+    public function test_home_automatically_prioritizes_recent_products_and_long_videos(): void
+    {
+        Product::factory()->create(['title' => 'محصول قدیمی', 'published_at' => now()->subDays(20), 'created_at' => now()->subDays(20)]);
+        $product = Product::factory()->create(['title' => 'محصول تازه', 'published_at' => now()->subHours(2)]);
+        $video = SocialContent::query()->create([
+            'type' => 'video', 'title' => 'ویدیوی تازه', 'slug' => 'fresh-long-video',
+            'status' => 'published', 'published_at' => now()->subHour(), 'duration' => 620,
+        ]);
+        SocialContent::query()->create([
+            'type' => 'video', 'title' => 'ویدیوی قدیمی', 'slug' => 'old-long-video',
+            'status' => 'published', 'published_at' => now()->subDays(30),
+        ]);
+
+        $this->get(route('home'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Home')->has('freshContent', 2)
+            ->where('freshContent.0.key', 'video-'.$video->id)
+            ->where('freshContent.0.type', 'video')
+            ->where('freshContent.0.duration', 620)
+            ->where('freshContent.1.key', 'product-'.$product->id)
+            ->where('freshContent.1.type', 'product')
+            ->has('freshContent.1.pricing'));
     }
 
     public function test_discover_returns_a_paginated_mixed_feed_and_json_pages(): void

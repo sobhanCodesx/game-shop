@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Order extends Model
 {
-    protected $fillable = ['number', 'user_id', 'coupon_id', 'coupon_code', 'shipping_address', 'status', 'regular_subtotal', 'product_discount', 'subtotal', 'coupon_discount', 'delivery_fee', 'grand_total', 'wallet_used', 'payable_amount', 'cashback_percent', 'cashback_eligible_amount', 'cashback_amount', 'reviewed_by', 'reviewed_at', 'admin_note'];
+    public const INVOICEABLE_STATUSES = ['delivered'];
+
+    protected $fillable = ['number', 'user_id', 'coupon_id', 'coupon_code', 'exchange_request_id', 'exchange_credit_used', 'shipping_address', 'status', 'regular_subtotal', 'product_discount', 'subtotal', 'coupon_discount', 'delivery_fee', 'grand_total', 'wallet_used', 'payable_amount', 'cashback_percent', 'cashback_eligible_amount', 'cashback_amount', 'reviewed_by', 'reviewed_at', 'admin_note'];
 
     protected function casts(): array
     {
@@ -28,5 +30,15 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function exchangeRequest(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class, 'exchange_request_id');
+    }
+
+    public function isInvoiceable(): bool
+    {
+        return in_array($this->status, self::INVOICEABLE_STATUSES, true);
     }
 }

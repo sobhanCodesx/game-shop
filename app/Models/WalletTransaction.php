@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class WalletTransaction extends Model
 {
-    protected $fillable = ['user_id', 'order_id', 'type', 'amount', 'balance_after', 'description'];
+    protected $fillable = ['user_id', 'order_id', 'ticket_id', 'type', 'amount', 'balance_after', 'description'];
 }

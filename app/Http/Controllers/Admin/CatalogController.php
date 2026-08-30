@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use App\Support\RichText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Services\MediaStorage;
@@ -64,6 +65,8 @@ class CatalogController extends Controller
                     : null,
                 'editUrl' => route('admin.catalog.edit', [$catalog, $item->getKey()]),
                 'mediaUrl' => $item instanceof Product ? route('admin.products.media.edit', $item) : null,
+                'tradeEnabled' => $item instanceof Product ? (bool) $item->trade_enabled : null,
+                'exchangeToggleUrl' => $item instanceof Product ? route('admin.products.exchange.toggle', $item) : null,
                 'deleteUrl' => route('admin.catalog.destroy', [$catalog, $item->getKey()]),
             ]),
             'filters' => ['search' => $search, 'status' => $status],
@@ -84,7 +87,7 @@ class CatalogController extends Controller
     public function store(CatalogRequest $request, string $catalog, ProductTypeRegistry $productTypes, ProductMediaService $media): RedirectResponse
     {
         $definition = $this->definition($catalog);
-        $data = $this->withProductType($this->withCapacityTotals($request->validated()), $productTypes);
+        $data = $this->withSanitizedProductContent($this->withProductType($this->withCapacityTotals($request->validated()), $productTypes), $catalog);
 
         DB::transaction(function () use ($definition, $data, $catalog, $media): void {
             $model = $definition['model']::create(Arr::except($data, ['platform_ids', 'attribute_values', 'attributes', 'variants', 'media']));
@@ -110,7 +113,7 @@ class CatalogController extends Controller
     {
         $definition = $this->definition($catalog);
         $model = $this->find($catalog, $id);
-        $data = $this->withProductType($this->withCapacityTotals($request->validated()), $productTypes);
+        $data = $this->withSanitizedProductContent($this->withProductType($this->withCapacityTotals($request->validated()), $productTypes), $catalog);
 
         DB::transaction(function () use ($model, $data, $catalog, $request, $media): void {
             if ($catalog === 'products' && ($model->price !== $data['price'] || $model->discount_price !== ($data['discount_price'] ?? null))) {
@@ -145,6 +148,15 @@ class CatalogController extends Controller
         $this->find($catalog, $id)->delete();
 
         return back()->with('success', "{$definition['singular']} حذف شد.");
+    }
+
+    public function toggleExchange(Product $product): RedirectResponse
+    {
+        $product->update(['trade_enabled' => ! $product->trade_enabled]);
+
+        return back()->with('success', $product->trade_enabled
+            ? 'امکان معاوضه برای این محصول فعال شد.'
+            : 'محصول به حالت فروش عادی برگشت.');
     }
 
     private function definition(string $catalog): array
@@ -275,6 +287,20 @@ class CatalogController extends Controller
         }
 
         $data['product_type_id'] = $productTypes->idFor($data['product_type']);
+
+        return $data;
+    }
+
+    private function withSanitizedProductContent(array $data, string $catalog): array
+    {
+        if ($catalog !== 'products') {
+            return $data;
+        }
+
+        $data['short_description'] = RichText::plainText($data['short_description'] ?? null);
+        foreach (['description', 'purchase_notes', 'delivery_notes', 'return_policy'] as $field) {
+            $data[$field] = RichText::sanitize($data[$field] ?? null);
+        }
 
         return $data;
     }

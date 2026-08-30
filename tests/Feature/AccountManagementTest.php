@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Models\UserAddress;
+use App\Models\Order;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AccountManagementTest extends TestCase
@@ -25,7 +27,13 @@ class AccountManagementTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)->get(route('account.dashboard'))->assertOk()->assertInertia(fn ($page) => $page
-            ->component('Account/Dashboard')->has('profile')->has('addresses')->where('profileCompletion', 40));
+            ->component('Account/Dashboard')
+            ->has('profile')
+            ->has('addresses')
+            ->has('accountNotifications')
+            ->has('notifications.unread_count')
+            ->has('notifications.latest')
+            ->where('profileCompletion', 40));
 
         $this->actingAs($user)->patch(route('account.profile.update'), [
             'name' => 'گیمر حرفه‌ای', 'phone' => '09123456789', 'birth_date' => '2000-01-01',
@@ -36,6 +44,29 @@ class AccountManagementTest extends TestCase
         $this->assertSame('گیمر حرفه‌ای', $user->name);
         $this->assertSame('09123456789', $user->phone);
         Storage::disk('public')->assertExists($user->avatar);
+    }
+
+    public function test_customer_orders_are_filterable_and_paginated_in_dashboard(): void
+    {
+        $user = User::factory()->create();
+        $attributes = ['user_id' => $user->id, 'shipping_address' => [], 'regular_subtotal' => 100_000, 'product_discount' => 0, 'subtotal' => 100_000, 'coupon_discount' => 0, 'delivery_fee' => 0, 'grand_total' => 100_000, 'wallet_used' => 0, 'payable_amount' => 100_000, 'cashback_percent' => 2, 'cashback_eligible_amount' => 100_000, 'cashback_amount' => 2_000];
+
+        foreach (range(1, 10) as $index) {
+            Order::query()->create([...$attributes, 'number' => "NP-DELIVERED-{$index}", 'status' => 'delivered']);
+        }
+        Order::query()->create([...$attributes, 'number' => 'NP-PENDING', 'status' => 'pending']);
+
+        $this->actingAs($user)->get(route('account.dashboard', ['tab' => 'orders', 'status' => 'delivered']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Account/Dashboard')
+                ->where('filters.tab', 'orders')
+                ->where('filters.status', 'delivered')
+                ->has('orders.data', 9)
+                ->where('orders.total', 10)
+                ->where('orders.last_page', 2)
+                ->where('orderStatusCounts.delivered', 10)
+                ->where('orderStatusCounts.pending', 1));
     }
 
     public function test_customer_can_manage_only_their_addresses(): void
@@ -59,5 +90,26 @@ class AccountManagementTest extends TestCase
         $this->actingAs($user)->put(route('account.password.update'), ['current_password' => 'wrong', 'password' => 'newplayer123', 'password_confirmation' => 'newplayer123'])->assertSessionHasErrors('current_password');
         $this->actingAs($user)->put(route('account.password.update'), ['current_password' => 'oldplayer123', 'password' => 'newplayer123', 'password_confirmation' => 'newplayer123'])->assertSessionHasNoErrors();
         $this->assertTrue(Hash::check('newplayer123', $user->fresh()->password));
+    }
+
+    public function test_clicking_notification_marks_it_read_and_redirects_to_internal_destination(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $id = (string) Str::uuid();
+        DB::table('notifications')->insert([
+            'id' => $id,
+            'type' => 'test',
+            'notifiable_type' => User::class,
+            'notifiable_id' => $user->id,
+            'data' => json_encode(['title' => 'سفارش', 'message' => 'جزئیات', 'url' => 'https://localhost/orders/42']),
+            'read_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($user)->patch(route('account.notifications.mark-read', $id))->assertRedirect('/orders/42');
+        $this->assertNotNull($user->notifications()->findOrFail($id)->read_at);
+        $this->actingAs($other)->patch(route('account.notifications.mark-read', $id))->assertNotFound();
     }
 }

@@ -1,4 +1,4 @@
-import { usePage } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import type { PropsWithChildren } from "react";
 
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
@@ -10,7 +10,8 @@ interface Props extends PropsWithChildren {
 }
 
 export default function StorefrontLayout({ children, announcement }: Props) {
-    const { auth, storefront } = usePage<SharedPageProps>().props;
+    const { auth, storefront, impersonation } =
+        usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
 
     return (
@@ -19,6 +20,18 @@ export default function StorefrontLayout({ children, announcement }: Props) {
             data-theme={theme}
             dir="rtl"
         >
+            {impersonation?.active && (
+                <div className="sticky top-0 z-[100] flex items-center justify-center gap-3 bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg">
+                    در حال مشاهده سایت با حساب {auth.user?.name} هستید.
+                    <button
+                        className="rounded-lg bg-slate-950 px-3 py-1.5 text-white"
+                        onClick={() => router.post("/impersonation/stop")}
+                        type="button"
+                    >
+                        بازگشت به حساب مدیر
+                    </button>
+                </div>
+            )}
             <StorefrontNavigation
                 announcement={announcement}
                 categories={storefront.categories}
@@ -26,6 +39,7 @@ export default function StorefrontLayout({ children, announcement }: Props) {
                 onToggleTheme={toggleTheme}
                 theme={theme}
                 user={auth.user}
+                freshContentAt={storefront.fresh_content_at}
             />
             {children}
         </div>

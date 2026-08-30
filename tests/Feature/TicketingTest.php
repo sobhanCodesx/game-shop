@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\TicketActivityNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class TicketingTest extends TestCase
@@ -61,6 +62,52 @@ class TicketingTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user)->withSession(['ticket_anti_bot' => ['code' => 'ABCDE', 'created_at' => now()->timestamp]])->post(route('account.tickets.store'), ['subject' => 'درخواست عمومی', 'message' => 'متن کامل درخواست پشتیبانی', 'anti_bot_code' => 'WRONG'])->assertSessionHasErrors('anti_bot_code');
         $this->assertDatabaseCount('tickets', 0);
+    }
+
+    public function test_ticket_anti_bot_stays_stable_through_the_entire_creation_flow(): void
+    {
+        $user = User::factory()->create();
+        $first = $this->actingAs($user)->get(route('account.tickets.create'));
+        $code = session('ticket_anti_bot.code');
+
+        $first->assertInertia(fn ($page) => $page->where('antiBotCode', $code));
+        $this->get(route('account.tickets.create', ['page' => 2]))
+            ->assertInertia(fn ($page) => $page->where('antiBotCode', $code));
+
+        $this->post(route('account.tickets.store'), [
+            'subject' => '',
+            'message' => 'متن معتبر ولی بدون موضوع',
+            'anti_bot_code' => strtolower(" {$code} "),
+        ])->assertSessionHasErrors('subject');
+        $this->assertSame($code, session('ticket_anti_bot.code'));
+
+        $this->post(route('account.tickets.store'), [
+            'subject' => 'موضوع نهایی',
+            'message' => 'متن کامل درخواست پشتیبانی',
+            'anti_bot_code' => strtolower(" {$code} "),
+        ])->assertRedirect();
+
+        $this->assertNull(session('ticket_anti_bot'));
+        $this->assertDatabaseCount('tickets', 1);
+    }
+
+    public function test_admin_can_purge_closed_ticket_files_without_deleting_ticket_or_replies(): void
+    {
+        Storage::fake('public');
+        config(['media.disk' => 'public']);
+        $admin = User::factory()->create(['is_admin' => true]);
+        $user = User::factory()->create();
+        $ticket = Ticket::create(['number' => 'TK-PURGE-1', 'user_id' => $user->id, 'subject' => 'تیکت بسته', 'status' => 'closed', 'last_replied_at' => now(), 'created_by' => $user->id]);
+        $reply = $ticket->replies()->create(['user_id' => $user->id, 'message' => 'پیام همراه فایل', 'is_admin' => false]);
+        Storage::disk('public')->put('tickets/1/file.jpg', 'image');
+        $reply->attachments()->create(['user_id' => $user->id, 'path' => 'tickets/1/file.jpg', 'original_name' => 'file.jpg', 'mime_type' => 'image/jpeg', 'type' => 'image', 'size' => 5]);
+
+        $this->actingAs($admin)->delete(route('admin.tickets.attachments.destroy', $ticket))->assertRedirect();
+
+        $this->assertDatabaseHas('tickets', ['id' => $ticket->id]);
+        $this->assertDatabaseHas('ticket_replies', ['id' => $reply->id]);
+        $this->assertDatabaseCount('ticket_attachments', 0);
+        Storage::disk('public')->assertMissing('tickets/1/file.jpg');
     }
 
     private function orderItem(User $user, string $title)

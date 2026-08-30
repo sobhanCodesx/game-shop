@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Ticket;
+use App\Notifications\Channels\SmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -14,11 +15,16 @@ class TicketActivityNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', SmsChannel::class];
     }
 
     public function toArray(object $notifiable): array
     {
-        return ['title' => $this->title, 'message' => $this->message, 'url' => $this->adminTarget ? route('admin.tickets.show', $this->ticket) : route('account.tickets.show', $this->ticket), 'ticket_id' => $this->ticket->id];
+        return ['title' => $this->title, 'message' => $this->message, 'url' => $this->adminTarget ? route('admin.tickets.show', $this->ticket, false) : route('account.tickets.show', $this->ticket, false), 'ticket_id' => $this->ticket->id];
+    }
+
+    public function toSms(object $notifiable): array
+    {
+        return ['title' => $this->title, 'message' => $this->message];
     }
 }

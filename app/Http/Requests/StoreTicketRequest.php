@@ -3,11 +3,17 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StoreTicketRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['anti_bot_code' => Str::upper(trim((string) $this->input('anti_bot_code')))]);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -15,7 +21,16 @@ class StoreTicketRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['order_item_id' => ['nullable', 'integer', Rule::exists('order_items', 'id')->where(fn ($q) => $q->whereIn('order_id', $this->user()->orders()->select('id')))], 'subject' => ['required_without:order_item_id', 'nullable', 'string', 'max:180'], 'message' => ['required', 'string', 'min:10', 'max:5000'], 'anti_bot_code' => ['required', 'string', 'size:5']];
+        return [
+            'order_item_id' => ['nullable', 'integer', Rule::exists('order_items', 'id')->where(fn ($q) => $q->whereIn('order_id', $this->user()->orders()->select('id')))],
+            'type' => ['nullable', Rule::in(['support', 'exchange'])],
+            'product_id' => ['required_if:type,exchange', 'nullable', 'integer', Rule::exists('products', 'id')->where('trade_enabled', true)],
+            'subject' => ['required_without_all:order_item_id,product_id', 'nullable', 'string', 'max:180'],
+            'message' => ['required', 'string', 'min:10', 'max:5000'],
+            'attachments' => ['required_if:type,exchange', 'nullable', 'array', 'max:5'],
+            'attachments.*' => ['file', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime', 'max:51200'],
+            'anti_bot_code' => ['required', 'string', 'size:5'],
+        ];
     }
 
     public function messages(): array

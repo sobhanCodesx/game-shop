@@ -1,2 +1,40 @@
-import{Link,useForm}from"@inertiajs/react";import{Check,Eye,EyeOff,Mail,ShieldCheck,UserRound}from"lucide-react";import{type FormEvent,useState}from"react";import AuthShell,{authButton,authInput,Field}from"../../Components/Auth/AuthShell";
-export default function Register(){const[show,setShow]=useState(false);const{data,setData,post,processing,errors}=useForm({name:"",email:"",password:"",password_confirmation:""});return <AuthShell title="به جمع گیمرها بپیوند" subtitle="حسابت را در کمتر از یک دقیقه بساز؛ باقی اطلاعات بعداً تکمیل می‌شود." eyebrow="ثبت‌نام سریع"><form className="space-y-4" onSubmit={(e:FormEvent)=>{e.preventDefault();post("/register")}}><Field error={errors.name} label="نام و نام خانوادگی"><div className="relative"><UserRound className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" size={18}/><input autoFocus className={`${authInput} pr-12`} onChange={e=>setData("name",e.target.value)} placeholder="مثلاً: علی رضایی" value={data.name}/></div></Field><Field error={errors.email} label="آدرس ایمیل"><div className="relative"><Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" size={18}/><input autoComplete="email" className={`${authInput} pr-12`} dir="ltr" onChange={e=>setData("email",e.target.value)} placeholder="name@example.com" type="email" value={data.email}/></div></Field><Field error={errors.password} hint="حداقل ۸ کاراکتر" label="رمز عبور"><div className="relative"><ShieldCheck className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600" size={18}/><input autoComplete="new-password" className={`${authInput} px-12`} dir="ltr" onChange={e=>setData("password",e.target.value)} placeholder="حروف و عدد" type={show?"text":"password"} value={data.password}/><button className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" onClick={()=>setShow(v=>!v)} type="button">{show?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></Field><Field label="تکرار رمز عبور"><input autoComplete="new-password" className={authInput} dir="ltr" onChange={e=>setData("password_confirmation",e.target.value)} placeholder="رمز را دوباره وارد کن" type={show?"text":"password"} value={data.password_confirmation}/></Field><div className="flex items-start gap-2 rounded-2xl bg-white/[.035] p-3 text-[11px] leading-6 text-slate-500"><Check className="mt-1 shrink-0 text-emerald-400" size={15}/>بعد از ثبت‌نام یک کد ۶ رقمی برای تأیید ایمیل ارسال می‌کنیم.</div><button className={authButton} disabled={processing}>{processing?"در حال ساخت حساب…":"ساخت حساب و دریافت کد"}</button><p className="text-center text-xs text-slate-500">قبلاً ثبت‌نام کردی؟ <Link className="font-bold text-violet-400" href="/login">وارد حساب شو</Link></p></form></AuthShell>}
+import { Link, useForm } from "@inertiajs/react";
+import { type FormEvent, useState } from "react";
+import AuthShell, { authButton, authInput, Field } from "../../Components/Auth/AuthShell";
+
+export default function Register() {
+    const [channel, setChannel] = useState<"email" | "mobile">("mobile");
+    const { data, setData, post, processing, errors } = useForm({
+        channel: "mobile",
+        first_name: "",
+        last_name: "",
+        email: "",
+        phone: "",
+        password: "",
+        password_confirmation: "",
+    });
+    const select = (value: "email" | "mobile") => {
+        setChannel(value);
+        setData("channel", value);
+    };
+
+    return <AuthShell title="به جمع گیمرها بپیوند" subtitle="با ایمیل یا شماره موبایل حساب بساز." eyebrow="ثبت‌نام سریع">
+        <div className="mb-5 grid grid-cols-2 gap-2">
+            <button className={`rounded-xl py-2 text-xs font-bold ${channel === "email" ? "bg-violet-600" : "bg-white/5"}`} onClick={() => select("email")}>ایمیل</button>
+            <button className={`rounded-xl py-2 text-xs font-bold ${channel === "mobile" ? "bg-violet-600" : "bg-white/5"}`} onClick={() => select("mobile")}>موبایل</button>
+        </div>
+        <form autoComplete="off" className="space-y-4" onSubmit={(event: FormEvent) => { event.preventDefault(); post("/register"); }}>
+            <div className="grid grid-cols-2 gap-3">
+                <Field error={errors.first_name} label="نام"><input autoComplete="off" className={authInput} onChange={event => setData("first_name", event.target.value)} value={data.first_name} /></Field>
+                <Field error={errors.last_name} label="نام خانوادگی"><input autoComplete="off" className={authInput} onChange={event => setData("last_name", event.target.value)} value={data.last_name} /></Field>
+            </div>
+            {channel === "email"
+                ? <Field error={errors.email} label="آدرس ایمیل"><input autoComplete="off" className={authInput} dir="ltr" onChange={event => setData("email", event.target.value)} type="email" value={data.email} /></Field>
+                : <Field error={errors.phone} label="شماره موبایل"><input autoComplete="off" className={authInput} dir="ltr" inputMode="tel" onChange={event => setData("phone", event.target.value)} placeholder="09123456789" value={data.phone} /></Field>}
+            <Field error={errors.password} hint="حداقل ۸ کاراکتر، حروف و عدد" label="رمز عبور"><input autoComplete="new-password" className={authInput} dir="ltr" onChange={event => setData("password", event.target.value)} type="password" value={data.password} /></Field>
+            <Field label="تکرار رمز عبور"><input autoComplete="new-password" className={authInput} dir="ltr" onChange={event => setData("password_confirmation", event.target.value)} type="password" value={data.password_confirmation} /></Field>
+            <button className={authButton} disabled={processing}>ساخت حساب و دریافت کد</button>
+        </form>
+        <p className="mt-5 text-center text-xs text-slate-500">قبلاً ثبت‌نام کردی؟ <Link className="font-bold text-violet-400" href="/login">وارد شو</Link></p>
+    </AuthShell>;
+}

@@ -22,8 +22,10 @@ export default function StorefrontNavigation({
     user,
     theme,
     onToggleTheme,
+    freshContentAt,
 }: Props) {
     const [panel, setPanel] = useState<StorefrontPanel>(null);
+    const [hasFreshContent, setHasFreshContent] = useState(false);
     const closePanel = useCallback(() => setPanel(null), []);
     useEffect(() => {
         const openSearch = (event: KeyboardEvent) => {
@@ -38,6 +40,19 @@ export default function StorefrontNavigation({
         window.addEventListener("keydown", openSearch);
         return () => window.removeEventListener("keydown", openSearch);
     }, []);
+    useEffect(() => {
+        const refresh = () => {
+            const seenAt = Number(
+                localStorage.getItem("nexus:fresh-content-seen-at") ?? 0,
+            );
+            setHasFreshContent(
+                Boolean(freshContentAt && Date.parse(freshContentAt) > seenAt),
+            );
+        };
+        refresh();
+        window.addEventListener("fresh-content-seen", refresh);
+        return () => window.removeEventListener("fresh-content-seen", refresh);
+    }, [freshContentAt]);
 
     return (
         <>
@@ -57,12 +72,14 @@ export default function StorefrontNavigation({
                     onToggleTheme={onToggleTheme}
                     theme={theme}
                     user={user}
+                    hasFreshContent={hasFreshContent}
                 />
                 <MobileNavigation
                     activePanel={panel}
                     onOpenPanel={setPanel}
                     onToggleTheme={onToggleTheme}
                     theme={theme}
+                    hasFreshContent={hasFreshContent}
                 />
                 <StorefrontStories stories={stories} />
             </div>

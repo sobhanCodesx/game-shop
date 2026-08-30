@@ -252,3 +252,34 @@ textarea {
         animation-duration: 0.01ms !important;
     }
 }
+
+.store-rich-text {
+    color: var(--store-muted);
+    font-size: 1rem;
+    line-height: 2.15;
+}
+
+.store-rich-text > * + * {
+    margin-top: 1rem;
+}
+
+.store-rich-text strong,
+.store-rich-text b {
+    color: var(--store-text);
+    font-weight: 900;
+}
+
+.store-rich-text ul,
+.store-rich-text ol {
+    display: grid;
+    gap: .65rem;
+    padding-right: 1.4rem;
+}
+
+.store-rich-text ul { list-style: disc; }
+.store-rich-text ol { list-style: decimal; }
+.store-rich-text li::marker { color: #6366f1; font-weight: 900; }
+
+@media (min-width: 768px) {
+    .store-rich-text { font-size: 1.075rem; }
+}

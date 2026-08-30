@@ -1,4 +1,4 @@
-import { Head, router, useForm, usePage } from "@inertiajs/react";
+import { Head, Link, router, useForm, usePage } from "@inertiajs/react";
 import {
     Camera,
     CheckCircle2,
@@ -6,6 +6,11 @@ import {
     KeyRound,
     LifeBuoy,
     MapPin,
+    PackageCheck,
+    PackageOpen,
+    ReceiptText,
+    ShoppingBag,
+    Truck,
     Pencil,
     Plus,
     ShieldCheck,
@@ -15,8 +20,9 @@ import {
 } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
 import PersianDatePicker from "../../Components/Admin/Form/PersianDatePicker";
+import Pagination from "../../Components/Storefront/Pagination";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
-import type { SharedPageProps } from "../../types";
+import type { PaginationLink, SharedPageProps } from "../../types";
 
 type Profile = {
     name: string;
@@ -38,7 +44,10 @@ type Address = {
     unit: string | null;
     is_default: boolean;
 };
-type Tab = "overview" | "profile" | "addresses" | "security";
+type Tab = "overview" | "orders" | "tracking" | "profile" | "addresses" | "security";
+type CurrentOrder = { id:number;number:string;status:string;grand_total:number;created_at:string;updated_at:string;items:{id:number;title:string;quantity:number}[] };
+type OrderSummary = { id:number;number:string;status:string;grand_total:number;cashback_amount:number;created_at:string };
+type PaginatedOrders = { data:OrderSummary[];links:PaginationLink[];current_page:number;last_page:number;total:number };
 const field =
     "h-12 w-full rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] px-4 text-sm outline-none transition focus:border-indigo-500";
 
@@ -48,30 +57,32 @@ export default function Dashboard({
     profileCompletion,
     walletBalance,
     orders,
-    notifications,
+    orderStatusCounts,
+    filters,
+    accountNotifications,
+    currentOrder,
 }: {
     profile: Profile;
     addresses: Address[];
     profileCompletion: number;
     walletBalance: number;
-    orders: {
-        id: number;
-        number: string;
-        status: string;
-        grand_total: number;
-        cashback_amount: number;
-    }[];
-    notifications: {
+    orders: PaginatedOrders;
+    orderStatusCounts: Record<string, number>;
+    filters: { status: string | null; tab: string };
+    accountNotifications: {
         id: string;
         title: string;
         message: string;
         read_at: string | null;
     }[];
+    currentOrder: CurrentOrder | null;
 }) {
     const { flash } = usePage<SharedPageProps>().props;
-    const [tab, setTab] = useState<Tab>("overview");
+    const [tab, setTab] = useState<Tab>(filters.tab === "orders" ? "orders" : "overview");
     const tabs: [Tab, string, typeof Home][] = [
         ["overview", "نمای کلی", Home],
+        ["orders", "سفارش‌های من", ShoppingBag],
+        ["tracking", "پیگیری سفارش جاری", Truck],
         ["profile", "اطلاعات حساب", UserRound],
         ["addresses", "آدرس‌ها", MapPin],
         ["security", "امنیت", KeyRound],
@@ -79,24 +90,24 @@ export default function Dashboard({
     return (
         <StorefrontLayout>
             <Head title="حساب کاربری" />
-            <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
-                <section className="relative overflow-hidden rounded-[32px] border border-[var(--store-border)] bg-[var(--store-surface)] p-6 sm:p-8">
+            <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:py-12">
+                <section className="relative overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:rounded-[32px] sm:p-8">
                     <div className="absolute -left-20 -top-20 size-64 rounded-full bg-indigo-500/10 blur-3xl" />
-                    <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center">
+                    <div className="relative grid grid-cols-[auto_1fr] items-center gap-4 sm:flex sm:gap-6">
                         <Avatar profile={profile} />
                         <div className="flex-1">
-                            <p className="text-sm font-bold text-indigo-500">
+                            <p className="text-[11px] font-bold text-indigo-500 sm:text-sm">
                                 باشگاه گیمرهای NEXUS
                             </p>
-                            <h1 className="mt-2 text-2xl font-black sm:text-3xl">
+                            <h1 className="mt-1 text-lg font-black sm:mt-2 sm:text-3xl">
                                 سلام {profile.name} 👋
                             </h1>
-                            <p className="mt-2 text-sm text-[var(--store-muted)]">
+                            <p className="mt-1 text-xs leading-6 text-[var(--store-muted)] sm:mt-2 sm:text-sm">
                                 اطلاعات حسابت، آدرس‌های ارسال و امنیت را از
                                 اینجا مدیریت کن.
                             </p>
                         </div>
-                        <div className="min-w-48 rounded-2xl bg-[var(--store-bg)] p-4">
+                        <div className="col-span-2 min-w-48 rounded-2xl bg-[var(--store-bg)] p-4 sm:col-auto">
                             <p className="mb-3 flex items-center gap-2 text-sm font-black text-emerald-500">
                                 <WalletCards size={18} /> کیف پول:{" "}
                                 {walletBalance.toLocaleString("fa-IR")} تومان
@@ -121,11 +132,11 @@ export default function Dashboard({
                         {flash.success}
                     </p>
                 )}
-                <div className="mt-6 grid gap-6 lg:grid-cols-[240px_1fr]">
-                    <nav className="flex gap-2 overflow-x-auto rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 lg:block lg:space-y-2 lg:self-start">
+                <div className="mt-4 grid gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-[240px_1fr]">
+                    <nav aria-label="بخش‌های حساب کاربری" className="grid grid-cols-3 gap-2 rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-2 lg:block lg:space-y-2 lg:self-start lg:p-3">
                         {tabs.map(([id, label, Icon]) => (
                             <button
-                                className={`flex min-w-max items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition lg:w-full ${tab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-[var(--store-muted)] hover:bg-[var(--store-bg)]"}`}
+                                className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl px-1 py-2 text-[10px] font-bold transition sm:text-xs lg:min-h-0 lg:w-full lg:flex-row lg:justify-start lg:gap-3 lg:px-4 lg:py-3 lg:text-sm ${tab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-[var(--store-muted)] hover:bg-[var(--store-bg)]"}`}
                                 key={id}
                                 onClick={() => setTab(id)}
                             >
@@ -134,14 +145,14 @@ export default function Dashboard({
                             </button>
                         ))}
                         <a
-                            className="flex min-w-max items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-[var(--store-muted)] transition hover:bg-[var(--store-bg)] lg:w-full"
+                            className="flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl px-1 py-2 text-center text-[10px] font-bold text-[var(--store-muted)] transition hover:bg-[var(--store-bg)] sm:text-xs lg:min-h-0 lg:w-full lg:flex-row lg:justify-start lg:gap-3 lg:px-4 lg:py-3 lg:text-right lg:text-sm"
                             href="/account/tickets"
                         >
                             <LifeBuoy size={19} />
                             تیکت‌های پشتیبانی
                         </a>
                     </nav>
-                    <section className="min-w-0 rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 sm:p-7">
+                    <section className="min-w-0 rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:rounded-3xl sm:p-7">
                         {tab === "overview" && (
                             <>
                                 <Overview
@@ -154,14 +165,14 @@ export default function Dashboard({
                                         <h3 className="mb-3 font-black">
                                             سفارش‌های اخیر
                                         </h3>
-                                        {orders.map((order) => (
+                                        {orders.data.slice(0, 5).map((order) => (
                                             <a
-                                                className="mb-2 flex justify-between rounded-xl bg-[var(--store-bg)] p-3 text-sm"
+                                                className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl bg-[var(--store-bg)] p-3 text-xs sm:text-sm"
                                                 href={`/orders/${order.id}`}
                                                 key={order.id}
                                             >
-                                                <span>{order.number}</span>
-                                                <strong>
+                                                <span className="truncate" dir="ltr">{order.number}</span>
+                                                <strong className="whitespace-nowrap">
                                                     {order.grand_total.toLocaleString(
                                                         "fa-IR",
                                                     )}{" "}
@@ -174,7 +185,7 @@ export default function Dashboard({
                                         <h3 className="mb-3 font-black">
                                             اعلان‌ها
                                         </h3>
-                                        {notifications.map((item) => (
+                                        {accountNotifications.map((item) => (
                                             <a
                                                 className={`mb-2 block rounded-xl border p-3 text-sm transition ${item.read_at ? "border-transparent bg-[var(--store-bg)] opacity-70" : "border-indigo-500/30 bg-indigo-500/10 shadow-sm"}`}
                                                 href={`/account/notifications/${item.id}`}
@@ -190,7 +201,9 @@ export default function Dashboard({
                                 </div>
                             </>
                         )}{" "}
+                        {tab === "orders" && <OrdersPanel orders={orders} counts={orderStatusCounts} selectedStatus={filters.status} />}{" "}
                         {tab === "profile" && <ProfileForm profile={profile} />}{" "}
+                        {tab === "tracking" && <OrderTracking order={currentOrder} />}{" "}
                         {tab === "addresses" && (
                             <Addresses
                                 addresses={addresses}
@@ -204,14 +217,97 @@ export default function Dashboard({
         </StorefrontLayout>
     );
 }
+
+const orderFilters = [
+    { value: null, label: "همه" },
+    { value: "pending", label: "در انتظار تأیید" },
+    { value: "approved", label: "تأییدشده" },
+    { value: "processing", label: "آماده‌سازی" },
+    { value: "shipped", label: "ارسال‌شده" },
+    { value: "delivered", label: "تحویل‌شده" },
+    { value: "rejected", label: "ردشده" },
+    { value: "cancelled", label: "لغوشده" },
+] as const;
+
+function OrdersPanel({ orders, counts, selectedStatus }: { orders:PaginatedOrders;counts:Record<string, number>;selectedStatus:string|null }) {
+    return (
+        <div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h2 className="text-xl font-black">سفارش‌های من</h2>
+                    <p className="mt-2 text-sm text-[var(--store-muted)]">سفارش‌ها را براساس وضعیت بررسی کن؛ فاکتور پس از تحویل فعال می‌شود.</p>
+                </div>
+                <span className="text-xs font-bold text-[var(--store-muted)]">{orders.total.toLocaleString("fa-IR")} سفارش</span>
+            </div>
+
+            <div className="mt-5 flex gap-2 overflow-x-auto pb-2">
+                {orderFilters.map((filter) => {
+                    const active = selectedStatus === filter.value;
+                    const count = filter.value ? (counts[filter.value] ?? 0) : Object.values(counts).reduce((sum, value) => sum + Number(value), 0);
+                    const href = filter.value ? `/account?tab=orders&status=${filter.value}` : "/account?tab=orders";
+                    return (
+                        <Link
+                            className={`flex min-w-max items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition ${active ? "border-indigo-600 bg-indigo-600 text-white" : "border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-muted)] hover:border-indigo-500"}`}
+                            href={href}
+                            key={filter.value ?? "all"}
+                            preserveScroll
+                        >
+                            {filter.label}
+                            <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-white/15" : "bg-[var(--store-surface)]"}`}>{count.toLocaleString("fa-IR")}</span>
+                        </Link>
+                    );
+                })}
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {orders.data.map((order) => (
+                    <article className="flex min-h-56 flex-col rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-4" key={order.id}>
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="truncate text-xs font-bold text-[var(--store-muted)]" dir="ltr">{order.number}</p>
+                                <time className="mt-2 block text-xs text-[var(--store-muted)]">{new Date(order.created_at).toLocaleDateString("fa-IR")}</time>
+                            </div>
+                            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${order.status === "delivered" ? "bg-emerald-500/10 text-emerald-600" : order.status === "rejected" || order.status === "cancelled" ? "bg-rose-500/10 text-rose-600" : "bg-indigo-500/10 text-indigo-600"}`}>
+                                {orderFilters.find((item) => item.value === order.status)?.label ?? order.status}
+                            </span>
+                        </div>
+                        <div className="mt-5 flex-1 border-y border-[var(--store-border)] py-4">
+                            <span className="text-xs text-[var(--store-muted)]">مبلغ نهایی</span>
+                            <strong className="mt-1 block text-lg">{order.grand_total.toLocaleString("fa-IR")} تومان</strong>
+                            {order.cashback_amount > 0 && <span className="mt-2 block text-xs font-bold text-amber-600">Cashback: {order.cashback_amount.toLocaleString("fa-IR")} تومان</span>}
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                            <Link className="flex min-h-10 items-center justify-center rounded-xl border border-[var(--store-border)] text-xs font-bold" href={`/orders/${order.id}`}>جزئیات سفارش</Link>
+                            {order.status === "delivered" ? (
+                                <Link className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 text-xs font-black text-white" href={`/orders/${order.id}/invoice`}>
+                                    <ReceiptText size={15} /> مشاهده فاکتور
+                                </Link>
+                            ) : (
+                                <span className="flex min-h-10 items-center justify-center rounded-xl bg-[var(--store-surface)] px-2 text-center text-[10px] text-[var(--store-muted)]">فاکتور پس از تحویل</span>
+                            )}
+                        </div>
+                    </article>
+                ))}
+            </div>
+
+            {!orders.data.length && (
+                <div className="mt-5 rounded-3xl border border-dashed border-[var(--store-border)] py-16 text-center text-sm text-[var(--store-muted)]">
+                    <PackageOpen className="mx-auto mb-3" /> سفارشی با این وضعیت وجود ندارد.
+                </div>
+            )}
+            <Pagination links={orders.links} />
+        </div>
+    );
+}
+
 function Avatar({ profile }: { profile: Profile }) {
     return profile.avatar_url ? (
         <img
-            className="size-24 rounded-3xl object-cover ring-4 ring-indigo-500/10"
+            className="size-16 rounded-2xl object-cover ring-4 ring-indigo-500/10 sm:size-24 sm:rounded-3xl"
             src={profile.avatar_url}
         />
     ) : (
-        <div className="grid size-24 place-items-center rounded-3xl bg-indigo-500/10 text-3xl font-black text-indigo-500">
+        <div className="grid size-16 place-items-center rounded-2xl bg-indigo-500/10 text-xl font-black text-indigo-500 sm:size-24 sm:rounded-3xl sm:text-3xl">
             {profile.name.slice(0, 2)}
         </div>
     );
@@ -228,7 +324,7 @@ function Overview({
     return (
         <>
             <h2 className="text-xl font-black">مرکز حساب کاربری</h2>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-4 xl:grid-cols-3">
                 <Card
                     icon={UserRound}
                     title="اطلاعات شخصی"
@@ -248,7 +344,7 @@ function Overview({
                     onClick={() => setTab("security")}
                 />
             </div>
-            <div className="mt-6 rounded-2xl border border-indigo-500/15 bg-indigo-500/5 p-5">
+            <div className="mt-5 rounded-2xl border border-indigo-500/15 bg-indigo-500/5 p-4 sm:mt-6 sm:p-5">
                 <h3 className="font-black">سفارش‌های من</h3>
                 <p className="mt-2 text-sm leading-7 text-[var(--store-muted)]">
                     پس از ثبت اولین سفارش، وضعیت خریدها و کدهای پیگیری در این
@@ -258,6 +354,35 @@ function Overview({
         </>
     );
 }
+
+const orderStages = [
+    { key: "pending", label: "ثبت سفارش", description: "سفارش با موفقیت ثبت شد", icon: ShoppingBag },
+    { key: "approved", label: "تأیید سفارش", description: "سفارش توسط فروشگاه تأیید شد", icon: CheckCircle2 },
+    { key: "processing", label: "آماده‌سازی", description: "محصولات در حال آماده‌سازی هستند", icon: PackageOpen },
+    { key: "shipped", label: "ارسال سفارش", description: "سفارش در مسیر تحویل قرار دارد", icon: Truck },
+    { key: "delivered", label: "تحویل‌شده", description: "سفارش با موفقیت تحویل شد", icon: PackageCheck },
+] as const;
+
+function OrderTracking({ order }: { order: CurrentOrder | null }) {
+    if (!order) return <div className="grid min-h-80 place-items-center rounded-3xl border border-dashed border-[var(--store-border)] bg-[var(--store-bg)] p-8 text-center"><div><ShoppingBag className="mx-auto text-indigo-500" size={42}/><h2 className="mt-4 text-xl font-black">هنوز سفارشی ثبت نکرده‌اید</h2><p className="mt-2 text-sm text-[var(--store-muted)]">بعد از اولین خرید، روند سفارش از این بخش قابل پیگیری است.</p><a className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white" href="/shop">رفتن به فروشگاه</a></div></div>;
+    const stopped = ["rejected", "cancelled"].includes(order.status);
+    const activeIndex = stopped ? 0 : Math.max(0, orderStages.findIndex(stage => stage.key === order.status));
+    const progress = stopped ? 0 : (activeIndex / (orderStages.length - 1)) * 100;
+    const statusText = order.status === "rejected" ? "سفارش رد شده است" : order.status === "cancelled" ? "سفارش لغو شده است" : orderStages[activeIndex]?.description;
+    return <div>
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-indigo-700 via-violet-700 to-fuchsia-700 p-6 text-white shadow-xl shadow-indigo-500/15 sm:p-8">
+            <div className="absolute -left-12 -top-16 size-52 rounded-full bg-white/10 blur-3xl"/>
+            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-indigo-100">سفارش جاری</p><h2 className="mt-2 text-2xl font-black" dir="ltr">{order.number}</h2><p className="mt-2 text-sm text-indigo-100">{statusText}</p></div><div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur"><span className="block text-xs text-indigo-100">مبلغ سفارش</span><strong className="mt-1 block text-xl">{order.grand_total.toLocaleString("fa-IR")} تومان</strong></div></div>
+        </div>
+        {stopped ? <div className="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-5 text-rose-600"><strong>{statusText}</strong><p className="mt-2 text-sm">برای جزئیات بیشتر وارد صفحه سفارش شوید یا با پشتیبانی تماس بگیرید.</p></div> : <div className="mt-7 rounded-3xl border border-[var(--store-border)] bg-[var(--store-bg)] p-5 sm:p-7">
+            <div className="relative hidden md:block"><div className="absolute right-[10%] left-[10%] top-6 h-1 rounded-full bg-[var(--store-border)]"><div className="h-full rounded-full bg-gradient-to-l from-indigo-500 to-emerald-500 transition-all duration-700" style={{width:`${progress}%`}}/></div><div className="relative grid grid-cols-5">{orderStages.map((stage,index)=><Stage key={stage.key} stage={stage} complete={index<activeIndex} active={index===activeIndex}/>)}</div></div>
+            <div className="space-y-0 md:hidden">{orderStages.map((stage,index)=><div className="relative flex gap-4 pb-6 last:pb-0" key={stage.key}>{index<orderStages.length-1&&<span className={`absolute right-[23px] top-11 h-[calc(100%-20px)] w-0.5 ${index<activeIndex?"bg-emerald-500":"bg-[var(--store-border)]"}`}/>}<Stage stage={stage} complete={index<activeIndex} active={index===activeIndex} mobile/></div>)}</div>
+        </div>}
+        <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto]"><div className="rounded-2xl border border-[var(--store-border)] p-5"><h3 className="font-black">محصولات این سفارش</h3><div className="mt-3 space-y-2">{order.items.map(item=><div className="flex justify-between text-sm" key={item.id}><span>{item.title}</span><strong>× {item.quantity.toLocaleString("fa-IR")}</strong></div>)}</div></div><a className="flex items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 px-7 py-4 text-sm font-black text-indigo-600 transition hover:bg-indigo-500/15" href={`/orders/${order.id}`}>مشاهده جزئیات سفارش</a></div>
+    </div>;
+}
+
+function Stage({stage,complete,active,mobile=false}:{stage:typeof orderStages[number];complete:boolean;active:boolean;mobile?:boolean}){const Icon=stage.icon;return <div className={mobile?"flex items-center gap-4":"text-center"}><span className={`${mobile?"":"mx-auto"} relative z-10 grid size-12 shrink-0 place-items-center rounded-2xl border transition ${complete?"border-emerald-500 bg-emerald-500 text-white":active?"border-indigo-500 bg-indigo-600 text-white shadow-lg shadow-indigo-500/30":"border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)]"}`}>{complete?<CheckCircle2 size={20}/>:<Icon size={20}/>}</span><div className={mobile?"":"mt-3"}><strong className={`block text-xs ${active?"text-indigo-500":""}`}>{stage.label}</strong><span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">{stage.description}</span></div></div>}
 function Card({
     icon: Icon,
     title,
@@ -271,13 +396,13 @@ function Card({
 }) {
     return (
         <button
-            className="group rounded-2xl border border-[var(--store-border)] p-5 text-right transition hover:-translate-y-1 hover:border-indigo-500/40"
+            className="group min-w-0 rounded-2xl border border-[var(--store-border)] p-3 text-right transition hover:-translate-y-1 hover:border-indigo-500/40 sm:p-5"
             onClick={onClick}
         >
             <span className="grid size-11 place-items-center rounded-xl bg-indigo-500/10 text-indigo-500">
                 <Icon size={21} />
             </span>
-            <strong className="mt-4 block">{title}</strong>
+            <strong className="mt-3 block text-xs leading-5 sm:mt-4 sm:text-base">{title}</strong>
             <span className="mt-1 block text-xs text-[var(--store-muted)]">
                 {text}
             </span>
@@ -311,7 +436,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
             <p className="mt-2 text-sm text-[var(--store-muted)]">
                 اطلاعات موردنیاز برای ارتباط و ثبت سفارش را کامل کن.
             </p>
-            <div className="mt-7 flex items-center gap-4">
+            <div className="mt-6 flex flex-col items-start gap-4 min-[380px]:flex-row min-[380px]:items-center sm:mt-7">
                 <Avatar
                     profile={{
                         ...profile,
@@ -331,7 +456,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
                         type="file"
                     />
                     <button
-                        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white"
                         onClick={() => file.current?.click()}
                         type="button"
                     >
@@ -393,7 +518,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
                 />
             </div>
             <button
-                className="mt-7 rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-black text-white disabled:opacity-50"
+                className="mt-7 min-h-12 w-full rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-black text-white disabled:opacity-50 sm:w-auto"
                 disabled={processing}
             >
                 ذخیره اطلاعات
@@ -472,7 +597,7 @@ function Addresses({
     };
     return (
         <>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col items-start gap-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
                 <div>
                     <h2 className="text-xl font-black">آدرس‌های ارسال</h2>
                     <p className="mt-2 text-sm text-[var(--store-muted)]">
@@ -480,7 +605,7 @@ function Addresses({
                     </p>
                 </div>
                 <button
-                    className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white"
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white min-[420px]:w-auto"
                     onClick={() => start()}
                 >
                     <Plus size={16} />
@@ -520,15 +645,15 @@ function Addresses({
                             {Object.values(errors)[0]}
                         </p>
                     )}
-                    <div className="mt-5 flex gap-2">
+                    <div className="mt-5 grid grid-cols-2 gap-2 sm:flex">
                         <button
-                            className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-bold text-white"
+                            className="min-h-11 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-bold text-white"
                             disabled={processing}
                         >
                             ذخیره آدرس
                         </button>
                         <button
-                            className="rounded-xl border border-[var(--store-border)] px-5 py-2 text-sm"
+                            className="min-h-11 rounded-xl border border-[var(--store-border)] px-5 py-2 text-sm"
                             onClick={() => setOpen(false)}
                             type="button"
                         >
@@ -540,7 +665,7 @@ function Addresses({
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 {addresses.map((a) => (
                     <article
-                        className="relative rounded-2xl border border-[var(--store-border)] p-5"
+                        className="relative rounded-2xl border border-[var(--store-border)] p-4 sm:p-5"
                         key={a.id}
                     >
                         {a.is_default && (
@@ -653,7 +778,7 @@ function PasswordForm() {
                 </Field>
             </div>
             <button
-                className="mt-7 rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-black text-white"
+                className="mt-7 min-h-12 w-full rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-black text-white sm:w-auto"
                 disabled={processing}
             >
                 تغییر رمز عبور

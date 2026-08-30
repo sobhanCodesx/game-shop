@@ -12,6 +12,7 @@ import {
     Search,
     SlidersHorizontal,
     Trash2,
+    Repeat2,
 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
@@ -25,6 +26,8 @@ interface ResourceItem {
     editUrl?: string;
     mediaUrl?: string | null;
     deleteUrl?: string;
+    tradeEnabled?: boolean | null;
+    exchangeToggleUrl?: string | null;
 }
 
 interface Pagination {
@@ -255,6 +258,39 @@ export default function ResourceIndex({
                                                             </Button>
                                                         </Link>
                                                     )}
+                                                    {resource === "products" &&
+                                                        item.exchangeToggleUrl && (
+                                                            <Button
+                                                                aria-label={
+                                                                    item.tradeEnabled
+                                                                        ? "بازگشت به فروش عادی"
+                                                                        : "فعال‌کردن معاوضه"
+                                                                }
+                                                                className={
+                                                                    item.tradeEnabled
+                                                                        ? "text-amber-400"
+                                                                        : "text-emerald-400"
+                                                                }
+                                                                onPress={() =>
+                                                                    router.patch(
+                                                                        item.exchangeToggleUrl as string,
+                                                                        {},
+                                                                        {
+                                                                            preserveScroll: true,
+                                                                        },
+                                                                    )
+                                                                }
+                                                                size="sm"
+                                                                variant="ghost"
+                                                            >
+                                                                <Repeat2
+                                                                    size={15}
+                                                                />
+                                                                {item.tradeEnabled
+                                                                    ? "بازگشت به فروش عادی"
+                                                                    : "فعال‌سازی معاوضه"}
+                                                            </Button>
+                                                        )}
                                                     {item.deleteUrl && (
                                                         <Button
                                                             aria-label="حذف"

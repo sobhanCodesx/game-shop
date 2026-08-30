@@ -8,6 +8,7 @@ import {
     FolderOpen,
     Gamepad2,
     LayoutDashboard,
+    LifeBuoy,
     LogOut,
     Package,
     Search,
@@ -35,12 +36,12 @@ import type {
     StorefrontTheme,
 } from "./types";
 
-interface Props
-    extends Pick<StorefrontNavigationProps, "categories" | "user"> {
+interface Props extends Pick<StorefrontNavigationProps, "categories" | "user"> {
     theme: StorefrontTheme;
     onToggleTheme: () => void;
     onOpenSearch: () => void;
     onOpenAccount: () => void;
+    hasFreshContent: boolean;
 }
 
 function CategoryTree({
@@ -61,18 +62,13 @@ function CategoryTree({
             }
         >
             {categories.map((category) => (
-                <div
-                    key={category.id}
-                    className="py-0.5"
-                >
+                <div key={category.id} className="py-0.5">
                     <Link
                         href={`/categories/${category.slug}`}
                         onClick={onClose}
                         className="group flex min-h-8 items-center gap-2 rounded-lg px-2 text-sm text-[var(--store-muted)] transition hover:bg-[var(--store-accent-soft)] hover:text-indigo-500"
                     >
-                        <span className="line-clamp-1">
-                            {category.name}
-                        </span>
+                        <span className="line-clamp-1">{category.name}</span>
 
                         {category.products_count > 0 && (
                             <span className="mr-auto text-[10px] opacity-60">
@@ -188,6 +184,7 @@ export default function DesktopNavigation({
     onToggleTheme,
     onOpenSearch,
     onOpenAccount,
+    hasFreshContent,
 }: Props) {
     const { cart } = usePage<SharedPageProps>().props;
 
@@ -224,24 +221,17 @@ export default function DesktopNavigation({
             const clickedCategoryButton =
                 categoryButtonRef.current?.contains(target);
 
-            const clickedMegaMenu =
-                megaMenuRef.current?.contains(target);
+            const clickedMegaMenu = megaMenuRef.current?.contains(target);
 
             if (!clickedCategoryButton && !clickedMegaMenu) {
                 setMegaOpen(false);
             }
         };
 
-        document.addEventListener(
-            "pointerdown",
-            handleOutsidePress,
-        );
+        document.addEventListener("pointerdown", handleOutsidePress);
 
         return () => {
-            document.removeEventListener(
-                "pointerdown",
-                handleOutsidePress,
-            );
+            document.removeEventListener("pointerdown", handleOutsidePress);
         };
     }, [megaOpen]);
 
@@ -258,16 +248,10 @@ export default function DesktopNavigation({
             }
         };
 
-        document.addEventListener(
-            "pointerdown",
-            handleOutsidePress,
-        );
+        document.addEventListener("pointerdown", handleOutsidePress);
 
         return () => {
-            document.removeEventListener(
-                "pointerdown",
-                handleOutsidePress,
-            );
+            document.removeEventListener("pointerdown", handleOutsidePress);
         };
     }, [accountOpen]);
 
@@ -303,10 +287,7 @@ export default function DesktopNavigation({
                 </div>
 
                 {/* SEARCH */}
-                <form
-                    className="relative w-full min-w-0"
-                    onSubmit={search}
-                >
+                <form className="relative w-full min-w-0" onSubmit={search}>
                     <Search
                         size={19}
                         className="pointer-events-none absolute right-4 top-1/2 z-10 -translate-y-1/2 text-[var(--store-muted)]"
@@ -346,9 +327,7 @@ export default function DesktopNavigation({
 
                             {cart.item_count > 0 && (
                                 <span className="absolute -left-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-[var(--store-header)]">
-                                    {cart.item_count.toLocaleString(
-                                        "fa-IR",
-                                    )}
+                                    {cart.item_count.toLocaleString("fa-IR")}
                                 </span>
                             )}
                         </Link>
@@ -361,16 +340,11 @@ export default function DesktopNavigation({
                         )}
 
                         {/* Account */}
-                        <div
-                            ref={accountRef}
-                            className="relative h-11"
-                        >
+                        <div ref={accountRef} className="relative h-11">
                             <button
                                 type="button"
                                 aria-label="حساب کاربری"
-                                aria-expanded={
-                                    user ? accountOpen : undefined
-                                }
+                                aria-expanded={user ? accountOpen : undefined}
                                 onClick={handleAccountPress}
                                 className="
                                     flex h-11 max-w-[180px]
@@ -385,10 +359,7 @@ export default function DesktopNavigation({
                                 "
                             >
                                 {user ? (
-                                    <Avatar
-                                        size="sm"
-                                        className="shrink-0"
-                                    >
+                                    <Avatar size="sm" className="shrink-0">
                                         {user.avatar_url && (
                                             <Avatar.Image
                                                 alt={user.name}
@@ -415,9 +386,7 @@ export default function DesktopNavigation({
                                     <ChevronDown
                                         size={14}
                                         className={`hidden shrink-0 transition-transform xl:block ${
-                                            accountOpen
-                                                ? "rotate-180"
-                                                : ""
+                                            accountOpen ? "rotate-180" : ""
                                         }`}
                                     />
                                 )}
@@ -438,16 +407,13 @@ export default function DesktopNavigation({
 
                                     <Link
                                         href="/account"
-                                        onClick={() =>
-                                            setAccountOpen(false)
-                                        }
+                                        onClick={() => setAccountOpen(false)}
                                         className="mt-2 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-[var(--store-text)] transition hover:bg-[var(--store-accent-soft)] hover:text-indigo-500"
                                     >
                                         <LayoutDashboard
                                             size={18}
                                             className="shrink-0"
                                         />
-
                                         داشبورد کاربری
                                     </Link>
 
@@ -463,7 +429,6 @@ export default function DesktopNavigation({
                                                 size={18}
                                                 className="shrink-0"
                                             />
-
                                             پنل مدیریت
                                         </Link>
                                     )}
@@ -477,7 +442,6 @@ export default function DesktopNavigation({
                                             size={18}
                                             className="shrink-0"
                                         />
-
                                         خروج از حساب
                                     </button>
                                 </div>
@@ -495,24 +459,14 @@ export default function DesktopNavigation({
                     aria-label="ناوبری اصلی فروشگاه"
                     className="mx-auto flex h-12 max-w-7xl items-center gap-1 px-5"
                 >
-                    <div
-                        ref={categoryButtonRef}
-                        className="ml-3 shrink-0"
-                    >
+                    <div ref={categoryButtonRef} className="ml-3 shrink-0">
                         <Button
                             aria-expanded={megaOpen}
                             aria-haspopup="true"
                             className="h-9 shrink-0 rounded-xl bg-indigo-600 px-4 text-xs font-black text-white shadow-lg shadow-indigo-500/15"
-                            onPress={() =>
-                                setMegaOpen(
-                                    (current) => !current,
-                                )
-                            }
+                            onPress={() => setMegaOpen((current) => !current)}
                         >
-                            <Package
-                                size={17}
-                                className="shrink-0"
-                            />
+                            <Package size={17} className="shrink-0" />
 
                             <span className="whitespace-nowrap">
                                 دسته‌بندی محصولات
@@ -521,9 +475,7 @@ export default function DesktopNavigation({
                             <ChevronDown
                                 size={15}
                                 className={`shrink-0 transition-transform ${
-                                    megaOpen
-                                        ? "rotate-180"
-                                        : ""
+                                    megaOpen ? "rotate-180" : ""
                                 }`}
                             />
                         </Button>
@@ -533,10 +485,7 @@ export default function DesktopNavigation({
                         className="store-nav-link shrink-0 whitespace-nowrap"
                         href="/shop"
                     >
-                        <ShoppingBag
-                            size={15}
-                            className="shrink-0"
-                        />
+                        <ShoppingBag size={15} className="shrink-0" />
                         فروشگاه
                     </Link>
 
@@ -544,43 +493,46 @@ export default function DesktopNavigation({
                         className="store-nav-link shrink-0 whitespace-nowrap"
                         href="/discover"
                     >
-                        <Sparkles
-                            size={15}
-                            className="shrink-0"
-                        />
+                        <Sparkles size={15} className="shrink-0" />
                         کشف
                     </Link>
 
                     <Link
-                        className="store-nav-link shrink-0 whitespace-nowrap"
+                        className="store-nav-link relative shrink-0 whitespace-nowrap"
                         href="/videos"
                     >
-                        <Flame
-                            size={15}
-                            className="shrink-0"
-                        />
+                        <Flame size={15} className="shrink-0" />
                         ویدیوها
+                        {hasFreshContent && (
+                            <span
+                                aria-label="محتوای تازه"
+                                className="absolute left-1 top-1 size-2 rounded-full bg-emerald-400 ring-2 ring-[var(--store-header)]"
+                            />
+                        )}
                     </Link>
 
                     <Link
                         className="store-nav-link shrink-0 whitespace-nowrap"
                         href="/offers"
                     >
-                        <Tags
-                            size={15}
-                            className="shrink-0"
-                        />
+                        <Tags size={15} className="shrink-0" />
                         تخفیف‌ها
                     </Link>
 
                     <div className="mr-auto shrink-0">
-                        <Chip
-                            color="success"
-                            size="sm"
-                            variant="soft"
-                        >
-                            پشتیبانی آنلاین
-                        </Chip>
+                        {user ? (
+                            <Link
+                                className="flex h-9 items-center gap-2 rounded-xl bg-emerald-500/10 px-4 text-xs font-black text-emerald-600 transition hover:bg-emerald-500 hover:text-white"
+                                href="/account/tickets/create"
+                            >
+                                <LifeBuoy size={17} />
+                                درخواست پشتیبانی
+                            </Link>
+                        ) : (
+                            <Chip color="success" size="sm" variant="soft">
+                                پشتیبانی آنلاین
+                            </Chip>
+                        )}
                     </div>
                 </nav>
             </div>

@@ -2,11 +2,13 @@ import { Button, Card } from "@heroui/react";
 import { Head, useForm } from "@inertiajs/react";
 import { FormEvent } from "react";
 import AdminLayout from "../../../Layouts/AdminLayout";
+import AttachmentPicker from "../../../Components/Tickets/AttachmentPicker";
 export default function Create({ order }: { order: any }) {
     const { data, setData, post, processing, errors } = useForm({
         order_item_id: "",
         subject: "",
         message: "",
+        attachments: [] as File[],
     });
     const submit = (e: FormEvent) => {
         e.preventDefault();
@@ -30,6 +32,14 @@ export default function Create({ order }: { order: any }) {
                             />
                             بدون ارتباط با محصول
                         </label>
+                        <AttachmentPicker
+                            files={data.attachments}
+                            onChange={(files) => setData("attachments", files)}
+                            error={
+                                (errors as any).attachments ||
+                                (errors as any)["attachments.0"]
+                            }
+                        />
                         {order.items.map((item: any) => (
                             <label
                                 className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-800 p-3"

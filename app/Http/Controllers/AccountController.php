@@ -14,9 +14,15 @@ use Inertia\Response;
 
 class AccountController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $user = request()->user();
+        $statuses = ['pending', 'approved', 'processing', 'shipped', 'delivered', 'rejected', 'cancelled'];
+        $status = in_array($request->string('status')->toString(), $statuses, true)
+            ? $request->string('status')->toString()
+            : null;
+        $currentOrder = $user->orders()->with('items:id,order_id,title,quantity')->whereNotIn('status', ['rejected', 'cancelled', 'delivered'])->latest()->first()
+            ?? $user->orders()->with('items:id,order_id,title,quantity')->latest()->first();
 
         return Inertia::render('Account/Dashboard', [
             'profile' => [
@@ -26,8 +32,21 @@ class AccountController extends Controller
             ],
             'addresses' => $user->addresses()->latest('is_default')->latest()->get(),
             'walletBalance' => (int) $user->wallet_balance,
-            'orders' => $user->orders()->latest()->limit(10)->get(['id', 'number', 'status', 'grand_total', 'cashback_amount', 'created_at']),
-            'notifications' => $user->notifications()->latest()->limit(10)->get()->map(fn ($notification) => ['id' => $notification->id, ...$notification->data, 'read_at' => $notification->read_at]),
+            'orders' => $user->orders()
+                ->when($status, fn ($query) => $query->where('status', $status))
+                ->latest()
+                ->paginate(9, ['id', 'number', 'status', 'grand_total', 'cashback_amount', 'created_at'])
+                ->withQueryString(),
+            'orderStatusCounts' => $user->orders()
+                ->selectRaw('status, count(*) as aggregate')
+                ->groupBy('status')
+                ->pluck('aggregate', 'status'),
+            'filters' => ['status' => $status, 'tab' => $request->string('tab')->toString()],
+            'currentOrder' => $currentOrder ? [
+                ...$currentOrder->only(['id', 'number', 'status', 'grand_total', 'created_at', 'updated_at']),
+                'items' => $currentOrder->items->map->only(['id', 'title', 'quantity']),
+            ] : null,
+            'accountNotifications' => $user->notifications()->latest()->limit(10)->get()->map(fn ($notification) => ['id' => $notification->id, ...$notification->data, 'read_at' => $notification->read_at]),
             'profileCompletion' => collect([$user->name, $user->email, $user->phone, $user->avatar, $user->addresses()->exists()])->filter()->count() * 20,
         ]);
     }
@@ -100,8 +119,14 @@ class AccountController extends Controller
     {
         $item = $request->user()->notifications()->findOrFail($notification);
         $item->markAsRead();
+        $url = (string) ($item->data['url'] ?? route('account.dashboard', absolute: false));
+        if (filter_var($url, FILTER_VALIDATE_URL)) {
+            $path = parse_url($url, PHP_URL_PATH) ?: '/account';
+            $query = parse_url($url, PHP_URL_QUERY);
+            $url = $path.($query ? '?'.$query : '');
+        }
 
-        return redirect()->to($item->data['url'] ?? route('account.dashboard'));
+        return redirect()->to(str_starts_with($url, '/') ? $url : route('account.dashboard', absolute: false));
     }
 
     public function readAllNotifications(Request $request): RedirectResponse

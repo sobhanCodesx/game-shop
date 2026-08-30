@@ -1,6 +1,6 @@
 import { Button, Card, Chip } from "@heroui/react";
 import { Head, Link, router } from "@inertiajs/react";
-import { LifeBuoy, MessageSquareText } from "lucide-react";
+import { LifeBuoy, MessageSquareText, Repeat2 } from "lucide-react";
 import { useEffect } from "react";
 import Pagination from "../../../Components/Storefront/Pagination";
 import AdminLayout from "../../../Layouts/AdminLayout";
@@ -12,10 +12,13 @@ const labels: Record<string, string> = {
 export default function Index({
     tickets,
     stats,
+    filters,
 }: {
     tickets: any;
     stats: Record<string, number>;
+    filters: { status: string; type: string };
 }) {
+    const exchangesOnly = filters.type === "exchange";
     useEffect(() => {
         const id = setInterval(
             () =>
@@ -26,10 +29,14 @@ export default function Index({
     }, []);
     return (
         <AdminLayout
-            title="تیکت‌های پشتیبانی"
-            description="رسیدگی متمرکز به درخواست‌های کاربران و خریدها"
+            title={exchangesOnly ? "درخواست‌های معاوضه" : "تیکت‌های پشتیبانی"}
+            description={
+                exchangesOnly
+                    ? "بررسی پیشنهاد، توافق و تکمیل معاوضه‌های کاربران"
+                    : "رسیدگی متمرکز به درخواست‌های کاربران و خریدها"
+            }
         >
-            <Head title="تیکت‌ها" />
+            <Head title={exchangesOnly ? "درخواست‌های معاوضه" : "تیکت‌ها"} />
             <div className="mb-6 grid gap-3 sm:grid-cols-3">
                 {Object.entries(labels).map(([status, label]) => (
                     <button
@@ -38,7 +45,7 @@ export default function Index({
                         onClick={() =>
                             router.get(
                                 "/admin/tickets",
-                                { status },
+                                { status, type: filters.type || undefined },
                                 { preserveState: true },
                             )
                         }
@@ -76,6 +83,15 @@ export default function Index({
                                     <Chip size="sm">
                                         {labels[ticket.status]}
                                     </Chip>
+                                    {ticket.type === "exchange" && (
+                                        <Chip
+                                            color="warning"
+                                            size="sm"
+                                            variant="soft"
+                                        >
+                                            <Repeat2 size={13} /> معاوضه
+                                        </Chip>
+                                    )}
                                 </div>
                                 <p className="mt-2 text-xs text-slate-500">
                                     {ticket.number} · {ticket.user.name} ·{" "}
@@ -96,8 +112,14 @@ export default function Index({
                 ))}
                 {!tickets.data.length && (
                     <div className="rounded-3xl border border-dashed border-slate-800 py-20 text-center text-slate-500">
-                        <LifeBuoy className="mx-auto mb-3" />
-                        تیکتی وجود ندارد
+                        {exchangesOnly ? (
+                            <Repeat2 className="mx-auto mb-3" />
+                        ) : (
+                            <LifeBuoy className="mx-auto mb-3" />
+                        )}
+                        {exchangesOnly
+                            ? "درخواست معاوضه‌ای وجود ندارد"
+                            : "تیکتی وجود ندارد"}
                     </div>
                 )}
             </div>

@@ -5,6 +5,7 @@ import {
     Compass,
     FolderTree,
     Home,
+    LifeBuoy,
     Search,
     ShoppingBag,
 } from "lucide-react";
@@ -21,6 +22,7 @@ interface Props {
     onToggleTheme: () => void;
     activePanel: StorefrontPanel;
     onOpenPanel: (panel: Exclude<StorefrontPanel, null>) => void;
+    hasFreshContent: boolean;
 }
 
 export default function MobileNavigation({
@@ -28,6 +30,7 @@ export default function MobileNavigation({
     onToggleTheme,
     activePanel,
     onOpenPanel,
+    hasFreshContent,
 }: Props) {
     const { auth, cart } = usePage<SharedPageProps>().props;
     const homeActive =
@@ -41,6 +44,16 @@ export default function MobileNavigation({
             <header className="sticky top-0 z-40 flex h-16 items-center border-b border-[var(--store-border)] bg-[var(--store-header)] px-4 backdrop-blur-2xl lg:hidden">
                 <StorefrontBrand compact />
                 <div className="mr-auto flex items-center gap-1">
+                    {auth.user && (
+                        <Link
+                            aria-label="درخواست پشتیبانی"
+                            className="flex h-9 items-center gap-1.5 rounded-xl bg-emerald-500/10 px-2.5 text-[11px] font-black text-emerald-600"
+                            href="/account/tickets/create"
+                        >
+                            <LifeBuoy size={17} />
+                            <span>پشتیبانی</span>
+                        </Link>
+                    )}
                     {auth.user && <NotificationPopover />}
                     <ThemeToggle onToggle={onToggleTheme} theme={theme} />
                     <Button
@@ -83,6 +96,12 @@ export default function MobileNavigation({
                     >
                         <span className="grid size-11 place-items-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30">
                             <Compass size={20} />
+                            {hasFreshContent && (
+                                <span
+                                    aria-label="محتوای تازه"
+                                    className="absolute -left-0.5 -top-0.5 size-2.5 rounded-full bg-emerald-400 ring-2 ring-[var(--store-bottom-nav)]"
+                                />
+                            )}
                         </span>
                         <span>کشف</span>
                     </Link>

@@ -131,6 +131,10 @@ class StorefrontController extends Controller
 
     private function productRelations(): array
     {
-        return ['category:id,name', 'type:id,title', 'coverMedia', 'variants:id,product_id,status'];
+        return [
+            'category:id,name', 'type:id,title', 'game:id,name,developer,publisher',
+            'platforms:id,name', 'attributeValues.attribute:id,name,slug',
+            'coverMedia', 'variants:id,product_id,status',
+        ];
     }
 }

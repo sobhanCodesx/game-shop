@@ -7,6 +7,9 @@ import {
     Headphones,
     Eye,
     Play,
+    ArrowUpLeft,
+    Clock3,
+    PackageOpen,
     ShieldCheck,
     Sparkles,
     Truck,
@@ -17,19 +20,13 @@ import StorefrontNavigation from "../Components/Storefront/Navigation/Storefront
 import type { NavigationCategory } from "../Components/Storefront/Navigation/types";
 import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
 import type { SharedPageProps } from "../types";
+import type { StorefrontProduct } from "../types";
+import ProductCard from "../Components/Storefront/Product/ProductCard";
 
 interface Pricing {
     regular_price: number;
     final_price: number;
     is_partner_price: boolean;
-}
-interface Product {
-    title: string;
-    slug: string;
-    category: string | null;
-    badge: string | null;
-    cover_url: string | null;
-    pricing: Pricing;
 }
 interface Slide {
     id: number;
@@ -65,9 +62,22 @@ interface Props {
     settings: Settings;
     slides: Slide[];
     categories: NavigationCategory[];
-    featuredProducts: Product[];
-    latestProducts: Product[];
+    featuredProducts: StorefrontProduct[];
+    latestProducts: StorefrontProduct[];
     contentSections: ContentSection[];
+    freshContent: FreshItem[];
+}
+interface FreshItem {
+    key: string;
+    type: "product" | "video";
+    title: string;
+    url: string;
+    image_url: string | null;
+    eyebrow: string;
+    published_at: string;
+    duration?: number | null;
+    views?: number;
+    pricing?: Pricing;
 }
 interface ContentItem {
     id: number;
@@ -80,6 +90,7 @@ interface ContentItem {
     duration?: number | null;
     views?: number;
     pricing?: Pricing;
+    meta_badges?: StorefrontProduct["meta_badges"];
 }
 interface ContentSection {
     id: number;
@@ -92,8 +103,16 @@ interface ContentSection {
 const money = new Intl.NumberFormat("fa-IR");
 const safeUrl = (url: string | null) =>
     url && (/^https?:\/\//.test(url) || url.startsWith("/")) ? url : null;
+const metaToneClasses: Record<string, string> = {
+    success: "bg-emerald-500/10 text-emerald-500",
+    danger: "bg-rose-500/10 text-rose-500",
+    warning: "bg-amber-500/10 text-amber-500",
+    accent: "bg-indigo-500/10 text-indigo-400",
+    info: "bg-sky-500/10 text-sky-500",
+    neutral: "bg-white/5 text-slate-400",
+};
 
-function ProductGrid({ products }: { products: Product[] }) {
+function ProductGrid({ products }: { products: StorefrontProduct[] }) {
     if (!products.length)
         return (
             <div className="rounded-2xl border border-dashed border-slate-800 p-10 text-center text-slate-500">
@@ -103,66 +122,7 @@ function ProductGrid({ products }: { products: Product[] }) {
     return (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {products.map((product) => (
-                <Link href={`/products/${product.slug}`} key={product.slug}>
-                    <Card
-                        className="group h-full overflow-hidden border border-slate-800 bg-slate-900/70 transition hover:-translate-y-1 hover:border-indigo-500/50"
-                        variant="secondary"
-                    >
-                        <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,#312e81_0%,#0f172a_55%,#020617_100%)]">
-                            {product.cover_url ? (
-                                <img
-                                    alt={product.title}
-                                    className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                                    loading="lazy"
-                                    src={product.cover_url}
-                                />
-                            ) : (
-                                <Gamepad2
-                                    className="text-indigo-400 transition group-hover:scale-110"
-                                    size={64}
-                                />
-                            )}
-                            {product.badge && (
-                                <Chip
-                                    className="absolute right-3 top-3"
-                                    color="accent"
-                                    variant="soft"
-                                >
-                                    {product.badge}
-                                </Chip>
-                            )}
-                        </div>
-                        <Card.Content className="space-y-3 p-4">
-                            <p className="text-xs text-slate-500">
-                                {product.category ?? "محصول گیمینگ"}
-                            </p>
-                            <h3 className="line-clamp-2 min-h-12 font-bold leading-6 text-slate-100">
-                                {product.title}
-                            </h3>
-                            {product.pricing.is_partner_price && (
-                                <Chip color="success" size="sm" variant="soft">
-                                    قیمت همکار
-                                </Chip>
-                            )}
-                            <div>
-                                {product.pricing.final_price !==
-                                    product.pricing.regular_price && (
-                                    <p className="text-xs text-slate-500 line-through">
-                                        {money.format(
-                                            product.pricing.regular_price,
-                                        )}
-                                    </p>
-                                )}
-                                <p className="text-lg font-black text-white">
-                                    {money.format(product.pricing.final_price)}{" "}
-                                    <span className="text-xs font-medium text-slate-400">
-                                        تومان
-                                    </span>
-                                </p>
-                            </div>
-                        </Card.Content>
-                    </Card>
-                </Link>
+                <ProductCard key={product.id} product={product} />
             ))}
         </div>
     );
@@ -172,6 +132,213 @@ const durationLabel = (seconds?: number | null) =>
     seconds
         ? `${Math.floor(seconds / 60).toLocaleString("fa-IR")}:${String(seconds % 60).padStart(2, "0")}`
         : null;
+
+const freshSeenKey = "nexus:fresh-content-seen-at";
+
+function FreshReleases({ items }: { items: FreshItem[] }) {
+    const railRef = useRef<HTMLDivElement>(null);
+    const [seenAt] = useState(() =>
+        typeof window === "undefined"
+            ? 0
+            : Number(localStorage.getItem(freshSeenKey) ?? 0),
+    );
+    const latest = items.length
+        ? Math.max(...items.map((item) => Date.parse(item.published_at)))
+        : 0;
+
+    useEffect(() => {
+        if (!latest || latest <= seenAt) return;
+        const timer = window.setTimeout(() => {
+            localStorage.setItem(freshSeenKey, String(latest));
+            window.dispatchEvent(new CustomEvent("fresh-content-seen"));
+        }, 5000);
+        return () => window.clearTimeout(timer);
+    }, [latest, seenAt]);
+
+    if (!items.length) return null;
+
+    return (
+        <section className="relative z-10 mx-auto mt-8 max-w-7xl px-4 pb-4 pt-6 sm:mt-10 sm:pt-8">
+            <div className="mb-5 flex items-end justify-between gap-4">
+                <div>
+                    <div className="flex items-center gap-2 text-xs font-black text-emerald-400">
+                        <span className="relative flex size-2.5">
+                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                            <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+                        </span>
+                        همین تازگی منتشر شده
+                    </div>
+                    <h2 className="mt-2 text-2xl font-black text-[var(--store-text)] md:text-3xl">
+                        تازه منتشر شده
+                    </h2>
+                    <p className="mt-2 max-w-xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm">
+                        جدیدترین محصولات و ویدیوهای مهم؛ قبل از اینکه از دستشان
+                        بدهی.
+                    </p>
+                </div>
+                {items.length > 1 && (
+                    <div className="hidden gap-2 sm:flex">
+                        <Button
+                            aria-label="قبلی"
+                            isIconOnly
+                            onPress={() =>
+                                railRef.current?.scrollBy({
+                                    left: 420,
+                                    behavior: "smooth",
+                                })
+                            }
+                            variant="secondary"
+                        >
+                            <ChevronRight size={18} />
+                        </Button>
+                        <Button
+                            aria-label="بعدی"
+                            isIconOnly
+                            onPress={() =>
+                                railRef.current?.scrollBy({
+                                    left: -420,
+                                    behavior: "smooth",
+                                })
+                            }
+                            variant="secondary"
+                        >
+                            <ChevronLeft size={18} />
+                        </Button>
+                    </div>
+                )}
+            </div>
+            <div className="relative overflow-hidden rounded-[28px] border border-[var(--store-border)] bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,.10),transparent_38%),var(--store-surface)] py-5 shadow-[0_24px_70px_-48px_rgba(79,70,229,.55)]">
+                <div
+                    className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    ref={railRef}
+                >
+                    {items.map((item, index) => {
+                        const unseen = Date.parse(item.published_at) > seenAt;
+                        const featured = index === 0;
+                        const video = item.type === "video";
+                        return (
+                            <Link
+                                className={`group relative shrink-0 snap-start overflow-hidden rounded-3xl border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 ${featured ? "w-[88vw] border-indigo-500/50 sm:w-[560px]" : video ? "w-[82vw] border-[var(--store-border)] sm:w-[410px]" : "w-[76vw] border-[var(--store-border)] sm:w-[330px]"} ${unseen ? "shadow-[0_18px_55px_-35px_rgba(99,102,241,.7)]" : "saturate-[.82]"}`}
+                                href={item.url}
+                                key={item.key}
+                                onClick={() =>
+                                    latest &&
+                                    localStorage.setItem(
+                                        freshSeenKey,
+                                        String(latest),
+                                    )
+                                }
+                            >
+                                <article className="flex h-full flex-col bg-[var(--store-panel)]">
+                                    <div
+                                        className={`relative overflow-hidden ${video ? "bg-black" : "bg-[var(--store-bg)]"} ${featured ? "aspect-[16/8]" : video ? "aspect-video" : "aspect-[4/3]"}`}
+                                    >
+                                        {item.image_url ? (
+                                            <img
+                                                alt={item.title}
+                                                className={`size-full transition duration-500 group-hover:scale-[1.025] ${video ? "object-cover" : "object-contain p-3"}`}
+                                                loading={
+                                                    featured ? "eager" : "lazy"
+                                                }
+                                                src={item.image_url}
+                                            />
+                                        ) : (
+                                            <span className="grid size-full place-items-center text-indigo-400">
+                                                {video ? (
+                                                    <Play size={58} />
+                                                ) : (
+                                                    <PackageOpen size={58} />
+                                                )}
+                                            </span>
+                                        )}
+                                        {video && (
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+                                        )}
+                                        <span
+                                            className={`absolute right-3 top-3 rounded-full px-3 py-1.5 text-[11px] font-black text-white ${video ? "bg-rose-600" : "bg-indigo-600"}`}
+                                        >
+                                            {video ? "ویدیو" : "محصول"}
+                                        </span>
+                                        {unseen && (
+                                            <span className="absolute left-3 top-3 rounded-full bg-emerald-400 px-3 py-1.5 text-[11px] font-black text-slate-950">
+                                                جدید
+                                            </span>
+                                        )}
+                                        {video &&
+                                            durationLabel(item.duration) && (
+                                                <span className="absolute bottom-3 left-3 rounded-lg bg-black/80 px-2 py-1 font-mono text-xs text-white">
+                                                    {durationLabel(
+                                                        item.duration,
+                                                    )}
+                                                </span>
+                                            )}
+                                        {video && (
+                                            <span className="absolute inset-0 grid place-items-center">
+                                                <span className="grid size-14 place-items-center rounded-full bg-white/90 text-slate-950 shadow-xl transition group-hover:scale-110">
+                                                    <Play
+                                                        fill="currentColor"
+                                                        size={23}
+                                                    />
+                                                </span>
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex min-h-40 flex-1 flex-col p-5">
+                                        <div className="flex items-center gap-2 text-[11px] font-bold text-[var(--store-muted)]">
+                                            <Clock3 size={14} />
+                                            <span>{item.eyebrow}</span>
+                                            {featured && (
+                                                <span className="mr-auto rounded-full bg-amber-500/10 px-2 py-1 text-amber-600">
+                                                    جدیدترین انتشار
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h3
+                                            className={`${featured ? "text-xl sm:text-2xl" : "text-lg"} mt-3 line-clamp-2 font-black leading-8 text-[var(--store-text)]`}
+                                        >
+                                            {item.title}
+                                        </h3>
+                                        {item.pricing && (
+                                            <div className="mt-3">
+                                                {item.pricing.final_price !==
+                                                    item.pricing
+                                                        .regular_price && (
+                                                    <span className="ml-2 text-xs text-[var(--store-muted)] line-through">
+                                                        {money.format(
+                                                            item.pricing
+                                                                .regular_price,
+                                                        )}
+                                                    </span>
+                                                )}
+                                                <strong className="text-lg text-emerald-400">
+                                                    {money.format(
+                                                        item.pricing
+                                                            .final_price,
+                                                    )}{" "}
+                                                    <small className="text-xs">
+                                                        تومان
+                                                    </small>
+                                                </strong>
+                                            </div>
+                                        )}
+                                        <span
+                                            className={`mt-auto flex items-center gap-2 pt-4 text-sm font-black ${video ? "text-rose-500" : "text-indigo-500"}`}
+                                        >
+                                            {video
+                                                ? "مشاهده ویدیو"
+                                                : "مشاهده و خرید"}
+                                            <ArrowUpLeft size={17} />
+                                        </span>
+                                    </div>
+                                </article>
+                            </Link>
+                        );
+                    })}
+                </div>
+            </div>
+        </section>
+    );
+}
 
 function ContentRail({ section }: { section: ContentSection }) {
     const railRef = useRef<HTMLDivElement>(null);
@@ -292,6 +459,31 @@ function ContentRail({ section }: { section: ContentSection }) {
                                 <h3 className="line-clamp-2 min-h-12 font-bold leading-6 text-white">
                                     {item.title}
                                 </h3>
+                                {isProduct &&
+                                    item.meta_badges &&
+                                    item.meta_badges.length > 0 && (
+                                        <div
+                                            className="flex max-h-14 flex-wrap gap-1.5 overflow-hidden"
+                                            dir="rtl"
+                                        >
+                                            {item.meta_badges
+                                                .slice(0, 5)
+                                                .map((meta) => (
+                                                    <span
+                                                        className={`max-w-full rounded-lg px-2 py-1 text-[10px] font-bold ${metaToneClasses[meta.tone] ?? metaToneClasses.neutral}`}
+                                                        key={meta.key}
+                                                        title={`${meta.label}: ${meta.value}`}
+                                                    >
+                                                        <span className="opacity-70">
+                                                            {meta.label}:{" "}
+                                                        </span>
+                                                        <span>
+                                                            {meta.value}
+                                                        </span>
+                                                    </span>
+                                                ))}
+                                        </div>
+                                    )}
                                 {item.excerpt && (
                                     <p className="line-clamp-2 text-xs leading-6 text-slate-400">
                                         {item.excerpt}
@@ -327,6 +519,7 @@ export default function Home({
     featuredProducts,
     latestProducts,
     contentSections,
+    freshContent,
 }: Props) {
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
@@ -373,6 +566,7 @@ export default function Home({
                 onToggleTheme={toggleTheme}
                 theme={theme}
                 user={auth.user}
+                freshContentAt={storefront.fresh_content_at}
             />
             <main>
                 <section className="mx-auto max-w-7xl px-4 pt-5">
@@ -380,7 +574,9 @@ export default function Home({
                         <div
                             aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
                             className="group relative touch-pan-y pb-7 sm:pb-8"
-                            onTouchEnd={(event) => finishSwipe(event.changedTouches[0].clientX)}
+                            onTouchEnd={(event) =>
+                                finishSwipe(event.changedTouches[0].clientX)
+                            }
                             onTouchStart={(event) => {
                                 touchStartX.current = event.touches[0].clientX;
                             }}
@@ -408,28 +604,28 @@ export default function Home({
                                         href={safeUrl(slide.button_url) ?? "/"}
                                     />
                                 )}
-                            {slides.length > 1 && (
-                                <>
-                                    <Button
-                                        aria-label="اسلاید قبلی"
-                                        className="absolute right-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 text-white opacity-100 shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/55 sm:right-5 lg:opacity-0 lg:group-hover:opacity-100"
-                                        isIconOnly
-                                        onPress={() => go(-1)}
-                                        variant="ghost"
-                                    >
-                                        <ChevronRight size={21} />
-                                    </Button>
-                                    <Button
-                                        aria-label="اسلاید بعدی"
-                                        className="absolute left-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 text-white opacity-100 shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/55 sm:left-5 lg:opacity-0 lg:group-hover:opacity-100"
-                                        isIconOnly
-                                        onPress={() => go(1)}
-                                        variant="ghost"
-                                    >
-                                        <ChevronLeft size={21} />
-                                    </Button>
-                                </>
-                            )}
+                                {slides.length > 1 && (
+                                    <>
+                                        <Button
+                                            aria-label="اسلاید قبلی"
+                                            className="absolute right-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 text-white opacity-100 shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/55 sm:right-5 lg:opacity-0 lg:group-hover:opacity-100"
+                                            isIconOnly
+                                            onPress={() => go(-1)}
+                                            variant="ghost"
+                                        >
+                                            <ChevronRight size={21} />
+                                        </Button>
+                                        <Button
+                                            aria-label="اسلاید بعدی"
+                                            className="absolute left-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 text-white opacity-100 shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/55 sm:left-5 lg:opacity-0 lg:group-hover:opacity-100"
+                                            isIconOnly
+                                            onPress={() => go(1)}
+                                            variant="ghost"
+                                        >
+                                            <ChevronLeft size={21} />
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                             {slides.length > 1 && (
                                 <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-panel)] px-3 py-2 shadow-md">
@@ -438,7 +634,9 @@ export default function Home({
                                             aria-label={`اسلاید ${index + 1}`}
                                             className={`h-1.5 rounded-full transition-all duration-300 ${index === activeSlide ? "w-7 bg-indigo-500" : "w-1.5 bg-[var(--store-muted)]/35 hover:bg-indigo-400"}`}
                                             key={item.id}
-                                            onClick={() => setActiveSlide(index)}
+                                            onClick={() =>
+                                                setActiveSlide(index)
+                                            }
                                             type="button"
                                         />
                                     ))}
@@ -459,6 +657,7 @@ export default function Home({
                         </div>
                     )}
                 </section>
+                <FreshReleases items={freshContent} />
                 <section className="mx-auto grid max-w-7xl grid-cols-2 gap-3 px-4 py-8 lg:grid-cols-4">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],

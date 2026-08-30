@@ -224,6 +224,37 @@ class CatalogManagementTest extends TestCase
         ]);
     }
 
+    public function test_capacity_game_requires_positive_prices_and_unique_skus(): void
+    {
+        $variants = collect([1, 2, 3])->map(fn (int $capacity) => [
+            'capacity' => $capacity,
+            'sku' => 'DUPLICATE-SKU',
+            'price' => 0,
+            'stock' => 0,
+            'status' => 'active',
+        ])->all();
+
+        $this->actingAs($this->admin)->post('/admin/products', [
+            'title' => 'بازی ظرفیتی نامعتبر',
+            'slug' => 'invalid-capacity-game',
+            'sku' => 'INVALID-CAPACITY',
+            'product_type' => 'capacity_account',
+            'low_stock_threshold' => 2,
+            'availability' => 'in_stock',
+            'minimum_quantity' => 1,
+            'status' => 'draft',
+            'visibility' => 'public',
+            'variants' => $variants,
+            'media' => [['file' => UploadedFile::fake()->image('cover.jpg'), 'is_primary' => true]],
+        ])->assertSessionHasErrors([
+            'variants.0.price',
+            'variants.1.price',
+            'variants.1.sku',
+            'variants.2.price',
+            'variants.2.sku',
+        ]);
+    }
+
     public function test_price_change_is_recorded(): void
     {
         $product = Product::factory()->create(['price' => 1_000_000]);

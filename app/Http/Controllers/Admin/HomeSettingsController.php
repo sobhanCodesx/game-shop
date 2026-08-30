@@ -18,6 +18,7 @@ use App\Services\MediaStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -83,8 +84,10 @@ class HomeSettingsController extends Controller
         $keptSectionIds = [];
 
         $claimedTokens = [];
+        $newImagePaths = [];
+        $obsoleteImagePaths = [];
         try {
-            DB::transaction(function () use ($request, $validated, $uploads, &$claimedTokens, &$keptIds, &$keptSectionIds): void {
+            DB::transaction(function () use ($request, $validated, $uploads, &$claimedTokens, &$newImagePaths, &$obsoleteImagePaths, &$keptIds, &$keptSectionIds): void {
             HomeSetting::query()->updateOrCreate(['id' => 1], ['content' => $validated['settings']]);
 
             foreach ($validated['slides'] ?? [] as $index => $data) {
@@ -102,10 +105,22 @@ class HomeSettingsController extends Controller
                 }
 
                 if ($desktopFile) {
-                    $this->replaceImage($slide->desktop_image, $data['desktop_image'] = $desktopFile->store('home/slides', (string) config('media.disk')));
+                    $newPath = $desktopFile->store('home/slides', (string) config('media.disk'));
+                    abort_unless($newPath, 500, 'ذخیره تصویر جدید بنر انجام نشد.');
+                    $newImagePaths[] = $newPath;
+                    if ($slide->desktop_image && $slide->desktop_image !== $newPath) {
+                        $obsoleteImagePaths[] = $slide->desktop_image;
+                    }
+                    $data['desktop_image'] = $newPath;
                 }
                 if ($mobileFile) {
-                    $this->replaceImage($slide->mobile_image, $data['mobile_image'] = $mobileFile->store('home/slides/mobile', (string) config('media.disk')));
+                    $newPath = $mobileFile->store('home/slides/mobile', (string) config('media.disk'));
+                    abort_unless($newPath, 500, 'ذخیره تصویر موبایل جدید بنر انجام نشد.');
+                    $newImagePaths[] = $newPath;
+                    if ($slide->mobile_image && $slide->mobile_image !== $newPath) {
+                        $obsoleteImagePaths[] = $slide->mobile_image;
+                    }
+                    $data['mobile_image'] = $newPath;
                 }
 
                 abort_if(blank($data['desktop_image'] ?? null), 422, 'تصویر دسکتاپ هر اسلاید الزامی است.');
@@ -120,8 +135,8 @@ class HomeSettingsController extends Controller
                 $keptIds[] = $slide->id;
             }
 
-            HomeSlide::query()->whereNotIn('id', $keptIds)->get()->each(function (HomeSlide $slide): void {
-                MediaStorage::disk()->delete(array_filter([$slide->desktop_image, $slide->mobile_image]));
+            HomeSlide::query()->whereNotIn('id', $keptIds)->get()->each(function (HomeSlide $slide) use (&$obsoleteImagePaths): void {
+                array_push($obsoleteImagePaths, ...array_filter([$slide->desktop_image, $slide->mobile_image]));
                 $slide->delete();
             });
 
@@ -135,20 +150,25 @@ class HomeSettingsController extends Controller
 
             HomeSection::query()->whereNotIn('id', $keptSectionIds)->delete();
             });
+        } catch (Throwable $exception) {
+            MediaStorage::disk()->delete(array_values(array_unique($newImagePaths)));
+
+            throw $exception;
         } finally {
             foreach ($claimedTokens as $token) {
                 $uploads->forget($request->user()->id, $token);
             }
         }
 
-        return back()->with('success', 'تنظیمات صفحه اصلی با موفقیت ذخیره شد.');
-    }
+        $referencedImagePaths = HomeSlide::query()
+            ->get(['desktop_image', 'mobile_image'])
+            ->flatMap(fn (HomeSlide $slide) => [$slide->desktop_image, $slide->mobile_image])
+            ->filter()
+            ->all();
+        $unusedImagePaths = array_values(array_diff(array_unique($obsoleteImagePaths), $referencedImagePaths));
+        MediaStorage::disk()->delete($unusedImagePaths);
 
-    private function replaceImage(?string $oldPath, string $newPath): void
-    {
-        if ($oldPath && $oldPath !== $newPath) {
-            MediaStorage::disk()->delete($oldPath);
-        }
+        return back()->with('success', 'تنظیمات صفحه اصلی با موفقیت ذخیره شد.');
     }
 
     private function socialSource(string $type)

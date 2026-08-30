@@ -1,16 +1,30 @@
 import { Button, Card, Chip } from "@heroui/react";
 import { Head, router, useForm } from "@inertiajs/react";
-import { Send, ShoppingBag } from "lucide-react";
+import { Send, ShoppingBag, Trash2 } from "lucide-react";
 import { FormEvent, useEffect } from "react";
 import AdminLayout from "../../../Layouts/AdminLayout";
+import AttachmentPicker from "../../../Components/Tickets/AttachmentPicker";
+import TicketMessageBubble from "../../../Components/Tickets/TicketMessageBubble";
 const labels: Record<string, string> = {
     pending: "در انتظار پاسخ",
     open: "در حال پیگیری",
     closed: "بسته‌شده",
 };
+const exchangeLabels: Record<string, string> = {
+    pending_review: "در انتظار بررسی",
+    offered: "پیشنهاد ثبت‌شده",
+    accepted: "پذیرفته‌شده",
+    rejected: "ردشده",
+    completed: "تکمیل‌شده",
+};
 export default function Show({ ticket }: { ticket: any }) {
+    const attachmentCount = ticket.replies.reduce(
+        (total: number, reply: any) => total + (reply.attachments?.length ?? 0),
+        0,
+    );
     const { data, setData, post, processing, errors, reset } = useForm({
         message: "",
+        attachments: [] as File[],
     });
     useEffect(() => {
         const id = setInterval(
@@ -33,39 +47,24 @@ export default function Show({ ticket }: { ticket: any }) {
             <Head title={ticket.subject} />
             <div className="grid gap-5 xl:grid-cols-[1fr_330px]">
                 <section>
-                    <Card variant="secondary">
-                        <Card.Content className="space-y-4 p-6">
+                    <Card className="overflow-hidden" variant="secondary">
+                        <Card.Content className="min-h-[520px] space-y-5 bg-[radial-gradient(circle_at_1px_1px,rgba(99,102,241,.12)_1px,transparent_0)] bg-[size:22px_22px] p-4 sm:p-6">
                             {ticket.replies.map((reply: any) => (
-                                <article
-                                    className={`w-full rounded-2xl border p-5 ${reply.is_admin ? "border-indigo-500/25 bg-indigo-500/10 text-white" : "border-slate-800 bg-slate-950/60 text-slate-100"}`}
+                                <TicketMessageBubble
                                     key={reply.id}
-                                >
-                                    <div className="mb-2 flex justify-between gap-4 text-xs opacity-70">
-                                        <strong>
-                                            {reply.is_admin
-                                                ? reply.user.name
-                                                : "مشتری"}
-                                        </strong>
-                                        <span>
-                                            {new Date(
-                                                reply.created_at,
-                                            ).toLocaleString("fa-IR")}
-                                        </span>
-                                    </div>
-                                    <p className="whitespace-pre-wrap leading-7">
-                                        {reply.message}
-                                    </p>
-                                </article>
+                                    mine={reply.is_admin}
+                                    reply={reply}
+                                />
                             ))}
                         </Card.Content>
                     </Card>
                     {ticket.status !== "closed" && (
                         <form
-                            className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-5"
+                            className="sticky bottom-3 z-10 -mt-1 rounded-3xl border border-slate-700 bg-slate-900/95 p-4 shadow-2xl backdrop-blur-xl"
                             onSubmit={submit}
                         >
                             <textarea
-                                className="min-h-32 w-full rounded-xl border border-slate-700 bg-slate-950 p-4 outline-none focus:border-indigo-500"
+                                className="min-h-16 w-full rounded-2xl border border-slate-700 bg-slate-950 p-4 outline-none focus:border-indigo-500"
                                 onChange={(e) =>
                                     setData("message", e.target.value)
                                 }
@@ -77,6 +76,16 @@ export default function Show({ ticket }: { ticket: any }) {
                                     {errors.message}
                                 </p>
                             )}
+                            <AttachmentPicker
+                                files={data.attachments}
+                                onChange={(files) =>
+                                    setData("attachments", files)
+                                }
+                                error={
+                                    (errors as any).attachments ||
+                                    (errors as any)["attachments.0"]
+                                }
+                            />
                             <Button
                                 className="mt-3"
                                 isDisabled={processing}
@@ -112,6 +121,43 @@ export default function Show({ ticket }: { ticket: any }) {
                             )}
                         </Card.Content>
                     </Card>
+                    {ticket.type === "exchange" && (
+                        <Card variant="secondary">
+                            <Card.Content className="space-y-4 p-5">
+                                <h2 className="font-black">مدیریت معاوضه</h2>
+                                <Chip>
+                                    {exchangeLabels[ticket.exchange_status]}
+                                </Chip>
+                                {ticket.exchange_offer_amount && (
+                                    <p className="text-lg font-black text-indigo-400">
+                                        {Number(
+                                            ticket.exchange_offer_amount,
+                                        ).toLocaleString("fa-IR")}{" "}
+                                        تومان
+                                    </p>
+                                )}
+                                {["pending_review", "offered"].includes(
+                                    ticket.exchange_status,
+                                ) && <OfferForm ticket={ticket} />}
+                                {ticket.exchange_status === "accepted" && (
+                                    <Button
+                                        fullWidth
+                                        onPress={() =>
+                                            router.patch(
+                                                `/admin/tickets/${ticket.id}/exchange-complete`,
+                                            )
+                                        }
+                                        variant="primary"
+                                    >
+                                        تأیید تحویل، تکمیل و واریز
+                                    </Button>
+                                )}
+                                {ticket.exchange_status === "completed" && (
+                                    <AdjustmentForm ticket={ticket} />
+                                )}
+                            </Card.Content>
+                        </Card>
+                    )}
                     <Card variant="secondary">
                         <Card.Content className="space-y-2 p-5">
                             <h2 className="mb-3 font-black">مدیریت وضعیت</h2>
@@ -138,10 +184,118 @@ export default function Show({ ticket }: { ticket: any }) {
                                     {label}
                                 </Button>
                             ))}
+                            {ticket.status === "closed" &&
+                                attachmentCount > 0 && (
+                                    <Button
+                                        fullWidth
+                                        onPress={() => {
+                                            if (
+                                                confirm(
+                                                    `فقط ${attachmentCount.toLocaleString("fa-IR")} فایل پیوست از سرور حذف شود؟ متن تیکت و پیام‌ها باقی می‌مانند.`,
+                                                )
+                                            ) {
+                                                router.delete(
+                                                    `/admin/tickets/${ticket.id}/attachments`,
+                                                );
+                                            }
+                                        }}
+                                        variant="danger-soft"
+                                    >
+                                        <Trash2 size={17} />
+                                        حذف فایل‌های پیوست (
+                                        {attachmentCount.toLocaleString(
+                                            "fa-IR",
+                                        )}
+                                        )
+                                    </Button>
+                                )}
+                            {ticket.status === "closed" &&
+                                attachmentCount === 0 && (
+                                    <p className="rounded-xl bg-slate-950 p-3 text-center text-xs text-slate-500">
+                                        فایل پیوستی روی سرور باقی نمانده است.
+                                    </p>
+                                )}
                         </Card.Content>
                     </Card>
                 </aside>
             </div>
         </AdminLayout>
+    );
+}
+
+function OfferForm({ ticket }: { ticket: any }) {
+    const form = useForm({
+        exchange_offer_amount: ticket.exchange_offer_amount ?? "",
+    });
+    return (
+        <form
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.patch(`/admin/tickets/${ticket.id}/exchange-offer`);
+            }}
+        >
+            <input
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
+                min="1"
+                onChange={(e) =>
+                    form.setData("exchange_offer_amount", e.target.value as any)
+                }
+                placeholder="مبلغ پیشنهادی (تومان)"
+                type="number"
+                value={form.data.exchange_offer_amount}
+            />
+            {form.errors.exchange_offer_amount && (
+                <p className="mt-1 text-xs text-red-400">
+                    {form.errors.exchange_offer_amount}
+                </p>
+            )}
+            <Button
+                className="mt-2"
+                fullWidth
+                isDisabled={form.processing}
+                type="submit"
+                variant="primary"
+            >
+                ثبت پیشنهاد
+            </Button>
+        </form>
+    );
+}
+function AdjustmentForm({ ticket }: { ticket: any }) {
+    const form = useForm({ amount: "", description: "" });
+    return (
+        <form
+            className="space-y-2 border-t border-slate-800 pt-4"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post(`/admin/tickets/${ticket.id}/exchange-adjustments`, {
+                    onSuccess: () => form.reset(),
+                });
+            }}
+        >
+            <p className="text-sm font-bold">افزایش اعتبار با تراکنش</p>
+            <input
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
+                min="1"
+                onChange={(e) => form.setData("amount", e.target.value)}
+                placeholder="مبلغ افزایش"
+                type="number"
+                value={form.data.amount}
+            />
+            <input
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
+                onChange={(e) => form.setData("description", e.target.value)}
+                placeholder="توضیح اصلاح یا توافق نهایی"
+                value={form.data.description}
+            />
+            <Button
+                fullWidth
+                isDisabled={form.processing}
+                type="submit"
+                variant="secondary"
+            >
+                ثبت افزایش اعتبار
+            </Button>
+        </form>
     );
 }

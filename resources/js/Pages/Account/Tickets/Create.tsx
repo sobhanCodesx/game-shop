@@ -12,6 +12,7 @@ import { FormEvent } from "react";
 import Pagination from "../../../Components/Storefront/Pagination";
 import StorefrontLayout from "../../../Layouts/StorefrontLayout";
 import type { Paginated } from "../../../types";
+import AttachmentPicker from "../../../Components/Tickets/AttachmentPicker";
 
 const field =
     "h-13 w-full rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] px-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10";
@@ -19,16 +20,21 @@ export default function Create({
     purchases,
     selectedOrderItem,
     antiBotCode,
+    exchangeProduct,
 }: {
     purchases: Paginated<any>;
     selectedOrderItem: number | null;
     antiBotCode: string;
+    exchangeProduct: any | null;
 }) {
     const { data, setData, post, processing, errors } = useForm({
         order_item_id: selectedOrderItem ? String(selectedOrderItem) : "",
         subject: "",
         message: "",
         anti_bot_code: "",
+        type: exchangeProduct ? "exchange" : "support",
+        product_id: exchangeProduct?.id ?? "",
+        attachments: [] as File[],
     });
     const selected = purchases.data.find(
         (item) => String(item.id) === data.order_item_id,
@@ -53,7 +59,9 @@ export default function Create({
                             مرکز پشتیبانی NEXUS
                         </p>
                         <h1 className="mt-1 text-2xl font-black sm:text-3xl">
-                            ثبت درخواست جدید
+                            {exchangeProduct
+                                ? "درخواست معاوضه"
+                                : "ثبت درخواست جدید"}
                         </h1>
                     </div>
                 </div>
@@ -75,54 +83,76 @@ export default function Create({
                             </div>
                         </div>
                         <div className="space-y-6">
-                            <label className="block">
-                                <span className="mb-2 block text-sm font-black">
-                                    این درخواست مربوط به کدام خرید است؟{" "}
-                                    <small className="font-normal text-[var(--store-muted)]">
-                                        (اختیاری)
-                                    </small>
-                                </span>
-                                <div className="relative">
-                                    <PackageSearch
-                                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-indigo-500"
-                                        size={18}
-                                    />
-                                    <select
-                                        className={`${field} appearance-none pr-11`}
-                                        onChange={(event) =>
-                                            setData(
-                                                "order_item_id",
-                                                event.target.value,
-                                            )
-                                        }
-                                        value={data.order_item_id}
-                                    >
-                                        <option value="">
-                                            بدون ارتباط با محصول / سایر
-                                        </option>
-                                        {purchases.data.map((item) => (
-                                            <option
-                                                key={item.id}
-                                                value={item.id}
-                                            >
-                                                {item.title}
-                                                {item.variant_name
-                                                    ? ` — ${item.variant_name}`
-                                                    : ""}{" "}
-                                                — سفارش {item.order.number}
+                            {!exchangeProduct && (
+                                <label className="block">
+                                    <span className="mb-2 block text-sm font-black">
+                                        این درخواست مربوط به کدام خرید است؟{" "}
+                                        <small className="font-normal text-[var(--store-muted)]">
+                                            (اختیاری)
+                                        </small>
+                                    </span>
+                                    <div className="relative">
+                                        <PackageSearch
+                                            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-indigo-500"
+                                            size={18}
+                                        />
+                                        <select
+                                            className={`${field} appearance-none pr-11`}
+                                            onChange={(event) =>
+                                                setData(
+                                                    "order_item_id",
+                                                    event.target.value,
+                                                )
+                                            }
+                                            value={data.order_item_id}
+                                        >
+                                            <option value="">
+                                                بدون ارتباط با محصول / سایر
                                             </option>
-                                        ))}
-                                    </select>
+                                            {purchases.data.map((item) => (
+                                                <option
+                                                    key={item.id}
+                                                    value={item.id}
+                                                >
+                                                    {item.title}
+                                                    {item.variant_name
+                                                        ? ` — ${item.variant_name}`
+                                                        : ""}{" "}
+                                                    — سفارش {item.order.number}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {errors.order_item_id && (
+                                        <Error text={errors.order_item_id} />
+                                    )}
+                                    <p className="mt-2 text-xs text-[var(--store-muted)]">
+                                        خریدها صفحه‌بندی شده‌اند؛ برای موارد
+                                        قدیمی‌تر از کنترل پایین استفاده کنید.
+                                    </p>
+                                    <Pagination
+                                        links={purchases.links}
+                                        preserveState
+                                    />
+                                </label>
+                            )}
+                            {exchangeProduct && (
+                                <div className="flex items-center gap-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4">
+                                    {exchangeProduct.cover_url && (
+                                        <img
+                                            alt=""
+                                            className="size-16 rounded-xl object-cover"
+                                            src={exchangeProduct.cover_url}
+                                        />
+                                    )}
+                                    <div>
+                                        <strong>{exchangeProduct.title}</strong>
+                                        <p className="mt-1 text-xs text-[var(--store-muted)]">
+                                            محصول موردنظر برای معاوضه
+                                        </p>
+                                    </div>
                                 </div>
-                                {errors.order_item_id && (
-                                    <Error text={errors.order_item_id} />
-                                )}
-                                <p className="mt-2 text-xs text-[var(--store-muted)]">
-                                    خریدها صفحه‌بندی شده‌اند؛ برای موارد
-                                    قدیمی‌تر از کنترل پایین استفاده کنید.
-                                </p>
-                                <Pagination links={purchases.links} />
-                            </label>
+                            )}
                             {selected && (
                                 <div className="flex items-center gap-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4">
                                     {selected.cover_url ? (
@@ -196,6 +226,16 @@ export default function Create({
                                     </span>
                                 </div>
                             </label>
+                            <AttachmentPicker
+                                files={data.attachments}
+                                onChange={(files) =>
+                                    setData("attachments", files)
+                                }
+                                error={
+                                    (errors as any).attachments ||
+                                    (errors as any)["attachments.0"]
+                                }
+                            />
                             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                                     <div className="flex-1">
@@ -232,6 +272,10 @@ export default function Create({
                                 {errors.anti_bot_code && (
                                     <Error text={errors.anti_bot_code} />
                                 )}
+                                <p className="mt-2 text-xs leading-6 text-[var(--store-muted)]">
+                                    این کد تا پایان ثبت درخواست ثابت می‌ماند و
+                                    فقط پس از ارسال موفق تیکت مصرف می‌شود.
+                                </p>
                             </div>
                             <button
                                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-4 font-black text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-500 disabled:opacity-50"

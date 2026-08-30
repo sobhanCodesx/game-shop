@@ -211,6 +211,7 @@ export default function ProductForm({
         progress,
         errors,
         clearErrors,
+        setError,
         transform,
     } = useForm<ProductFormData>({
         title: item?.title ?? "",
@@ -308,12 +309,58 @@ export default function ProductForm({
             (required.filter(Boolean).length / required.length) * 100,
         );
     }, [data]);
-    useEffect(() => {
-        if (errors.media) setActiveStep("content");
-    }, [errors.media]);
     const currentStep = workflowSteps.findIndex(
         (step) => step.id === activeStep,
     );
+
+    useEffect(() => {
+        const field = Object.keys(errors)[0];
+        if (!field) return;
+        const target: StepId = /^(product_type|title|slug|sku|internal_code|variants)/.test(field)
+            ? "identity"
+            : /^(category|brand|game|platform|attribute)/.test(field)
+              ? "classification"
+              : /^(price|discount_price|compare_price|partner_price|cost_price)/.test(field)
+                ? "pricing"
+                : /^(stock|low_stock|availability|weight|length|width|height|barcode|condition|requires_shipping|shipping|delivery_method|minimum|maximum)/.test(field)
+                  ? "inventory"
+                  : /^(description|short_description|purchase_notes|delivery_notes|return_policy|warranty|media)/.test(field)
+                    ? "content"
+                    : /^(seo_|canonical)/.test(field)
+                      ? "seo"
+                      : "publish";
+        if (workflowSteps.some((step) => step.id === target)) setActiveStep(target);
+    }, [errors]);
+
+    const validateStep = (step: StepId): boolean => {
+        clearErrors();
+        const nextErrors: Record<string, string> = {};
+        if (step === "identity") {
+            if (!data.product_type) nextErrors.product_type = "نوع محصول را انتخاب کنید.";
+            if (!data.title.trim()) nextErrors.title = "عنوان محصول الزامی است.";
+            if (!data.slug.trim()) nextErrors.slug = "نامک محصول الزامی است.";
+            if (!data.sku.trim()) nextErrors.sku = "SKU اصلی محصول الزامی است.";
+            if (data.product_type === "capacity_account") {
+                const seenSkus = new Set<string>();
+                data.variants.forEach((variant, index) => {
+                    const sku = variant.sku.trim();
+                    if (!sku) nextErrors[`variants.${index}.sku`] = `SKU ظرفیت ${variant.capacity.toLocaleString("fa-IR")} الزامی است.`;
+                    else if (seenSkus.has(sku)) nextErrors[`variants.${index}.sku`] = "SKU ظرفیت‌ها باید متفاوت باشد.";
+                    seenSkus.add(sku);
+                    if (Number(variant.price) <= 0) nextErrors[`variants.${index}.price`] = `قیمت ظرفیت ${variant.capacity.toLocaleString("fa-IR")} باید بیشتر از صفر باشد.`;
+                    if (Number(variant.stock) < 0) nextErrors[`variants.${index}.stock`] = "موجودی نمی‌تواند منفی باشد.";
+                });
+            }
+        }
+        if (step === "classification" && !data.category_id) nextErrors.category_id = "دسته‌بندی محصول را انتخاب کنید.";
+        if (step === "pricing" && Number(data.price) <= 0) nextErrors.price = "قیمت محصول باید بیشتر از صفر باشد.";
+        if (step === "content" && !data.media.some((media) => media.type === "image")) nextErrors.media = "حداقل یک تصویر کاور برای محصول بارگذاری کنید.";
+
+        Object.entries(nextErrors).forEach(([field, message]) =>
+            setError(field as keyof ProductFormData, message),
+        );
+        return Object.keys(nextErrors).length === 0;
+    };
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -363,6 +410,9 @@ export default function ProductForm({
                 )
             ].id,
         );
+    const goNext = () => {
+        if (validateStep(activeStep)) go(1);
+    };
     const heroInput = (
         key: keyof ProductFormData,
         label: string,
@@ -522,6 +572,7 @@ export default function ProductForm({
                                             onPress={() =>
                                                 setActiveStep(step.id)
                                             }
+                                            type="button"
                                             variant={
                                                 active ? "primary" : "ghost"
                                             }
@@ -557,27 +608,32 @@ export default function ProductForm({
                                 </Alert>
                                 {data.product_type === "capacity_account" && (
                                     <Card
-                                        className="order-3 border border-indigo-500/30 bg-slate-900/70"
+                                        className="order-3 overflow-hidden border-2 border-indigo-500/50 bg-indigo-950/20 shadow-2xl shadow-indigo-950/30"
                                         variant="secondary"
                                     >
-                                        <Card.Header className="border-b border-slate-800 p-5">
-                                            <Card.Title>
-                                                قیمت‌گذاری ظرفیت‌های بازی
-                                            </Card.Title>
-                                            <Card.Description>
-                                                هر ظرفیت یک کالای قابل فروش
-                                                مستقل با SKU، قیمت و موجودی
-                                                جداگانه است.
-                                            </Card.Description>
+                                        <Card.Header className="border-b border-indigo-500/25 bg-gradient-to-l from-indigo-500/15 to-transparent p-5">
+                                            <div className="flex items-start gap-3">
+                                                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/25">
+                                                    <Boxes size={21} />
+                                                </span>
+                                                <div>
+                                                    <Card.Title className="text-lg text-white">
+                                                        قیمت‌گذاری ظرفیت‌های بازی
+                                                    </Card.Title>
+                                                    <Card.Description className="mt-1 leading-6 text-slate-300">
+                                                        قیمت، SKU و موجودی هر ظرفیت را جداگانه وارد کنید. هر کارت یک کالای مستقل است.
+                                                    </Card.Description>
+                                                </div>
+                                            </div>
                                         </Card.Header>
-                                        <Card.Content className="space-y-4 p-5">
+                                        <Card.Content className="space-y-6 p-4 sm:p-5">
                                             {data.variants.map(
                                                 (variant, index) => (
                                                     <div
-                                                        className="overflow-hidden rounded-2xl border border-slate-700 bg-[linear-gradient(135deg,rgba(15,23,42,.96),rgba(2,6,23,.82))] shadow-lg shadow-black/10 transition hover:border-indigo-500/40"
+                                                        className="overflow-hidden rounded-3xl border-2 border-slate-600/80 bg-[linear-gradient(135deg,rgba(30,41,59,.98),rgba(2,6,23,.94))] shadow-xl shadow-black/25 transition hover:border-indigo-400/70"
                                                         key={variant.capacity}
                                                     >
-                                                        <div className="flex flex-col gap-4 border-b border-slate-800/80 p-5 sm:flex-row sm:items-center sm:justify-between">
+                                                        <div className="flex flex-col gap-4 border-b border-slate-600/50 bg-slate-800/55 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
                                                             <div className="flex items-center gap-4">
                                                                 <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-indigo-400/20 bg-indigo-500/15 text-xl font-black text-indigo-300">
                                                                     {variant.capacity.toLocaleString(
@@ -604,8 +660,9 @@ export default function ProductForm({
                                                                 مستقل
                                                             </Chip>
                                                         </div>
-                                                        <div className="grid gap-5 p-5 md:grid-cols-2 xl:grid-cols-4">
-                                                            <FormField
+                                                        <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-2">
+                                                            <div className="rounded-2xl border border-slate-600/70 bg-slate-950/65 p-4 shadow-inner">
+                                                              <FormField
                                                                 error={
                                                                     errors[
                                                                         `variants.${index}.sku`
@@ -633,8 +690,10 @@ export default function ProductForm({
                                                                         variant.sku
                                                                     }
                                                                 />
-                                                            </FormField>
-                                                            <PriceInput
+                                                              </FormField>
+                                                            </div>
+                                                            <div className="rounded-2xl border border-indigo-500/35 bg-indigo-500/10 p-4 shadow-inner shadow-indigo-950/30">
+                                                              <PriceInput
                                                                 description="قیمت فروش این ظرفیت برای مشتری عادی."
                                                                 error={
                                                                     errors[
@@ -658,8 +717,10 @@ export default function ProductForm({
                                                                 value={
                                                                     variant.price
                                                                 }
-                                                            />
-                                                            <PriceInput
+                                                              />
+                                                            </div>
+                                                            <div className="rounded-2xl border border-violet-500/30 bg-violet-500/10 p-4 shadow-inner shadow-violet-950/30">
+                                                              <PriceInput
                                                                 description="قیمت اختصاصی همکار برای همین ظرفیت."
                                                                 error={
                                                                     errors[
@@ -679,8 +740,10 @@ export default function ProductForm({
                                                                 value={
                                                                     variant.partner_price
                                                                 }
-                                                            />
-                                                            <FormField
+                                                              />
+                                                            </div>
+                                                            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 shadow-inner shadow-emerald-950/30">
+                                                              <FormField
                                                                 error={
                                                                     errors[
                                                                         `variants.${index}.stock`
@@ -710,7 +773,8 @@ export default function ProductForm({
                                                                         variant.stock,
                                                                     )}
                                                                 />
-                                                            </FormField>
+                                                              </FormField>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 ),
@@ -740,6 +804,7 @@ export default function ProductForm({
                                                 <Button
                                                     className={`h-auto min-h-20 justify-start p-4 text-right ${data.product_type === id ? "ring-2 ring-indigo-500" : ""}`}
                                                     key={id}
+                                                    type="button"
                                                     onPress={() => {
                                                         setData(
                                                             "product_type",
@@ -1523,11 +1588,6 @@ export default function ProductForm({
                                                 ],
                                             ] as const
                                         )
-                                            .filter(
-                                                ([key]) =>
-                                                    key !== "trade_enabled" ||
-                                                    selectedProductType?.allows_trade,
-                                            )
                                             .map(([key, label]) => (
                                                 <Checkbox
                                                     isSelected={Boolean(
@@ -1556,13 +1616,14 @@ export default function ProductForm({
                             <Button
                                 isDisabled={currentStep === 0}
                                 onPress={() => go(-1)}
+                                type="button"
                                 variant="secondary"
                             >
                                 <ChevronRight size={17} />
                                 مرحله قبل
                             </Button>
                             {currentStep < workflowSteps.length - 1 ? (
-                                <Button onPress={() => go(1)} variant="primary">
+                                <Button onPress={goNext} type="button" variant="primary">
                                     مرحله بعد
                                     <ChevronLeft size={17} />
                                 </Button>
