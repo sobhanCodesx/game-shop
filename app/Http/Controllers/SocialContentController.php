@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SocialContent;
 use Illuminate\Support\Facades\Storage;
+use App\Services\MediaStorage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,7 +21,8 @@ class SocialContentController extends Controller
         return Inertia::render('Content/Show', [
             'content' => [
                 ...$content->only(['title', 'slug', 'type', 'excerpt', 'duration', 'views']),
-                'thumbnail_url' => $content->thumbnail ? Storage::url($content->thumbnail) : null,
+                'thumbnail_url' => MediaStorage::url($content->thumbnail),
+                'video_url' => MediaStorage::url($content->video_path),
                 'published_at' => $content->published_at?->toISOString(),
             ],
         ]);

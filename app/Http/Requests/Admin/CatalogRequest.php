@@ -2,9 +2,13 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Product;
+use App\Services\ProductTypeRegistry;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class CatalogRequest extends FormRequest
 {
@@ -19,6 +23,15 @@ class CatalogRequest extends FormRequest
 
         if (! $this->filled('slug') && $source) {
             $this->merge(['slug' => Str::slug($source)]);
+        }
+
+        if ($this->route('catalog') === 'products') {
+            $legacyStatuses = ['active' => 'published', 'inactive' => 'disabled', 'archive' => 'archived'];
+            $status = $this->string('status')->toString();
+
+            if (isset($legacyStatuses[$status])) {
+                $this->merge(['status' => $legacyStatuses[$status]]);
+            }
         }
     }
 
@@ -80,21 +93,25 @@ class CatalogRequest extends FormRequest
                 'game_id' => ['nullable', 'integer', Rule::exists('games', 'id')],
                 'platform_ids' => ['array'],
                 'platform_ids.*' => ['integer', Rule::exists('platforms', 'id')],
-                'product_type' => ['required', Rule::in([
-                    'physical_game', 'digital_game', 'game_account', 'capacity_account',
-                    'full_capacity', 'gift_card', 'dlc', 'subscription', 'console',
-                    'controller', 'headset', 'keyboard', 'mouse', 'monitor',
-                    'gaming_accessory', 'merchandise', 'other',
-                ])],
-                'price' => ['required', 'integer', 'min:0'],
+                'product_type' => [
+                    'required',
+                    'string',
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        if (! app(ProductTypeRegistry::class)->exists((string) $value)) {
+                            $fail('نوع محصول انتخاب‌شده معتبر یا فعال نیست.');
+                        }
+                    },
+                ],
+                'price' => ['required_unless:product_type,capacity_account', 'nullable', 'integer', 'min:0'],
                 'discount_price' => ['nullable', 'integer', 'min:0', 'lt:price'],
                 'compare_price' => ['nullable', 'integer', 'min:0'],
                 'partner_price' => ['nullable', 'integer', 'min:0'],
                 'cost_price' => ['nullable', 'integer', 'min:0'],
-                'stock' => ['required', 'integer', 'min:0'],
+                'stock' => ['required_unless:product_type,capacity_account', 'nullable', 'integer', 'min:0'],
                 'low_stock_threshold' => ['required', 'integer', 'min:0'],
-                'availability' => ['required', Rule::in(['in_stock', 'low_stock', 'out_of_stock', 'preorder', 'coming_soon', 'discontinued'])],
+                'availability' => ['required', Rule::in(array_keys(config('catalog.product.availability')))],
                 'release_date' => ['nullable', 'date'],
+                'published_at' => ['nullable', 'date'],
                 'attribute_values' => ['array'],
                 'attribute_values.*' => ['nullable', 'string', 'max:1000'],
                 'short_description' => ['nullable', 'string', 'max:500'],
@@ -110,15 +127,15 @@ class CatalogRequest extends FormRequest
                 'width' => ['nullable', 'integer', 'min:0'],
                 'height' => ['nullable', 'integer', 'min:0'],
                 'barcode' => ['nullable', 'string', 'max:100'],
-                'condition' => ['nullable', Rule::in(['new', 'used', 'refurbished'])],
+                'condition' => ['nullable', Rule::in(array_keys(config('catalog.product.conditions')))],
                 'requires_shipping' => ['boolean'],
                 'shipping_class' => ['nullable', 'string', 'max:100'],
-                'delivery_method' => ['nullable', Rule::in(['instant', 'manual', 'scheduled'])],
+                'delivery_method' => ['nullable', Rule::in(array_keys(config('catalog.product.delivery_methods')))],
                 'minimum_quantity' => ['required', 'integer', 'min:1'],
                 'maximum_quantity' => ['nullable', 'integer', 'gte:minimum_quantity'],
                 'badge' => ['nullable', 'string', 'max:100'],
-                'status' => ['required', Rule::in(['draft', 'pending_review', 'published', 'hidden', 'archived', 'out_of_stock', 'disabled'])],
-                'visibility' => ['required', Rule::in(['public', 'private', 'members_only', 'hidden'])],
+                'status' => ['required', Rule::in(array_keys(config('catalog.product.statuses')))],
+                'visibility' => ['required', Rule::in(array_keys(config('catalog.product.visibilities')))],
                 'featured' => ['boolean'],
                 'trade_enabled' => ['boolean'],
                 'allow_reviews' => ['boolean'],
@@ -129,8 +146,64 @@ class CatalogRequest extends FormRequest
                 'seo_description' => ['nullable', 'string', 'max:500'],
                 'seo_keywords' => ['nullable', 'string', 'max:255'],
                 'canonical' => ['nullable', 'url', 'max:255'],
+                'media' => ['array', 'max:20'],
+                'media.*.id' => ['nullable', 'integer'],
+                'media.*.file' => [
+                    'nullable', 'file',
+                    'mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime',
+                    'max:2097152',
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        if ($value instanceof UploadedFile
+                            && str_starts_with((string) $value->getMimeType(), 'image/')
+                            && $value->getSize() > 8 * 1024 * 1024) {
+                            $fail('حجم هر تصویر باید حداکثر ۸ مگابایت باشد.');
+                        }
+                    },
+                ],
+                'media.*.alt' => ['nullable', 'string', 'max:255'],
+                'media.*.is_primary' => ['boolean'],
+                'variants' => ['exclude_unless:product_type,capacity_account', 'required_if:product_type,capacity_account', 'array', 'size:3'],
+                'variants.*.capacity' => ['required_if:product_type,capacity_account', 'integer', Rule::in([1, 2, 3]), 'distinct'],
+                'variants.*.sku' => ['required_if:product_type,capacity_account', 'string', 'max:100', 'distinct'],
+                'variants.*.price' => ['required_if:product_type,capacity_account', 'integer', 'min:0'],
+                'variants.*.discount_price' => ['nullable', 'integer', 'min:0'],
+                'variants.*.compare_price' => ['nullable', 'integer', 'min:0'],
+                'variants.*.partner_price' => ['nullable', 'integer', 'min:0'],
+                'variants.*.cost_price' => ['nullable', 'integer', 'min:0'],
+                'variants.*.stock' => ['required_if:product_type,capacity_account', 'integer', 'min:0'],
+                'variants.*.status' => ['required_if:product_type,capacity_account', Rule::in(['active', 'inactive'])],
             ],
             default => abort(404),
         };
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($this->route('catalog') !== 'products') {
+                return;
+            }
+
+            $newCoverImage = collect($this->file('media', []))->contains(
+                fn (mixed $item) => is_array($item)
+                    && isset($item['file'])
+                    && $item['file'] instanceof UploadedFile
+                    && str_starts_with((string) $item['file']->getMimeType(), 'image/'),
+            );
+            $product = $this->route('id')
+                ? Product::query()->find((int) $this->route('id'))
+                : null;
+            $submittedMedia = collect($this->input('media', []));
+            $existingCoverImage = $product && ($submittedMedia->isEmpty()
+                ? $product->media()->where('type', 'image')->exists()
+                : $product->media()->where('type', 'image')->whereIn(
+                    'id',
+                    $submittedMedia->pluck('id')->filter()->map(fn ($id) => (int) $id),
+                )->exists());
+
+            if (! $newCoverImage && ! $existingCoverImage) {
+                $validator->errors()->add('media', 'برای ذخیره محصول، بارگذاری حداقل یک تصویر کاور الزامی است.');
+            }
+        });
     }
 }

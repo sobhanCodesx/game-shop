@@ -19,7 +19,6 @@ import {
     CircleHelp,
     FileSearch,
     Gamepad2,
-    ImagePlus,
     Info,
     PackageCheck,
     Save,
@@ -29,18 +28,32 @@ import {
     Sparkles,
     Truck,
 } from "lucide-react";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import FormField from "../../../Components/Admin/Form/FormField";
 import HeroSelect from "../../../Components/Admin/Form/HeroSelect";
 import PersianDatePicker from "../../../Components/Admin/Form/PersianDatePicker";
 import PriceInput from "../../../Components/Admin/Form/PriceInput";
+import ProductMediaUploader, {
+    type ProductMediaItem,
+} from "../../../Components/Admin/Form/ProductMediaUploader";
 import RichTextEditor from "../../../Components/Admin/Form/RichTextEditor";
 import AdminLayout from "../../../Layouts/AdminLayout";
 
 interface Option {
     id: number;
     name: string;
+}
+interface CatalogOption {
+    id: string;
+    label: string;
+    description?: string;
+    requires_shipping?: boolean;
+    uses_game?: boolean;
+    uses_platforms?: boolean;
+    uses_condition?: boolean;
+    uses_digital_delivery?: boolean;
+    allows_trade?: boolean;
 }
 interface AttributeOption {
     id: number;
@@ -50,16 +63,49 @@ interface AttributeOption {
     options: string[] | null;
     is_required: boolean;
 }
+interface CapacityVariant {
+    id?: number;
+    capacity: number;
+    sku: string;
+    price: number;
+    discount_price: number | "";
+    compare_price: number | "";
+    partner_price: number | "";
+    cost_price: number | "";
+    stock: number;
+    status: string;
+}
 interface FormOptions {
     categories: Option[];
     brands: Option[];
     games: Option[];
     platforms: Option[];
     attributes: AttributeOption[];
+    productTypes: CatalogOption[];
+    availability: CatalogOption[];
+    conditions: CatalogOption[];
+    deliveryMethods: CatalogOption[];
+    statuses: CatalogOption[];
+    visibilities: CatalogOption[];
 }
-interface ProductItem extends Partial<ProductFormData> {
+interface ProductItem extends Omit<
+    Partial<ProductFormData>,
+    "variants" | "media"
+> {
     id: number;
     tags?: string[];
+    variants?: Array<
+        Omit<CapacityVariant, "capacity"> & {
+            attributes?: { capacity?: number };
+        }
+    >;
+    media?: Array<{
+        id: number;
+        type: "image" | "video";
+        url: string;
+        alt: string | null;
+        is_primary: boolean;
+    }>;
 }
 interface ProductFormProps {
     title: string;
@@ -117,28 +163,11 @@ interface ProductFormData {
     seo_keywords: string;
     canonical: string;
     release_date: string;
+    published_at: string;
     attribute_values: Record<string, string>;
+    variants: CapacityVariant[];
+    media: ProductMediaItem[];
 }
-
-const productTypes = [
-    ["physical_game", "دیسک بازی", "بازی فیزیکی با ارسال پستی"],
-    ["digital_game", "بازی دیجیتال", "لایسنس یا کد فعال‌سازی"],
-    ["game_account", "اکانت بازی", "اکانت اختصاصی با تحویل امن"],
-    ["capacity_account", "اکانت ظرفیتی", "ظرفیت قابل تعریف برای بازی"],
-    ["full_capacity", "فول ظرفیت", "دسترسی کامل اکانت"],
-    ["gift_card", "گیفت کارت", "کد دیجیتال با Region"],
-    ["console", "کنسول", "کنسول و سخت‌افزار بازی"],
-    ["controller", "کنترلر", "دسته و کنترلر گیمینگ"],
-    ["headset", "هدست", "هدست و تجهیزات صوتی"],
-    ["keyboard", "کیبورد", "کیبورد گیمینگ"],
-    ["mouse", "ماوس", "ماوس گیمینگ"],
-    ["monitor", "مانیتور", "نمایشگر گیمینگ"],
-    ["dlc", "DLC", "محتوای افزودنی بازی"],
-    ["subscription", "اشتراک", "اشتراک زمان‌دار سرویس"],
-    ["gaming_accessory", "لوازم جانبی", "سایر تجهیزات گیمینگ"],
-    ["merchandise", "کالای هواداری", "Merchandise و کلکسیونی"],
-    ["other", "سایر", "نوع محصول سفارشی"],
-] as const;
 
 const steps = [
     { id: "identity", label: "هویت محصول", icon: ShoppingBag },
@@ -154,6 +183,18 @@ type StepId = (typeof steps)[number]["id"];
 const optionize = (items: Option[]) =>
     items.map((item) => ({ id: item.id.toString(), label: item.name }));
 const numericValue = (value: string) => (value === "" ? "" : Number(value));
+const emptyCapacityVariants = (): CapacityVariant[] =>
+    [1, 2, 3].map((capacity) => ({
+        capacity,
+        sku: "",
+        price: 0,
+        discount_price: "",
+        compare_price: "",
+        partner_price: "",
+        cost_price: "",
+        stock: 0,
+        status: "active",
+    }));
 
 export default function ProductForm({
     title,
@@ -162,69 +203,93 @@ export default function ProductForm({
 }: ProductFormProps) {
     const [activeStep, setActiveStep] = useState<StepId>("identity");
     const [tagsText, setTagsText] = useState(item?.tags?.join("، ") ?? "");
-    const { data, setData, post, put, processing, errors, transform } =
-        useForm<ProductFormData>({
-            title: item?.title ?? "",
-            slug: item?.slug ?? "",
-            sku: item?.sku ?? "",
-            internal_code: item?.internal_code ?? "",
-            product_type: item?.product_type ?? "",
-            category_id: item?.category_id?.toString() ?? "",
-            brand_id: item?.brand_id?.toString() ?? "",
-            game_id: item?.game_id?.toString() ?? "",
-            platform_ids: item?.platform_ids ?? [],
-            short_description: item?.short_description ?? "",
-            description: item?.description ?? "",
-            purchase_notes: item?.purchase_notes ?? "",
-            delivery_notes: item?.delivery_notes ?? "",
-            return_policy: item?.return_policy ?? "",
-            warranty: item?.warranty ?? "",
-            tags: item?.tags ?? [],
-            price: item?.price ?? 0,
-            discount_price: item?.discount_price ?? "",
-            compare_price: item?.compare_price ?? "",
-            partner_price: item?.partner_price ?? "",
-            cost_price: item?.cost_price ?? "",
-            stock: item?.stock ?? 0,
-            low_stock_threshold: item?.low_stock_threshold ?? 5,
-            availability: item?.availability ?? "in_stock",
-            weight: item?.weight ?? "",
-            length: item?.length ?? "",
-            width: item?.width ?? "",
-            height: item?.height ?? "",
-            barcode: item?.barcode ?? "",
-            condition: item?.condition ?? "",
-            requires_shipping: item?.requires_shipping ?? true,
-            shipping_class: item?.shipping_class ?? "",
-            delivery_method: item?.delivery_method ?? "",
-            minimum_quantity: item?.minimum_quantity ?? 1,
-            maximum_quantity: item?.maximum_quantity ?? "",
-            badge: item?.badge ?? "",
-            status: item?.status ?? "draft",
-            visibility: item?.visibility ?? "public",
-            featured: item?.featured ?? false,
-            trade_enabled: item?.trade_enabled ?? false,
-            allow_reviews: item?.allow_reviews ?? true,
-            allow_comments: item?.allow_comments ?? true,
-            allow_questions: item?.allow_questions ?? true,
-            show_stock: item?.show_stock ?? true,
-            seo_title: item?.seo_title ?? "",
-            seo_description: item?.seo_description ?? "",
-            seo_keywords: item?.seo_keywords ?? "",
-            canonical: item?.canonical ?? "",
-            release_date: item?.release_date?.slice(0, 10) ?? "",
-            attribute_values: item?.attribute_values ?? {},
-        });
+    const {
+        data,
+        setData,
+        post,
+        processing,
+        progress,
+        errors,
+        clearErrors,
+        transform,
+    } = useForm<ProductFormData>({
+        title: item?.title ?? "",
+        slug: item?.slug ?? "",
+        sku: item?.sku ?? "",
+        internal_code: item?.internal_code ?? "",
+        product_type: item?.product_type ?? "",
+        category_id: item?.category_id?.toString() ?? "",
+        brand_id: item?.brand_id?.toString() ?? "",
+        game_id: item?.game_id?.toString() ?? "",
+        platform_ids: item?.platform_ids ?? [],
+        short_description: item?.short_description ?? "",
+        description: item?.description ?? "",
+        purchase_notes: item?.purchase_notes ?? "",
+        delivery_notes: item?.delivery_notes ?? "",
+        return_policy: item?.return_policy ?? "",
+        warranty: item?.warranty ?? "",
+        tags: item?.tags ?? [],
+        price: item?.price ?? 0,
+        discount_price: item?.discount_price ?? "",
+        compare_price: item?.compare_price ?? "",
+        partner_price: item?.partner_price ?? "",
+        cost_price: item?.cost_price ?? "",
+        stock: item?.stock ?? 0,
+        low_stock_threshold: item?.low_stock_threshold ?? 5,
+        availability: item?.availability ?? "in_stock",
+        weight: item?.weight ?? "",
+        length: item?.length ?? "",
+        width: item?.width ?? "",
+        height: item?.height ?? "",
+        barcode: item?.barcode ?? "",
+        condition: item?.condition ?? "",
+        requires_shipping: item?.requires_shipping ?? true,
+        shipping_class: item?.shipping_class ?? "",
+        delivery_method: item?.delivery_method ?? "",
+        minimum_quantity: item?.minimum_quantity ?? 1,
+        maximum_quantity: item?.maximum_quantity ?? "",
+        badge: item?.badge ?? "",
+        status: item?.status ?? "draft",
+        visibility: item?.visibility ?? "public",
+        featured: item?.featured ?? false,
+        trade_enabled: item?.trade_enabled ?? false,
+        allow_reviews: item?.allow_reviews ?? true,
+        allow_comments: item?.allow_comments ?? true,
+        allow_questions: item?.allow_questions ?? true,
+        show_stock: item?.show_stock ?? true,
+        seo_title: item?.seo_title ?? "",
+        seo_description: item?.seo_description ?? "",
+        seo_keywords: item?.seo_keywords ?? "",
+        canonical: item?.canonical ?? "",
+        release_date: item?.release_date?.slice(0, 10) ?? "",
+        published_at: item?.published_at?.slice(0, 10) ?? "",
+        attribute_values: item?.attribute_values ?? {},
+        variants: item?.variants?.length
+            ? item.variants.map((variant) => ({
+                  ...variant,
+                  capacity: variant.attributes?.capacity ?? 1,
+              }))
+            : emptyCapacityVariants(),
+        media:
+            item?.media?.map((media) => ({
+                key: `stored-${media.id}`,
+                id: media.id,
+                type: media.type,
+                url: media.url,
+                previewUrl: media.url,
+                alt: media.alt ?? "",
+                is_primary: media.is_primary,
+            })) ?? [],
+    });
 
-    const isDigital = [
-        "digital_game",
-        "game_account",
-        "capacity_account",
-        "full_capacity",
-        "gift_card",
-        "dlc",
-        "subscription",
-    ].includes(data.product_type);
+    const selectedProductType = options.productTypes.find(
+        (type) => type.id === data.product_type,
+    );
+    const isDigital = selectedProductType?.requires_shipping === false;
+    const workflowSteps =
+        data.product_type === "capacity_account"
+            ? steps.filter((step) => step.id !== "pricing")
+            : steps;
     const categoryAttributes = options.attributes.filter(
         (attribute) => attribute.category_id.toString() === data.category_id,
     );
@@ -236,30 +301,67 @@ export default function ProductForm({
             data.sku,
             data.category_id,
             data.price > 0 ? "price" : "",
+            data.media.some((media) => media.type === "image") ? "cover" : "",
             data.status,
         ];
         return Math.round(
             (required.filter(Boolean).length / required.length) * 100,
         );
     }, [data]);
-    const currentStep = steps.findIndex((step) => step.id === activeStep);
+    useEffect(() => {
+        if (errors.media) setActiveStep("content");
+    }, [errors.media]);
+    const currentStep = workflowSteps.findIndex(
+        (step) => step.id === activeStep,
+    );
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        transform((values) => ({
-            ...values,
-            tags: tagsText
-                .split(/[،,]/)
-                .map((tag) => tag.trim())
-                .filter(Boolean),
-        }));
-        item ? put(`/admin/products/${item.id}`) : post("/admin/products");
+        transform((values) => {
+            const isCapacityProduct =
+                values.product_type === "capacity_account";
+            const capacityPrices = values.variants.map(
+                (variant) => variant.price,
+            );
+
+            return {
+                ...values,
+                price: isCapacityProduct
+                    ? Math.min(...capacityPrices)
+                    : values.price,
+                stock: isCapacityProduct
+                    ? values.variants.reduce(
+                          (total, variant) => total + variant.stock,
+                          0,
+                      )
+                    : values.stock,
+                variants: isCapacityProduct ? values.variants : [],
+                media: values.media.map((media) => ({
+                    id: media.id,
+                    file: media.file,
+                    alt: media.alt,
+                    is_primary: media.is_primary,
+                })),
+                tags: tagsText
+                    .split(/[،,]/)
+                    .map((tag) => tag.trim())
+                    .filter(Boolean),
+                ...(item ? { _method: "put" } : {}),
+            };
+        });
+        post(item ? `/admin/products/${item.id}` : "/admin/products", {
+            forceFormData: true,
+        });
     };
 
     const go = (offset: number) =>
         setActiveStep(
-            steps[Math.min(Math.max(currentStep + offset, 0), steps.length - 1)]
-                .id,
+            workflowSteps[
+                Math.min(
+                    Math.max(currentStep + offset, 0),
+                    workflowSteps.length - 1,
+                )
+            ].id,
         );
     const heroInput = (
         key: keyof ProductFormData,
@@ -307,6 +409,17 @@ export default function ProductForm({
             value={data[key]}
         />
     );
+    const updateVariant = <K extends keyof CapacityVariant>(
+        index: number,
+        key: K,
+        value: CapacityVariant[K],
+    ) =>
+        setData(
+            "variants",
+            data.variants.map((variant, variantIndex) =>
+                variantIndex === index ? { ...variant, [key]: value } : variant,
+            ),
+        );
 
     return (
         <AdminLayout
@@ -338,6 +451,32 @@ export default function ProductForm({
         >
             <Head title={title} />
             <form id="product-form" onSubmit={submit}>
+                <div className="relative mb-6 overflow-hidden rounded-3xl border border-indigo-500/25 bg-[radial-gradient(circle_at_15%_0%,rgba(99,102,241,.28),transparent_36%),linear-gradient(135deg,#111827,#020617)] p-6 shadow-2xl shadow-indigo-950/20">
+                    <div className="absolute -left-12 -top-12 size-44 rounded-full bg-fuchsia-500/10 blur-3xl" />
+                    <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-4">
+                            <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-indigo-400/25 bg-indigo-500/15 text-indigo-300 shadow-lg shadow-indigo-950/40">
+                                <Gamepad2 size={29} />
+                            </span>
+                            <div>
+                                <div className="mb-1 flex items-center gap-2 text-xs font-black tracking-wider text-indigo-300">
+                                    <Sparkles size={14} />
+                                    GAME CATALOG STUDIO
+                                </div>
+                                <h2 className="text-xl font-black text-white md:text-2xl">
+                                    محصولی بسازید که گیمرها نتوانند از آن بگذرند
+                                </h2>
+                                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                                    مشخصات فنی، پلتفرم سازگار، قیمت و محتوای
+                                    محصول را مرحله‌به‌مرحله کامل کنید.
+                                </p>
+                            </div>
+                        </div>
+                        <Chip color="accent" variant="soft">
+                            {item ? "حالت ویرایش" : "محصول جدید"}
+                        </Chip>
+                    </div>
+                </div>
                 <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)_300px]">
                     <Card
                         className="h-fit border border-slate-800/80 bg-slate-900/55 xl:sticky xl:top-28"
@@ -369,12 +508,16 @@ export default function ProductForm({
                                 </ProgressBar.Track>
                             </ProgressBar>
                             <div className="mt-5 space-y-1">
-                                {steps.map((step, index) => {
+                                {workflowSteps.map((step, index) => {
                                     const Icon = step.icon;
                                     const active = activeStep === step.id;
                                     return (
                                         <Button
                                             className="w-full justify-start"
+                                            isDisabled={
+                                                !data.product_type &&
+                                                step.id !== "identity"
+                                            }
                                             key={step.id}
                                             onPress={() =>
                                                 setActiveStep(step.id)
@@ -399,7 +542,7 @@ export default function ProductForm({
 
                     <div className="min-w-0">
                         {activeStep === "identity" && (
-                            <section className="space-y-6">
+                            <section className="flex flex-col gap-6">
                                 <Alert color="accent">
                                     <Info size={18} />
                                     <Alert.Content>
@@ -412,16 +555,188 @@ export default function ProductForm({
                                         </Alert.Description>
                                     </Alert.Content>
                                 </Alert>
+                                {data.product_type === "capacity_account" && (
+                                    <Card
+                                        className="order-3 border border-indigo-500/30 bg-slate-900/70"
+                                        variant="secondary"
+                                    >
+                                        <Card.Header className="border-b border-slate-800 p-5">
+                                            <Card.Title>
+                                                قیمت‌گذاری ظرفیت‌های بازی
+                                            </Card.Title>
+                                            <Card.Description>
+                                                هر ظرفیت یک کالای قابل فروش
+                                                مستقل با SKU، قیمت و موجودی
+                                                جداگانه است.
+                                            </Card.Description>
+                                        </Card.Header>
+                                        <Card.Content className="space-y-4 p-5">
+                                            {data.variants.map(
+                                                (variant, index) => (
+                                                    <div
+                                                        className="overflow-hidden rounded-2xl border border-slate-700 bg-[linear-gradient(135deg,rgba(15,23,42,.96),rgba(2,6,23,.82))] shadow-lg shadow-black/10 transition hover:border-indigo-500/40"
+                                                        key={variant.capacity}
+                                                    >
+                                                        <div className="flex flex-col gap-4 border-b border-slate-800/80 p-5 sm:flex-row sm:items-center sm:justify-between">
+                                                            <div className="flex items-center gap-4">
+                                                                <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-indigo-400/20 bg-indigo-500/15 text-xl font-black text-indigo-300">
+                                                                    {variant.capacity.toLocaleString(
+                                                                        "fa-IR",
+                                                                    )}
+                                                                </span>
+                                                                <div>
+                                                                    <p className="text-xs text-indigo-300">
+                                                                        PLAYSTATION
+                                                                        ACCOUNT
+                                                                    </p>
+                                                                    <h3 className="mt-1 text-lg font-black text-white">
+                                                                        ظرفیت{" "}
+                                                                        {variant.capacity.toLocaleString(
+                                                                            "fa-IR",
+                                                                        )}
+                                                                    </h3>
+                                                                </div>
+                                                            </div>
+                                                            <Chip
+                                                                color="accent"
+                                                                variant="soft"
+                                                            >
+                                                                مستقل
+                                                            </Chip>
+                                                        </div>
+                                                        <div className="grid gap-5 p-5 md:grid-cols-2 xl:grid-cols-4">
+                                                            <FormField
+                                                                error={
+                                                                    errors[
+                                                                        `variants.${index}.sku`
+                                                                    ]
+                                                                }
+                                                                label="SKU ظرفیت"
+                                                                required
+                                                            >
+                                                                <Input
+                                                                    dir="ltr"
+                                                                    fullWidth
+                                                                    onChange={(
+                                                                        event,
+                                                                    ) =>
+                                                                        updateVariant(
+                                                                            index,
+                                                                            "sku",
+                                                                            event
+                                                                                .target
+                                                                                .value,
+                                                                        )
+                                                                    }
+                                                                    placeholder={`GAME-CAP-${variant.capacity}`}
+                                                                    value={
+                                                                        variant.sku
+                                                                    }
+                                                                />
+                                                            </FormField>
+                                                            <PriceInput
+                                                                description="قیمت فروش این ظرفیت برای مشتری عادی."
+                                                                error={
+                                                                    errors[
+                                                                        `variants.${index}.price`
+                                                                    ]
+                                                                }
+                                                                label="قیمت مشتری"
+                                                                onChange={(
+                                                                    value,
+                                                                ) =>
+                                                                    updateVariant(
+                                                                        index,
+                                                                        "price",
+                                                                        Number(
+                                                                            value ||
+                                                                                0,
+                                                                        ),
+                                                                    )
+                                                                }
+                                                                required
+                                                                value={
+                                                                    variant.price
+                                                                }
+                                                            />
+                                                            <PriceInput
+                                                                description="قیمت اختصاصی همکار برای همین ظرفیت."
+                                                                error={
+                                                                    errors[
+                                                                        `variants.${index}.partner_price`
+                                                                    ]
+                                                                }
+                                                                label="قیمت همکار"
+                                                                onChange={(
+                                                                    value,
+                                                                ) =>
+                                                                    updateVariant(
+                                                                        index,
+                                                                        "partner_price",
+                                                                        value,
+                                                                    )
+                                                                }
+                                                                value={
+                                                                    variant.partner_price
+                                                                }
+                                                            />
+                                                            <FormField
+                                                                error={
+                                                                    errors[
+                                                                        `variants.${index}.stock`
+                                                                    ]
+                                                                }
+                                                                label="موجودی"
+                                                                required
+                                                            >
+                                                                <Input
+                                                                    fullWidth
+                                                                    min={0}
+                                                                    onChange={(
+                                                                        event,
+                                                                    ) =>
+                                                                        updateVariant(
+                                                                            index,
+                                                                            "stock",
+                                                                            Number(
+                                                                                event
+                                                                                    .target
+                                                                                    .value,
+                                                                            ),
+                                                                        )
+                                                                    }
+                                                                    type="number"
+                                                                    value={String(
+                                                                        variant.stock,
+                                                                    )}
+                                                                />
+                                                            </FormField>
+                                                        </div>
+                                                    </div>
+                                                ),
+                                            )}
+                                        </Card.Content>
+                                    </Card>
+                                )}
                                 <Card
-                                    className="border border-slate-800/80 bg-slate-900/55"
+                                    className="order-1 border border-slate-800/80 bg-slate-900/55"
                                     variant="secondary"
                                 >
                                     <Card.Header className="border-b border-slate-800/80 p-5">
                                         <Card.Title>نوع محصول</Card.Title>
                                     </Card.Header>
                                     <Card.Content className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
-                                        {productTypes.map(
-                                            ([id, label, description]) => (
+                                        {options.productTypes.map(
+                                            ({
+                                                id,
+                                                label,
+                                                description,
+                                                requires_shipping,
+                                                uses_game,
+                                                uses_platforms,
+                                                uses_condition,
+                                                uses_digital_delivery,
+                                            }) => (
                                                 <Button
                                                     className={`h-auto min-h-20 justify-start p-4 text-right ${data.product_type === id ? "ring-2 ring-indigo-500" : ""}`}
                                                     key={id}
@@ -432,16 +747,31 @@ export default function ProductForm({
                                                         );
                                                         setData(
                                                             "requires_shipping",
-                                                            ![
-                                                                "digital_game",
-                                                                "game_account",
-                                                                "capacity_account",
-                                                                "full_capacity",
-                                                                "gift_card",
-                                                                "dlc",
-                                                                "subscription",
-                                                            ].includes(id),
+                                                            requires_shipping ??
+                                                                true,
                                                         );
+                                                        if (!uses_game)
+                                                            setData(
+                                                                "game_id",
+                                                                "",
+                                                            );
+                                                        if (!uses_platforms)
+                                                            setData(
+                                                                "platform_ids",
+                                                                [],
+                                                            );
+                                                        if (!uses_condition)
+                                                            setData(
+                                                                "condition",
+                                                                "",
+                                                            );
+                                                        if (
+                                                            !uses_digital_delivery
+                                                        )
+                                                            setData(
+                                                                "delivery_method",
+                                                                "",
+                                                            );
                                                     }}
                                                     variant={
                                                         data.product_type === id
@@ -462,73 +792,86 @@ export default function ProductForm({
                                         )}
                                     </Card.Content>
                                 </Card>
-                                <Card
-                                    className="border border-slate-800/80 bg-slate-900/55"
-                                    variant="secondary"
-                                >
-                                    <Card.Header className="border-b border-slate-800/80 p-5">
-                                        <Card.Title>مشخصات شناسایی</Card.Title>
-                                    </Card.Header>
-                                    <Card.Content className="grid gap-5 p-5 sm:grid-cols-2">
-                                        {heroInput("title", "عنوان محصول", {
-                                            required: true,
-                                            placeholder:
-                                                "مثلاً دیسک بازی GTA VI برای PS5",
-                                            description:
-                                                "عنوانی بنویسید که نوع، بازی و پلتفرم را شفاف کند.",
-                                        })}
-                                        {heroInput("slug", "آدرس محصول", {
-                                            required: true,
-                                            dir: "ltr",
-                                            placeholder: "gta-vi-ps5-disc",
-                                        })}
-                                        {heroInput("sku", "SKU", {
-                                            required: true,
-                                            dir: "ltr",
-                                            placeholder: "GTA6-PS5-DISC",
-                                            description:
-                                                "شناسه یکتا و قابل جستجوی انبار.",
-                                        })}
-                                        {heroInput(
-                                            "internal_code",
-                                            "کد داخلی",
-                                            {
+                                {selectedProductType && (
+                                    <Card
+                                        className="order-2 border border-slate-800/80 bg-slate-900/55"
+                                        variant="secondary"
+                                    >
+                                        <Card.Header className="border-b border-slate-800/80 p-5">
+                                            <Card.Title>
+                                                مشخصات شناسایی
+                                            </Card.Title>
+                                        </Card.Header>
+                                        <Card.Content className="grid gap-5 p-5 sm:grid-cols-2">
+                                            {heroInput("title", "عنوان محصول", {
+                                                required: true,
+                                                placeholder:
+                                                    "مثلاً دیسک بازی GTA VI برای PS5",
+                                                description:
+                                                    "عنوانی بنویسید که نوع، بازی و پلتفرم را شفاف کند.",
+                                            })}
+                                            {heroInput("slug", "آدرس محصول", {
+                                                required: true,
                                                 dir: "ltr",
-                                                placeholder: "PRD-10024",
-                                            },
-                                        )}
-                                        <PersianDatePicker
-                                            description="تاریخ را مستقیماً از تقویم شمسی انتخاب کنید."
-                                            error={errors.release_date}
-                                            label="تاریخ انتشار"
-                                            onChange={(value) =>
-                                                setData("release_date", value)
-                                            }
-                                            value={data.release_date}
-                                        />
-                                        <div className="sm:col-span-2">
-                                            <FormField
-                                                error={errors.short_description}
-                                                label="توضیح کوتاه"
-                                            >
-                                                <TextArea
-                                                    fullWidth
-                                                    maxLength={500}
-                                                    onChange={(event) =>
+                                                placeholder: "gta-vi-ps5-disc",
+                                            })}
+                                            {heroInput("sku", "SKU", {
+                                                required: true,
+                                                dir: "ltr",
+                                                placeholder: "GTA6-PS5-DISC",
+                                                description:
+                                                    "شناسه یکتا و قابل جستجوی انبار.",
+                                            })}
+                                            {heroInput(
+                                                "internal_code",
+                                                "کد داخلی",
+                                                {
+                                                    dir: "ltr",
+                                                    placeholder: "PRD-10024",
+                                                },
+                                            )}
+                                            {selectedProductType?.uses_game && (
+                                                <PersianDatePicker
+                                                    description="تاریخ را مستقیماً از تقویم شمسی انتخاب کنید."
+                                                    error={errors.release_date}
+                                                    label="تاریخ انتشار بازی"
+                                                    name="game_release_date_picker"
+                                                    onChange={(value) =>
                                                         setData(
-                                                            "short_description",
-                                                            event.target.value,
+                                                            "release_date",
+                                                            value,
                                                         )
                                                     }
-                                                    placeholder="در یک یا دو جمله دقیقاً بگویید مشتری چه چیزی دریافت می‌کند."
-                                                    value={
-                                                        data.short_description
-                                                    }
+                                                    value={data.release_date}
                                                 />
-                                            </FormField>
-                                        </div>
-                                    </Card.Content>
-                                </Card>
+                                            )}
+                                            <div className="sm:col-span-2">
+                                                <FormField
+                                                    error={
+                                                        errors.short_description
+                                                    }
+                                                    label="توضیح کوتاه"
+                                                >
+                                                    <TextArea
+                                                        fullWidth
+                                                        maxLength={500}
+                                                        onChange={(event) =>
+                                                            setData(
+                                                                "short_description",
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        placeholder="در یک یا دو جمله دقیقاً بگویید مشتری چه چیزی دریافت می‌کند."
+                                                        value={
+                                                            data.short_description
+                                                        }
+                                                    />
+                                                </FormField>
+                                            </div>
+                                        </Card.Content>
+                                    </Card>
+                                )}
                             </section>
                         )}
 
@@ -571,16 +914,20 @@ export default function ProductForm({
                                             placeholder="برند را انتخاب کنید"
                                             value={data.brand_id}
                                         />
-                                        <HeroSelect
-                                            error={errors.game_id}
-                                            label="بازی مرتبط"
-                                            onChange={(value) =>
-                                                setData("game_id", value)
-                                            }
-                                            options={optionize(options.games)}
-                                            placeholder="در صورت ارتباط انتخاب کنید"
-                                            value={data.game_id}
-                                        />
+                                        {selectedProductType?.uses_game && (
+                                            <HeroSelect
+                                                error={errors.game_id}
+                                                label="بازی مرتبط"
+                                                onChange={(value) =>
+                                                    setData("game_id", value)
+                                                }
+                                                options={optionize(
+                                                    options.games,
+                                                )}
+                                                placeholder="بازی پایه را انتخاب کنید"
+                                                value={data.game_id}
+                                            />
+                                        )}
                                         <FormField
                                             description="با ویرگول فارسی یا انگلیسی جدا کنید."
                                             error={errors.tags}
@@ -598,48 +945,52 @@ export default function ProductForm({
                                             />
                                         </FormField>
                                     </div>
-                                    <div>
-                                        <p className="mb-3 text-sm font-bold text-slate-300">
-                                            پلتفرم‌های سازگار
-                                        </p>
-                                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                            {options.platforms.map(
-                                                (platform) => (
-                                                    <Checkbox
-                                                        isSelected={data.platform_ids.includes(
-                                                            platform.id,
-                                                        )}
-                                                        key={platform.id}
-                                                        onChange={(selected) =>
-                                                            setData(
-                                                                "platform_ids",
-                                                                selected
-                                                                    ? [
-                                                                          ...data.platform_ids,
-                                                                          platform.id,
-                                                                      ]
-                                                                    : data.platform_ids.filter(
-                                                                          (
-                                                                              id,
-                                                                          ) =>
-                                                                              id !==
+                                    {selectedProductType?.uses_platforms && (
+                                        <div>
+                                            <p className="mb-3 text-sm font-bold text-slate-300">
+                                                پلتفرم‌های سازگار
+                                            </p>
+                                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                                {options.platforms.map(
+                                                    (platform) => (
+                                                        <Checkbox
+                                                            isSelected={data.platform_ids.includes(
+                                                                platform.id,
+                                                            )}
+                                                            key={platform.id}
+                                                            onChange={(
+                                                                selected,
+                                                            ) =>
+                                                                setData(
+                                                                    "platform_ids",
+                                                                    selected
+                                                                        ? [
+                                                                              ...data.platform_ids,
                                                                               platform.id,
-                                                                      ),
-                                                            )
-                                                        }
-                                                        variant="secondary"
-                                                    >
-                                                        <Checkbox.Control>
-                                                            <Checkbox.Indicator />
-                                                        </Checkbox.Control>
-                                                        <Checkbox.Content>
-                                                            {platform.name}
-                                                        </Checkbox.Content>
-                                                    </Checkbox>
-                                                ),
-                                            )}
+                                                                          ]
+                                                                        : data.platform_ids.filter(
+                                                                              (
+                                                                                  id,
+                                                                              ) =>
+                                                                                  id !==
+                                                                                  platform.id,
+                                                                          ),
+                                                                )
+                                                            }
+                                                            variant="secondary"
+                                                        >
+                                                            <Checkbox.Control>
+                                                                <Checkbox.Indicator />
+                                                            </Checkbox.Control>
+                                                            <Checkbox.Content>
+                                                                {platform.name}
+                                                            </Checkbox.Content>
+                                                        </Checkbox>
+                                                    ),
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                     {categoryAttributes.length > 0 && (
                                         <div className="border-t border-slate-800 pt-6">
                                             <div className="mb-4">
@@ -755,43 +1106,45 @@ export default function ProductForm({
                                         </Alert.Description>
                                     </Alert.Content>
                                 </Alert>
-                                <Card
-                                    className="border border-slate-800/80 bg-slate-900/55"
-                                    variant="secondary"
-                                >
-                                    <Card.Header className="border-b border-slate-800/80 p-5">
-                                        <Card.Title>
-                                            ساختار قیمت‌گذاری
-                                        </Card.Title>
-                                    </Card.Header>
-                                    <Card.Content className="grid gap-5 p-5 sm:grid-cols-2">
-                                        {moneyInput(
-                                            "price",
-                                            "قیمت عادی",
-                                            "قیمت پایه و مرجع محصول.",
-                                        )}
-                                        {moneyInput(
-                                            "discount_price",
-                                            "قیمت فروش",
-                                            "قیمت فعلی مشتری؛ باید کمتر از قیمت عادی باشد.",
-                                        )}
-                                        {moneyInput(
-                                            "compare_price",
-                                            "قیمت مقایسه‌ای",
-                                            "قیمت قبلی برای نمایش خط‌خورده.",
-                                        )}
-                                        {moneyInput(
-                                            "partner_price",
-                                            "قیمت همکار",
-                                            "فقط برای کاربران Partner و محاسبات Backend.",
-                                        )}
-                                        {moneyInput(
-                                            "cost_price",
-                                            "قیمت تمام‌شده",
-                                            "محرمانه؛ فقط مدیر مالی مشاهده می‌کند.",
-                                        )}
-                                    </Card.Content>
-                                </Card>
+                                {data.product_type !== "capacity_account" && (
+                                    <Card
+                                        className="border border-slate-800/80 bg-slate-900/55"
+                                        variant="secondary"
+                                    >
+                                        <Card.Header className="border-b border-slate-800/80 p-5">
+                                            <Card.Title>
+                                                ساختار قیمت‌گذاری
+                                            </Card.Title>
+                                        </Card.Header>
+                                        <Card.Content className="grid gap-5 p-5 sm:grid-cols-2">
+                                            {moneyInput(
+                                                "price",
+                                                "قیمت عادی",
+                                                "قیمت پایه و مرجع محصول.",
+                                            )}
+                                            {moneyInput(
+                                                "discount_price",
+                                                "قیمت فروش",
+                                                "قیمت فعلی مشتری؛ باید کمتر از قیمت عادی باشد.",
+                                            )}
+                                            {moneyInput(
+                                                "compare_price",
+                                                "قیمت مقایسه‌ای",
+                                                "قیمت قبلی برای نمایش خط‌خورده.",
+                                            )}
+                                            {moneyInput(
+                                                "partner_price",
+                                                "قیمت همکار",
+                                                "فقط برای کاربران Partner و محاسبات Backend.",
+                                            )}
+                                            {moneyInput(
+                                                "cost_price",
+                                                "قیمت تمام‌شده",
+                                                "محرمانه؛ فقط مدیر مالی مشاهده می‌کند.",
+                                            )}
+                                        </Card.Content>
+                                    </Card>
+                                )}
                             </section>
                         )}
 
@@ -821,17 +1174,7 @@ export default function ProductForm({
                                             onChange={(value) =>
                                                 setData("availability", value)
                                             }
-                                            options={[
-                                                ["in_stock", "موجود"],
-                                                ["low_stock", "موجودی کم"],
-                                                ["out_of_stock", "ناموجود"],
-                                                ["preorder", "پیش‌فروش"],
-                                                ["coming_soon", "به‌زودی"],
-                                                ["discontinued", "توقف تولید"],
-                                            ].map(([id, label]) => ({
-                                                id,
-                                                label,
-                                            }))}
+                                            options={options.availability}
                                             value={data.availability}
                                         />
                                         {heroInput("barcode", "بارکد", {
@@ -882,24 +1225,19 @@ export default function ProductForm({
                                                 "ارتفاع (میلی‌متر)",
                                                 { type: "number" },
                                             )}
-                                            <HeroSelect
-                                                label="وضعیت کالا"
-                                                onChange={(value) =>
-                                                    setData("condition", value)
-                                                }
-                                                options={[
-                                                    { id: "new", label: "نو" },
-                                                    {
-                                                        id: "used",
-                                                        label: "کارکرده",
-                                                    },
-                                                    {
-                                                        id: "refurbished",
-                                                        label: "بازسازی‌شده",
-                                                    },
-                                                ]}
-                                                value={data.condition}
-                                            />
+                                            {selectedProductType?.uses_condition && (
+                                                <HeroSelect
+                                                    label="وضعیت کالا"
+                                                    onChange={(value) =>
+                                                        setData(
+                                                            "condition",
+                                                            value,
+                                                        )
+                                                    }
+                                                    options={options.conditions}
+                                                    value={data.condition}
+                                                />
+                                            )}
                                         </Card.Content>
                                     </Card>
                                 )}
@@ -937,12 +1275,12 @@ export default function ProductForm({
                                             error={errors.purchase_notes}
                                             label="نکات مهم قبل از خرید"
                                         >
-                                            <TextArea
-                                                fullWidth
-                                                onChange={(event) =>
+                                            <RichTextEditor
+                                                minHeight={150}
+                                                onChange={(value) =>
                                                     setData(
                                                         "purchase_notes",
-                                                        event.target.value,
+                                                        value,
                                                     )
                                                 }
                                                 placeholder="هشدارها و پیش‌نیازهایی که مشتری باید قبل از خرید بداند."
@@ -953,67 +1291,87 @@ export default function ProductForm({
                                             error={errors.delivery_notes}
                                             label="راهنمای تحویل"
                                         >
-                                            <TextArea
-                                                fullWidth
-                                                onChange={(event) =>
+                                            <RichTextEditor
+                                                minHeight={150}
+                                                onChange={(value) =>
                                                     setData(
                                                         "delivery_notes",
-                                                        event.target.value,
+                                                        value,
                                                     )
                                                 }
                                                 placeholder="زمان، روش و مراحل دریافت محصول."
                                                 value={data.delivery_notes}
                                             />
                                         </FormField>
-                                        <div className="grid gap-5 sm:grid-cols-2">
-                                            {heroInput("warranty", "گارانتی", {
-                                                placeholder:
-                                                    "مثلاً ۱۸ ماه گارانتی رسمی",
-                                            })}
-                                            <HeroSelect
-                                                label="روش تحویل دیجیتال"
+                                        <FormField
+                                            error={errors.return_policy}
+                                            label="شرایط بازگشت و مرجوعی"
+                                        >
+                                            <RichTextEditor
+                                                minHeight={150}
                                                 onChange={(value) =>
                                                     setData(
-                                                        "delivery_method",
+                                                        "return_policy",
                                                         value,
                                                     )
                                                 }
-                                                options={[
-                                                    {
-                                                        id: "instant",
-                                                        label: "آنی و خودکار",
-                                                    },
-                                                    {
-                                                        id: "manual",
-                                                        label: "دستی توسط پشتیبانی",
-                                                    },
-                                                    {
-                                                        id: "scheduled",
-                                                        label: "زمان‌بندی‌شده",
-                                                    },
-                                                ]}
-                                                value={data.delivery_method}
+                                                placeholder="شرایط، مهلت و استثناهای بازگشت این محصول را شفاف بنویسید."
+                                                value={data.return_policy}
                                             />
+                                        </FormField>
+                                        <div className="grid gap-5 sm:grid-cols-2">
+                                            {!isDigital &&
+                                                heroInput(
+                                                    "warranty",
+                                                    "گارانتی",
+                                                    {
+                                                        placeholder:
+                                                            "مثلاً ۱۸ ماه گارانتی رسمی",
+                                                    },
+                                                )}
+                                            {selectedProductType?.uses_digital_delivery && (
+                                                <HeroSelect
+                                                    label="روش تحویل دیجیتال"
+                                                    onChange={(value) =>
+                                                        setData(
+                                                            "delivery_method",
+                                                            value,
+                                                        )
+                                                    }
+                                                    options={
+                                                        options.deliveryMethods
+                                                    }
+                                                    value={data.delivery_method}
+                                                />
+                                            )}
                                         </div>
                                     </Card.Content>
                                 </Card>
                                 <Card
-                                    className="border border-dashed border-slate-700 bg-slate-900/30"
+                                    className="border border-slate-800/80 bg-slate-900/55"
                                     variant="secondary"
                                 >
-                                    <Card.Content className="flex flex-col items-center p-8 text-center">
-                                        <ImagePlus
-                                            className="text-indigo-400"
-                                            size={30}
+                                    <Card.Header className="border-b border-slate-800/80 p-5">
+                                        <div>
+                                            <Card.Title>
+                                                تصاویر و ویدئوهای محصول
+                                            </Card.Title>
+                                            <p className="mt-1 text-xs text-slate-500">
+                                                اولین تصویر به‌صورت خودکار کاور
+                                                می‌شود و می‌توانید ترتیب گالری
+                                                را تغییر دهید.
+                                            </p>
+                                        </div>
+                                    </Card.Header>
+                                    <Card.Content className="p-5">
+                                        <ProductMediaUploader
+                                            error={errors.media}
+                                            onChange={(media) =>
+                                                setData("media", media)
+                                            }
+                                            progress={progress?.percentage}
+                                            value={data.media}
                                         />
-                                        <h3 className="mt-3 font-bold">
-                                            رسانه و گالری پس از ذخیره اولیه
-                                        </h3>
-                                        <p className="mt-2 text-sm text-slate-500">
-                                            ابتدا محصول را ذخیره کنید تا آپلود
-                                            امن، مرتب‌سازی و انتخاب تصویر کاور
-                                            فعال شود.
-                                        </p>
                                     </Card.Content>
                                 </Card>
                             </section>
@@ -1098,36 +1456,11 @@ export default function ProductForm({
                                         <HeroSelect
                                             error={errors.status}
                                             label="وضعیت محصول"
-                                            onChange={(value) =>
-                                                setData("status", value)
-                                            }
-                                            options={[
-                                                {
-                                                    id: "draft",
-                                                    label: "پیش‌نویس",
-                                                },
-                                                {
-                                                    id: "pending_review",
-                                                    label: "در انتظار بررسی",
-                                                },
-                                                {
-                                                    id: "published",
-                                                    label: "منتشرشده",
-                                                },
-                                                { id: "hidden", label: "مخفی" },
-                                                {
-                                                    id: "archived",
-                                                    label: "آرشیو",
-                                                },
-                                                {
-                                                    id: "out_of_stock",
-                                                    label: "ناموجود",
-                                                },
-                                                {
-                                                    id: "disabled",
-                                                    label: "غیرفعال",
-                                                },
-                                            ]}
+                                            onChange={(value) => {
+                                                setData("status", value);
+                                                clearErrors("status");
+                                            }}
+                                            options={options.statuses}
                                             required
                                             value={data.status}
                                         />
@@ -1136,25 +1469,18 @@ export default function ProductForm({
                                             onChange={(value) =>
                                                 setData("visibility", value)
                                             }
-                                            options={[
-                                                {
-                                                    id: "public",
-                                                    label: "عمومی",
-                                                },
-                                                {
-                                                    id: "private",
-                                                    label: "خصوصی",
-                                                },
-                                                {
-                                                    id: "members_only",
-                                                    label: "فقط اعضا",
-                                                },
-                                                {
-                                                    id: "hidden",
-                                                    label: "پنهان",
-                                                },
-                                            ]}
+                                            options={options.visibilities}
                                             value={data.visibility}
+                                        />
+                                        <PersianDatePicker
+                                            description="تاریخی که محصول از آن روز در فروشگاه منتشر می‌شود؛ خالی بگذارید تا زمان انتشار خودکار ثبت شود."
+                                            error={errors.published_at}
+                                            label="تاریخ انتشار محصول در سایت"
+                                            name="website_publish_date_picker"
+                                            onChange={(value) =>
+                                                setData("published_at", value)
+                                            }
+                                            value={data.published_at}
                                         />
                                         {heroInput("badge", "نشان محصول", {
                                             placeholder:
@@ -1196,23 +1522,31 @@ export default function ProductForm({
                                                     "نمایش موجودی به مشتری",
                                                 ],
                                             ] as const
-                                        ).map(([key, label]) => (
-                                            <Checkbox
-                                                isSelected={Boolean(data[key])}
-                                                key={key}
-                                                onChange={(selected) =>
-                                                    setData(key, selected)
-                                                }
-                                                variant="secondary"
-                                            >
-                                                <Checkbox.Control>
-                                                    <Checkbox.Indicator />
-                                                </Checkbox.Control>
-                                                <Checkbox.Content>
-                                                    {label}
-                                                </Checkbox.Content>
-                                            </Checkbox>
-                                        ))}
+                                        )
+                                            .filter(
+                                                ([key]) =>
+                                                    key !== "trade_enabled" ||
+                                                    selectedProductType?.allows_trade,
+                                            )
+                                            .map(([key, label]) => (
+                                                <Checkbox
+                                                    isSelected={Boolean(
+                                                        data[key],
+                                                    )}
+                                                    key={key}
+                                                    onChange={(selected) =>
+                                                        setData(key, selected)
+                                                    }
+                                                    variant="secondary"
+                                                >
+                                                    <Checkbox.Control>
+                                                        <Checkbox.Indicator />
+                                                    </Checkbox.Control>
+                                                    <Checkbox.Content>
+                                                        {label}
+                                                    </Checkbox.Content>
+                                                </Checkbox>
+                                            ))}
                                     </Card.Content>
                                 </Card>
                             </section>
@@ -1227,7 +1561,7 @@ export default function ProductForm({
                                 <ChevronRight size={17} />
                                 مرحله قبل
                             </Button>
-                            {currentStep < steps.length - 1 ? (
+                            {currentStep < workflowSteps.length - 1 ? (
                                 <Button onPress={() => go(1)} variant="primary">
                                     مرحله بعد
                                     <ChevronLeft size={17} />
@@ -1270,9 +1604,8 @@ export default function ProductForm({
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     <Chip size="sm" variant="soft">
-                                        {productTypes.find(
-                                            ([id]) => id === data.product_type,
-                                        )?.[1] || "نوع انتخاب نشده"}
+                                        {selectedProductType?.label ||
+                                            "نوع انتخاب نشده"}
                                     </Chip>
                                     <Chip size="sm" variant="soft">
                                         {options.categories.find(

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -16,7 +17,7 @@ class Product extends Model
 
     protected $fillable = [
         'category_id', 'brand_id', 'game_id', 'title', 'slug', 'sku', 'internal_code',
-        'short_description', 'description', 'product_type', 'price',
+        'short_description', 'description', 'product_type', 'product_type_id', 'price',
         'discount_price', 'compare_price', 'partner_price', 'cost_price', 'stock',
         'reserved_stock', 'sold_stock', 'low_stock_threshold', 'availability', 'release_date', 'status',
         'featured', 'visibility', 'weight', 'condition', 'length', 'width', 'height',
@@ -53,9 +54,24 @@ class Product extends Model
         ));
     }
 
+    public function scopePubliclyVisible(Builder $query): Builder
+    {
+        return $query
+            ->where('status', 'published')
+            ->where('visibility', 'public')
+            ->where(fn (Builder $query) => $query
+                ->whereNull('published_at')
+                ->orWhere('published_at', '<=', now()));
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function type(): BelongsTo
+    {
+        return $this->belongsTo(ProductType::class, 'product_type_id');
     }
 
     public function brand(): BelongsTo
@@ -76,6 +92,19 @@ class Product extends Model
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
+    }
+
+    public function media(): HasMany
+    {
+        return $this->hasMany(ProductMedia::class)->orderBy('sort_order');
+    }
+
+    public function coverMedia(): HasOne
+    {
+        return $this->hasOne(ProductMedia::class)
+            ->where('type', 'image')
+            ->orderByDesc('is_primary')
+            ->orderBy('sort_order');
     }
 
     public function attributeValues(): HasMany

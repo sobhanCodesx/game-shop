@@ -51,6 +51,8 @@ export const adminNavigation: NavigationGroup[] = [
         items: [
             { label: "صفحه اصلی", href: "/admin/home", icon: Home },
             { label: "محصولات", href: "/admin/products", icon: ShoppingBag },
+            { label: "انواع محصول", href: "/admin/product-types", icon: Boxes },
+            { label: "ویژگی‌های محصول", href: "/admin/attributes", icon: Tags },
             {
                 label: "دسته‌بندی‌ها",
                 href: "/admin/categories",
@@ -113,7 +115,11 @@ export const adminNavigation: NavigationGroup[] = [
                 icon: ShieldCheck,
             },
             { label: "اعلان‌ها", href: "/admin/notifications", icon: Activity },
-            { label: "پشتیبانی", href: "/admin/support", icon: LifeBuoy },
+            {
+                label: "تیکت‌های پشتیبانی",
+                href: "/admin/tickets",
+                icon: LifeBuoy,
+            },
         ],
     },
     {

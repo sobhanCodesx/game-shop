@@ -10,12 +10,16 @@ use App\Models\CategoryAttribute;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\Product;
+use App\Services\ProductMediaService;
+use App\Services\ProductTypeRegistry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use App\Services\MediaStorage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -55,7 +59,11 @@ class CatalogController extends Controller
             'items' => collect($paginator->items())->map(fn (Model $item) => [
                 'id' => $item->getKey(),
                 'cells' => $this->cells($catalog, $item),
+                'coverUrl' => $item instanceof Product && $item->coverMedia
+                    ? MediaStorage::url($item->coverMedia->path)
+                    : null,
                 'editUrl' => route('admin.catalog.edit', [$catalog, $item->getKey()]),
+                'mediaUrl' => $item instanceof Product ? route('admin.products.media.edit', $item) : null,
                 'deleteUrl' => route('admin.catalog.destroy', [$catalog, $item->getKey()]),
             ]),
             'filters' => ['search' => $search, 'status' => $status],
@@ -73,16 +81,20 @@ class CatalogController extends Controller
         return $this->form($catalog, null);
     }
 
-    public function store(CatalogRequest $request, string $catalog): RedirectResponse
+    public function store(CatalogRequest $request, string $catalog, ProductTypeRegistry $productTypes, ProductMediaService $media): RedirectResponse
     {
         $definition = $this->definition($catalog);
-        $data = $request->validated();
+        $data = $this->withProductType($this->withCapacityTotals($request->validated()), $productTypes);
 
-        DB::transaction(function () use ($definition, $data, $catalog): void {
-            $model = $definition['model']::create(Arr::except($data, ['platform_ids', 'attribute_values', 'attributes']));
+        DB::transaction(function () use ($definition, $data, $catalog, $media): void {
+            $model = $definition['model']::create(Arr::except($data, ['platform_ids', 'attribute_values', 'attributes', 'variants', 'media']));
             $this->syncPlatforms($catalog, $model, $data['platform_ids'] ?? []);
             $this->syncAttributeValues($catalog, $model, $data['attribute_values'] ?? []);
             $this->syncCategoryAttributes($catalog, $model, $data['attributes'] ?? []);
+            $this->syncVariants($catalog, $model, $data['variants'] ?? []);
+            if ($model instanceof Product && array_key_exists('media', $data)) {
+                $media->sync($model, $data['media'] ?? []);
+            }
         });
 
         return to_route('admin.catalog.index', $catalog)
@@ -94,13 +106,13 @@ class CatalogController extends Controller
         return $this->form($catalog, $this->find($catalog, $id));
     }
 
-    public function update(CatalogRequest $request, string $catalog, int $id): RedirectResponse
+    public function update(CatalogRequest $request, string $catalog, int $id, ProductTypeRegistry $productTypes, ProductMediaService $media): RedirectResponse
     {
         $definition = $this->definition($catalog);
         $model = $this->find($catalog, $id);
-        $data = $request->validated();
+        $data = $this->withProductType($this->withCapacityTotals($request->validated()), $productTypes);
 
-        DB::transaction(function () use ($model, $data, $catalog, $request): void {
+        DB::transaction(function () use ($model, $data, $catalog, $request, $media): void {
             if ($catalog === 'products' && ($model->price !== $data['price'] || $model->discount_price !== ($data['discount_price'] ?? null))) {
                 DB::table('product_price_histories')->insert([
                     'product_id' => $model->getKey(),
@@ -113,10 +125,14 @@ class CatalogController extends Controller
                 ]);
             }
 
-            $model->update(Arr::except($data, ['platform_ids', 'attribute_values', 'attributes']));
+            $model->update(Arr::except($data, ['platform_ids', 'attribute_values', 'attributes', 'variants', 'media']));
             $this->syncPlatforms($catalog, $model, $data['platform_ids'] ?? []);
             $this->syncAttributeValues($catalog, $model, $data['attribute_values'] ?? []);
             $this->syncCategoryAttributes($catalog, $model, $data['attributes'] ?? []);
+            $this->syncVariants($catalog, $model, $data['variants'] ?? []);
+            if ($model instanceof Product && array_key_exists('media', $data)) {
+                $media->sync($model, $data['media'] ?? []);
+            }
         });
 
         return to_route('admin.catalog.index', $catalog)
@@ -145,7 +161,7 @@ class CatalogController extends Controller
             'brands' => Brand::query()->withCount('products'),
             'games' => Game::query()->withCount('products'),
             'platforms' => Platform::query()->withCount(['games', 'products']),
-            'products' => Product::query()->with('category:id,name'),
+            'products' => Product::query()->with(['category:id,name', 'coverMedia:id,product_id,path,type,is_primary,sort_order']),
             default => abort(404),
         };
     }
@@ -171,7 +187,7 @@ class CatalogController extends Controller
         }
 
         if ($model instanceof Product) {
-            $model->loadMissing('attributeValues');
+            $model->loadMissing(['attributeValues', 'variants', 'media']);
         }
 
         if ($model instanceof Category) {
@@ -189,9 +205,18 @@ class CatalogController extends Controller
             'title' => ($model ? 'ویرایش ' : 'ایجاد ').$definition['singular'],
             'item' => $model ? [
                 ...$model->toArray(),
+                'status' => $model instanceof Product
+                    ? $this->normalizeProductStatus($model->status)
+                    : $model->status,
                 'platform_ids' => method_exists($model, 'platforms') ? $model->platforms->pluck('id') : [],
                 'attribute_values' => $model instanceof Product
                     ? $model->attributeValues->pluck('value', 'category_attribute_id')
+                    : [],
+                'media' => $model instanceof Product
+                    ? $model->media->map(fn ($media) => [
+                        ...$media->only(['id', 'type', 'alt', 'is_primary']),
+                        'url' => MediaStorage::url($media->path),
+                    ])->values()
                     : [],
             ] : null,
             'options' => [
@@ -202,8 +227,56 @@ class CatalogController extends Controller
                 'attributes' => CategoryAttribute::query()->orderBy('sort_order')->get([
                     'id', 'category_id', 'name', 'type', 'options', 'is_required',
                 ]),
+                'productTypes' => app(ProductTypeRegistry::class)->activeOptions(),
+                'availability' => $this->catalogOptions('availability'),
+                'conditions' => $this->catalogOptions('conditions'),
+                'deliveryMethods' => $this->catalogOptions('delivery_methods'),
+                'statuses' => $this->catalogOptions('statuses'),
+                'visibilities' => $this->catalogOptions('visibilities'),
             ],
         ]);
+    }
+
+    private function catalogOptions(string $key): array
+    {
+        return collect(config("catalog.product.{$key}", []))
+            ->map(fn (string $label, string $id) => compact('id', 'label'))
+            ->values()
+            ->all();
+    }
+
+    private function normalizeProductStatus(string $status): string
+    {
+        return match ($status) {
+            'active' => 'published',
+            'inactive' => 'disabled',
+            'archive' => 'archived',
+            default => $status,
+        };
+    }
+
+    private function withCapacityTotals(array $data): array
+    {
+        if (($data['product_type'] ?? null) !== 'capacity_account') {
+            return $data;
+        }
+
+        $variants = collect($data['variants']);
+        $data['price'] = $variants->min('price');
+        $data['stock'] = $variants->sum('stock');
+
+        return $data;
+    }
+
+    private function withProductType(array $data, ProductTypeRegistry $productTypes): array
+    {
+        if (! isset($data['product_type'])) {
+            return $data;
+        }
+
+        $data['product_type_id'] = $productTypes->idFor($data['product_type']);
+
+        return $data;
     }
 
     private function find(string $catalog, int $id): Model
@@ -232,6 +305,37 @@ class CatalogController extends Controller
             $model->attributeValues()->create([
                 'category_attribute_id' => $attributeId,
                 'value' => $value,
+            ]);
+        }
+    }
+
+    private function syncVariants(string $catalog, Model $model, array $variants): void
+    {
+        if ($catalog !== 'products') {
+            return;
+        }
+
+        if ($model->product_type !== 'capacity_account') {
+            $model->variants()->delete();
+
+            return;
+        }
+
+        $model->variants()->delete();
+
+        foreach ($variants as $variant) {
+            $capacity = (int) $variant['capacity'];
+            $model->variants()->create([
+                'name' => "ظرفیت {$capacity}",
+                'sku' => $variant['sku'],
+                'attributes' => ['capacity' => $capacity],
+                'price' => $variant['price'],
+                'discount_price' => $variant['discount_price'] ?? null,
+                'compare_price' => $variant['compare_price'] ?? null,
+                'partner_price' => $variant['partner_price'] ?? null,
+                'cost_price' => $variant['cost_price'] ?? null,
+                'stock' => $variant['stock'],
+                'status' => $variant['status'] ?? 'active',
             ]);
         }
     }

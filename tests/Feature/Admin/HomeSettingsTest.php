@@ -5,6 +5,8 @@ namespace Tests\Feature\Admin;
 use App\Models\HomeSection;
 use App\Models\HomeSetting;
 use App\Models\HomeSlide;
+use App\Models\Category;
+use App\Models\Game;
 use App\Models\SocialContent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,6 +31,8 @@ class HomeSettingsTest extends TestCase
                 'eyebrow' => 'پیشنهاد ویژه',
                 'description' => 'جدیدترین بازی‌ها و تجهیزات حرفه‌ای',
                 'desktop_image_file' => UploadedFile::fake()->image('hero.jpg', 1920, 720),
+                'alt' => 'نسل جدید بازی',
+                'link_type' => 'url',
                 'button_label' => 'خرید کنید',
                 'button_url' => '/products',
                 'text_position' => 'right',
@@ -39,6 +43,7 @@ class HomeSettingsTest extends TestCase
                 'title' => 'محصولات محبوب',
                 'content_type' => 'products',
                 'query_type' => 'popular',
+                'layout' => 'carousel',
                 'items_limit' => 10,
                 'is_active' => true,
             ]],
@@ -48,6 +53,61 @@ class HomeSettingsTest extends TestCase
         Storage::disk('public')->assertExists($slide->desktop_image);
         $this->assertSame('خانه گیمرها', HomeSetting::firstOrFail()->content['featured_products_title']);
         $this->assertDatabaseHas('home_sections', ['title' => 'محصولات محبوب', 'query_type' => 'popular']);
+    }
+
+    public function test_admin_can_save_three_new_slides_together(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $slides = collect(range(1, 3))->map(fn (int $index) => [
+            'desktop_image_file' => UploadedFile::fake()->image("hero-{$index}.jpg", 1920, 720),
+            'alt' => "بنر شماره {$index}",
+            'link_type' => 'url',
+            'button_url' => '/products',
+            'text_position' => 'right',
+            'overlay' => 'dark',
+            'is_active' => true,
+        ])->all();
+
+        $this->actingAs($admin)
+            ->post('/admin/home', [
+                'settings' => $this->settings(),
+                'slides' => $slides,
+                'sections' => [],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('home_slides', 3);
+        HomeSlide::all()->each(
+            fn (HomeSlide $slide) => Storage::disk('public')->assertExists($slide->desktop_image),
+        );
+    }
+
+    public function test_home_settings_returns_persian_validation_errors_for_invalid_slides(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->from('/admin/home')
+            ->post('/admin/home', [
+                'settings' => $this->settings(),
+                'slides' => [[
+                    'alt' => '',
+                    'link_type' => 'url',
+                    'button_url' => '',
+                    'text_position' => 'right',
+                    'overlay' => 'dark',
+                    'is_active' => true,
+                ]],
+                'sections' => [],
+            ])
+            ->assertRedirect('/admin/home')
+            ->assertSessionHasErrors([
+                'slides.0.desktop_image',
+                'slides.0.alt',
+                'slides.0.button_url',
+            ]);
     }
 
     public function test_home_returns_configured_social_content_rail(): void
@@ -62,6 +122,57 @@ class HomeSettingsTest extends TestCase
                 ->where('contentSections.0.items.0.title', 'بررسی بازی'));
 
         $this->get('/videos/game-review')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Content/Show'));
+    }
+
+    public function test_home_returns_active_category_section_instead_of_filtering_it_out(): void
+    {
+        $category = Category::create([
+            'name' => 'کنسول‌ها',
+            'slug' => 'consoles',
+            'status' => 'active',
+        ]);
+        HomeSection::create([
+            'title' => 'دسته‌بندی‌های محبوب',
+            'content_type' => 'categories',
+            'query_type' => 'manual',
+            'layout' => 'grid',
+            'item_ids' => [$category->id],
+            'items_limit' => 8,
+            'is_active' => true,
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('contentSections', 1)
+                ->where('contentSections.0.title', 'دسته‌بندی‌های محبوب')
+                ->where('contentSections.0.layout', 'grid')
+                ->where('contentSections.0.items.0.title', 'کنسول‌ها')
+                ->where('contentSections.0.items.0.url', '/categories/consoles'));
+    }
+
+    public function test_published_game_can_be_selected_and_rendered_in_manual_section(): void
+    {
+        $game = Game::create([
+            'name' => 'Grand Theft Auto VI',
+            'slug' => 'grand-theft-auto-vi',
+            'status' => 'published',
+        ]);
+        HomeSection::create([
+            'title' => 'خفن‌ترین‌ها',
+            'content_type' => 'games',
+            'query_type' => 'manual',
+            'layout' => 'carousel',
+            'item_ids' => [$game->id],
+            'items_limit' => 10,
+            'is_active' => true,
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('contentSections', 1)
+                ->where('contentSections.0.items.0.title', 'Grand Theft Auto VI'));
     }
 
     public function test_home_only_returns_current_active_slides(): void

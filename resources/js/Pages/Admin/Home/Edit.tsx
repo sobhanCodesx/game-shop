@@ -5,6 +5,7 @@ import {
     Checkbox,
     Chip,
     Input,
+    ProgressBar,
     TextArea,
 } from "@heroui/react";
 import { Head, Link, useForm } from "@inertiajs/react";
@@ -17,13 +18,23 @@ import {
     Plus,
     Save,
     Trash2,
+    UploadCloud,
 } from "lucide-react";
-import { type FormEvent, useMemo } from "react";
+import {
+    type ChangeEvent,
+    type FormEvent,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 
 import FormField from "../../../Components/Admin/Form/FormField";
 import HeroSelect from "../../../Components/Admin/Form/HeroSelect";
-import PersianDatePicker from "../../../Components/Admin/Form/PersianDatePicker";
 import AdminLayout from "../../../Layouts/AdminLayout";
+import {
+    type UploadProgress,
+    uploadFileInChunks,
+} from "../../../services/chunkedUpload";
 
 interface HomeSettings {
     announcement_enabled: boolean;
@@ -54,6 +65,11 @@ interface HomeSlide {
     mobile_image: string;
     mobile_image_url?: string;
     mobile_image_file?: File;
+    desktop_upload_token?: string;
+    mobile_upload_token?: string;
+    alt: string;
+    link_type: "url" | "product";
+    product_id: number | null;
     button_label: string;
     button_url: string;
     secondary_button_label: string;
@@ -70,7 +86,9 @@ interface HomeSection {
     subtitle: string;
     content_type: string;
     query_type: string;
+    layout: string;
     category_id: number | null;
+    item_ids: number[];
     items_limit: number;
     is_active: boolean;
 }
@@ -80,12 +98,15 @@ interface Props {
     slides: HomeSlide[];
     sections: HomeSection[];
     categories: Array<{ id: number; name: string }>;
+    products: Array<{ id: number; title: string; slug: string }>;
+    sectionSources: Record<string, Array<{ id: number; label: string }>>;
 }
 interface FormData {
     settings: HomeSettings;
     slides: HomeSlide[];
     sections: HomeSection[];
 }
+type HomeEditorTab = "banners" | "sections" | "general";
 
 const blankSlide = (): HomeSlide => ({
     title: "",
@@ -93,6 +114,9 @@ const blankSlide = (): HomeSlide => ({
     description: "",
     desktop_image: "",
     mobile_image: "",
+    alt: "",
+    link_type: "url",
+    product_id: null,
     button_label: "مشاهده محصولات",
     button_url: "/products",
     secondary_button_label: "",
@@ -108,7 +132,9 @@ const blankSection = (): HomeSection => ({
     subtitle: "",
     content_type: "products",
     query_type: "latest",
+    layout: "carousel",
     category_id: null,
+    item_ids: [],
     items_limit: 10,
     is_active: true,
 });
@@ -121,9 +147,17 @@ export default function Edit({
     slides,
     sections,
     categories,
+    products,
+    sectionSources,
 }: Props) {
     const { data, setData, post, processing, errors, recentlySuccessful } =
         useForm<FormData>({ settings, slides, sections });
+    const [uploadProgress, setUploadProgress] = useState<Record<string, UploadProgress>>({});
+    const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
+    const [uploadingKeys, setUploadingKeys] = useState<Set<string>>(new Set());
+    const [activeTab, setActiveTab] = useState<HomeEditorTab>("banners");
+    const feedbackRef = useRef<HTMLDivElement>(null);
+    const uploadsInProgress = uploadingKeys.size > 0;
     const activeSlides = useMemo(
         () => data.slides.filter((slide) => slide.is_active).length,
         [data.slides],
@@ -138,9 +172,12 @@ export default function Edit({
         key: K,
         value: HomeSlide[K],
     ) => {
-        const next = [...data.slides];
-        next[index] = { ...next[index], [key]: value };
-        setData("slides", next);
+        setData((current) => {
+            const next = [...current.slides];
+            next[index] = { ...next[index], [key]: value };
+
+            return { ...current, slides: next };
+        });
     };
     const moveSlide = (index: number, offset: number) => {
         const target = index + offset;
@@ -148,6 +185,37 @@ export default function Edit({
         const next = [...data.slides];
         [next[index], next[target]] = [next[target], next[index]];
         setData("slides", next);
+    };
+    const uploadBanner = async (
+        index: number,
+        kind: "desktop" | "mobile",
+        event: ChangeEvent<HTMLInputElement>,
+    ) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+        const key = `${index}-${kind}`;
+        setUploadErrors((current) => ({ ...current, [key]: "" }));
+        setUploadingKeys((current) => new Set(current).add(key));
+        const preview = URL.createObjectURL(file);
+        updateSlide(index, `${kind}_image_url` as keyof HomeSlide, preview);
+        try {
+            const token = await uploadFileInChunks(file, (progress) =>
+                setUploadProgress((current) => ({ ...current, [key]: progress })),
+            );
+            updateSlide(index, `${kind}_upload_token` as keyof HomeSlide, token);
+        } catch (error) {
+            setUploadErrors((current) => ({
+                ...current,
+                [key]: error instanceof Error ? error.message : "آپلود تصویر انجام نشد.",
+            }));
+        } finally {
+            setUploadingKeys((current) => {
+                const next = new Set(current);
+                next.delete(key);
+                return next;
+            });
+        }
     };
     const updateSection = <K extends keyof HomeSection>(
         index: number,
@@ -167,7 +235,30 @@ export default function Edit({
     };
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        post("/admin/home", { forceFormData: true, preserveScroll: true });
+        if (uploadsInProgress) return;
+
+        post("/admin/home", {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () =>
+                window.setTimeout(
+                    () => feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                    0,
+                ),
+            onError: (validationErrors) => {
+                const fields = Object.keys(validationErrors);
+                if (fields.some((field) => field.startsWith("slides.")))
+                    setActiveTab("banners");
+                else if (fields.some((field) => field.startsWith("sections.")))
+                    setActiveTab("sections");
+                else setActiveTab("general");
+
+                window.setTimeout(
+                    () => feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                    0,
+                );
+            },
+        });
     };
 
     const actions = (
@@ -179,7 +270,7 @@ export default function Edit({
                 </Button>
             </Link>
             <Button
-                isDisabled={processing}
+                isDisabled={processing || uploadsInProgress}
                 onPress={() =>
                     document
                         .querySelector<HTMLFormElement>("#home-settings-form")
@@ -188,7 +279,11 @@ export default function Edit({
                 variant="primary"
             >
                 <Save size={17} />
-                {processing ? "در حال ذخیره…" : "ذخیره تغییرات"}
+                {uploadsInProgress
+                    ? "در حال تکمیل آپلود…"
+                    : processing
+                      ? "در حال ذخیره…"
+                      : "ذخیره تغییرات"}
             </Button>
         </>
     );
@@ -205,41 +300,53 @@ export default function Edit({
                 id="home-settings-form"
                 onSubmit={submit}
             >
-                {recentlySuccessful && (
-                    <Alert color="success">تغییرات صفحه اصلی ذخیره شد.</Alert>
-                )}
-                {Object.keys(errors).length > 0 && (
-                    <Alert color="danger">
-                        بعضی اطلاعات معتبر نیستند؛ فیلدهای مشخص‌شده را بررسی
-                        کنید.
-                    </Alert>
-                )}
+                <div ref={feedbackRef}>
+                    {recentlySuccessful && (
+                        <Alert color="success">
+                            تغییرات و بنرهای صفحه اصلی با موفقیت ذخیره شدند.
+                        </Alert>
+                    )}
+                    {Object.keys(errors).length > 0 && (
+                        <Alert color="danger">
+                            <div>
+                                <p className="font-bold">ذخیره انجام نشد؛ موارد زیر را اصلاح کنید:</p>
+                                <ul className="mt-2 list-disc space-y-1 pr-5 text-sm">
+                                    {Object.entries(errors).map(([field, message]) => (
+                                        <li key={field}>{message}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </Alert>
+                    )}
+                    {uploadsInProgress && (
+                        <Alert color="warning">
+                            لطفاً تا پایان آپلود {uploadingKeys.size.toLocaleString("fa-IR")} تصویر صبر کنید؛ سپس ذخیره فعال می‌شود.
+                        </Alert>
+                    )}
+                </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
-                    {[
-                        ["اسلایدها", data.slides.length],
-                        ["اسلاید فعال", activeSlides],
-                        ["محصول هر سکشن", data.settings.products_limit],
-                    ].map(([label, value]) => (
-                        <Card
-                            className="border border-slate-800 bg-slate-900/60"
-                            key={String(label)}
-                            variant="secondary"
+                <div className="grid gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 p-2 sm:grid-cols-3" role="tablist">
+                    {([
+                        ["banners", "بنرها", `${activeSlides.toLocaleString("fa-IR")} بنر فعال`],
+                        ["sections", "مدیریت سکشن‌ها", `${data.sections.length.toLocaleString("fa-IR")} سکشن`],
+                        ["general", "اطلاعات کلی سایت", "پیام‌ها، فروشگاه و سئو"],
+                    ] as const).map(([id, label, description]) => (
+                        <button
+                            aria-selected={activeTab === id}
+                            className={`rounded-xl px-4 py-3 text-right transition ${activeTab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/30" : "text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}
+                            key={id}
+                            onClick={() => setActiveTab(id)}
+                            role="tab"
+                            type="button"
                         >
-                            <Card.Content className="p-5">
-                                <p className="text-sm text-slate-400">
-                                    {label}
-                                </p>
-                                <strong className="mt-2 block text-3xl text-white">
-                                    {Number(value).toLocaleString("fa-IR")}
-                                </strong>
-                            </Card.Content>
-                        </Card>
+                            <strong className="block text-sm">{label}</strong>
+                            <span className={`mt-1 block text-xs ${activeTab === id ? "text-indigo-100" : "text-slate-500"}`}>{description}</span>
+                        </button>
                     ))}
                 </div>
 
                 <Card
-                    className="border border-slate-800 bg-slate-900/60"
+                    className={`${activeTab === "banners" ? "" : "hidden"} border border-slate-800 bg-slate-900/60`}
                     variant="secondary"
                 >
                     <Card.Header className="flex items-center justify-between border-b border-slate-800 p-5">
@@ -299,131 +406,58 @@ export default function Edit({
                                             <ImagePlus size={42} />
                                         </div>
                                     )}
-                                    <div className="absolute inset-0 bg-gradient-to-l from-black/80 to-transparent" />
-                                    <div className="absolute inset-y-0 right-0 flex max-w-lg flex-col justify-center p-6">
-                                        <Chip
-                                            className="mb-2 w-fit"
-                                            variant="soft"
-                                        >
-                                            اسلاید {index + 1}
-                                        </Chip>
-                                        <strong className="text-xl text-white">
-                                            {slide.title || "عنوان بنر"}
-                                        </strong>
-                                        <p className="mt-2 line-clamp-2 text-sm text-slate-300">
-                                            {slide.description ||
-                                                "توضیح کوتاه کمپین اینجا نمایش داده می‌شود."}
-                                        </p>
-                                    </div>
+                                    <Chip className="absolute right-4 top-4" variant="soft">
+                                        بنر {index + 1}
+                                    </Chip>
                                 </div>
-                                <Card.Content className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
-                                    <FormField label="عنوان بنر" required>
-                                        <Input
-                                            fullWidth
-                                            onChange={(e) =>
-                                                updateSlide(
-                                                    index,
-                                                    "title",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            value={slide.title}
-                                        />
-                                    </FormField>
-                                    <FormField label="برچسب بالای عنوان">
-                                        <Input
-                                            fullWidth
-                                            onChange={(e) =>
-                                                updateSlide(
-                                                    index,
-                                                    "eyebrow",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            placeholder="فروش ویژه آخر هفته"
-                                            value={slide.eyebrow}
-                                        />
-                                    </FormField>
-                                    <div className="md:col-span-2 xl:col-span-1">
-                                        <FormField label="توضیح">
-                                            <TextArea
-                                                fullWidth
-                                                onChange={(e) =>
-                                                    updateSlide(
-                                                        index,
-                                                        "description",
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                value={slide.description}
-                                            />
+                                <Card.Content className="grid gap-5 p-5 lg:grid-cols-2">
+                                    <div className="space-y-3">
+                                        <FormField description="JPG، PNG یا WebP تا ۱۰ مگابایت" label="تصویر بنر" required={!slide.desktop_image}>
+                                            <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/60 text-center transition hover:border-indigo-500">
+                                                <UploadCloud className="mb-2 text-indigo-400" size={28} />
+                                                <span className="text-sm font-bold text-white">انتخاب یا رها کردن تصویر</span>
+                                                <input accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void uploadBanner(index, "desktop", event)} type="file" />
+                                            </label>
                                         </FormField>
+                                        {uploadProgress[`${index}-desktop`] && (
+                                            <div className="space-y-2 text-xs text-slate-400">
+                                                <div className="flex justify-between"><span>در حال آپلود</span><span>{uploadProgress[`${index}-desktop`].percentage.toLocaleString("fa-IR")}٪</span></div>
+                                                <ProgressBar value={uploadProgress[`${index}-desktop`].percentage} />
+                                            </div>
+                                        )}
+                                        {uploadErrors[`${index}-desktop`] && <p className="text-sm text-red-400">{uploadErrors[`${index}-desktop`]}</p>}
                                     </div>
-                                    <FormField
-                                        description="حداکثر ۵ مگابایت"
-                                        label="تصویر دسکتاپ"
-                                        required={!slide.desktop_image}
-                                    >
+                                    <div className="space-y-4">
+                                    <FormField description="برای دسترس‌پذیری و سئو، خود تصویر را کوتاه توصیف کنید." label="متن جایگزین تصویر (alt)" required>
                                         <Input
-                                            accept="image/*"
                                             fullWidth
                                             onChange={(e) =>
                                                 updateSlide(
                                                     index,
-                                                    "desktop_image_file",
-                                                    e.target.files?.[0],
+                                                    "alt",
+                                                    e.target.value,
                                                 )
                                             }
-                                            type="file"
-                                        />
-                                    </FormField>
-                                    <FormField
-                                        description="اختیاری؛ در نبود آن تصویر دسکتاپ استفاده می‌شود."
-                                        label="تصویر موبایل"
-                                    >
-                                        <Input
-                                            accept="image/*"
-                                            fullWidth
-                                            onChange={(e) =>
-                                                updateSlide(
-                                                    index,
-                                                    "mobile_image_file",
-                                                    e.target.files?.[0],
-                                                )
-                                            }
-                                            type="file"
+                                            placeholder="مثلاً تخفیف بازی‌های پلی‌استیشن ۵"
+                                            value={slide.alt}
                                         />
                                     </FormField>
                                     <HeroSelect
-                                        label="جایگاه متن"
+                                        label="با کلیک روی بنر"
                                         onChange={(value) =>
                                             updateSlide(
                                                 index,
-                                                "text_position",
-                                                value,
+                                                "link_type",
+                                                value as "url" | "product",
                                             )
                                         }
                                         options={[
-                                            { id: "right", label: "راست" },
-                                            { id: "center", label: "وسط" },
-                                            { id: "left", label: "چپ" },
+                                            { id: "url", label: "رفتن به یک لینک" },
+                                            { id: "product", label: "باز کردن محصول مرتبط" },
                                         ]}
-                                        value={slide.text_position}
+                                        value={slide.link_type}
                                     />
-                                    <FormField label="متن دکمه اصلی">
-                                        <Input
-                                            fullWidth
-                                            onChange={(e) =>
-                                                updateSlide(
-                                                    index,
-                                                    "button_label",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            value={slide.button_label}
-                                        />
-                                    </FormField>
-                                    <FormField label="لینک دکمه اصلی">
+                                    {slide.link_type === "url" ? <FormField label="آدرس لینک" required>
                                         <Input
                                             dir="ltr"
                                             fullWidth
@@ -434,40 +468,25 @@ export default function Edit({
                                                     e.target.value,
                                                 )
                                             }
+                                            placeholder="/products یا https://..."
                                             value={slide.button_url}
                                         />
-                                    </FormField>
-                                    <HeroSelect
-                                        label="شدت پوشش تصویر"
-                                        onChange={(value) =>
-                                            updateSlide(index, "overlay", value)
-                                        }
-                                        options={[
-                                            { id: "dark", label: "تیره" },
-                                            { id: "medium", label: "متوسط" },
-                                            { id: "light", label: "روشن" },
-                                        ]}
-                                        value={slide.overlay}
-                                    />
-                                    <PersianDatePicker
-                                        label="شروع نمایش"
-                                        onChange={(value) =>
-                                            updateSlide(
-                                                index,
-                                                "starts_at",
-                                                value,
-                                            )
-                                        }
-                                        value={slide.starts_at}
-                                    />
-                                    <PersianDatePicker
-                                        label="پایان نمایش"
-                                        onChange={(value) =>
-                                            updateSlide(index, "ends_at", value)
-                                        }
-                                        value={slide.ends_at}
-                                    />
-                                    <div className="flex items-end">
+                                    </FormField> : <FormField description="نام محصول را تایپ و از پیشنهادها انتخاب کنید." label="محصول مرتبط" required>
+                                        <Input
+                                            fullWidth
+                                            list={`banner-products-${index}`}
+                                            onChange={(event) => {
+                                                const product = products.find((item) => item.title === event.target.value);
+                                                updateSlide(index, "product_id", product?.id ?? null);
+                                            }}
+                                            placeholder="جست‌وجوی نام محصول…"
+                                            value={products.find((item) => item.id === slide.product_id)?.title ?? ""}
+                                        />
+                                        <datalist id={`banner-products-${index}`}>
+                                            {products.map((product) => <option key={product.id} value={product.title} />)}
+                                        </datalist>
+                                    </FormField>}
+                                    <div>
                                         <Checkbox
                                             isSelected={slide.is_active}
                                             onChange={(selected) =>
@@ -485,6 +504,7 @@ export default function Edit({
                                                 بنر فعال باشد
                                             </Checkbox.Content>
                                         </Checkbox>
+                                    </div>
                                     </div>
                                 </Card.Content>
                                 <Card.Footer className="flex justify-between border-t border-slate-800 px-5 py-3">
@@ -534,7 +554,7 @@ export default function Edit({
                 </Card>
 
                 <Card
-                    className="border border-slate-800 bg-slate-900/60"
+                    className={`${activeTab === "sections" ? "" : "hidden"} border border-slate-800 bg-slate-900/60`}
                     variant="secondary"
                 >
                     <Card.Header className="flex items-center justify-between border-b border-slate-800 p-5">
@@ -613,6 +633,10 @@ export default function Edit({
                                                 id: "products",
                                                 label: "محصولات",
                                             },
+                                            { id: "categories", label: "دسته‌بندی‌ها" },
+                                            { id: "games", label: "بازی‌ها" },
+                                            { id: "brands", label: "برندها" },
+                                            { id: "platforms", label: "پلتفرم‌ها" },
                                             { id: "posts", label: "پست‌ها" },
                                             { id: "videos", label: "ویدیوها" },
                                             { id: "shorts", label: "شورت‌ها" },
@@ -635,6 +659,7 @@ export default function Edit({
                                                 id: "popular",
                                                 label: "محبوب‌ترین",
                                             },
+                                            { id: "manual", label: "انتخاب دستی" },
                                             ...(section.content_type ===
                                             "products"
                                                 ? [
@@ -646,6 +671,17 @@ export default function Edit({
                                                 : []),
                                         ]}
                                         value={section.query_type}
+                                    />
+                                    <HeroSelect
+                                        label="چیدمان"
+                                        onChange={(value) => updateSection(index, "layout", value)}
+                                        options={[
+                                            { id: "carousel", label: "اسلایدر افقی" },
+                                            { id: "grid", label: "شبکه‌ای" },
+                                            { id: "featured", label: "ویژه و بزرگ" },
+                                            { id: "compact", label: "فشرده" },
+                                        ]}
+                                        value={section.layout ?? "carousel"}
                                     />
                                     {section.content_type === "products" &&
                                         section.query_type === "category" && (
@@ -672,6 +708,32 @@ export default function Edit({
                                                 }
                                             />
                                         )}
+                                    {section.query_type === "manual" && (
+                                        <div className="md:col-span-2 xl:col-span-4">
+                                            <p className="mb-3 text-sm font-bold text-slate-200">آیتم‌های این سکشن</p>
+                                            {(sectionSources[section.content_type] ?? []).length ? (
+                                                <div className={`grid max-h-52 gap-2 overflow-y-auto rounded-2xl border p-3 sm:grid-cols-2 lg:grid-cols-3 ${(section.item_ids ?? []).length ? "border-slate-800" : "border-amber-500/60 bg-amber-500/5"}`}>
+                                                    {(sectionSources[section.content_type] ?? []).map((item) => (
+                                                    <Checkbox
+                                                        isSelected={(section.item_ids ?? []).includes(item.id)}
+                                                        key={item.id}
+                                                        onChange={(selected) => updateSection(index, "item_ids", selected ? [...(section.item_ids ?? []), item.id] : (section.item_ids ?? []).filter((id) => id !== item.id))}
+                                                    >
+                                                        <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+                                                        <Checkbox.Content>{item.label}</Checkbox.Content>
+                                                    </Checkbox>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+                                                    برای این نوع محتوا هنوز آیتم منتشرشده‌ای وجود ندارد.
+                                                </div>
+                                            )}
+                                            {(sectionSources[section.content_type] ?? []).length > 0 && !(section.item_ids ?? []).length && (
+                                                <p className="mt-2 text-xs text-amber-300">برای نمایش این سکشن در صفحه اصلی، حداقل یک آیتم انتخاب کنید.</p>
+                                            )}
+                                        </div>
+                                    )}
                                     <FormField label="تعداد آیتم">
                                         <Input
                                             fullWidth
@@ -759,7 +821,7 @@ export default function Edit({
                     </Card.Content>
                 </Card>
 
-                <div className="grid gap-6 xl:grid-cols-2">
+                <div className={`${activeTab === "general" ? "grid" : "hidden"} gap-6 xl:grid-cols-2`}>
                     <Card
                         className="border border-slate-800 bg-slate-900/60"
                         variant="secondary"

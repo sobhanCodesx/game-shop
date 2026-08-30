@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Services\ProductPriceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use App\Services\MediaStorage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -12,15 +14,19 @@ class ProductController extends Controller
 {
     public function show(Request $request, Product $product, ProductPriceService $prices): Response
     {
-        abort_unless($product->status === 'published' && $product->visibility === 'public', 404);
+        abort_unless(Product::query()->publiclyVisible()->whereKey($product->getKey())->exists(), 404);
 
-        $product->loadMissing(['category:id,name', 'brand:id,name', 'platforms:id,name', 'attributeValues.attribute:id,name']);
+        $product->loadMissing(['category:id,name', 'brand:id,name', 'platforms:id,name', 'attributeValues.attribute:id,name', 'media', 'variants']);
+
+        $isPartner = $request->user()?->role === 'partner';
 
         return Inertia::render('Products/Show', [
             'product' => [
+                'id' => $product->id,
                 'title' => $product->title,
                 'slug' => $product->slug,
                 'short_description' => $product->short_description,
+                'description' => $product->description,
                 'availability' => $product->availability,
                 'release_date' => $product->release_date?->format('Y-m-d'),
                 'category' => $product->category?->name,
@@ -30,6 +36,24 @@ class ProductController extends Controller
                     'name' => $value->attribute->name,
                     'value' => $value->value,
                 ]),
+                'media' => $product->media->map(fn ($media) => [
+                    'id' => $media->id, 'type' => $media->type,
+                    'url' => MediaStorage::url($media->path),
+                    'alt' => $media->alt ?: $product->title, 'is_primary' => $media->is_primary,
+                ]),
+                'variants' => $product->variants->where('status', 'active')->values()->map(function ($variant) use ($isPartner, $product) {
+                    $regular = $variant->price ?? $product->price;
+                    $customer = $variant->discount_price ?? $regular;
+                    $final = $isPartner && $variant->partner_price !== null ? $variant->partner_price : $customer;
+
+                    return [
+                        'id' => $variant->id, 'name' => $variant->name,
+                        'attributes' => $variant->attributes ?? [], 'stock' => $variant->stock,
+                        'pricing' => ['regular_price' => $regular, 'sale_price' => $customer, 'final_price' => $final,
+                            'is_partner_price' => $isPartner && $variant->partner_price !== null,
+                            'discount_amount' => max(0, $regular - $customer)],
+                    ];
+                }),
                 'pricing' => $prices->forUser($product, $request->user()),
             ],
         ]);

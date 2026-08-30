@@ -9,13 +9,18 @@ class HomeSlide extends Model
 {
     protected $fillable = [
         'title', 'eyebrow', 'description', 'desktop_image', 'mobile_image',
-        'button_label', 'button_url', 'secondary_button_label', 'secondary_button_url',
+        'alt', 'link_type', 'product_id', 'button_label', 'button_url', 'secondary_button_label', 'secondary_button_url',
         'text_position', 'overlay', 'sort_order', 'is_active', 'starts_at', 'ends_at',
     ];
 
     protected function casts(): array
     {
         return ['is_active' => 'boolean', 'starts_at' => 'datetime', 'ends_at' => 'datetime'];
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
     }
 
     public function scopeVisible(Builder $query): Builder

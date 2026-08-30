@@ -56,8 +56,9 @@ class DatabaseSeeder extends Seeder
         }
 
         $admin = User::updateOrCreate(
-            ['email' => config('admin.seed.email')],
+            ['username' => 'admin'],
             [
+                'email' => config('admin.seed.email'),
                 'name' => 'مدیر سیستم',
                 'username' => 'admin',
                 'status' => 'active',
@@ -82,8 +83,11 @@ class DatabaseSeeder extends Seeder
             ])->all(),
         );
 
+        $this->call(ProductCatalogFoundationSeeder::class);
+
         if (app()->environment('local')) {
             $this->call(CatalogSeeder::class);
+            $this->call(StorefrontCatalogSeeder::class);
             $this->call(HomeContentSeeder::class);
         }
     }

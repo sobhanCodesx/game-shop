@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class SocialContent extends Model
 {
-    protected $fillable = ['user_id', 'game_id', 'type', 'title', 'slug', 'excerpt', 'thumbnail', 'duration', 'views', 'featured', 'status', 'published_at'];
+    protected $fillable = ['user_id', 'game_id', 'type', 'media_type', 'title', 'slug', 'excerpt', 'link_url', 'thumbnail', 'video_path', 'video_mime', 'duration', 'views', 'featured', 'sort_order', 'status', 'published_at'];
 
     protected function casts(): array
     {

@@ -1,0 +1,20 @@
+import { Alert, Button, Card, Input, TextArea } from "@heroui/react";
+import { Head, Link, useForm } from "@inertiajs/react";
+import { ArrowRight, Save } from "lucide-react";
+import { type FormEvent, useState } from "react";
+import ProductMediaUploader, { type ProductMediaItem } from "../../../Components/Admin/Form/ProductMediaUploader";
+import FormField from "../../../Components/Admin/Form/FormField";
+import HeroSelect from "../../../Components/Admin/Form/HeroSelect";
+import AdminLayout from "../../../Layouts/AdminLayout";
+import { uploadFileInChunks } from "../../../services/chunkedUpload";
+
+interface ShortData { id:number; title:string; excerpt:string|null; link_url:string|null; media_type:"image"|"video"; status:string; sort_order:number; preview_url:string|null }
+interface Values { title:string; excerpt:string; link_url:string; status:string; sort_order:number; upload_token?:string; _method?:"put" }
+
+export default function ShortForm({short}:{short:ShortData|null}) {
+ const editing=!!short; const [progress,setProgress]=useState<number|null>(null); const [uploadError,setUploadError]=useState("");
+ const [media,setMedia]=useState<ProductMediaItem[]>(short?.preview_url?[{key:`short-${short.id}`,id:short.id,type:short.media_type,previewUrl:short.preview_url,alt:short.title,is_primary:short.media_type==="image"}]:[]);
+ const {data,setData,post,processing,errors,transform}=useForm<Values>({title:short?.title??"",excerpt:short?.excerpt??"",link_url:short?.link_url??"",status:short?.status??"draft",sort_order:short?.sort_order??0,...(editing?{_method:"put" as const}:{})});
+ const submit=async(e:FormEvent)=>{e.preventDefault();setUploadError("");let token:string|undefined;const file=media[0]?.file;if(file){try{token=await uploadFileInChunks(file,p=>setProgress(p.percentage))}catch(err){setUploadError(err instanceof Error?err.message:"آپلود انجام نشد");setProgress(null);return}} transform(v=>({...v,upload_token:token}));post(editing?`/admin/shorts/${short?.id}`:"/admin/shorts",{forceFormData:true,onFinish:()=>setProgress(null)});};
+ return <AdminLayout title={editing?"ویرایش استوری":"استوری جدید"} description="یک عکس یا ویدیوی عمودی با نسبت پیشنهادی ۹:۱۶ انتخاب کنید."><Head title="استوری"/><Link className="mb-5 inline-flex items-center gap-2 text-sm text-slate-400" href="/admin/shorts"><ArrowRight size={16}/> بازگشت</Link><form className="grid gap-6 lg:grid-cols-[1fr_1.2fr]" onSubmit={submit}><Card className="border border-slate-800 bg-slate-900/60" variant="secondary"><Card.Content className="space-y-5 p-5">{Object.keys(errors).length>0&&<Alert color="danger">{Object.values(errors)[0]}</Alert>}<FormField label="عنوان" required><Input fullWidth onChange={e=>setData("title",e.target.value)} value={data.title}/></FormField><FormField label="توضیح کوتاه"><TextArea fullWidth onChange={e=>setData("excerpt",e.target.value)} value={data.excerpt}/></FormField><FormField description="مثلاً /products یا https://example.com" label="لینک شورت"><Input dir="ltr" fullWidth onChange={e=>setData("link_url",e.target.value)} placeholder="/products" value={data.link_url}/></FormField><HeroSelect label="وضعیت" onChange={v=>setData("status",v)} options={[{id:"draft",label:"پیش‌نویس"},{id:"published",label:"انتشار"}]} value={data.status}/><FormField description="عدد کمتر، نمایش زودتر" label="اولویت نمایش"><Input min="0" onChange={e=>setData("sort_order",Number(e.target.value))} type="number" value={String(data.sort_order)}/></FormField><Button fullWidth isDisabled={processing||progress!==null} type="submit" variant="primary"><Save size={17}/>{processing||progress!==null?"در حال ذخیره…":"ذخیره استوری"}</Button></Card.Content></Card><Card className="border border-slate-800 bg-slate-900/60" variant="secondary"><Card.Content className="p-5"><ProductMediaUploader error={uploadError||errors.upload_token} onChange={items=>setMedia(items.slice(-1))} progress={progress} value={media}/><p className="mt-3 text-xs text-slate-500">برای هر استوری فقط یک عکس یا ویدیو ثبت می‌شود.</p></Card.Content></Card></form></AdminLayout>;
+}

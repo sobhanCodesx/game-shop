@@ -102,3 +102,153 @@ textarea {
     scrollbar-color: #334155 transparent;
     scrollbar-width: thin;
 }
+
+.storefront-theme {
+    --store-bg: #080c14;
+    --store-panel: rgb(12 18 30 / 97%);
+    --store-header: rgb(8 12 20 / 88%);
+    --store-bottom-nav: rgb(10 15 25 / 94%);
+    --store-surface: #121a29;
+    --store-surface-strong: #0c1220;
+    --store-text: #f8fafc;
+    --store-muted: #94a3b8;
+    --store-border: rgb(71 85 105 / 48%);
+    --store-accent-soft: rgb(99 102 241 / 12%);
+    --background: var(--store-bg);
+    --foreground: var(--store-text);
+    --surface: var(--store-surface);
+    --surface-foreground: var(--store-text);
+    --surface-secondary: #192235;
+    --surface-secondary-foreground: var(--store-text);
+    --overlay: var(--store-panel);
+    --overlay-foreground: var(--store-text);
+    --default: #263249;
+    --default-foreground: var(--store-text);
+    --muted: var(--store-muted);
+    --border: var(--store-border);
+    --field-background: var(--store-surface-strong);
+    --field-foreground: var(--store-text);
+    --field-placeholder: var(--store-muted);
+    --field-border: var(--store-border);
+    color-scheme: dark;
+}
+
+.storefront-theme[data-theme='light'] {
+    --store-bg: #f6f7fb;
+    --store-panel: rgb(255 255 255 / 97%);
+    --store-header: rgb(255 255 255 / 88%);
+    --store-bottom-nav: rgb(255 255 255 / 94%);
+    --store-surface: #ffffff;
+    --store-surface-strong: #f1f3f9;
+    --store-text: #111827;
+    --store-muted: #64748b;
+    --store-border: rgb(148 163 184 / 32%);
+    --store-accent-soft: rgb(79 70 229 / 9%);
+    --surface-secondary: #f1f3f9;
+    --default: #e8ebf3;
+    --default-foreground: #172033;
+    color-scheme: light;
+}
+
+.store-announcement {
+    background: linear-gradient(90deg, #4338ca, #6d28d9 52%, #4338ca);
+}
+
+.store-nav-icon {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    height: 2.75rem;
+    width: 2.75rem;
+    border-radius: 1rem;
+    color: var(--store-text);
+    cursor: pointer;
+}
+
+.store-desktop-header button,
+.store-desktop-header a,
+.storefront-theme header button,
+.storefront-theme header a,
+.storefront-theme nav button,
+.storefront-theme nav a {
+    cursor: pointer;
+}
+
+.store-nav-icon:hover {
+    background: var(--store-accent-soft);
+    color: #6366f1;
+}
+
+.store-nav-link {
+    display: inline-flex;
+    min-height: 2.25rem;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 0.75rem;
+    padding-inline: 0.8rem;
+    color: var(--store-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: color 160ms ease, background-color 160ms ease;
+}
+
+.store-nav-link:hover,
+.store-nav-link:focus-visible {
+    background: var(--store-accent-soft);
+    color: #6366f1;
+    outline: none;
+}
+
+.store-search-input input,
+.store-panel-search input {
+    padding-right: 2.9rem;
+    color: var(--store-text);
+}
+
+/* The existing home sections predate semantic theme tokens. These scoped
+   mappings keep the public storefront coherent while leaving admin untouched. */
+.storefront-theme[data-theme='light'] [class~='bg-slate-950'],
+.storefront-theme[data-theme='light'] [class~='bg-slate-950/90'] {
+    background-color: var(--store-bg) !important;
+}
+
+.storefront-theme[data-theme='light'] [class~='bg-slate-900/70'],
+.storefront-theme[data-theme='light'] [class~='bg-slate-900/60'] {
+    background-color: var(--store-surface) !important;
+}
+
+.storefront-theme[data-theme='light'] [class~='border-slate-800'],
+.storefront-theme[data-theme='light'] [class~='border-slate-800/80'] {
+    border-color: var(--store-border) !important;
+}
+
+.storefront-theme[data-theme='light'] main [class~='text-slate-100'],
+.storefront-theme[data-theme='light'] main [class~='text-white'],
+.storefront-theme[data-theme='light'] footer [class~='text-white'] {
+    color: var(--store-text) !important;
+}
+
+.storefront-theme[data-theme='light'] [class~='text-slate-300'],
+.storefront-theme[data-theme='light'] [class~='text-slate-400'],
+.storefront-theme[data-theme='light'] [class~='text-slate-500'] {
+    color: var(--store-muted) !important;
+}
+
+.storefront-theme .storefront-dark-panel [class~='text-white'] {
+    color: #fff !important;
+}
+
+.storefront-theme .storefront-dark-panel [class~='text-slate-200'],
+.storefront-theme .storefront-dark-panel [class~='text-slate-300'] {
+    color: #dbe4f2 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .storefront-theme *,
+    .storefront-theme *::before,
+    .storefront-theme *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}

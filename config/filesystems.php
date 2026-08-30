@@ -47,6 +47,21 @@ return [
             'report' => false,
         ],
 
+        'downloads' => [
+            'driver' => 'ftp',
+            'host' => env('DOWNLOAD_FTP_HOST'),
+            'username' => env('DOWNLOAD_FTP_USERNAME'),
+            'password' => env('DOWNLOAD_FTP_PASSWORD'),
+            'port' => (int) env('DOWNLOAD_FTP_PORT', 21),
+            'root' => env('DOWNLOAD_FTP_ROOT', 'storage'),
+            'ssl' => env('DOWNLOAD_FTP_SSL', false),
+            'passive' => true,
+            'timeout' => 30,
+            'url' => rtrim(env('DOWNLOAD_URL', ''), '/'),
+            'visibility' => 'public',
+            'throw' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

@@ -1,5 +1,5 @@
 import { Button, Card, Chip, Input } from "@heroui/react";
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import {
     ChevronLeft,
     ChevronRight,
@@ -8,11 +8,15 @@ import {
     Eye,
     Play,
     ShieldCheck,
-    ShoppingCart,
     Sparkles,
     Truck,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
+import type { NavigationCategory } from "../Components/Storefront/Navigation/types";
+import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
+import type { SharedPageProps } from "../types";
 
 interface Pricing {
     regular_price: number;
@@ -24,6 +28,7 @@ interface Product {
     slug: string;
     category: string | null;
     badge: string | null;
+    cover_url: string | null;
     pricing: Pricing;
 }
 interface Slide {
@@ -59,13 +64,7 @@ interface Settings {
 interface Props {
     settings: Settings;
     slides: Slide[];
-    categories: Array<{
-        id: number;
-        name: string;
-        slug: string;
-        image: string | null;
-        products_count: number;
-    }>;
+    categories: NavigationCategory[];
     featuredProducts: Product[];
     latestProducts: Product[];
     contentSections: ContentSection[];
@@ -92,7 +91,7 @@ interface ContentSection {
 
 const money = new Intl.NumberFormat("fa-IR");
 const safeUrl = (url: string | null) =>
-    url && (/^https?:\/\//.test(url) || url.startsWith("/")) ? url : "#";
+    url && (/^https?:\/\//.test(url) || url.startsWith("/")) ? url : null;
 
 function ProductGrid({ products }: { products: Product[] }) {
     if (!products.length)
@@ -109,11 +108,20 @@ function ProductGrid({ products }: { products: Product[] }) {
                         className="group h-full overflow-hidden border border-slate-800 bg-slate-900/70 transition hover:-translate-y-1 hover:border-indigo-500/50"
                         variant="secondary"
                     >
-                        <div className="flex aspect-square items-center justify-center bg-[radial-gradient(circle_at_top,#312e81_0%,#0f172a_55%,#020617_100%)]">
-                            <Gamepad2
-                                className="text-indigo-400 transition group-hover:scale-110"
-                                size={64}
-                            />
+                        <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,#312e81_0%,#0f172a_55%,#020617_100%)]">
+                            {product.cover_url ? (
+                                <img
+                                    alt={product.title}
+                                    className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                                    loading="lazy"
+                                    src={product.cover_url}
+                                />
+                            ) : (
+                                <Gamepad2
+                                    className="text-indigo-400 transition group-hover:scale-110"
+                                    size={64}
+                                />
+                            )}
                             {product.badge && (
                                 <Chip
                                     className="absolute right-3 top-3"
@@ -320,7 +328,10 @@ export default function Home({
     latestProducts,
     contentSections,
 }: Props) {
+    const { auth, storefront } = usePage<SharedPageProps>().props;
+    const { theme, toggleTheme } = useStorefrontTheme();
     const [activeSlide, setActiveSlide] = useState(0);
+    const touchStartX = useRef<number | null>(null);
     useEffect(() => {
         if (slides.length < 2) return;
         const timer = window.setInterval(
@@ -334,160 +345,114 @@ export default function Home({
         setActiveSlide(
             (current) => (current + offset + slides.length) % slides.length,
         );
+    const finishSwipe = (clientX: number) => {
+        if (touchStartX.current === null) return;
+
+        const distance = clientX - touchStartX.current;
+        touchStartX.current = null;
+        if (Math.abs(distance) > 45) go(distance > 0 ? -1 : 1);
+    };
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100" dir="rtl">
+        <div
+            className="storefront-theme min-h-screen bg-[var(--store-bg)] pb-20 text-[var(--store-text)] transition-colors duration-200 lg:pb-0"
+            data-theme={theme}
+            dir="rtl"
+        >
             <Head title={settings.seo_title}>
                 <meta content={settings.seo_description} name="description" />
             </Head>
-            {settings.announcement_enabled && (
-                <Link
-                    className="block bg-indigo-600 px-4 py-2 text-center text-xs font-bold text-white"
-                    href={safeUrl(settings.announcement_url)}
-                >
-                    {settings.announcement_text}
-                </Link>
-            )}
-            <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl">
-                <div className="mx-auto flex h-20 max-w-7xl items-center gap-5 px-4">
-                    <Link
-                        className="flex items-center gap-2 text-xl font-black"
-                        href="/"
-                    >
-                        <span className="grid size-10 place-items-center rounded-xl bg-indigo-600">
-                            <Gamepad2 />
-                        </span>
-                        NEXUS PLAY
-                    </Link>
-                    <nav className="hidden items-center gap-6 text-sm text-slate-300 lg:flex">
-                        <Link href="/products">فروشگاه</Link>
-                        <Link href="/categories">دسته‌بندی‌ها</Link>
-                        <Link href="/games">بازی‌ها</Link>
-                        <Link href="/offers">تخفیف‌ها</Link>
-                    </nav>
-                    <div className="mr-auto hidden max-w-sm flex-1 md:block">
-                        <Input
-                            aria-label="جستجوی محصول"
-                            placeholder="بازی، کنسول یا تجهیزات جستجو کنید…"
-                        />
-                    </div>
-                    <Button aria-label="سبد خرید" isIconOnly variant="ghost">
-                        <ShoppingCart size={20} />
-                    </Button>
-                </div>
-            </header>
+            <StorefrontNavigation
+                announcement={{
+                    enabled: settings.announcement_enabled,
+                    text: settings.announcement_text,
+                    url: settings.announcement_url,
+                }}
+                categories={categories}
+                stories={storefront.stories}
+                onToggleTheme={toggleTheme}
+                theme={theme}
+                user={auth.user}
+            />
             <main>
                 <section className="mx-auto max-w-7xl px-4 pt-5">
                     {slide ? (
-                        <div className="relative min-h-[480px] overflow-hidden rounded-3xl border border-slate-800 shadow-2xl md:min-h-[560px]">
-                            <picture>
-                                <source
-                                    media="(max-width: 640px)"
-                                    srcSet={
-                                        slide.mobile_image_url ??
-                                        slide.desktop_image_url
-                                    }
-                                />
-                                <img
-                                    alt={slide.title}
-                                    className="absolute inset-0 h-full w-full object-cover"
-                                    src={slide.desktop_image_url}
-                                />
-                            </picture>
-                            <div
-                                className={`absolute inset-0 ${slide.overlay === "dark" ? "bg-black/65" : slide.overlay === "medium" ? "bg-black/45" : "bg-black/25"}`}
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                            <div
-                                className={`relative z-10 flex min-h-[480px] flex-col justify-center p-7 md:min-h-[560px] md:p-16 ${slide.text_position === "center" ? "mx-auto items-center text-center" : slide.text_position === "left" ? "mr-auto items-end text-left" : "ml-auto items-start text-right"} max-w-3xl`}
-                            >
-                                {slide.eyebrow && (
-                                    <Chip
-                                        className="mb-5"
-                                        color="accent"
-                                        variant="soft"
-                                    >
-                                        <Sparkles size={15} />
-                                        {slide.eyebrow}
-                                    </Chip>
+                        <div
+                            aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
+                            className="group relative touch-pan-y pb-7 sm:pb-8"
+                            onTouchEnd={(event) => finishSwipe(event.changedTouches[0].clientX)}
+                            onTouchStart={(event) => {
+                                touchStartX.current = event.touches[0].clientX;
+                            }}
+                        >
+                            <div className="relative overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_70px_-30px_rgba(15,23,42,.55)] ring-1 ring-black/5 lg:rounded-[28px]">
+                                <picture className="block">
+                                    <source
+                                        media="(max-width: 640px)"
+                                        srcSet={
+                                            slide.mobile_image_url ??
+                                            slide.desktop_image_url
+                                        }
+                                    />
+                                    <img
+                                        alt={slide.title}
+                                        className="block h-auto w-full"
+                                        key={slide.id}
+                                        src={slide.desktop_image_url}
+                                    />
+                                </picture>
+                                {safeUrl(slide.button_url) && (
+                                    <Link
+                                        aria-label={`مشاهده ${slide.title}`}
+                                        className="absolute inset-0 z-10 focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-indigo-400"
+                                        href={safeUrl(slide.button_url) ?? "/"}
+                                    />
                                 )}
-                                <h1 className="text-4xl font-black leading-tight text-white md:text-6xl">
-                                    {slide.title}
-                                </h1>
-                                {slide.description && (
-                                    <p className="mt-5 max-w-2xl text-base leading-8 text-slate-200 md:text-lg">
-                                        {slide.description}
-                                    </p>
-                                )}
-                                <div className="mt-8 flex flex-wrap gap-3">
-                                    {slide.button_label && (
-                                        <Link href={safeUrl(slide.button_url)}>
-                                            <Button size="lg" variant="primary">
-                                                {slide.button_label}
-                                                <ChevronLeft size={18} />
-                                            </Button>
-                                        </Link>
-                                    )}
-                                    {slide.secondary_button_label && (
-                                        <Link
-                                            href={safeUrl(
-                                                slide.secondary_button_url,
-                                            )}
-                                        >
-                                            <Button
-                                                size="lg"
-                                                variant="secondary"
-                                            >
-                                                {slide.secondary_button_label}
-                                            </Button>
-                                        </Link>
-                                    )}
-                                </div>
-                            </div>
                             {slides.length > 1 && (
                                 <>
                                     <Button
                                         aria-label="اسلاید قبلی"
-                                        className="absolute right-4 top-1/2 z-20"
+                                        className="absolute right-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 text-white opacity-100 shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/55 sm:right-5 lg:opacity-0 lg:group-hover:opacity-100"
                                         isIconOnly
                                         onPress={() => go(-1)}
-                                        variant="secondary"
+                                        variant="ghost"
                                     >
-                                        <ChevronRight />
+                                        <ChevronRight size={21} />
                                     </Button>
                                     <Button
                                         aria-label="اسلاید بعدی"
-                                        className="absolute left-4 top-1/2 z-20"
+                                        className="absolute left-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 text-white opacity-100 shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/55 sm:left-5 lg:opacity-0 lg:group-hover:opacity-100"
                                         isIconOnly
                                         onPress={() => go(1)}
-                                        variant="secondary"
+                                        variant="ghost"
                                     >
-                                        <ChevronLeft />
+                                        <ChevronLeft size={21} />
                                     </Button>
-                                    <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-                                        {slides.map((item, index) => (
-                                            <button
-                                                aria-label={`اسلاید ${index + 1}`}
-                                                className={`h-2 rounded-full transition-all ${index === activeSlide ? "w-8 bg-white" : "w-2 bg-white/40"}`}
-                                                key={item.id}
-                                                onClick={() =>
-                                                    setActiveSlide(index)
-                                                }
-                                                type="button"
-                                            />
-                                        ))}
-                                    </div>
                                 </>
+                            )}
+                            </div>
+                            {slides.length > 1 && (
+                                <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-panel)] px-3 py-2 shadow-md">
+                                    {slides.map((item, index) => (
+                                        <button
+                                            aria-label={`اسلاید ${index + 1}`}
+                                            className={`h-1.5 rounded-full transition-all duration-300 ${index === activeSlide ? "w-7 bg-indigo-500" : "w-1.5 bg-[var(--store-muted)]/35 hover:bg-indigo-400"}`}
+                                            key={item.id}
+                                            onClick={() => setActiveSlide(index)}
+                                            type="button"
+                                        />
+                                    ))}
+                                </div>
                             )}
                         </div>
                     ) : (
-                        <div className="flex min-h-[420px] items-center justify-center rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top,#312e81,#020617_65%)] text-center">
+                        <div className="storefront-dark-panel flex min-h-[420px] items-center justify-center rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top,#312e81,#020617_65%)] text-center">
                             <div>
                                 <Gamepad2
                                     className="mx-auto text-indigo-400"
                                     size={72}
                                 />
-                                <h1 className="mt-5 text-4xl font-black">
+                                <h1 className="mt-5 text-4xl font-black text-white">
                                     دنیای گیمینگ تو از اینجا شروع می‌شود
                                 </h1>
                             </div>
@@ -521,7 +486,10 @@ export default function Home({
                 </section>
                 {settings.featured_categories_enabled &&
                     categories.length > 0 && (
-                        <section className="mx-auto max-w-7xl px-4 py-10">
+                        <section
+                            className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10"
+                            id="categories"
+                        >
                             <div className="mb-6 flex items-end justify-between">
                                 <div>
                                     <p className="text-sm font-bold text-indigo-400">
@@ -560,7 +528,10 @@ export default function Home({
                         </section>
                     )}
                 {settings.featured_products_enabled && (
-                    <section className="mx-auto max-w-7xl px-4 py-10">
+                    <section
+                        className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10"
+                        id="featured-products"
+                    >
                         <div className="mb-6">
                             <p className="text-sm font-bold text-rose-400">
                                 منتخب فروشگاه
@@ -573,7 +544,10 @@ export default function Home({
                     </section>
                 )}
                 {settings.latest_products_enabled && (
-                    <section className="mx-auto max-w-7xl px-4 py-10">
+                    <section
+                        className="mx-auto max-w-7xl scroll-mt-36 px-4 py-10"
+                        id="latest-products"
+                    >
                         <div className="mb-6">
                             <p className="text-sm font-bold text-emerald-400">
                                 همین حالا اضافه شد
@@ -585,13 +559,15 @@ export default function Home({
                         <ProductGrid products={latestProducts} />
                     </section>
                 )}
-                {contentSections.map((section) => (
-                    <ContentRail key={section.id} section={section} />
-                ))}
+                <div className="scroll-mt-24" id="community-content">
+                    {contentSections.map((section) => (
+                        <ContentRail key={section.id} section={section} />
+                    ))}
+                </div>
                 {settings.newsletter_enabled && (
                     <section className="mx-auto max-w-7xl px-4 py-14">
                         <Card
-                            className="overflow-hidden border border-indigo-500/30 bg-gradient-to-l from-indigo-950 to-slate-900"
+                            className="storefront-dark-panel overflow-hidden border border-indigo-500/30 bg-gradient-to-l from-indigo-950 to-slate-900"
                             variant="secondary"
                         >
                             <Card.Content className="flex flex-col gap-6 p-7 md:flex-row md:items-center md:justify-between md:p-10">
@@ -617,7 +593,10 @@ export default function Home({
                     </section>
                 )}
             </main>
-            <footer className="border-t border-slate-800 bg-slate-950">
+            <footer
+                className="scroll-mt-24 border-t border-slate-800 bg-slate-950"
+                id="store-information"
+            >
                 <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
                     <p>
                         © {new Date().getFullYear()} NEXUS PLAY — همراه دنیای
