@@ -4,6 +4,7 @@ namespace App\Notifications\Channels;
 
 use App\Models\User;
 use App\Services\Sms\SmsNotificationService;
+use App\Services\Sms\SmsPattern;
 use Illuminate\Notifications\Notification;
 
 class SmsChannel
@@ -17,6 +18,11 @@ class SmsChannel
         }
 
         $payload = $notification->toSms($notifiable);
-        $this->sms->send($notifiable, (string) $payload['title'], (string) $payload['message']);
+        $this->sms->send(
+            $notifiable,
+            $payload['pattern'] instanceof SmsPattern ? $payload['pattern'] : SmsPattern::from((string) $payload['pattern']),
+            (array) $payload['variables'],
+            isset($payload['idempotency_key']) ? (string) $payload['idempotency_key'].':user:'.$notifiable->id : null,
+        );
     }
 }

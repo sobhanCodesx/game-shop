@@ -32,13 +32,15 @@ class OrderController extends Controller
                     'id', 'number', 'status', 'shipping_address', 'regular_subtotal',
                     'product_discount', 'subtotal', 'coupon_code', 'coupon_discount',
                     'delivery_fee', 'grand_total', 'wallet_used', 'payable_amount',
-                    'cashback_amount', 'created_at',
+                    'cashback_amount', 'exchange_request_id', 'exchange_credit_used', 'trade_user_id',
+                    'approved_product_id', 'approved_trade_value', 'trade_item_title',
+                    'trade_item_description', 'trade_item_images', 'trade_item_metadata', 'created_at',
                 ]),
                 'customer' => $order->user->only(['name', 'email', 'phone']),
                 'items' => $order->items->map(fn ($item) => [
                     ...$item->only([
                         'id', 'title', 'variant_name', 'sku', 'quantity',
-                        'regular_unit_price', 'unit_price', 'discount_amount', 'line_total',
+                        'regular_unit_price', 'unit_price', 'discount_amount', 'line_total', 'exchange_credit_used',
                     ]),
                     'cover_url' => MediaStorage::url($item->product?->coverMedia?->path),
                 ]),

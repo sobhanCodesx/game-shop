@@ -76,6 +76,12 @@ class OrderService
                 'coupon_id' => $couponResult['coupon']?->id, 'coupon_code' => $couponResult['coupon']?->code,
                 'shipping_address' => $address, 'status' => 'pending', ...$summary,
                 'exchange_request_id' => $exchange?->id, 'exchange_credit_used' => $exchangeUsed,
+                'trade_user_id' => $exchange?->user_id, 'approved_product_id' => $exchange?->target_product_id,
+                'approved_trade_value' => $exchange?->exchange_offer_amount,
+                'trade_item_title' => $exchange?->trade_item_title,
+                'trade_item_description' => $exchange?->trade_item_description,
+                'trade_item_images' => $exchange?->trade_item_images,
+                'trade_item_metadata' => $exchange?->trade_item_metadata,
                 'coupon_discount' => $couponResult['discount'], 'delivery_fee' => $delivery, 'grand_total' => $grand,
                 'wallet_used' => $walletUsed, 'payable_amount' => $grand - $walletUsed,
                 'cashback_percent' => $commerce['cashback_percent'], 'cashback_eligible_amount' => $eligible,
@@ -84,7 +90,9 @@ class OrderService
             foreach ($items as $key => $item) {
                 $order->items()->create(['product_id' => $item['product_id'], 'product_variant_id' => $item['variant_id'], 'title' => $item['title'], 'variant_name' => $item['variant'], 'sku' => $item['sku'], 'quantity' => $item['quantity'], 'regular_unit_price' => $item['regular_unit_price'], 'unit_price' => $item['unit_price'], 'discount_amount' => $item['discount_amount'], 'line_total' => $item['line_total'], 'exchange_credit_used' => $key === $exchangeItemKey ? $exchangeUsed : 0, 'requires_shipping' => $item['requires_shipping']]);
             }
-            if ($exchange) $exchange->update(['exchange_status' => 'attached_to_order', 'exchange_order_id' => $order->id, 'exchange_credit_applied' => $exchangeUsed]);
+            if ($exchange) {
+                $exchange->update(['exchange_status' => 'attached_to_order', 'exchange_order_id' => $order->id, 'exchange_credit_applied' => $exchangeUsed]);
+            }
 
             if ($walletUsed > 0) {
                 WalletTransaction::query()->create(['user_id' => $lockedUser->id, 'order_id' => $order->id, 'type' => 'order_payment', 'amount' => -$walletUsed, 'balance_after' => $lockedUser->wallet_balance, 'description' => 'برداشت بابت سفارش '.$order->number]);
@@ -178,20 +186,29 @@ class OrderService
 
     private function resolveExchange(?int $id, User $user, $items, bool $lock = false): array
     {
-        if (! $id) return [null, 0, null];
+        if (! $id) {
+            return [null, 0, null];
+        }
         $query = Ticket::query()->whereKey($id);
-        if ($lock) $query->lockForUpdate();
+        if ($lock) {
+            $query->lockForUpdate();
+        }
         $exchange = $query->firstOrFail();
         if ($exchange->type !== 'exchange' || $exchange->user_id !== $user->id || $exchange->exchange_status !== 'accepted' || $exchange->exchange_order_id || ! $exchange->target_product_id || ! $exchange->exchange_offer_amount) {
             throw ValidationException::withMessages(['exchange_request_id' => 'اعتبار معاوضه انتخاب‌شده معتبر یا قابل استفاده نیست.']);
         }
         if ($exchange->exchange_credit_expires_at?->isPast()) {
-            if ($lock) $exchange->update(['exchange_status' => 'expired', 'exchange_expired_at' => now()]);
+            if ($lock) {
+                $exchange->update(['exchange_status' => 'expired', 'exchange_expired_at' => now()]);
+            }
             throw ValidationException::withMessages(['exchange_request_id' => 'مهلت استفاده از این اعتبار معاوضه تمام شده است.']);
         }
         $itemKey = $items->search(fn ($item) => (int) $item['product_id'] === (int) $exchange->target_product_id);
-        if ($itemKey === false) throw ValidationException::withMessages(['exchange_request_id' => 'این اعتبار فقط برای محصول هدف همان معاوضه قابل استفاده است.']);
-        $used = min((int) $exchange->exchange_offer_amount, (int) $items[$itemKey]['line_total']);
+        if ($itemKey === false) {
+            throw ValidationException::withMessages(['exchange_request_id' => 'این اعتبار فقط برای محصول هدف همان معاوضه قابل استفاده است.']);
+        }
+        $used = min((int) $exchange->exchange_offer_amount, (int) $items[$itemKey]['unit_price']);
+
         return [$exchange, $used, $itemKey];
     }
 }

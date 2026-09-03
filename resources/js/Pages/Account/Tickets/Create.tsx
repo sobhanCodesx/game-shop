@@ -34,6 +34,7 @@ export default function Create({
         anti_bot_code: "",
         type: exchangeProduct ? "exchange" : "support",
         product_id: exchangeProduct?.id ?? "",
+        trade_item_title: "",
         attachments: [] as File[],
     });
     const selected = purchases.data.find(
@@ -137,6 +138,7 @@ export default function Create({
                                 </label>
                             )}
                             {exchangeProduct && (
+                                <div className="space-y-4">
                                 <div className="flex items-center gap-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4">
                                     {exchangeProduct.cover_url && (
                                         <img
@@ -151,6 +153,12 @@ export default function Create({
                                             محصول موردنظر برای معاوضه
                                         </p>
                                     </div>
+                                </div>
+                                <label className="block">
+                                    <span className="mb-2 block text-sm font-black">عنوان کالای پیشنهادی شما</span>
+                                    <input className={field} maxLength={180} onChange={(event) => setData("trade_item_title", event.target.value)} placeholder="مثلاً PlayStation 4 Pro 1TB" value={data.trade_item_title} />
+                                    {errors.trade_item_title && <Error text={errors.trade_item_title} />}
+                                </label>
                                 </div>
                             )}
                             {selected && (

@@ -3,14 +3,15 @@
 namespace App\Services;
 
 use App\Models\MobileVerificationCode;
-use App\Services\Sms\PayamakPanelSmsService;
+use App\Services\Sms\SmsPattern;
+use App\Services\Sms\SmsService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use Throwable;
 
 class MobileCodeService
 {
-    public function __construct(private readonly PayamakPanelSmsService $sms) {}
+    public function __construct(private readonly SmsService $sms) {}
 
     public function send(string $phone, string $purpose): void
     {
@@ -18,23 +19,20 @@ class MobileCodeService
         if ($existing?->sent_at?->gt(now()->subSeconds(60))) {
             throw ValidationException::withMessages(['phone' => 'برای ارسال دوباره کد، کمی صبر کنید.']);
         }
-        $code = (string) random_int(100000, 999999);
-        $record = MobileVerificationCode::query()->updateOrCreate(compact('phone', 'purpose'), [
-            'code_hash' => Hash::make($code),
-            'attempts' => 0,
-            'expires_at' => now()->addMinutes(10),
-            'sent_at' => now(),
-        ]);
-
-        try {
-            $result = $this->sms->send($phone, $this->message($purpose, $code));
-            if (! $result->success) {
-                throw ValidationException::withMessages(['phone' => $result->message]);
-            }
-        } catch (Throwable $exception) {
-            $record->delete();
-            throw $exception;
-        }
+        DB::transaction(function () use ($phone, $purpose): void {
+            $code = (string) random_int(100000, 999999);
+            $sentAt = now();
+            $record = MobileVerificationCode::query()->updateOrCreate(compact('phone', 'purpose'), [
+                'code_hash' => Hash::make($code), 'attempts' => 0,
+                'expires_at' => now()->addMinutes(10), 'sent_at' => $sentAt,
+            ]);
+            $pattern = match ($purpose) {
+                'reset_password' => SmsPattern::OtpResetPassword,
+                'passwordless_login' => SmsPattern::OtpPasswordlessLogin,
+                default => SmsPattern::OtpVerifyMobile,
+            };
+            $this->sms->enqueue($pattern, $phone, ['code' => $code], "otp:{$record->id}:{$sentAt->getTimestamp()}");
+        });
     }
 
     public function verify(string $phone, string $purpose, string $code): void
@@ -47,16 +45,5 @@ class MobileCodeService
             throw ValidationException::withMessages(['code' => 'کد تأیید اشتباه، منقضی یا بیش از حد استفاده شده است.']);
         }
         $record->delete();
-    }
-
-    private function message(string $purpose, string $code): string
-    {
-        $title = match ($purpose) {
-            'reset_password' => 'کد بازیابی رمز عبور NEXUS PLAY',
-            'passwordless_login' => 'کد ورود NEXUS PLAY',
-            default => 'کد تأیید شماره موبایل NEXUS PLAY',
-        };
-
-        return "{$title}\n{$code}\nلغو11";
     }
 }

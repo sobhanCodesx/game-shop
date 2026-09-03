@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\EmailVerificationCode;
 use App\Models\MobileVerificationCode;
+use App\Models\SmsOutbox;
 use App\Models\User;
 use App\Notifications\AuthenticationCodeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -163,9 +164,8 @@ class CustomerAuthenticationTest extends TestCase
             ->assertRedirect(route('login.otp.notice'))
             ->assertSessionHas('login_phone', '09121234567');
 
-        Http::assertSent(fn ($request) => $request->url() === 'https://rest.payamak-panel.com/api/SmartSMS/Send'
-            && $request['to'] === '09121234567'
-            && preg_match('/^کد ورود NEXUS PLAY\n\d{6}\nلغو11$/u', $request['text']) === 1);
+        Http::assertNothingSent();
+        $this->assertDatabaseHas('sms_outbox', ['mobile' => '09121234567', 'pattern' => 'otp_passwordless_login', 'status' => 'failed']);
 
         MobileVerificationCode::where(['phone' => $user->phone, 'purpose' => 'passwordless_login'])
             ->update(['code_hash' => Hash::make('654321')]);

@@ -125,6 +125,19 @@ export default function Show({ order }: { order: any }) {
                     </Card>
                 </section>
                 <aside className="space-y-4">
+                    {order.exchange_request_id && (
+                        <Card className="border border-indigo-500/30" variant="secondary">
+                            <Card.Content className="space-y-2 p-6">
+                                <h2 className="font-black">معاوضه این سفارش</h2>
+                                <p>کالای مشتری: <strong>{order.trade_item_title}</strong></p>
+                                <p className="text-sm text-slate-400">{order.trade_item_description}</p>
+                                <p>محصول مقصد: <strong>{order.items.find((item: any) => item.product_id === order.approved_product_id)?.title}</strong></p>
+                                <p>ارزش مصوب: <strong>{money.format(order.approved_trade_value)} تومان</strong></p>
+                                <p>کسری اعمال‌شده: <strong>{money.format(order.exchange_credit_used)} تومان</strong></p>
+                                <Link className="text-sm font-bold text-indigo-400" href={`/admin/tickets/${order.exchange_request_id}`}>مشاهده درخواست معاوضه</Link>
+                            </Card.Content>
+                        </Card>
+                    )}
                     <Card variant="secondary">
                         <Card.Content className="space-y-3 p-6">
                             <h2 className="text-lg font-black">صورت‌حساب</h2>

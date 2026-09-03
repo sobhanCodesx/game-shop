@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
-class PayamakPanelSmsService
+class PayamakPanelSmsService implements SmsProvider
 {
     private const DELIVERY = [0 => ['ارسال شده به مخابرات', false, false], 1 => ['رسیده به گوشی', true, true], 2 => ['نرسیده به گوشی', false, true], 3 => ['خطای مخابراتی', false, true], 5 => ['خطای نامشخص', false, true], 8 => ['رسیده به مخابرات', false, false], 16 => ['نرسیده به مخابرات', false, true], 35 => ['لیست سیاه', false, true], 100 => ['نامشخص', false, false], 200 => ['ارسال شده', false, false], 300 => ['فیلتر شده', false, true], 400 => ['در لیست ارسال', false, false], 500 => ['عدم پذیرش', false, true], -10 => ['خطا در دریافت گزارش', false, false], -3 => ['گزارش اپراتور موجود نیست', false, false], -2 => ['شناسه نامعتبر یا ارسال نشده', false, true], -1 => ['وضعیت نامشخص یا خطای احراز هویت', false, false]];
 
@@ -21,6 +21,20 @@ class PayamakPanelSmsService
         $recipients = $this->recipients($to);
 
         return $this->parseSend($this->request('Send', [...$this->credentials(), 'to' => implode(',', $recipients), 'text' => $text, ...$this->senderPayload()]), $recipients);
+    }
+
+    public function sendPattern(string $mobile, string $patternId, array $variables): SmsSendResult
+    {
+        if ($patternId === '' || $variables === []) {
+            throw new InvalidArgumentException('Pattern ID and variables are required.');
+        }
+        $endpoint = trim((string) config('services.payamak_panel.pattern_endpoint'));
+        if ($endpoint === '') {
+            throw new InvalidArgumentException('PAYAMAK_PANEL_PATTERN_ENDPOINT is not configured.');
+        }
+        $json = $this->requestUrl($endpoint, [...$this->credentials(), 'to' => PhoneNumber::normalize($mobile), 'text' => implode(';', array_values($variables)), 'bodyId' => $patternId]);
+
+        return $this->parseSend($json, [$mobile]);
     }
 
     public function sendMultiple(array $recipients, array $messages): SmsSendResult
@@ -70,15 +84,25 @@ class PayamakPanelSmsService
 
     private function request(string $operation, array $payload): array
     {
+        return $this->requestUrl(rtrim((string) config('services.payamak_panel.base_url'), '/').'/'.$operation, $payload, $operation);
+    }
+
+    private function requestUrl(string $url, array $payload, string $operation = 'send_pattern'): array
+    {
         try {
-            $response = Http::acceptJson()->asJson()->timeout((int) config('services.payamak_panel.timeout', 10))->post(rtrim((string) config('services.payamak_panel.base_url'), '/').'/'.$operation, $payload);
+            $response = Http::acceptJson()->asJson()->connectTimeout((int) config('services.payamak_panel.connect_timeout', 2))->timeout((int) config('services.payamak_panel.timeout', 5))->post($url, $payload);
         } catch (ConnectionException $exception) {
             Log::error('SMS provider connection failure', ['provider' => 'payamak_panel', 'operation' => $operation, 'exception' => $exception::class]);
             throw new SmsProviderException('ارتباط با پنل پیامکی برقرار نشد.', previous: $exception);
         }
         if (! $response->successful()) {
             Log::error('SMS provider HTTP failure', ['provider' => 'payamak_panel', 'operation' => $operation, 'http_status' => $response->status()]);
-            throw new SmsProviderException('پنل پیامکی پاسخ HTTP ناموفق داد.');
+            $body = $response->json();
+            throw new SmsProviderException(
+                'پنل پیامکی پاسخ HTTP ناموفق داد.',
+                $response->status(),
+                is_array($body) ? $body : ['raw_body' => mb_substr($response->body(), 0, 5000)],
+            );
         }
 
         return $this->json($response, $operation);
@@ -122,7 +146,7 @@ class PayamakPanelSmsService
         $username = (string) config('services.payamak_panel.username');
         $apiKey = (string) config('services.payamak_panel.api_key');
         if ($username === '' || $apiKey === '') {
-            throw new SmsProviderException('تنظیمات پنل پیامکی کامل نیست.');
+            throw new SmsProviderException('تنظیمات پنل پیامکی کامل نیست.', retryable: false);
         }
 
         return ['username' => $username, 'password' => $apiKey];

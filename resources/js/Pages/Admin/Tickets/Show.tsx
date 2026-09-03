@@ -15,9 +15,13 @@ const exchangeLabels: Record<string, string> = {
     offered: "پیشنهاد ثبت‌شده",
     accepted: "پذیرفته‌شده",
     rejected: "ردشده",
+    attached_to_order: "متصل به سفارش",
+    received: "کالای مشتری دریافت شد",
     completed: "تکمیل‌شده",
+    cancelled: "لغوشده",
+    expired: "منقضی‌شده",
 };
-export default function Show({ ticket }: { ticket: any }) {
+export default function Show({ ticket, exchangeProducts }: { ticket: any; exchangeProducts: Array<{ id: number; title: string }> }) {
     const attachmentCount = ticket.replies.reduce(
         (total: number, reply: any) => total + (reply.attachments?.length ?? 0),
         0,
@@ -138,8 +142,8 @@ export default function Show({ ticket }: { ticket: any }) {
                                 )}
                                 {["pending_review", "offered"].includes(
                                     ticket.exchange_status,
-                                ) && <OfferForm ticket={ticket} />}
-                                {ticket.exchange_status === "accepted" && (
+                                ) && <OfferForm ticket={ticket} products={exchangeProducts} />}
+                                {ticket.exchange_status === "attached_to_order" && (
                                     <Button
                                         fullWidth
                                         onPress={() =>
@@ -149,11 +153,8 @@ export default function Show({ ticket }: { ticket: any }) {
                                         }
                                         variant="primary"
                                     >
-                                        تأیید تحویل، تکمیل و واریز
+                                        تأیید دریافت کالا و تکمیل معاوضه
                                     </Button>
-                                )}
-                                {ticket.exchange_status === "completed" && (
-                                    <AdjustmentForm ticket={ticket} />
                                 )}
                             </Card.Content>
                         </Card>
@@ -223,8 +224,9 @@ export default function Show({ ticket }: { ticket: any }) {
     );
 }
 
-function OfferForm({ ticket }: { ticket: any }) {
+function OfferForm({ ticket, products }: { ticket: any; products: Array<{ id: number; title: string }> }) {
     const form = useForm({
+        target_product_id: ticket.target_product_id ?? ticket.product_id ?? "",
         exchange_offer_amount: ticket.exchange_offer_amount ?? "",
     });
     return (
@@ -234,6 +236,16 @@ function OfferForm({ ticket }: { ticket: any }) {
                 form.patch(`/admin/tickets/${ticket.id}/exchange-offer`);
             }}
         >
+            <label className="mb-2 block text-sm font-bold">محصول مقصد مورد تأیید</label>
+            <select
+                className="mb-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
+                onChange={(e) => form.setData("target_product_id", Number(e.target.value))}
+                value={form.data.target_product_id}
+            >
+                <option value="">انتخاب محصول مقصد</option>
+                {products.map((product) => <option key={product.id} value={product.id}>{product.title}</option>)}
+            </select>
+            {form.errors.target_product_id && <p className="mb-2 text-xs text-red-400">{form.errors.target_product_id}</p>}
             <input
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
                 min="1"

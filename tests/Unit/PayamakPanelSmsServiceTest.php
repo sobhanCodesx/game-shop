@@ -17,6 +17,19 @@ class PayamakPanelSmsServiceTest extends TestCase
         config()->set('services.payamak_panel', ['base_url' => 'https://rest.payamak-panel.com/api/SmartSMS', 'username' => 'user', 'api_key' => 'secret-key', 'from' => '5000', 'timeout' => 5]);
     }
 
+    public function test_pattern_send_uses_configured_endpoint_and_structured_variable_order(): void
+    {
+        config()->set('services.payamak_panel.pattern_endpoint', 'https://sms.example.test/pattern');
+        Http::fake(['sms.example.test/*' => Http::response(['Value' => '77', 'RetStatus' => 1, 'StrRetStatus' => 'Ok'])]);
+
+        $result = app(PayamakPanelSmsService::class)->sendPattern('09121234567', '12345', ['code' => '654321']);
+
+        $this->assertTrue($result->success);
+        Http::assertSent(fn ($request) => $request->url() === 'https://sms.example.test/pattern'
+            && $request['username'] === 'user' && $request['password'] === 'secret-key'
+            && $request['to'] === '09121234567' && $request['bodyId'] === '12345' && $request['text'] === '654321');
+    }
+
     public function test_send_uses_api_key_as_password_and_parses_ids(): void
     {
         Http::fake(['*/Send' => Http::response(['Value' => '123,124', 'RetStatus' => 1, 'StrRetStatus' => 'Ok'])]);

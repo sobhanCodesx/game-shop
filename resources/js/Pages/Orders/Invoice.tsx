@@ -22,6 +22,7 @@ type InvoiceItem = {
     unit_price: number;
     discount_amount: number;
     line_total: number;
+    exchange_credit_used: number;
     cover_url: string | null;
 };
 
@@ -52,6 +53,9 @@ type Invoice = {
     wallet_used: number;
     payable_amount: number;
     cashback_amount: number;
+    exchange_request_id: number | null;
+    exchange_credit_used: number;
+    trade_item_title: string | null;
 };
 
 const amount = (value: number) => `${money.format(value)} تومان`;
@@ -180,6 +184,7 @@ export default function InvoicePage({ invoice }: { invoice: Invoice }) {
                         <SummaryRow label="ارزش اولیه محصولات" value={amount(invoice.regular_subtotal)} />
                         {invoice.product_discount > 0 && <SummaryRow discount label="تخفیف محصولات" value={`− ${amount(invoice.product_discount)}`} />}
                         <SummaryRow label="جمع محصولات" value={amount(invoice.subtotal)} />
+                        {invoice.exchange_request_id && <SummaryRow discount label={`معاوضه: ${invoice.trade_item_title}`} value={`− ${amount(invoice.exchange_credit_used)}`} />}
                         {invoice.coupon_code && <SummaryRow discount label={`کد تخفیف (${invoice.coupon_code})`} value={`− ${amount(invoice.coupon_discount)}`} />}
                         <SummaryRow label="هزینه ارسال" value={amount(invoice.delivery_fee)} />
                         <SummaryRow label="مبلغ نهایی سفارش" value={amount(invoice.grand_total)} />

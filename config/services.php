@@ -37,12 +37,14 @@ return [
 
     'payamak_panel' => [
         'base_url' => env('PAYAMAK_PANEL_BASE_URL', 'https://rest.payamak-panel.com/api/SmartSMS'),
+        'pattern_endpoint' => 'https://rest.payamak-panel.com/api/SmartSMS/SendByBaseNumber',
         'username' => env('PAYAMAK_PANEL_USERNAME'),
         'api_key' => env('PAYAMAK_PANEL_API_KEY'),
         'from' => env('PAYAMAK_PANEL_FROM'),
         'from_support_one' => env('PAYAMAK_PANEL_FROM_SUPPORT_ONE'),
         'from_support_two' => env('PAYAMAK_PANEL_FROM_SUPPORT_TWO'),
-        'timeout' => env('PAYAMAK_PANEL_TIMEOUT', 10),
+        'connect_timeout' => 2,
+        'timeout' => 5,
     ],
 
 ];

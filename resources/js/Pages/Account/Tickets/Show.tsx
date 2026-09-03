@@ -14,7 +14,11 @@ const exchangeLabels: Record<string, string> = {
     offered: "پیشنهاد ثبت‌شده",
     accepted: "پذیرفته‌شده",
     rejected: "ردشده",
+    attached_to_order: "متصل به سفارش",
+    received: "کالای شما دریافت شد",
     completed: "تکمیل‌شده",
+    cancelled: "لغوشده",
+    expired: "منقضی‌شده",
 };
 export default function Show({ ticket }: { ticket: any }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -107,6 +111,9 @@ export default function Show({ ticket }: { ticket: any }) {
                                 </p>
                             )}
                             {ticket.exchange_status === "offered" && (
+                                <p className="mt-2 text-sm">محصول مقصد تأییدشده: <strong>{ticket.target_product?.title}</strong></p>
+                            )}
+                            {ticket.exchange_status === "offered" && (
                                 <div className="mt-4 flex gap-3">
                                     <button
                                         className="rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white"
@@ -134,8 +141,7 @@ export default function Show({ ticket }: { ticket: any }) {
                             )}
                             {ticket.exchange_status === "completed" && (
                                 <p className="mt-3 text-sm">
-                                    اعتبار معاوضه به کیف پول شما واریز شده و در
-                                    Checkout قابل استفاده است.
+                                    معاوضه برای سفارش {ticket.exchange_order?.number} تکمیل شده است.
                                 </p>
                             )}
                         </section>

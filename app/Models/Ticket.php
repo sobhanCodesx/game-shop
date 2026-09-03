@@ -8,13 +8,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ticket extends Model
 {
-    public const EXCHANGE_STATUSES = ['pending_review', 'offered', 'accepted', 'rejected', 'completed'];
+    public const EXCHANGE_STATUSES = ['pending_review', 'offered', 'accepted', 'rejected', 'attached_to_order', 'received', 'completed', 'cancelled', 'expired'];
 
-    protected $fillable = ['number', 'user_id', 'order_id', 'order_item_id', 'product_id', 'target_product_id', 'subject', 'type', 'status', 'exchange_status', 'exchange_offer_amount', 'exchange_order_id', 'exchange_credit_applied', 'exchange_credit_expires_at', 'exchange_offer_responded_at', 'exchange_received_at', 'exchange_completed_at', 'exchange_credited_at', 'exchange_cancelled_at', 'exchange_expired_at', 'priority', 'last_replied_at', 'created_by'];
+    protected $fillable = ['number', 'user_id', 'order_id', 'order_item_id', 'product_id', 'target_product_id', 'trade_item_title', 'trade_item_description', 'trade_item_images', 'trade_item_metadata', 'subject', 'type', 'status', 'exchange_status', 'exchange_offer_amount', 'exchange_order_id', 'exchange_credit_applied', 'exchange_credit_expires_at', 'exchange_offer_responded_at', 'exchange_received_at', 'exchange_completed_at', 'exchange_credited_at', 'exchange_cancelled_at', 'exchange_expired_at', 'priority', 'last_replied_at', 'created_by'];
 
     protected function casts(): array
     {
-        return ['last_replied_at' => 'datetime', 'exchange_offer_amount' => 'integer', 'exchange_credit_applied' => 'integer', 'exchange_credit_expires_at' => 'datetime', 'exchange_offer_responded_at' => 'datetime', 'exchange_received_at' => 'datetime', 'exchange_completed_at' => 'datetime', 'exchange_credited_at' => 'datetime', 'exchange_cancelled_at' => 'datetime', 'exchange_expired_at' => 'datetime'];
+        return ['trade_item_images' => 'array', 'trade_item_metadata' => 'array', 'last_replied_at' => 'datetime', 'exchange_offer_amount' => 'integer', 'exchange_credit_applied' => 'integer', 'exchange_credit_expires_at' => 'datetime', 'exchange_offer_responded_at' => 'datetime', 'exchange_received_at' => 'datetime', 'exchange_completed_at' => 'datetime', 'exchange_credited_at' => 'datetime', 'exchange_cancelled_at' => 'datetime', 'exchange_expired_at' => 'datetime'];
     }
 
     public function user(): BelongsTo

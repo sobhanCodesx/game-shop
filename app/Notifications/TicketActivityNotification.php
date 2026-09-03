@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Ticket;
 use App\Notifications\Channels\SmsChannel;
+use App\Services\Sms\SmsPattern;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -25,6 +26,6 @@ class TicketActivityNotification extends Notification
 
     public function toSms(object $notifiable): array
     {
-        return ['title' => $this->title, 'message' => $this->message];
+        return ['pattern' => SmsPattern::TicketActivity, 'variables' => ['title' => $this->title, 'message' => $this->message], 'idempotency_key' => 'ticket-activity:'.$this->ticket->id.':'.sha1($this->title.'|'.$this->message)];
     }
 }

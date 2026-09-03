@@ -25,6 +25,7 @@ class StoreTicketRequest extends FormRequest
             'order_item_id' => ['nullable', 'integer', Rule::exists('order_items', 'id')->where(fn ($q) => $q->whereIn('order_id', $this->user()->orders()->select('id')))],
             'type' => ['nullable', Rule::in(['support', 'exchange'])],
             'product_id' => ['required_if:type,exchange', 'nullable', 'integer', Rule::exists('products', 'id')->where('trade_enabled', true)],
+            'trade_item_title' => ['required_if:type,exchange', 'nullable', 'string', 'min:2', 'max:180'],
             'subject' => ['required_without_all:order_item_id,product_id', 'nullable', 'string', 'max:180'],
             'message' => ['required', 'string', 'min:10', 'max:5000'],
             'attachments' => ['required_if:type,exchange', 'nullable', 'array', 'max:5'],

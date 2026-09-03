@@ -16,6 +16,8 @@ import {
     Users,
     Video,
     RefreshCw,
+    Rocket,
+    MessageSquareText,
     type LucideIcon,
 } from "lucide-react";
 
@@ -107,6 +109,8 @@ export const adminNavigation: NavigationGroup[] = [
             // { label: "بنرها", href: "/admin/banners", icon: PackageSearch },
             // { label: "صفحات", href: "/admin/pages", icon: Tags },
             { label: "تنظیمات", href: "/admin/settings", icon: Settings },
+            { label: "تست پیامک", href: "/admin/sms-test", icon: MessageSquareText },
+            { label: "به‌روزرسانی سیستم", href: "/admin/deployments", icon: Rocket },
             // { label: "گزارش مدیران", href: "/admin/audit-logs", icon: WalletCards },
         ],
     },

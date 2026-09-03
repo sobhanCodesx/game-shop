@@ -80,6 +80,17 @@ export default function Show({ order }: { order: any }) {
                         </Card.Content>
                     </Card>
                 </div>
+                {order.exchange_request_id && (
+                    <Card className="mt-5 border border-indigo-500/25" variant="secondary">
+                        <Card.Content className="space-y-2 p-6">
+                            <h2 className="text-lg font-black">جزئیات معاوضه</h2>
+                            <p>کالای تحویلی شما: <strong>{order.trade_item_title}</strong></p>
+                            <p>محصول خریداری‌شده: <strong>{order.items.find((item: any) => item.product_id === order.approved_product_id)?.title}</strong></p>
+                            <p>ارزش تأییدشده: <strong>{money.format(order.approved_trade_value)} تومان</strong></p>
+                            <p>کسری اعمال‌شده: <strong>{money.format(order.exchange_credit_used)} تومان</strong></p>
+                        </Card.Content>
+                    </Card>
+                )}
             </main>
         </StorefrontLayout>
     );

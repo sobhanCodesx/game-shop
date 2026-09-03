@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ReplyTicketRequest;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
 use App\Models\Ticket;
 use App\Notifications\TicketActivityNotification;
+use App\Services\ExchangeService;
 use App\Services\MediaStorage;
 use App\Services\TicketService;
-use App\Services\ExchangeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -30,6 +31,7 @@ class TicketController extends Controller
         $tickets->through(fn (Ticket $ticket) => [...$ticket->toArray(), 'cover_url' => MediaStorage::url($ticket->product?->coverMedia?->path)]);
 
         $statsQuery = fn () => Ticket::query()->when($type, fn ($query) => $query->where('type', $type));
+
         return Inertia::render('Admin/Tickets/Index', ['tickets' => $tickets, 'filters' => ['status' => $request->string('status')->toString(), 'type' => $type], 'stats' => ['pending' => $statsQuery()->where('status', 'pending')->count(), 'open' => $statsQuery()->where('status', 'open')->count(), 'closed' => $statsQuery()->where('status', 'closed')->count()]]);
     }
 
@@ -51,10 +53,10 @@ class TicketController extends Controller
 
     public function show(Ticket $ticket): Response
     {
-        $ticket->load(['user:id,name,email,phone,wallet_balance', 'order:id,number', 'orderItem', 'product.coverMedia', 'replies.user:id,name,is_admin', 'replies.attachments']);
+        $ticket->load(['user:id,name,email,phone,wallet_balance', 'order:id,number', 'orderItem', 'product.coverMedia', 'targetProduct:id,title', 'exchangeOrder:id,number', 'replies.user:id,name,is_admin', 'replies.attachments']);
         $ticket->replies->each(fn ($reply) => $reply->attachments->each(fn ($attachment) => $attachment->setAttribute('url', MediaStorage::url($attachment->path))));
 
-        return Inertia::render('Admin/Tickets/Show', ['ticket' => [...$ticket->toArray(), 'cover_url' => MediaStorage::url($ticket->product?->coverMedia?->path)]]);
+        return Inertia::render('Admin/Tickets/Show', ['ticket' => [...$ticket->toArray(), 'cover_url' => MediaStorage::url($ticket->product?->coverMedia?->path)], 'exchangeProducts' => $ticket->type === 'exchange' ? Product::query()->where('trade_enabled', true)->orderBy('title')->get(['id', 'title']) : []]);
     }
 
     public function reply(ReplyTicketRequest $request, Ticket $ticket, TicketService $service): RedirectResponse
@@ -67,27 +69,26 @@ class TicketController extends Controller
 
     public function offer(Request $request, Ticket $ticket, ExchangeService $service): RedirectResponse
     {
-        $data = $request->validate(['exchange_offer_amount' => ['required', 'integer', 'min:1', 'max:999999999999']]);
-        $service->offer($ticket, (int) $data['exchange_offer_amount']);
+        $data = $request->validate(['target_product_id' => ['required', Rule::exists('products', 'id')->where('trade_enabled', true)], 'exchange_offer_amount' => ['required', 'integer', 'min:1', 'max:999999999999']]);
+        $service->offer($ticket, Product::findOrFail($data['target_product_id']), (int) $data['exchange_offer_amount']);
+
         return back()->with('success', 'پیشنهاد معاوضه ثبت شد.');
     }
 
     public function completeExchange(Ticket $ticket, ExchangeService $service): RedirectResponse
     {
+        if ($ticket->exchange_status === 'attached_to_order') {
+            $ticket = $service->markReceived($ticket);
+        }
         $service->complete($ticket);
-        return back()->with('success', 'معاوضه تکمیل و اعتبار کیف پول ثبت شد.');
-    }
 
-    public function adjustExchange(Request $request, Ticket $ticket, ExchangeService $service): RedirectResponse
-    {
-        $data = $request->validate(['amount' => ['required', 'integer', 'min:1', 'max:999999999999'], 'description' => ['required', 'string', 'min:5', 'max:255']]);
-        $service->adjust($ticket, (int) $data['amount'], $data['description']);
-        return back()->with('success', 'افزایش اعتبار با تراکنش جدید ثبت شد.');
+        return back()->with('success', 'معاوضه تکمیل و اعتبار کیف پول ثبت شد.');
     }
 
     public function destroyAttachments(Ticket $ticket, TicketService $service): RedirectResponse
     {
         $count = $service->purgeAttachments($ticket);
+
         return back()->with('success', $count ? "{$count} فایل تیکت از فضای ذخیره‌سازی حذف شد؛ متن تیکت محفوظ است." : 'این تیکت فایل پیوستی ندارد.');
     }
 

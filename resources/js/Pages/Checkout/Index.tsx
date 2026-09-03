@@ -17,6 +17,7 @@ interface Address {
 }
 interface Summary {
     subtotal: number;
+    exchange_credit_used: number;
     coupon_discount: number;
     delivery_fee: number;
     grand_total: number;
@@ -42,11 +43,13 @@ export default function Checkout({
     profile,
     walletBalance,
     summary: initial,
+    availableExchanges,
 }: {
     addresses: Address[];
     profile: Profile;
     walletBalance: number;
     summary: Summary;
+    availableExchanges: Array<{ id: number; number: string; amount: number; product: { id: number; title: string } }>;
 }) {
     const [step, setStep] = useState(1),
         [summary, setSummary] = useState(initial),
@@ -68,6 +71,7 @@ export default function Checkout({
         coupon_code: "",
         use_wallet: false,
         save_address: false,
+        exchange_request_id: null as number | null,
     });
     const fieldErrors = errors as Record<string, string>;
     const continueAddress = () => {
@@ -95,6 +99,7 @@ export default function Checkout({
     const preview = async (
         coupon = data.coupon_code,
         wallet = data.use_wallet,
+        exchangeRequestId = data.exchange_request_id,
     ) => {
         setCouponError("");
         const token = document.querySelector<HTMLMetaElement>(
@@ -107,7 +112,7 @@ export default function Checkout({
                 Accept: "application/json",
                 "X-CSRF-TOKEN": token ?? "",
             },
-            body: JSON.stringify({ coupon_code: coupon, use_wallet: wallet }),
+            body: JSON.stringify({ coupon_code: coupon, use_wallet: wallet, exchange_request_id: exchangeRequestId }),
         });
         const body = await r.json();
         if (!r.ok) {
@@ -296,6 +301,28 @@ export default function Checkout({
                                         <TicketPercent />
                                         تخفیف و کیف پول
                                     </h2>
+                                    {availableExchanges.length > 0 && (
+                                        <label className="block rounded-2xl border border-indigo-500/25 bg-indigo-500/5 p-4">
+                                            <span className="mb-2 block text-sm font-black">اعتبار معاوضه مخصوص محصول</span>
+                                            <select
+                                                className="w-full rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] p-3"
+                                                onChange={async (event) => {
+                                                    const value = event.target.value ? Number(event.target.value) : null;
+                                                    setData("exchange_request_id", value);
+                                                    await preview(data.coupon_code, data.use_wallet, value);
+                                                }}
+                                                value={data.exchange_request_id ?? ""}
+                                            >
+                                                <option value="">بدون معاوضه</option>
+                                                {availableExchanges.map((exchange) => (
+                                                    <option key={exchange.id} value={exchange.id}>
+                                                        {exchange.product.title} — {money.format(exchange.amount)} تومان ({exchange.number})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {fieldErrors.exchange_request_id && <p className="mt-2 text-xs font-bold text-rose-500">{fieldErrors.exchange_request_id}</p>}
+                                        </label>
+                                    )}
                                     <div className="flex gap-2">
                                         <Input
                                             placeholder="کد تخفیف"
@@ -445,6 +472,12 @@ export default function Checkout({
                                         {money.format(summary.coupon_discount)}
                                     </span>
                                 </p>
+                                {summary.exchange_credit_used > 0 && (
+                                    <p className="flex justify-between text-indigo-500">
+                                        <span>کسری معاوضه (فقط محصول تأییدشده)</span>
+                                        <span>− {money.format(summary.exchange_credit_used)}</span>
+                                    </p>
+                                )}
                                 <p className="flex justify-between">
                                     <span>ارسال با پیک</span>
                                     <span>

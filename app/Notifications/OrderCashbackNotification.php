@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use App\Notifications\Channels\SmsChannel;
+use App\Services\Sms\SmsPattern;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -20,19 +21,15 @@ class OrderCashbackNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        return [...$this->toSms($notifiable), 'url' => route('orders.show', $this->order, false), 'order_id' => $this->order->id, 'amount' => $this->order->cashback_amount];
+        return ['title' => 'اعتبار خرید به کیف پول اضافه شد', 'message' => 'اعتبار سفارش '.$this->order->number.' به کیف پول اضافه شد.', 'url' => route('orders.show', $this->order, false), 'order_id' => $this->order->id, 'amount' => $this->order->cashback_amount];
     }
 
     public function toSms(object $notifiable): array
     {
         return [
-            'title' => 'اعتبار خرید به کیف پول اضافه شد',
-            'message' => implode("\n", [
-                'شماره سفارش: '.$this->order->number,
-                'محصولات: '.$this->productSummary(),
-                'مبلغ اعتبار: '.number_format((int) $this->order->cashback_amount).' تومان',
-                'اعتبار به کیف پول شما اضافه شد.',
-            ]),
+            'pattern' => SmsPattern::OrderCashback,
+            'variables' => ['order' => $this->order->number, 'products' => $this->productSummary(), 'amount' => (string) (int) $this->order->cashback_amount],
+            'idempotency_key' => 'order-cashback:'.$this->order->id,
         ];
     }
 

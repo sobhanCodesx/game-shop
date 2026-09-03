@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use App\Notifications\Channels\SmsChannel;
+use App\Services\Sms\SmsPattern;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -26,13 +27,9 @@ class OrderActivityNotification extends Notification
     public function toSms(object $notifiable): array
     {
         return [
-            'title' => $this->title,
-            'message' => implode("\n", [
-                'شماره سفارش: '.$this->order->number,
-                'محصولات: '.$this->productSummary(),
-                'مبلغ نهایی: '.number_format((int) $this->order->grand_total).' تومان',
-                $this->message,
-            ]),
+            'pattern' => SmsPattern::OrderActivity,
+            'variables' => ['title' => $this->title, 'order' => $this->order->number, 'products' => $this->productSummary(), 'amount' => (string) (int) $this->order->grand_total, 'message' => $this->message],
+            'idempotency_key' => 'order-activity:'.$this->order->id.':'.sha1($this->title.'|'.$this->message),
         ];
     }
 
