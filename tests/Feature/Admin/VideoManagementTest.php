@@ -64,6 +64,8 @@ class VideoManagementTest extends TestCase
             'status' => 'published',
             'featured' => true,
             'video' => UploadedFile::fake()->create('gameplay.mp4', 512, 'video/mp4'),
+            'thumbnail' => UploadedFile::fake()->image('thumbnail.jpg', 640, 360),
+            'client_duration' => 90,
         ])->assertRedirect('/admin/videos');
 
         $video = SocialContent::query()->firstOrFail();
@@ -74,7 +76,9 @@ class VideoManagementTest extends TestCase
         $this->assertSame('گیم‌پلی آزمایشی | PlayNexus', $video->seo_title);
         $this->assertSame('توضیحات اختصاصی نتیجه جستجوی ویدیوی آزمایشی.', $video->seo_description);
         $this->assertNotNull($video->published_at);
+        $this->assertSame(90, $video->duration);
         Storage::disk('public')->assertExists($video->video_path);
+        Storage::disk('public')->assertExists($video->thumbnail);
     }
 
     public function test_admin_can_create_video_from_resumable_chunked_upload(): void
@@ -148,7 +152,7 @@ class VideoManagementTest extends TestCase
                 ->component('Content/Show')
                 ->where('content.video_url', 'http://localhost/storage/videos/published.mp4')
                 ->where('content.body', '<h2>آنچه در این ویدیو می‌بینید</h2><p>محتوای کامل ویدیو</p>')
-                ->where('seo.title', 'تماشای ویدیوی منتشر شده | PlayNexus')
+                ->where('seo.title', 'تماشای ویدیوی منتشر شده | پلی نکسوس')
                 ->where('seo.description', 'توضیحات متای اختصاصی ویدیوی منتشر شده برای نتایج جستجو.')
                 ->where('seo.canonical', 'http://localhost/videos/published-video')
                 ->where('seo.type', 'video.other')

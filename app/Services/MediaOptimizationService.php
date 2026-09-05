@@ -20,39 +20,68 @@ class MediaOptimizationService
     }
 
     /** @return array{thumbnail: ?string, duration: ?int} */
-    public function videoMetadata(string $videoPath, string $directory): array
+    public function videoMetadata(UploadedFile|string $video, string $directory): array
     {
         $binary = (string) config('media.video.ffmpeg_binary');
-        if (! is_file($binary) || ! MediaStorage::disk()->exists($videoPath)) {
+        if (! is_file($binary)) {
             return ['thumbnail' => null, 'duration' => null];
         }
 
-        $videoTemporary = tempnam(sys_get_temp_dir(), 'nexus-video-');
-        if (! $videoTemporary) {
-            return ['thumbnail' => null, 'duration' => null];
+        $videoTemporary = null;
+        $videoSource = $video instanceof UploadedFile ? $video->getRealPath() : null;
+        if (! is_string($videoSource) || ! is_file($videoSource)) {
+            if (! is_string($video) || ! MediaStorage::disk()->exists($video)) {
+                return ['thumbnail' => null, 'duration' => null];
+            }
+
+            $videoTemporary = tempnam(sys_get_temp_dir(), 'nexus-video-');
+            if (! $videoTemporary) {
+                return ['thumbnail' => null, 'duration' => null];
+            }
+            $read = MediaStorage::disk()->readStream($video);
+            $write = fopen($videoTemporary, 'wb');
+            if (! is_resource($read) || ! is_resource($write)) {
+                if (is_resource($read)) {
+                    fclose($read);
+                }
+                if (is_resource($write)) {
+                    fclose($write);
+                }
+                @unlink($videoTemporary);
+
+                return ['thumbnail' => null, 'duration' => null];
+            }
+            stream_copy_to_stream($read, $write);
+            fclose($read);
+            fclose($write);
+            $videoSource = $videoTemporary;
         }
-        $read = MediaStorage::disk()->readStream($videoPath);
-        $write = fopen($videoTemporary, 'wb');
-        if (! is_resource($read) || ! is_resource($write)) {
-            @unlink($videoTemporary);
-            return ['thumbnail' => null, 'duration' => null];
-        }
-        stream_copy_to_stream($read, $write);
-        fclose($read);
-        fclose($write);
 
         $temporary = tempnam(sys_get_temp_dir(), 'nexus-thumb-');
         if (! $temporary) {
+            if ($videoTemporary) {
+                @unlink($videoTemporary);
+            }
+
             return ['thumbnail' => null, 'duration' => null];
         }
         @unlink($temporary);
         $temporary .= '.jpg';
 
         $process = new Process([
-            $binary, '-y', '-ss', '00:00:01', '-i', $videoTemporary,
+            $binary, '-y', '-ss', '00:00:01', '-i', $videoSource,
             '-frames:v', '1', '-vf', 'scale=640:-2', '-q:v', '3', $temporary,
         ]);
-        $process->setTimeout(120)->run();
+        try {
+            $process->setTimeout(120)->run();
+        } catch (\Throwable) {
+            @unlink($temporary);
+            if ($videoTemporary) {
+                @unlink($videoTemporary);
+            }
+
+            return ['thumbnail' => null, 'duration' => null];
+        }
         preg_match('/Duration:\s*(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)/', $process->getErrorOutput(), $matches);
         $duration = $matches
             ? (int) round(((int) $matches[1] * 3600) + ((int) $matches[2] * 60) + (float) $matches[3])
@@ -64,7 +93,9 @@ class MediaOptimizationService
             MediaStorage::disk()->put($thumbnail, fopen($temporary, 'rb'));
         }
         @unlink($temporary);
-        @unlink($videoTemporary);
+        if ($videoTemporary) {
+            @unlink($videoTemporary);
+        }
 
         return compact('thumbnail', 'duration');
     }

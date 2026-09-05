@@ -54,6 +54,69 @@ interface FormData {
     allow_comments: boolean;
     _method?: "put";
     upload_token?: string;
+    thumbnail?: File;
+    client_duration?: number;
+}
+
+function browserVideoMetadata(
+    file: File,
+): Promise<{ duration: number | undefined; thumbnail: File }> {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const video = document.createElement("video");
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+        const cleanup = () => {
+            video.removeAttribute("src");
+            video.load();
+            URL.revokeObjectURL(url);
+        };
+        const fail = () => {
+            cleanup();
+            reject(new Error("ساخت تصویر بندانگشتی در مرورگر انجام نشد."));
+        };
+        video.onerror = fail;
+        video.onloadedmetadata = () => {
+            const duration = Number.isFinite(video.duration)
+                ? Math.max(1, Math.round(video.duration))
+                : undefined;
+            video.onseeked = () => {
+                const scale = Math.min(1, 640 / video.videoWidth);
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(
+                    1,
+                    Math.round(video.videoWidth * scale),
+                );
+                canvas.height = Math.max(
+                    1,
+                    Math.round(video.videoHeight * scale),
+                );
+                canvas
+                    .getContext("2d")
+                    ?.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(
+                    (blob) => {
+                        cleanup();
+                        if (!blob)
+                            return reject(
+                                new Error("ساخت تصویر بندانگشتی انجام نشد."),
+                            );
+                        resolve({
+                            duration,
+                            thumbnail: new File([blob], "video-thumbnail.jpg", {
+                                type: "image/jpeg",
+                            }),
+                        });
+                    },
+                    "image/jpeg",
+                    0.84,
+                );
+            };
+            video.currentTime = Math.min(1, Math.max(0, video.duration / 10));
+        };
+        video.src = url;
+    });
 }
 
 export default function VideoForm({ video, games, playlists }: Props) {
@@ -77,6 +140,11 @@ export default function VideoForm({ video, games, playlists }: Props) {
         null,
     );
     const [uploadError, setUploadError] = useState("");
+    const [preparingThumbnail, setPreparingThumbnail] = useState(false);
+    const [completedUpload, setCompletedUpload] = useState<{
+        file: File;
+        token: string;
+    } | null>(null);
     const uploadSpeed = uploadProgress
         ? `${(uploadProgress.bytesPerSecond / 1024 / 1024).toLocaleString("fa-IR", { maximumFractionDigits: 1 })} MB/s`
         : null;
@@ -92,10 +160,19 @@ export default function VideoForm({ video, games, playlists }: Props) {
     const submit = async (event: FormEvent) => {
         event.preventDefault();
         setUploadError("");
-        let token: string | undefined;
+        let token =
+            completedUpload?.file === data.video
+                ? completedUpload?.token
+                : undefined;
         if (data.video) {
             try {
-                token = await uploadFileInChunks(data.video, setUploadProgress);
+                if (!token) {
+                    token = await uploadFileInChunks(
+                        data.video,
+                        setUploadProgress,
+                    );
+                    setCompletedUpload({ file: data.video, token });
+                }
             } catch (error) {
                 setUploadError(
                     error instanceof Error
@@ -113,8 +190,31 @@ export default function VideoForm({ video, games, playlists }: Props) {
         }));
         post(editing ? `/admin/videos/${video?.id}` : "/admin/videos", {
             forceFormData: true,
+            onError: () =>
+                setUploadError(
+                    "ثبت نهایی ویدیو انجام نشد. فایل دوباره ارسال نمی‌شود؛ خطا را بررسی و مجدداً ذخیره کنید.",
+                ),
+            onSuccess: () => setCompletedUpload(null),
             onFinish: () => setUploadProgress(null),
         });
+    };
+    const selectVideo = async (file?: File) => {
+        setData("video", file);
+        setData("thumbnail", undefined);
+        setData("client_duration", undefined);
+        setCompletedUpload(null);
+        if (!file) return;
+
+        setPreparingThumbnail(true);
+        try {
+            const metadata = await browserVideoMetadata(file);
+            setData("thumbnail", metadata.thumbnail);
+            setData("client_duration", metadata.duration);
+        } catch {
+            // FFmpeg on the application server remains the primary fallback.
+        } finally {
+            setPreparingThumbnail(false);
+        }
     };
 
     return (
@@ -206,8 +306,8 @@ export default function VideoForm({ video, games, playlists }: Props) {
                                     }
                                     placeholder={
                                         data.title
-                                            ? `${data.title} | PlayNexus`
-                                            : "عنوان ویدیو | PlayNexus"
+                                            ? `${data.title} | پلی نکسوس`
+                                            : "عنوان ویدیو | پلی نکسوس"
                                     }
                                     value={data.seo_title}
                                 />
@@ -382,7 +482,7 @@ export default function VideoForm({ video, games, playlists }: Props) {
                                 accept="video/mp4,video/webm,video/quicktime"
                                 className="hidden"
                                 onChange={(event) =>
-                                    setData("video", event.target.files?.[0])
+                                    void selectVideo(event.target.files?.[0])
                                 }
                                 type="file"
                             />
@@ -390,6 +490,11 @@ export default function VideoForm({ video, games, playlists }: Props) {
                         {data.video && (
                             <p className="truncate text-xs text-emerald-400">
                                 {data.video.name}
+                            </p>
+                        )}
+                        {preparingThumbnail && (
+                            <p className="text-xs text-indigo-300">
+                                در حال ساخت تصویر بندانگشتی…
                             </p>
                         )}
                         {uploadError && (
@@ -425,7 +530,11 @@ export default function VideoForm({ video, games, playlists }: Props) {
                         )}
                         <Button
                             fullWidth
-                            isDisabled={processing || uploadProgress !== null}
+                            isDisabled={
+                                processing ||
+                                uploadProgress !== null ||
+                                preparingThumbnail
+                            }
                             type="submit"
                             variant="primary"
                         >

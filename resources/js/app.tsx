@@ -15,15 +15,17 @@ if ("serviceWorker" in navigator) {
         });
     } else {
         // A production worker left behind on localhost can make Vite/HMR appear stale.
-        void navigator.serviceWorker.getRegistrations().then((registrations) => {
-            for (const registration of registrations) {
-                void registration.unregister();
-            }
-        });
+        void navigator.serviceWorker
+            .getRegistrations()
+            .then((registrations) => {
+                for (const registration of registrations) {
+                    void registration.unregister();
+                }
+            });
     }
 }
 
-const appName = import.meta.env.VITE_APP_NAME ?? "PlayNexus";
+const appName = "پلی نکسوس";
 type PageModule = { default: ComponentType };
 type PageSeoProps = { seo?: { absoluteTitle?: boolean } };
 

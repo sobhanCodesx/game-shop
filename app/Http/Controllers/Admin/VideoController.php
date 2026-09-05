@@ -59,14 +59,20 @@ class VideoController extends Controller
         $token = $request->string('upload_token')->toString();
         $file = $token ? $uploads->claim($request->user()->id, $token) : $request->file('video');
         try {
-            $this->storeFile($video, $file, $optimizer);
+            $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null);
+            $video->save();
+            $video->playlists()->sync($this->playlistSync($request->validated('playlist_ids', [])));
+        } catch (\Throwable $exception) {
+            if ($video->video_path || $video->thumbnail) {
+                $this->deleteFiles($video);
+            }
+
+            throw $exception;
         } finally {
-            if ($token) {
+            if ($token && $video->exists) {
                 $uploads->forget($request->user()->id, $token);
             }
         }
-        $video->save();
-        $video->playlists()->sync($this->playlistSync($request->validated('playlist_ids', [])));
 
         return to_route('admin.videos.index')->with('success', 'ویدیو با موفقیت آپلود شد.');
     }
@@ -96,7 +102,7 @@ class VideoController extends Controller
             $oldFiles = array_filter([$video->video_path, $video->thumbnail]);
             $file = $token ? $uploads->claim($request->user()->id, $token) : $request->file('video');
             try {
-                $this->storeFile($video, $file, $optimizer);
+                $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null);
             } finally {
                 if ($token) {
                     $uploads->forget($request->user()->id, $token);
@@ -119,14 +125,22 @@ class VideoController extends Controller
         return back()->with('success', 'ویدیو حذف شد.');
     }
 
-    private function storeFile(SocialContent $video, UploadedFile $file, MediaOptimizationService $optimizer): void
-    {
+    private function storeFile(
+        SocialContent $video,
+        UploadedFile $file,
+        MediaOptimizationService $optimizer,
+        ?UploadedFile $browserThumbnail = null,
+        ?int $browserDuration = null,
+    ): void {
         $stored = $optimizer->store($file, 'videos');
-        $metadata = $optimizer->videoMetadata($stored['path'], 'videos/thumbnails');
         $video->video_path = $stored['path'];
-        $video->video_mime = 'video/mp4';
-        $video->thumbnail = $metadata['thumbnail'];
-        $video->duration = $metadata['duration'];
+        $video->video_mime = $file->getMimeType() ?: 'video/mp4';
+        // Chunk assembly already produced a local file. Read metadata from that
+        // source so remote disks are not downloaded again after the upload.
+        $metadata = $optimizer->videoMetadata($file, 'videos/thumbnails');
+        $video->thumbnail = $metadata['thumbnail']
+            ?? ($browserThumbnail ? $optimizer->store($browserThumbnail, 'videos/thumbnails')['path'] : null);
+        $video->duration = $metadata['duration'] ?? $browserDuration;
     }
 
     private function deleteFiles(SocialContent $video): void

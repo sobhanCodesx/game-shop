@@ -30,6 +30,8 @@ class VideoRequest extends FormRequest
                 'max:2097152',
             ],
             'upload_token' => ['nullable', 'uuid'],
+            'thumbnail' => ['nullable', 'image', 'mimes:jpeg,jpg,webp', 'max:2048'],
+            'client_duration' => ['nullable', 'integer', 'min:1', 'max:86400'],
             'status' => ['required', Rule::in(['draft', 'published'])],
             'featured' => ['boolean'],
             'allow_comments' => ['boolean'],

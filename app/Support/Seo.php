@@ -17,8 +17,11 @@ final class Seo
      */
     public static function page(array $data): array
     {
+        $title = preg_replace('/\bplay\s*nexus\b/iu', 'پلی نکسوس', (string) $data['title'])
+            ?? (string) $data['title'];
+
         $seo = [
-            'title' => (string) $data['title'],
+            'title' => $title,
             'description' => (string) $data['description'],
             'canonical' => (string) $data['canonical'],
             'robots' => (string) ($data['robots'] ?? 'index, follow'),

@@ -38,7 +38,7 @@ class HomeSettingsController extends Controller
         'newsletter_enabled' => true,
         'newsletter_title' => 'از تخفیف‌های گیمینگ جا نمون',
         'newsletter_description' => 'خبرهای مهم، محصولات جدید و پیشنهادهای اختصاصی را دریافت کن.',
-        'seo_title' => 'فروشگاه بازی و تجهیزات گیمینگ | PlayNexus',
+        'seo_title' => 'فروشگاه بازی و تجهیزات گیمینگ | پلی نکسوس',
         'seo_description' => 'خرید بازی، کنسول و تجهیزات گیمینگ با تضمین اصالت، ارسال سریع و پشتیبانی تخصصی از فروشگاه PlayNexus.',
     ];
 

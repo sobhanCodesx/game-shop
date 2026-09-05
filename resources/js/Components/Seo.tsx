@@ -88,28 +88,27 @@ export default function Seo({ seo }: { seo: SeoData }) {
             />
 
             {seo.video && (
-                <>
-                    <meta
-                        content={seo.video.url}
-                        head-key="og:video"
-                        property="og:video"
-                    />
-                    {seo.video.type && (
-                        <meta
-                            content={seo.video.type}
-                            head-key="og:video:type"
-                            property="og:video:type"
-                        />
-                    )}
-                    {seo.video.duration !== null && (
-                        <meta
-                            content={String(seo.video.duration)}
-                            head-key="og:video:duration"
-                            property="og:video:duration"
-                        />
-                    )}
-                </>
+                <meta
+                    content={seo.video.url}
+                    head-key="og:video"
+                    property="og:video"
+                />
             )}
+            {seo.video?.type && (
+                <meta
+                    content={seo.video.type}
+                    head-key="og:video:type"
+                    property="og:video:type"
+                />
+            )}
+            {seo.video?.duration !== null &&
+                seo.video?.duration !== undefined && (
+                    <meta
+                        content={String(seo.video.duration)}
+                        head-key="og:video:duration"
+                        property="og:video:duration"
+                    />
+                )}
 
             {seo.structuredData && (
                 <script

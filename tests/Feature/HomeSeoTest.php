@@ -31,7 +31,7 @@ class HomeSeoTest extends TestCase
 
         $response->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Home')
-            ->where('seo.title', 'فروشگاه گیمینگ تست | PlayNexus')
+            ->where('seo.title', 'فروشگاه گیمینگ تست | پلی نکسوس')
             ->where('seo.description', 'توضیحات واقعی و اختصاصی صفحه اصلی فروشگاه گیمینگ تست.')
             ->where('seo.canonical', 'http://localhost')
             ->where('seo.robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1')
@@ -42,7 +42,7 @@ class HomeSeoTest extends TestCase
             ->where('seo.structuredData.@graph.1.@type', 'WebSite')
             ->has('head', 18));
 
-        $response->assertSee('<title data-inertia="title">فروشگاه گیمینگ تست | PlayNexus</title>', false);
+        $response->assertSee('<title data-inertia="title">فروشگاه گیمینگ تست | پلی نکسوس</title>', false);
         $response->assertSee('<link data-inertia="canonical" rel="canonical" href="http://localhost">', false);
         $response->assertSee('<meta data-inertia="og:image" property="og:image" content="http://localhost/storage/home/slides/seo-banner.jpg">', false);
         $response->assertSee('<script data-inertia="structured-data" type="application/ld+json">', false);
