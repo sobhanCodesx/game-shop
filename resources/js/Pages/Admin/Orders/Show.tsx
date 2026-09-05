@@ -92,6 +92,19 @@ export default function Show({ order }: { order: any }) {
                                                     تومان
                                                 </span>
                                             </div>
+                                            {item.exchange_credit_used > 0 && (
+                                                <div className="mt-3 rounded-xl border border-indigo-500/25 bg-indigo-500/10 px-3 py-2 text-sm text-indigo-300">
+                                                    کسر بابت معاوضه{" "}
+                                                    <strong>
+                                                        «{order.trade_item_title}»
+                                                    </strong>
+                                                    : −{" "}
+                                                    {money.format(
+                                                        item.exchange_credit_used,
+                                                    )}{" "}
+                                                    تومان از قیمت همین محصول
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

@@ -162,15 +162,22 @@ export default function NotificationPopover({
             {open && (
                 <section
                     className={`
-                        absolute
-                        left-0
-                        top-[calc(100%+.7rem)]
+                        fixed
+                        inset-x-3
+                        top-20
                         z-[70]
-                        w-[min(390px,calc(100vw-2rem))]
+                        max-h-[calc(100dvh-6rem)]
+                        w-auto
                         overflow-hidden
                         rounded-3xl
                         border
                         shadow-2xl
+                        lg:absolute
+                        lg:inset-x-auto
+                        lg:left-0
+                        lg:top-[calc(100%+.7rem)]
+                        lg:max-h-none
+                        lg:w-[min(390px,calc(100vw-2rem))]
                         ${
                             admin
                                 ? "border-slate-800 bg-[#0d121d] text-slate-100"
@@ -240,7 +247,7 @@ export default function NotificationPopover({
                         )}
                     </header>
 
-                    <div className="max-h-[420px] overflow-y-auto p-2">
+                    <div className="max-h-[calc(100dvh-11.5rem)] overflow-y-auto p-2 lg:max-h-[420px]">
                         {notifications?.latest.map(
                             (item) => (
                                 <button

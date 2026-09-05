@@ -57,7 +57,10 @@ class VideoManagementTest extends TestCase
 
         $this->actingAs($admin)->post('/admin/videos', [
             'title' => 'گیم‌پلی آزمایشی',
-            'excerpt' => 'توضیح کوتاه ویدیو',
+            'excerpt' => '<strong>توضیح کوتاه ویدیو</strong>',
+            'body' => '<h2 class="unsafe">راهنمای مرحله اول</h2><blockquote>نکته مهم</blockquote><script>alert(1)</script><a href="javascript:alert(1)">لینک ناامن</a><a href="https://example.com/guide">راهنمای کامل</a>',
+            'seo_title' => 'گیم‌پلی آزمایشی | PlayNexus',
+            'seo_description' => 'توضیحات اختصاصی نتیجه جستجوی ویدیوی آزمایشی.',
             'status' => 'published',
             'featured' => true,
             'video' => UploadedFile::fake()->create('gameplay.mp4', 512, 'video/mp4'),
@@ -66,6 +69,10 @@ class VideoManagementTest extends TestCase
         $video = SocialContent::query()->firstOrFail();
         $this->assertSame('video', $video->type);
         $this->assertSame('published', $video->status);
+        $this->assertSame('توضیح کوتاه ویدیو', $video->excerpt);
+        $this->assertSame('<h2>راهنمای مرحله اول</h2><blockquote>نکته مهم</blockquote><a>لینک ناامن</a><a href="https://example.com/guide" rel="noopener noreferrer">راهنمای کامل</a>', $video->body);
+        $this->assertSame('گیم‌پلی آزمایشی | PlayNexus', $video->seo_title);
+        $this->assertSame('توضیحات اختصاصی نتیجه جستجوی ویدیوی آزمایشی.', $video->seo_description);
         $this->assertNotNull($video->published_at);
         Storage::disk('public')->assertExists($video->video_path);
     }
@@ -125,14 +132,35 @@ class VideoManagementTest extends TestCase
             'slug' => 'published-video',
             'status' => 'published',
             'published_at' => now()->subMinute(),
+            'excerpt' => 'خلاصه اختصاصی ویدیوی منتشر شده',
+            'body' => '<h2>آنچه در این ویدیو می‌بینید</h2><p>محتوای کامل ویدیو</p>',
+            'seo_title' => 'تماشای ویدیوی منتشر شده | PlayNexus',
+            'seo_description' => 'توضیحات متای اختصاصی ویدیوی منتشر شده برای نتایج جستجو.',
+            'thumbnail' => 'videos/thumbnails/published.jpg',
             'video_path' => 'videos/published.mp4',
             'video_mime' => 'video/mp4',
+            'duration' => 125,
         ]);
 
-        $this->get("/videos/{$video->slug}")
+        $response = $this->get("/videos/{$video->slug}?comment_sort=newest&utm_source=test")
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Content/Show')
-                ->where('content.video_url', 'http://localhost/storage/videos/published.mp4'));
+                ->where('content.video_url', 'http://localhost/storage/videos/published.mp4')
+                ->where('content.body', '<h2>آنچه در این ویدیو می‌بینید</h2><p>محتوای کامل ویدیو</p>')
+                ->where('seo.title', 'تماشای ویدیوی منتشر شده | PlayNexus')
+                ->where('seo.description', 'توضیحات متای اختصاصی ویدیوی منتشر شده برای نتایج جستجو.')
+                ->where('seo.canonical', 'http://localhost/videos/published-video')
+                ->where('seo.type', 'video.other')
+                ->where('seo.image', 'http://localhost/storage/videos/thumbnails/published.jpg')
+                ->where('seo.video.url', 'http://localhost/storage/videos/published.mp4')
+                ->where('seo.video.duration', 125)
+                ->where('seo.structuredData.@graph.1.@type', 'VideoObject')
+                ->where('seo.structuredData.@graph.1.duration', 'PT2M5S')
+                ->where('seo.structuredData.@graph.2.@type', 'BreadcrumbList'));
+
+        $response->assertSee('<link data-inertia="canonical" rel="canonical" href="http://localhost/videos/published-video">', false);
+        $response->assertSee('<meta data-inertia="og:video" property="og:video" content="http://localhost/storage/videos/published.mp4">', false);
+        $response->assertSee('<script data-inertia="structured-data" type="application/ld+json">', false);
     }
 }

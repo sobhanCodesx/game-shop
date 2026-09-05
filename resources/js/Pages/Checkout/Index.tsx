@@ -44,12 +44,20 @@ export default function Checkout({
     walletBalance,
     summary: initial,
     availableExchanges,
+    selectedExchangeId,
 }: {
     addresses: Address[];
     profile: Profile;
     walletBalance: number;
     summary: Summary;
-    availableExchanges: Array<{ id: number; number: string; amount: number; product: { id: number; title: string } }>;
+    availableExchanges: Array<{
+        id: number;
+        number: string;
+        amount: number;
+        trade_item_title: string;
+        product: { id: number; title: string };
+    }>;
+    selectedExchangeId: number | null;
 }) {
     const [step, setStep] = useState(1),
         [summary, setSummary] = useState(initial),
@@ -71,8 +79,11 @@ export default function Checkout({
         coupon_code: "",
         use_wallet: false,
         save_address: false,
-        exchange_request_id: null as number | null,
+        exchange_request_id: selectedExchangeId,
     });
+    const selectedExchange = availableExchanges.find(
+        (exchange) => exchange.id === data.exchange_request_id,
+    );
     const fieldErrors = errors as Record<string, string>;
     const continueAddress = () => {
         if (data.address_mode === "saved" && data.address_id) {
@@ -316,10 +327,42 @@ export default function Checkout({
                                                 <option value="">بدون معاوضه</option>
                                                 {availableExchanges.map((exchange) => (
                                                     <option key={exchange.id} value={exchange.id}>
-                                                        {exchange.product.title} — {money.format(exchange.amount)} تومان ({exchange.number})
+                                                        {exchange.trade_item_title} برای {exchange.product.title} — {money.format(exchange.amount)} تومان ({exchange.number})
                                                     </option>
                                                 ))}
                                             </select>
+                                            {selectedExchange &&
+                                                summary.exchange_credit_used >
+                                                    0 && (
+                                                    <div className="mt-3 rounded-xl border border-indigo-500/20 bg-[var(--store-surface)] p-3 text-sm leading-7">
+                                                        <p>
+                                                            کسر بابت معاوضه:{" "}
+                                                            <strong>
+                                                                {
+                                                                    selectedExchange.trade_item_title
+                                                                }
+                                                            </strong>
+                                                        </p>
+                                                        <p>
+                                                            از قیمت{" "}
+                                                            <strong>
+                                                                {
+                                                                    selectedExchange
+                                                                        .product
+                                                                        .title
+                                                                }
+                                                            </strong>
+                                                            :{" "}
+                                                            <strong className="text-indigo-500">
+                                                                −{" "}
+                                                                {money.format(
+                                                                    summary.exchange_credit_used,
+                                                                )}{" "}
+                                                                تومان
+                                                            </strong>
+                                                        </p>
+                                                    </div>
+                                                )}
                                             {fieldErrors.exchange_request_id && <p className="mt-2 text-xs font-bold text-rose-500">{fieldErrors.exchange_request_id}</p>}
                                         </label>
                                     )}
@@ -474,7 +517,12 @@ export default function Checkout({
                                 </p>
                                 {summary.exchange_credit_used > 0 && (
                                     <p className="flex justify-between text-indigo-500">
-                                        <span>کسری معاوضه (فقط محصول تأییدشده)</span>
+                                        <span>
+                                            کسر معاوضه{" "}
+                                            {selectedExchange
+                                                ? `«${selectedExchange.trade_item_title}»`
+                                                : ""}
+                                        </span>
                                         <span>− {money.format(summary.exchange_credit_used)}</span>
                                     </p>
                                 )}

@@ -3,8 +3,10 @@ import { Head, router, useForm } from "@inertiajs/react";
 import { Send, ShoppingBag, Trash2 } from "lucide-react";
 import { FormEvent, useEffect } from "react";
 import AdminLayout from "../../../Layouts/AdminLayout";
+import PriceInput from "../../../Components/Admin/Form/PriceInput";
 import AttachmentPicker from "../../../Components/Tickets/AttachmentPicker";
 import TicketMessageBubble from "../../../Components/Tickets/TicketMessageBubble";
+import { numberToPersianWords } from "../../../utils/persian-number";
 const labels: Record<string, string> = {
     pending: "در انتظار پاسخ",
     open: "در حال پیگیری",
@@ -21,7 +23,13 @@ const exchangeLabels: Record<string, string> = {
     cancelled: "لغوشده",
     expired: "منقضی‌شده",
 };
-export default function Show({ ticket, exchangeProducts }: { ticket: any; exchangeProducts: Array<{ id: number; title: string }> }) {
+export default function Show({
+    ticket,
+    exchangeProducts,
+}: {
+    ticket: any;
+    exchangeProducts: Array<{ id: number; title: string }>;
+}) {
     const attachmentCount = ticket.replies.reduce(
         (total: number, reply: any) => total + (reply.attachments?.length ?? 0),
         0,
@@ -132,18 +140,40 @@ export default function Show({ ticket, exchangeProducts }: { ticket: any; exchan
                                 <Chip>
                                     {exchangeLabels[ticket.exchange_status]}
                                 </Chip>
+                                <div className="rounded-xl border border-slate-700 bg-slate-950/50 p-3 text-sm leading-7">
+                                    <span className="block text-xs text-slate-500">
+                                        کالای پیشنهادی مشتری برای معاوضه
+                                    </span>
+                                    <strong>{ticket.trade_item_title}</strong>
+                                </div>
                                 {ticket.exchange_offer_amount && (
-                                    <p className="text-lg font-black text-indigo-400">
-                                        {Number(
-                                            ticket.exchange_offer_amount,
-                                        ).toLocaleString("fa-IR")}{" "}
-                                        تومان
-                                    </p>
+                                    <div>
+                                        <p className="text-lg font-black text-indigo-400">
+                                            {Number(
+                                                ticket.exchange_offer_amount,
+                                            ).toLocaleString("fa-IR")}{" "}
+                                            تومان
+                                        </p>
+                                        <p className="mt-1 text-xs leading-6 text-slate-400">
+                                            {numberToPersianWords(
+                                                Number(
+                                                    ticket.exchange_offer_amount,
+                                                ),
+                                            )}{" "}
+                                            تومان
+                                        </p>
+                                    </div>
                                 )}
                                 {["pending_review", "offered"].includes(
                                     ticket.exchange_status,
-                                ) && <OfferForm ticket={ticket} products={exchangeProducts} />}
-                                {ticket.exchange_status === "attached_to_order" && (
+                                ) && (
+                                    <OfferForm
+                                        ticket={ticket}
+                                        products={exchangeProducts}
+                                    />
+                                )}
+                                {ticket.exchange_status ===
+                                    "attached_to_order" && (
                                     <Button
                                         fullWidth
                                         onPress={() =>
@@ -154,6 +184,30 @@ export default function Show({ ticket, exchangeProducts }: { ticket: any; exchan
                                         variant="primary"
                                     >
                                         تأیید دریافت کالا و تکمیل معاوضه
+                                    </Button>
+                                )}
+                                {[
+                                    "pending_review",
+                                    "offered",
+                                    "accepted",
+                                    "expired",
+                                ].includes(ticket.exchange_status) && (
+                                    <Button
+                                        fullWidth
+                                        onPress={() => {
+                                            if (
+                                                confirm(
+                                                    "این درخواست معاوضه لغو شود؟ پس از لغو، اعتبار آن در سفارش قابل استفاده نیست.",
+                                                )
+                                            ) {
+                                                router.patch(
+                                                    `/admin/tickets/${ticket.id}/exchange-cancel`,
+                                                );
+                                            }
+                                        }}
+                                        variant="danger-soft"
+                                    >
+                                        لغو درخواست معاوضه
                                     </Button>
                                 )}
                             </Card.Content>
@@ -224,10 +278,21 @@ export default function Show({ ticket, exchangeProducts }: { ticket: any; exchan
     );
 }
 
-function OfferForm({ ticket, products }: { ticket: any; products: Array<{ id: number; title: string }> }) {
-    const form = useForm({
+function OfferForm({
+    ticket,
+    products,
+}: {
+    ticket: any;
+    products: Array<{ id: number; title: string }>;
+}) {
+    const form = useForm<{
+        target_product_id: number | "";
+        exchange_offer_amount: number | "";
+    }>({
         target_product_id: ticket.target_product_id ?? ticket.product_id ?? "",
-        exchange_offer_amount: ticket.exchange_offer_amount ?? "",
+        exchange_offer_amount: ticket.exchange_offer_amount
+            ? Number(ticket.exchange_offer_amount)
+            : "",
     });
     return (
         <form
@@ -236,31 +301,41 @@ function OfferForm({ ticket, products }: { ticket: any; products: Array<{ id: nu
                 form.patch(`/admin/tickets/${ticket.id}/exchange-offer`);
             }}
         >
-            <label className="mb-2 block text-sm font-bold">محصول مقصد مورد تأیید</label>
+            <label className="mb-2 block text-sm font-bold">
+                محصول مقصد مورد تأیید
+            </label>
             <select
                 className="mb-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
-                onChange={(e) => form.setData("target_product_id", Number(e.target.value))}
+                onChange={(e) =>
+                    form.setData(
+                        "target_product_id",
+                        e.target.value === "" ? "" : Number(e.target.value),
+                    )
+                }
                 value={form.data.target_product_id}
             >
                 <option value="">انتخاب محصول مقصد</option>
-                {products.map((product) => <option key={product.id} value={product.id}>{product.title}</option>)}
+                {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                        {product.title}
+                    </option>
+                ))}
             </select>
-            {form.errors.target_product_id && <p className="mb-2 text-xs text-red-400">{form.errors.target_product_id}</p>}
-            <input
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
-                min="1"
-                onChange={(e) =>
-                    form.setData("exchange_offer_amount", e.target.value as any)
-                }
-                placeholder="مبلغ پیشنهادی (تومان)"
-                type="number"
-                value={form.data.exchange_offer_amount}
-            />
-            {form.errors.exchange_offer_amount && (
-                <p className="mt-1 text-xs text-red-400">
-                    {form.errors.exchange_offer_amount}
+            {form.errors.target_product_id && (
+                <p className="mb-2 text-xs text-red-400">
+                    {form.errors.target_product_id}
                 </p>
             )}
+            <PriceInput
+                description="مبلغی که بابت کالای مشتری از قیمت محصول مقصد کسر می‌شود."
+                error={form.errors.exchange_offer_amount}
+                label="مبلغ پیشنهادی"
+                onChange={(value) =>
+                    form.setData("exchange_offer_amount", value)
+                }
+                required
+                value={form.data.exchange_offer_amount}
+            />
             <Button
                 className="mt-2"
                 fullWidth
@@ -274,7 +349,10 @@ function OfferForm({ ticket, products }: { ticket: any; products: Array<{ id: nu
     );
 }
 function AdjustmentForm({ ticket }: { ticket: any }) {
-    const form = useForm({ amount: "", description: "" });
+    const form = useForm<{ amount: number | ""; description: string }>({
+        amount: "",
+        description: "",
+    });
     return (
         <form
             className="space-y-2 border-t border-slate-800 pt-4"
@@ -286,12 +364,11 @@ function AdjustmentForm({ ticket }: { ticket: any }) {
             }}
         >
             <p className="text-sm font-bold">افزایش اعتبار با تراکنش</p>
-            <input
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
-                min="1"
-                onChange={(e) => form.setData("amount", e.target.value)}
-                placeholder="مبلغ افزایش"
-                type="number"
+            <PriceInput
+                description="مبلغ افزایش اعتبار معاوضه را وارد کنید."
+                error={form.errors.amount}
+                label="مبلغ افزایش"
+                onChange={(value) => form.setData("amount", value)}
                 value={form.data.amount}
             />
             <input

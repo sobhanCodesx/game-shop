@@ -70,9 +70,18 @@ class TicketController extends Controller
     public function offer(Request $request, Ticket $ticket, ExchangeService $service): RedirectResponse
     {
         $data = $request->validate(['target_product_id' => ['required', Rule::exists('products', 'id')->where('trade_enabled', true)], 'exchange_offer_amount' => ['required', 'integer', 'min:1', 'max:999999999999']]);
-        $service->offer($ticket, Product::findOrFail($data['target_product_id']), (int) $data['exchange_offer_amount']);
+        $ticket = $service->offer($ticket, Product::findOrFail($data['target_product_id']), (int) $data['exchange_offer_amount']);
+        $ticket->user->notify(new TicketActivityNotification($ticket, 'پیشنهاد معاوضه آماده است', 'مبلغ پیشنهادی معاوضه ثبت شد؛ برای مشاهده و تأیید وارد درخواست شوید.'));
 
         return back()->with('success', 'پیشنهاد معاوضه ثبت شد.');
+    }
+
+    public function cancelExchange(Ticket $ticket, ExchangeService $service): RedirectResponse
+    {
+        $ticket = $service->cancel($ticket);
+        $ticket->user->notify(new TicketActivityNotification($ticket, 'درخواست معاوضه لغو شد', 'درخواست معاوضه '.$ticket->number.' توسط پشتیبانی لغو شد.'));
+
+        return back()->with('success', 'درخواست معاوضه لغو شد.');
     }
 
     public function completeExchange(Ticket $ticket, ExchangeService $service): RedirectResponse

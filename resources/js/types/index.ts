@@ -76,6 +76,12 @@ export interface StorefrontContent {
     duration: number | null;
     views: number;
     published_at: string | null;
+    channel: {
+        id: number;
+        name: string;
+        url: string;
+        avatar_url: string | null;
+    } | null;
 }
 
 export interface PaginationLink {

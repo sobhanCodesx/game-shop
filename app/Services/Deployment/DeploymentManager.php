@@ -63,6 +63,7 @@ final class DeploymentManager
                 default => throw new RuntimeException('مرحله فعلی قابل اجرا نیست.'),
             };
         } catch (\Throwable $e) {
+            try { Artisan::call('up'); } catch (\Throwable) {}
             $this->states->update($id, ['status' => 'failed', 'error' => $e->getMessage()]); throw $e;
         } finally { flock($lock, LOCK_UN); fclose($lock); }
     }
@@ -72,7 +73,7 @@ final class DeploymentManager
         $state = $this->owned($id, $userId); $backup = $this->paths->operation($id).'/backup/files';
         if (! is_dir($backup)) throw new RuntimeException('بکاپ قابل بازگشت وجود ندارد.');
         $state = $this->states->update($id, ['status' => 'restoring', 'stage' => 'restoring']);
-        if (! empty($state['diff']['pending_migrations']) && isset($state['migration_batch_before']) && Artisan::has('migrate:rollback')) {
+        if (! empty($state['diff']['pending_migrations']) && isset($state['migration_batch_before'])) {
             Artisan::call('migrate:rollback', ['--batch' => ((int) $state['migration_batch_before']) + 1, '--force' => true]);
         }
         foreach ($state['diff']['changed'] ?? [] as $path) { $from = $backup.'/'.$path; $to = base_path($path); if (is_file($from)) $this->copyFile($from, $to); }
@@ -101,7 +102,7 @@ final class DeploymentManager
         $state['stage']='switched'; $state['progress']=55; $state['new_files']=$new; unset($state['maintenance_bypass']); return $this->states->save($state);
     }
     private function migrate(array $state): array { $this->artisan('optimize:clear', [] ,$state); $this->artisan('package:discover', ['--ansi' => false], $state); $this->artisan('migrate', ['--force' => true], $state); return $this->states->update($state['id'], ['stage' => 'migrated', 'progress' => 70]); }
-    private function optimize(array $state): array { foreach (['config:cache', 'route:cache', 'view:cache', 'event:cache'] as $command) if (Artisan::has($command)) $this->artisan($command, [], $state); if (function_exists('opcache_reset')) @opcache_reset(); return $this->states->update($state['id'], ['stage' => 'optimized', 'progress' => 85]); }
+    private function optimize(array $state): array { foreach (['config:cache', 'route:cache', 'view:cache', 'event:cache'] as $command) $this->artisan($command, [], $state); if (function_exists('opcache_reset')) @opcache_reset(); return $this->states->update($state['id'], ['stage' => 'optimized', 'progress' => 85]); }
     private function health(array $state): array
     {
         $checks = [is_file(base_path('vendor/autoload.php')), is_file(public_path('build/manifest.json')), is_writable(storage_path()), DB::select('SELECT 1') !== []];
@@ -116,7 +117,12 @@ final class DeploymentManager
         $add('نسخه PHP', version_compare(PHP_VERSION, '8.2.0', '>='), PHP_VERSION);
         foreach ($manifest['php_extensions'] as $extension) $add("افزونه {$extension}", extension_loaded($extension));
         $add('storage قابل نوشتن', is_writable(storage_path())); $add('bootstrap/cache قابل نوشتن', is_writable(base_path('bootstrap/cache')));
-        $add('فضای آزاد', disk_free_space(base_path()) > (($manifest['extracted_size'] ?? 0) * 2), number_format((float) disk_free_space(base_path())));
+        $freeSpace = $this->freeDiskSpace(base_path());
+        if ($freeSpace === null) {
+            $checks[] = ['label' => 'فضای آزاد', 'status' => 'warning', 'detail' => 'تابع بررسی فضا روی هاست غیرفعال است'];
+        } else {
+            $add('فضای آزاد', $freeSpace > (($manifest['extracted_size'] ?? 0) * 2), number_format($freeSpace));
+        }
         try { DB::select('SELECT 1'); $add('اتصال دیتابیس', true, DB::getDriverName()); } catch (\Throwable $e) { $add('اتصال دیتابیس', false); }
         $add('vendor کامل', is_file($stage.'/vendor/autoload.php') && is_file($stage.'/vendor/composer/installed.php'));
         $add('Vite manifest', is_file($stage.'/public/build/manifest.json'));
@@ -124,6 +130,16 @@ final class DeploymentManager
         return $checks;
     }
     private function dangerousMigrations(string $stage, array $pending): array { $out=[]; foreach ($pending as $name) { $body=(string) @file_get_contents($stage.'/database/migrations/'.$name); if (preg_match('/\b(drop|rename|change|truncate|delete|statement|unprepared)\b/i', $body)) $out[]=$name; } return $out; }
+    private function freeDiskSpace(string $path): ?float
+    {
+        if (! function_exists('disk_free_space')) return null;
+        try {
+            $space = @\disk_free_space($path);
+            return $space === false ? null : (float) $space;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
     private function backupDatabase(string $directory): void { File::ensureDirectoryExists($directory, 0750, true); if (DB::getDriverName() === 'sqlite') { $db=DB::connection()->getDatabaseName(); if (is_file($db)) copy($db, $directory.'/database.sqlite'); return; } if (DB::getDriverName() !== 'mysql') throw new RuntimeException('روش بکاپ دیتابیس فعلی پشتیبانی نمی‌شود.'); $this->dumpMysql($directory.'/database.sql'); }
     private function dumpMysql(string $target): void { $pdo=DB::connection()->getPdo(); $out=fopen($target, 'wb'); foreach ($pdo->query('SHOW TABLES') as $row) { $table=array_values($row)[0]; $create=$pdo->query('SHOW CREATE TABLE `'.str_replace('`','``',$table).'`')->fetch(\PDO::FETCH_NUM)[1]; fwrite($out, "DROP TABLE IF EXISTS `{$table}`;\n{$create};\n"); $stmt=$pdo->query('SELECT * FROM `'.str_replace('`','``',$table).'`', \PDO::FETCH_ASSOC); while ($record=$stmt->fetch()) { $values=array_map(fn($v)=>$v===null?'NULL':$pdo->quote((string)$v), array_values($record)); fwrite($out, "INSERT INTO `{$table}` VALUES (".implode(',',$values).");\n"); } } fclose($out); }
     private function owned(string $id, int $userId): array { $state=$this->states->get($id); if ((int)$state['user_id']!==$userId) throw new RuntimeException('دسترسی به عملیات مجاز نیست.'); if (strtotime($state['expires_at']) < time() && ! in_array($state['status'], ['completed','rolled_back'], true)) throw new RuntimeException('توکن عملیات منقضی شده است.'); return $state; }

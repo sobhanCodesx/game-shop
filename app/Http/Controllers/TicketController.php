@@ -63,7 +63,7 @@ class TicketController extends Controller
     public function show(Request $request, Ticket $ticket): Response
     {
         abort_unless($ticket->user_id === $request->user()->id, 404);
-        $ticket->load(['order:id,number', 'orderItem', 'product.coverMedia', 'targetProduct:id,title', 'exchangeOrder:id,number', 'replies.user:id,name,is_admin', 'replies.attachments']);
+        $ticket->load(['order:id,number', 'orderItem', 'product.coverMedia', 'targetProduct:id,title,slug', 'exchangeOrder:id,number', 'replies.user:id,name,is_admin', 'replies.attachments']);
         $ticket->replies->each(fn ($reply) => $reply->attachments->each(fn ($attachment) => $attachment->setAttribute('url', MediaStorage::url($attachment->path))));
 
         return Inertia::render('Account/Tickets/Show', ['ticket' => [...$ticket->toArray(), 'cover_url' => MediaStorage::url($ticket->product?->coverMedia?->path)]]);

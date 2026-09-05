@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SendTestSmsRequest;
 use App\Models\SmsOutbox;
+use App\Services\Sms\SmsMessageFormatter;
 use App\Services\Sms\SmsPattern;
+use App\Services\Sms\SmsPatternRegistry;
 use App\Services\Sms\SmsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,8 +17,11 @@ use Inertia\Response;
 
 class SmsTestController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, SmsPatternRegistry $patterns): Response
     {
+        $credentialsConfigured = filled(config('services.payamak_panel.username'))
+            && filled(config('services.payamak_panel.api_key'))
+            && filled(config('services.payamak_panel.pattern_endpoint'));
         $messages = SmsOutbox::query()
             ->with('deliveryAttempts')
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
@@ -31,6 +36,7 @@ class SmsTestController extends Controller
                 'id' => $item->id,
                 'mobile' => $item->mobile,
                 'pattern' => $item->pattern,
+                'message' => $this->resolveMessage($item),
                 'status' => $item->status,
                 'attempts_count' => $item->attempts,
                 'provider_message_id' => $item->provider_message_id,
@@ -50,28 +56,37 @@ class SmsTestController extends Controller
                 ]),
             ]);
 
+        $patternOptions = $patterns->all()->prepend([
+            'value' => SmsService::PLAIN_TEST_PATTERN,
+            'label' => 'پیامک تست ساده',
+            'description' => 'ارسال متن دلخواه برای بررسی فوری اتصال پنل؛ بدون نیاز به Body ID',
+            'variables' => ['message'],
+            'provider_id' => '',
+            'is_active' => true,
+            'configured' => true,
+            'provider_pattern_configured' => false,
+        ]);
+
         return Inertia::render('Admin/SmsTest/Index', [
-            'patterns' => collect(SmsPattern::cases())->map(fn (SmsPattern $pattern) => [
-                'value' => $pattern->value,
-                'label' => $this->label($pattern),
-                'variables' => $pattern->requiredVariables(),
-                'configured' => $pattern->providerId() !== '',
-            ])->values(),
-            'providerConfigured' => filled(config('services.payamak_panel.pattern_endpoint')),
+            'patterns' => $patternOptions,
+            'providerConfigured' => $credentialsConfigured,
             'messages' => $messages,
             'filters' => $request->only(['status', 'search']),
         ]);
     }
 
-    public function store(SendTestSmsRequest $request, SmsService $sms): RedirectResponse
+    public function store(SendTestSmsRequest $request, SmsService $sms, SmsPatternRegistry $patterns): RedirectResponse
     {
         $data = $request->validated();
-        $pattern = SmsPattern::from($data['pattern']);
-        if ($pattern->providerId() === '') {
-            return back()->withErrors(['pattern' => 'شناسه این Pattern در تنظیمات محیط تعریف نشده است.']);
+        if ($data['pattern'] === SmsService::PLAIN_TEST_PATTERN) {
+            $sms->enqueuePlainTest($data['mobile'], (string) $data['variables']['message']);
+
+            return back()->with('success', 'پیامک آزمایشی در صف ارسال پس از پاسخ ثبت شد.');
         }
-        if (! filled(config('services.payamak_panel.pattern_endpoint'))) {
-            return back()->withErrors(['pattern' => 'آدرس endpoint ارسال Pattern در تنظیمات محیط تعریف نشده است.']);
+
+        $pattern = SmsPattern::from($data['pattern']);
+        if (! $patterns->isActive($pattern)) {
+            return back()->withErrors(['pattern' => 'این قالب غیرفعال است؛ ابتدا آن را از منوی پترن‌های پیامک فعال کنید.']);
         }
 
         $sms->enqueue($pattern, $data['mobile'], $data['variables'], 'admin-sms-test:'.Str::uuid());
@@ -79,15 +94,21 @@ class SmsTestController extends Controller
         return back()->with('success', 'پیامک آزمایشی در صف ارسال پس از پاسخ ثبت شد.');
     }
 
-    private function label(SmsPattern $pattern): string
+    private function resolveMessage(SmsOutbox $item): string
     {
-        return match ($pattern) {
-            SmsPattern::OtpVerifyMobile => 'کد تأیید موبایل',
-            SmsPattern::OtpPasswordlessLogin => 'کد ورود بدون رمز',
-            SmsPattern::OtpResetPassword => 'کد بازیابی رمز',
-            SmsPattern::OrderActivity => 'اعلان سفارش',
-            SmsPattern::OrderCashback => 'اعتبار کیف پول',
-            SmsPattern::TicketActivity => 'اعلان تیکت',
-        };
+        if ($item->pattern === SmsService::PLAIN_TEST_PATTERN) {
+            return SmsMessageFormatter::withOptOutFooter((string) ($item->payload['message'] ?? ''));
+        }
+
+        $pattern = SmsPattern::tryFrom($item->pattern);
+        if (! $pattern) {
+            return '';
+        }
+
+        try {
+            return SmsMessageFormatter::withOptOutFooter($pattern->render($item->payload));
+        } catch (\Throwable) {
+            return '';
+        }
     }
 }

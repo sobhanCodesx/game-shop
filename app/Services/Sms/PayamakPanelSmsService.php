@@ -20,7 +20,7 @@ class PayamakPanelSmsService implements SmsProvider
     {
         $recipients = $this->recipients($to);
 
-        return $this->parseSend($this->request('Send', [...$this->credentials(), 'to' => implode(',', $recipients), 'text' => $text, ...$this->senderPayload()]), $recipients);
+        return $this->parseSend($this->request('Send', [...$this->credentials(), 'to' => implode(',', $recipients), 'text' => SmsMessageFormatter::withOptOutFooter($text), ...$this->senderPayload()]), $recipients);
     }
 
     public function sendPattern(string $mobile, string $patternId, array $variables): SmsSendResult
@@ -32,6 +32,7 @@ class PayamakPanelSmsService implements SmsProvider
         if ($endpoint === '') {
             throw new InvalidArgumentException('PAYAMAK_PANEL_PATTERN_ENDPOINT is not configured.');
         }
+        $variables = SmsMessageFormatter::appendToLastVariable($variables);
         $json = $this->requestUrl($endpoint, [...$this->credentials(), 'to' => PhoneNumber::normalize($mobile), 'text' => implode(';', array_values($variables)), 'bodyId' => $patternId]);
 
         return $this->parseSend($json, [$mobile]);
@@ -46,6 +47,7 @@ class PayamakPanelSmsService implements SmsProvider
         if (collect($messages)->contains(fn ($message) => ! is_string($message) || trim($message) === '')) {
             throw new InvalidArgumentException('هر پیام باید یک متن غیرخالی باشد.');
         }
+        $messages = array_map(fn (string $message) => SmsMessageFormatter::withOptOutFooter($message), $messages);
         $json = $this->request('SendMultiple', [...$this->credentials(), ...$this->senderPayload(), 'to' => $recipients, 'text' => array_values($messages)]);
         $status = (int) ($json['ReqStatus'] ?? 0);
         $ids = collect($json['Result'] ?? [])->pluck('ID')->filter(fn ($id) => is_numeric($id))->map(fn ($id) => (int) $id)->values()->all();
@@ -98,10 +100,12 @@ class PayamakPanelSmsService implements SmsProvider
         if (! $response->successful()) {
             Log::error('SMS provider HTTP failure', ['provider' => 'payamak_panel', 'operation' => $operation, 'http_status' => $response->status()]);
             $body = $response->json();
+            $retryable = $response->serverError() || in_array($response->status(), [408, 425, 429], true);
             throw new SmsProviderException(
                 'پنل پیامکی پاسخ HTTP ناموفق داد.',
                 $response->status(),
                 is_array($body) ? $body : ['raw_body' => mb_substr($response->body(), 0, 5000)],
+                $retryable,
             );
         }
 

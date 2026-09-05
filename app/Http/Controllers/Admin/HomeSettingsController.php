@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\HomeSettingsRequest;
-use App\Models\Category;
 use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Game;
 use App\Models\HomeSection;
 use App\Models\HomeSetting;
@@ -13,14 +13,14 @@ use App\Models\HomeSlide;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\SocialContent;
-use App\Services\TemporaryUploadService;
 use App\Services\MediaStorage;
+use App\Services\TemporaryUploadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use Throwable;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class HomeSettingsController extends Controller
 {
@@ -38,8 +38,8 @@ class HomeSettingsController extends Controller
         'newsletter_enabled' => true,
         'newsletter_title' => 'از تخفیف‌های گیمینگ جا نمون',
         'newsletter_description' => 'خبرهای مهم، محصولات جدید و پیشنهادهای اختصاصی را دریافت کن.',
-        'seo_title' => 'NEXUS PLAY | فروشگاه تخصصی گیمینگ',
-        'seo_description' => 'خرید بازی، کنسول و تجهیزات گیمینگ با تضمین اصالت و پشتیبانی تخصصی.',
+        'seo_title' => 'فروشگاه بازی و تجهیزات گیمینگ | PlayNexus',
+        'seo_description' => 'خرید بازی، کنسول و تجهیزات گیمینگ با تضمین اصالت، ارسال سریع و پشتیبانی تخصصی از فروشگاه PlayNexus.',
     ];
 
     public function edit(): Response
@@ -88,67 +88,67 @@ class HomeSettingsController extends Controller
         $obsoleteImagePaths = [];
         try {
             DB::transaction(function () use ($request, $validated, $uploads, &$claimedTokens, &$newImagePaths, &$obsoleteImagePaths, &$keptIds, &$keptSectionIds): void {
-            HomeSetting::query()->updateOrCreate(['id' => 1], ['content' => $validated['settings']]);
+                HomeSetting::query()->updateOrCreate(['id' => 1], ['content' => $validated['settings']]);
 
-            foreach ($validated['slides'] ?? [] as $index => $data) {
-                $slide = isset($data['id']) ? HomeSlide::query()->findOrFail($data['id']) : new HomeSlide;
-                $desktopFile = $request->file("slides.{$index}.desktop_image_file");
-                $mobileFile = $request->file("slides.{$index}.mobile_image_file");
+                foreach ($validated['slides'] ?? [] as $index => $data) {
+                    $slide = isset($data['id']) ? HomeSlide::query()->findOrFail($data['id']) : new HomeSlide;
+                    $desktopFile = $request->file("slides.{$index}.desktop_image_file");
+                    $mobileFile = $request->file("slides.{$index}.mobile_image_file");
 
-                if ($token = ($data['desktop_upload_token'] ?? null)) {
-                    $desktopFile = $uploads->claim($request->user()->id, $token);
-                    $claimedTokens[] = $token;
-                }
-                if ($token = ($data['mobile_upload_token'] ?? null)) {
-                    $mobileFile = $uploads->claim($request->user()->id, $token);
-                    $claimedTokens[] = $token;
-                }
-
-                if ($desktopFile) {
-                    $newPath = $desktopFile->store('home/slides', (string) config('media.disk'));
-                    abort_unless($newPath, 500, 'ذخیره تصویر جدید بنر انجام نشد.');
-                    $newImagePaths[] = $newPath;
-                    if ($slide->desktop_image && $slide->desktop_image !== $newPath) {
-                        $obsoleteImagePaths[] = $slide->desktop_image;
+                    if ($token = ($data['desktop_upload_token'] ?? null)) {
+                        $desktopFile = $uploads->claim($request->user()->id, $token);
+                        $claimedTokens[] = $token;
                     }
-                    $data['desktop_image'] = $newPath;
-                }
-                if ($mobileFile) {
-                    $newPath = $mobileFile->store('home/slides/mobile', (string) config('media.disk'));
-                    abort_unless($newPath, 500, 'ذخیره تصویر موبایل جدید بنر انجام نشد.');
-                    $newImagePaths[] = $newPath;
-                    if ($slide->mobile_image && $slide->mobile_image !== $newPath) {
-                        $obsoleteImagePaths[] = $slide->mobile_image;
+                    if ($token = ($data['mobile_upload_token'] ?? null)) {
+                        $mobileFile = $uploads->claim($request->user()->id, $token);
+                        $claimedTokens[] = $token;
                     }
-                    $data['mobile_image'] = $newPath;
+
+                    if ($desktopFile) {
+                        $newPath = $desktopFile->store('home/slides', (string) config('media.disk'));
+                        abort_unless($newPath, 500, 'ذخیره تصویر جدید بنر انجام نشد.');
+                        $newImagePaths[] = $newPath;
+                        if ($slide->desktop_image && $slide->desktop_image !== $newPath) {
+                            $obsoleteImagePaths[] = $slide->desktop_image;
+                        }
+                        $data['desktop_image'] = $newPath;
+                    }
+                    if ($mobileFile) {
+                        $newPath = $mobileFile->store('home/slides/mobile', (string) config('media.disk'));
+                        abort_unless($newPath, 500, 'ذخیره تصویر موبایل جدید بنر انجام نشد.');
+                        $newImagePaths[] = $newPath;
+                        if ($slide->mobile_image && $slide->mobile_image !== $newPath) {
+                            $obsoleteImagePaths[] = $slide->mobile_image;
+                        }
+                        $data['mobile_image'] = $newPath;
+                    }
+
+                    abort_if(blank($data['desktop_image'] ?? null), 422, 'تصویر دسکتاپ هر اسلاید الزامی است.');
+
+                    $data['title'] = $data['alt'];
+                    $data['button_url'] = $data['link_type'] === 'product'
+                        ? route('products.show', Product::query()->findOrFail($data['product_id'])->slug, false)
+                        : $data['button_url'];
+                    $slide->fill(Arr::except($data, ['id', 'desktop_image_file', 'mobile_image_file', 'desktop_upload_token', 'mobile_upload_token', 'desktop_image_url', 'mobile_image_url']));
+                    $slide->sort_order = $index;
+                    $slide->save();
+                    $keptIds[] = $slide->id;
                 }
 
-                abort_if(blank($data['desktop_image'] ?? null), 422, 'تصویر دسکتاپ هر اسلاید الزامی است.');
+                HomeSlide::query()->whereNotIn('id', $keptIds)->get()->each(function (HomeSlide $slide) use (&$obsoleteImagePaths): void {
+                    array_push($obsoleteImagePaths, ...array_filter([$slide->desktop_image, $slide->mobile_image]));
+                    $slide->delete();
+                });
 
-                $data['title'] = $data['alt'];
-                $data['button_url'] = $data['link_type'] === 'product'
-                    ? route('products.show', Product::query()->findOrFail($data['product_id'])->slug, false)
-                    : $data['button_url'];
-                $slide->fill(Arr::except($data, ['id', 'desktop_image_file', 'mobile_image_file', 'desktop_upload_token', 'mobile_upload_token', 'desktop_image_url', 'mobile_image_url']));
-                $slide->sort_order = $index;
-                $slide->save();
-                $keptIds[] = $slide->id;
-            }
+                foreach ($validated['sections'] ?? [] as $index => $data) {
+                    $section = isset($data['id']) ? HomeSection::query()->findOrFail($data['id']) : new HomeSection;
+                    $section->fill(Arr::except($data, ['id']));
+                    $section->sort_order = $index;
+                    $section->save();
+                    $keptSectionIds[] = $section->id;
+                }
 
-            HomeSlide::query()->whereNotIn('id', $keptIds)->get()->each(function (HomeSlide $slide) use (&$obsoleteImagePaths): void {
-                array_push($obsoleteImagePaths, ...array_filter([$slide->desktop_image, $slide->mobile_image]));
-                $slide->delete();
-            });
-
-            foreach ($validated['sections'] ?? [] as $index => $data) {
-                $section = isset($data['id']) ? HomeSection::query()->findOrFail($data['id']) : new HomeSection;
-                $section->fill(Arr::except($data, ['id']));
-                $section->sort_order = $index;
-                $section->save();
-                $keptSectionIds[] = $section->id;
-            }
-
-            HomeSection::query()->whereNotIn('id', $keptSectionIds)->delete();
+                HomeSection::query()->whereNotIn('id', $keptSectionIds)->delete();
             });
         } catch (Throwable $exception) {
             MediaStorage::disk()->delete(array_values(array_unique($newImagePaths)));

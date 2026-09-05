@@ -11,6 +11,7 @@ import {
     LifeBuoy,
     LogOut,
     Package,
+    Repeat2,
     Search,
     ShieldCheck,
     ShoppingBag,
@@ -487,6 +488,14 @@ export default function DesktopNavigation({
                     >
                         <ShoppingBag size={15} className="shrink-0" />
                         فروشگاه
+                    </Link>
+
+                    <Link
+                        className="store-nav-link shrink-0 whitespace-nowrap"
+                        href="/exchange-products"
+                    >
+                        <Repeat2 size={15} className="shrink-0" />
+                        قابل معاوضه
                     </Link>
 
                     <Link

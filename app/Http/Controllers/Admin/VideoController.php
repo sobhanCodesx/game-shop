@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\VideoRequest;
+use App\Models\Game;
 use App\Models\SocialContent;
+use App\Models\VideoPlaylist;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
 use App\Services\TemporaryUploadService;
+use App\Support\RichText;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
@@ -18,12 +21,13 @@ class VideoController extends Controller
 {
     public function index(): Response
     {
-        $videos = SocialContent::query()->where('type', 'video')->latest('id')->paginate(12)->withQueryString();
+        $videos = SocialContent::query()->where('type', 'video')->with('game:id,name')->latest('id')->paginate(12)->withQueryString();
 
         return Inertia::render('Admin/Videos/Index', [
             'videos' => [
                 'data' => collect($videos->items())->map(fn (SocialContent $video) => [
                     ...$video->only(['id', 'title', 'excerpt', 'duration', 'views', 'status', 'featured']),
+                    'channel' => $video->game?->name,
                     'thumbnail_url' => MediaStorage::url($video->thumbnail),
                     'edit_url' => route('admin.videos.edit', $video),
                 ]),
@@ -36,19 +40,22 @@ class VideoController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('Admin/Videos/Form', ['video' => null]);
+        return Inertia::render('Admin/Videos/Form', [
+            'video' => null,
+            ...$this->formOptions(),
+        ]);
     }
 
     public function store(VideoRequest $request, MediaOptimizationService $optimizer, TemporaryUploadService $uploads): RedirectResponse
     {
         $video = new SocialContent([
-            ...$request->safe()->only(['title', 'excerpt', 'status', 'featured']),
+            ...$request->safe()->only(['title', 'excerpt', 'body', 'seo_title', 'seo_description', 'status', 'featured', 'game_id', 'allow_comments']),
             'user_id' => $request->user()->id,
             'type' => 'video',
             'slug' => $this->uniqueSlug($request->string('title')->toString()),
             'published_at' => $request->string('status')->toString() === 'published' ? now() : null,
         ]);
-        $video->excerpt = $this->sanitizeDescription($video->excerpt);
+        $this->prepareEditorialContent($video);
         $token = $request->string('upload_token')->toString();
         $file = $token ? $uploads->claim($request->user()->id, $token) : $request->file('video');
         try {
@@ -59,6 +66,7 @@ class VideoController extends Controller
             }
         }
         $video->save();
+        $video->playlists()->sync($this->playlistSync($request->validated('playlist_ids', [])));
 
         return to_route('admin.videos.index')->with('success', 'ویدیو با موفقیت آپلود شد.');
     }
@@ -69,17 +77,19 @@ class VideoController extends Controller
 
         return Inertia::render('Admin/Videos/Form', [
             'video' => [
-                ...$video->only(['id', 'title', 'excerpt', 'status', 'featured', 'duration']),
+                ...$video->only(['id', 'title', 'excerpt', 'body', 'seo_title', 'seo_description', 'status', 'featured', 'duration', 'game_id', 'allow_comments']),
                 'video_url' => MediaStorage::url($video->video_path),
+                'playlist_ids' => $video->playlists()->pluck('video_playlists.id'),
             ],
+            ...$this->formOptions(),
         ]);
     }
 
     public function update(VideoRequest $request, SocialContent $video, MediaOptimizationService $optimizer, TemporaryUploadService $uploads): RedirectResponse
     {
         abort_unless($video->type === 'video', 404);
-        $video->fill($request->safe()->only(['title', 'excerpt', 'status', 'featured']));
-        $video->excerpt = $this->sanitizeDescription($video->excerpt);
+        $video->fill($request->safe()->only(['title', 'excerpt', 'body', 'seo_title', 'seo_description', 'status', 'featured', 'game_id', 'allow_comments']));
+        $this->prepareEditorialContent($video);
         $video->published_at = $video->status === 'published' ? ($video->published_at ?? now()) : null;
         $token = $request->string('upload_token')->toString();
         if ($request->hasFile('video') || $token) {
@@ -95,6 +105,7 @@ class VideoController extends Controller
             MediaStorage::disk()->delete($oldFiles);
         }
         $video->save();
+        $video->playlists()->sync($this->playlistSync($request->validated('playlist_ids', [])));
 
         return to_route('admin.videos.index')->with('success', 'ویدیو با موفقیت ویرایش شد.');
     }
@@ -136,12 +147,24 @@ class VideoController extends Controller
         return $slug;
     }
 
-    private function sanitizeDescription(?string $description): ?string
+    private function prepareEditorialContent(SocialContent $video): void
     {
-        if (blank($description)) {
-            return null;
-        }
+        $video->excerpt = RichText::plainText($video->excerpt);
+        $video->body = RichText::sanitize($video->body);
+        $video->seo_title = filled($video->seo_title) ? trim($video->seo_title) : null;
+        $video->seo_description = filled($video->seo_description) ? trim($video->seo_description) : null;
+    }
 
-        return strip_tags($description, '<p><br><strong><b><em><i><u><ul><ol><li>');
+    private function formOptions(): array
+    {
+        return [
+            'games' => Game::query()->whereIn('status', ['active', 'published'])->orderBy('name')->get(['id', 'name']),
+            'playlists' => VideoPlaylist::query()->orderBy('sort_order')->orderBy('title')->get(['id', 'game_id', 'title']),
+        ];
+    }
+
+    private function playlistSync(array $ids): array
+    {
+        return collect($ids)->values()->mapWithKeys(fn ($id, $position) => [(int) $id => ['position' => $position]])->all();
     }
 }

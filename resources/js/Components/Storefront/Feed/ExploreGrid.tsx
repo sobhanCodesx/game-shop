@@ -431,7 +431,7 @@ function Modal({
                         </span>
                         <div>
                             <strong className="block text-sm">
-                                NEXUS PLAY
+                                PLAY NEXUS
                             </strong>
                             <small className="text-[var(--store-muted)]">
                                 پیشنهاد اکسپلور

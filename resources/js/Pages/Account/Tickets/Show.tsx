@@ -1,9 +1,10 @@
-import { Head, router, useForm } from "@inertiajs/react";
+import { Head, Link, router, useForm } from "@inertiajs/react";
 import { ArrowRight, Headphones, Send, ShoppingBag } from "lucide-react";
 import { FormEvent, useEffect } from "react";
 import StorefrontLayout from "../../../Layouts/StorefrontLayout";
 import AttachmentPicker from "../../../Components/Tickets/AttachmentPicker";
 import TicketMessageBubble from "../../../Components/Tickets/TicketMessageBubble";
+import { numberToPersianWords } from "../../../utils/persian-number";
 const labels: Record<string, string> = {
     pending: "در انتظار پاسخ پشتیبانی",
     open: "در حال پیگیری",
@@ -102,17 +103,52 @@ export default function Show({ ticket }: { ticket: any }) {
                                 {exchangeLabels[ticket.exchange_status]}
                             </h2>
                             {ticket.exchange_offer_amount && (
-                                <p className="mt-3 text-xl font-black text-indigo-500">
-                                    پیشنهاد:{" "}
-                                    {Number(
-                                        ticket.exchange_offer_amount,
-                                    ).toLocaleString("fa-IR")}{" "}
-                                    تومان
+                                <div className="mt-3">
+                                    <p className="text-xl font-black text-indigo-500">
+                                        پیشنهاد:{" "}
+                                        {Number(
+                                            ticket.exchange_offer_amount,
+                                        ).toLocaleString("fa-IR")}{" "}
+                                        تومان
+                                    </p>
+                                    <p className="mt-1 text-sm text-[var(--store-muted)]">
+                                        {numberToPersianWords(
+                                            Number(
+                                                ticket.exchange_offer_amount,
+                                            ),
+                                        )}{" "}
+                                        تومان
+                                    </p>
+                                </div>
+                            )}
+                            {["offered", "accepted"].includes(
+                                ticket.exchange_status,
+                            ) && (
+                                <p className="mt-2 text-sm">
+                                    محصول مقصد تأییدشده:{" "}
+                                    <strong>
+                                        {ticket.target_product?.title}
+                                    </strong>
                                 </p>
                             )}
-                            {ticket.exchange_status === "offered" && (
-                                <p className="mt-2 text-sm">محصول مقصد تأییدشده: <strong>{ticket.target_product?.title}</strong></p>
-                            )}
+                            {ticket.exchange_status === "accepted" &&
+                                ticket.target_product?.slug && (
+                                    <div className="mt-4 rounded-2xl border border-indigo-500/20 bg-[var(--store-surface)] p-4">
+                                        <p className="text-sm font-bold leading-7">
+                                            پیشنهاد پذیرفته شد؛ مبلغ معاوضه از
+                                            قیمت همین محصول کم می‌شود و فقط
+                                            مابه‌التفاوت را پرداخت می‌کنید.
+                                        </p>
+                                        <Link
+                                            className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-500"
+                                            href={`/products/${ticket.target_product.slug}?exchange_request_id=${ticket.id}`}
+                                        >
+                                            <ShoppingBag size={18} />
+                                            ثبت سفارش{" "}
+                                            {ticket.target_product.title}
+                                        </Link>
+                                    </div>
+                                )}
                             {ticket.exchange_status === "offered" && (
                                 <div className="mt-4 flex gap-3">
                                     <button
@@ -124,7 +160,7 @@ export default function Show({ ticket }: { ticket: any }) {
                                             )
                                         }
                                     >
-                                        پذیرفتن
+                                        تأیید معاوضه
                                     </button>
                                     <button
                                         className="rounded-xl bg-rose-600 px-5 py-3 font-bold text-white"
@@ -141,7 +177,9 @@ export default function Show({ ticket }: { ticket: any }) {
                             )}
                             {ticket.exchange_status === "completed" && (
                                 <p className="mt-3 text-sm">
-                                    معاوضه برای سفارش {ticket.exchange_order?.number} تکمیل شده است.
+                                    معاوضه برای سفارش{" "}
+                                    {ticket.exchange_order?.number} تکمیل شده
+                                    است.
                                 </p>
                             )}
                         </section>

@@ -1,5 +1,5 @@
 import { Button, Card, Chip, Input } from "@heroui/react";
-import { Head, Link, usePage } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 import {
     ChevronLeft,
     ChevronRight,
@@ -22,6 +22,7 @@ import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStore
 import type { SharedPageProps } from "../types";
 import type { StorefrontProduct } from "../types";
 import ProductCard from "../Components/Storefront/Product/ProductCard";
+import Seo, { type SeoData } from "../Components/Seo";
 
 interface Pricing {
     regular_price: number;
@@ -31,6 +32,7 @@ interface Pricing {
 interface Slide {
     id: number;
     title: string;
+    alt: string | null;
     eyebrow: string | null;
     description: string | null;
     desktop_image_url: string;
@@ -59,6 +61,7 @@ interface Settings {
     seo_description: string;
 }
 interface Props {
+    seo: SeoData & { heading: string };
     settings: Settings;
     slides: Slide[];
     categories: NavigationCategory[];
@@ -120,7 +123,7 @@ function ProductGrid({ products }: { products: StorefrontProduct[] }) {
             </div>
         );
     return (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
             ))}
@@ -134,6 +137,11 @@ const durationLabel = (seconds?: number | null) =>
         : null;
 
 const freshSeenKey = "nexus:fresh-content-seen-at";
+const freshDateLabel = (value: string) =>
+    new Date(value).toLocaleDateString("fa-IR", {
+        day: "numeric",
+        month: "short",
+    });
 
 function FreshReleases({ items }: { items: FreshItem[] }) {
     const railRef = useRef<HTMLDivElement>(null);
@@ -158,67 +166,76 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
     if (!items.length) return null;
 
     return (
-        <section className="relative z-10 mx-auto mt-8 max-w-7xl px-4 pb-4 pt-6 sm:mt-10 sm:pt-8">
-            <div className="mb-5 flex items-end justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-2 text-xs font-black text-emerald-400">
-                        <span className="relative flex size-2.5">
-                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                            <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+        <section className="relative z-10 mx-auto mt-4 max-w-7xl px-4 pb-5 sm:mt-6">
+            <div className="overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_24px_70px_-55px_rgba(79,70,229,.65)]">
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--store-border)] px-4 py-3 sm:px-5">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <span className="relative grid size-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-700 text-white shadow-md shadow-indigo-500/20">
+                            <Sparkles size={19} />
+                            <span className="absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-[var(--store-surface)] bg-emerald-400" />
                         </span>
-                        همین تازگی منتشر شده
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                                <h2 className="truncate text-lg font-black text-[var(--store-text)] sm:text-xl">
+                                    نبض PLAY NEXUS
+                                </h2>
+                                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black text-emerald-500">
+                                    LIVE
+                                </span>
+                            </div>
+                            <p className="mt-0.5 truncate text-[11px] text-[var(--store-muted)] sm:text-xs">
+                                تازه‌ترین اتفاق‌های دنیای بازی و فروشگاه
+                            </p>
+                        </div>
                     </div>
-                    <h2 className="mt-2 text-2xl font-black text-[var(--store-text)] md:text-3xl">
-                        تازه منتشر شده
-                    </h2>
-                    <p className="mt-2 max-w-xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm">
-                        جدیدترین محصولات و ویدیوهای مهم؛ قبل از اینکه از دستشان
-                        بدهی.
-                    </p>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <span className="hidden rounded-full bg-[var(--store-bg)] px-3 py-1.5 text-[10px] font-bold text-[var(--store-muted)] sm:block">
+                            {money.format(items.length)} انتشار تازه
+                        </span>
+                        {items.length > 1 && (
+                            <>
+                                <Button
+                                    aria-label="انتشار قبلی"
+                                    className="size-9 min-w-9 rounded-xl"
+                                    isIconOnly
+                                    onPress={() =>
+                                        railRef.current?.scrollBy({
+                                            left: 320,
+                                            behavior: "smooth",
+                                        })
+                                    }
+                                    variant="secondary"
+                                >
+                                    <ChevronRight size={17} />
+                                </Button>
+                                <Button
+                                    aria-label="انتشار بعدی"
+                                    className="size-9 min-w-9 rounded-xl"
+                                    isIconOnly
+                                    onPress={() =>
+                                        railRef.current?.scrollBy({
+                                            left: -320,
+                                            behavior: "smooth",
+                                        })
+                                    }
+                                    variant="secondary"
+                                >
+                                    <ChevronLeft size={17} />
+                                </Button>
+                            </>
+                        )}
+                    </div>
                 </div>
-                {items.length > 1 && (
-                    <div className="hidden gap-2 sm:flex">
-                        <Button
-                            aria-label="قبلی"
-                            isIconOnly
-                            onPress={() =>
-                                railRef.current?.scrollBy({
-                                    left: 420,
-                                    behavior: "smooth",
-                                })
-                            }
-                            variant="secondary"
-                        >
-                            <ChevronRight size={18} />
-                        </Button>
-                        <Button
-                            aria-label="بعدی"
-                            isIconOnly
-                            onPress={() =>
-                                railRef.current?.scrollBy({
-                                    left: -420,
-                                    behavior: "smooth",
-                                })
-                            }
-                            variant="secondary"
-                        >
-                            <ChevronLeft size={18} />
-                        </Button>
-                    </div>
-                )}
-            </div>
-            <div className="relative overflow-hidden rounded-[28px] border border-[var(--store-border)] bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,.10),transparent_38%),var(--store-surface)] py-5 shadow-[0_24px_70px_-48px_rgba(79,70,229,.55)]">
                 <div
-                    className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    className="flex snap-x snap-mandatory gap-3 overflow-x-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:p-4"
                     ref={railRef}
                 >
-                    {items.map((item, index) => {
+                    {items.map((item) => {
                         const unseen = Date.parse(item.published_at) > seenAt;
-                        const featured = index === 0;
                         const video = item.type === "video";
                         return (
                             <Link
-                                className={`group relative shrink-0 snap-start overflow-hidden rounded-3xl border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 ${featured ? "w-[88vw] border-indigo-500/50 sm:w-[560px]" : video ? "w-[82vw] border-[var(--store-border)] sm:w-[410px]" : "w-[76vw] border-[var(--store-border)] sm:w-[330px]"} ${unseen ? "shadow-[0_18px_55px_-35px_rgba(99,102,241,.7)]" : "saturate-[.82]"}`}
+                                className={`group w-[78vw] max-w-[292px] shrink-0 snap-start overflow-hidden rounded-[22px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[292px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
                                 href={item.url}
                                 key={item.key}
                                 onClick={() =>
@@ -229,106 +246,102 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                                     )
                                 }
                             >
-                                <article className="flex h-full flex-col bg-[var(--store-panel)]">
+                                <article className="flex h-full flex-col">
+                                    <header className="flex items-center gap-2.5 p-3">
+                                        <span
+                                            className={`grid size-9 shrink-0 place-items-center rounded-xl text-white ${video ? "bg-rose-500" : "bg-indigo-600"}`}
+                                        >
+                                            {video ? (
+                                                <Play fill="currentColor" size={15} />
+                                            ) : (
+                                                <Gamepad2 size={17} />
+                                            )}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <strong className="block truncate text-xs text-[var(--store-text)]">
+                                                {item.eyebrow}
+                                            </strong>
+                                            <small className="mt-0.5 flex items-center gap-1 text-[9px] text-[var(--store-muted)]">
+                                                <Clock3 size={11} />
+                                                {freshDateLabel(
+                                                    item.published_at,
+                                                )}
+                                            </small>
+                                        </span>
+                                        {unseen && (
+                                            <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-black text-emerald-500">
+                                                جدید
+                                            </span>
+                                        )}
+                                    </header>
                                     <div
-                                        className={`relative overflow-hidden ${video ? "bg-black" : "bg-[var(--store-bg)]"} ${featured ? "aspect-[16/8]" : video ? "aspect-video" : "aspect-[4/3]"}`}
+                                        className={`relative mx-2 aspect-[16/10] overflow-hidden rounded-2xl ${video ? "bg-black" : "bg-[var(--store-bg)]"}`}
                                     >
                                         {item.image_url ? (
                                             <img
                                                 alt={item.title}
-                                                className={`size-full transition duration-500 group-hover:scale-[1.025] ${video ? "object-cover" : "object-contain p-3"}`}
-                                                loading={
-                                                    featured ? "eager" : "lazy"
-                                                }
+                                                className={`size-full transition duration-500 group-hover:scale-[1.035] ${video ? "object-cover" : "object-contain p-3"}`}
+                                                loading="lazy"
                                                 src={item.image_url}
                                             />
                                         ) : (
                                             <span className="grid size-full place-items-center text-indigo-400">
                                                 {video ? (
-                                                    <Play size={58} />
+                                                    <Play size={38} />
                                                 ) : (
-                                                    <PackageOpen size={58} />
+                                                    <PackageOpen size={38} />
                                                 )}
                                             </span>
                                         )}
                                         {video && (
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-                                        )}
-                                        <span
-                                            className={`absolute right-3 top-3 rounded-full px-3 py-1.5 text-[11px] font-black text-white ${video ? "bg-rose-600" : "bg-indigo-600"}`}
-                                        >
-                                            {video ? "ویدیو" : "محصول"}
-                                        </span>
-                                        {unseen && (
-                                            <span className="absolute left-3 top-3 rounded-full bg-emerald-400 px-3 py-1.5 text-[11px] font-black text-slate-950">
-                                                جدید
-                                            </span>
-                                        )}
-                                        {video &&
-                                            durationLabel(item.duration) && (
-                                                <span className="absolute bottom-3 left-3 rounded-lg bg-black/80 px-2 py-1 font-mono text-xs text-white">
-                                                    {durationLabel(
-                                                        item.duration,
-                                                    )}
+                                            <>
+                                                <span className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+                                                <span className="absolute inset-0 grid place-items-center">
+                                                    <span className="grid size-11 place-items-center rounded-full bg-white/90 text-slate-950 shadow-lg transition group-hover:scale-110">
+                                                        <Play
+                                                            fill="currentColor"
+                                                            size={18}
+                                                        />
+                                                    </span>
                                                 </span>
-                                            )}
-                                        {video && (
-                                            <span className="absolute inset-0 grid place-items-center">
-                                                <span className="grid size-14 place-items-center rounded-full bg-white/90 text-slate-950 shadow-xl transition group-hover:scale-110">
-                                                    <Play
-                                                        fill="currentColor"
-                                                        size={23}
-                                                    />
-                                                </span>
+                                            </>
+                                        )}
+                                        {durationLabel(item.duration) && (
+                                            <span className="absolute bottom-2 left-2 rounded-md bg-black/75 px-1.5 py-0.5 font-mono text-[9px] text-white">
+                                                {durationLabel(item.duration)}
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex min-h-40 flex-1 flex-col p-5">
-                                        <div className="flex items-center gap-2 text-[11px] font-bold text-[var(--store-muted)]">
-                                            <Clock3 size={14} />
-                                            <span>{item.eyebrow}</span>
-                                            {featured && (
-                                                <span className="mr-auto rounded-full bg-amber-500/10 px-2 py-1 text-amber-600">
-                                                    جدیدترین انتشار
-                                                </span>
-                                            )}
-                                        </div>
-                                        <h3
-                                            className={`${featured ? "text-xl sm:text-2xl" : "text-lg"} mt-3 line-clamp-2 font-black leading-8 text-[var(--store-text)]`}
-                                        >
+                                    <div className="flex min-h-28 flex-1 flex-col p-3">
+                                        <h3 className="line-clamp-2 text-sm font-black leading-6 text-[var(--store-text)]">
                                             {item.title}
                                         </h3>
-                                        {item.pricing && (
-                                            <div className="mt-3">
-                                                {item.pricing.final_price !==
-                                                    item.pricing
-                                                        .regular_price && (
-                                                    <span className="ml-2 text-xs text-[var(--store-muted)] line-through">
-                                                        {money.format(
-                                                            item.pricing
-                                                                .regular_price,
-                                                        )}
-                                                    </span>
-                                                )}
-                                                <strong className="text-lg text-emerald-400">
+                                        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
+                                            {item.pricing ? (
+                                                <strong className="text-sm text-emerald-500">
                                                     {money.format(
-                                                        item.pricing
-                                                            .final_price,
+                                                        item.pricing.final_price,
                                                     )}{" "}
-                                                    <small className="text-xs">
+                                                    <small className="text-[9px] font-bold">
                                                         تومان
                                                     </small>
                                                 </strong>
-                                            </div>
-                                        )}
-                                        <span
-                                            className={`mt-auto flex items-center gap-2 pt-4 text-sm font-black ${video ? "text-rose-500" : "text-indigo-500"}`}
-                                        >
-                                            {video
-                                                ? "مشاهده ویدیو"
-                                                : "مشاهده و خرید"}
-                                            <ArrowUpLeft size={17} />
-                                        </span>
+                                            ) : (
+                                                <span className="flex items-center gap-1 text-[10px] text-[var(--store-muted)]">
+                                                    <Eye size={13} />
+                                                    {money.format(
+                                                        item.views ?? 0,
+                                                    )}{" "}
+                                                    بازدید
+                                                </span>
+                                            )}
+                                            <span
+                                                className={`flex items-center gap-1 text-[10px] font-black ${video ? "text-rose-500" : "text-indigo-500"}`}
+                                            >
+                                                {video ? "تماشا" : "مشاهده"}
+                                                <ArrowUpLeft size={14} />
+                                            </span>
+                                        </div>
                                     </div>
                                 </article>
                             </Link>
@@ -456,7 +469,7 @@ function ContentRail({ section }: { section: ContentSection }) {
                                 <p className="text-xs font-bold text-indigo-400">
                                     {item.eyebrow}
                                 </p>
-                                <h3 className="line-clamp-2 min-h-12 font-bold leading-6 text-white">
+                                <h3 className="line-clamp-2 min-h-12 font-bold leading-6 text-[var(--store-text)]">
                                     {item.title}
                                 </h3>
                                 {isProduct &&
@@ -513,6 +526,7 @@ function ContentRail({ section }: { section: ContentSection }) {
 }
 
 export default function Home({
+    seo,
     settings,
     slides,
     categories,
@@ -552,9 +566,7 @@ export default function Home({
             data-theme={theme}
             dir="rtl"
         >
-            <Head title={settings.seo_title}>
-                <meta content={settings.seo_description} name="description" />
-            </Head>
+            <Seo seo={seo} />
             <StorefrontNavigation
                 announcement={{
                     enabled: settings.announcement_enabled,
@@ -570,6 +582,14 @@ export default function Home({
             />
             <main>
                 <section className="mx-auto max-w-7xl px-4 pt-5">
+                    <header className="mb-5 max-w-3xl">
+                        <h1 className="text-2xl font-black leading-tight text-[var(--store-text)] sm:text-3xl">
+                            {seo.heading}
+                        </h1>
+                        <p className="mt-2 text-sm leading-7 text-[var(--store-muted)] sm:text-base">
+                            {seo.description}
+                        </p>
+                    </header>
                     {slide ? (
                         <div
                             aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
@@ -591,9 +611,12 @@ export default function Home({
                                         }
                                     />
                                     <img
-                                        alt={slide.title}
+                                        alt={slide.alt || slide.title}
                                         className="block h-auto w-full"
+                                        decoding="async"
+                                        fetchPriority="high"
                                         key={slide.id}
+                                        loading="eager"
                                         src={slide.desktop_image_url}
                                     />
                                 </picture>
@@ -650,9 +673,9 @@ export default function Home({
                                     className="mx-auto text-indigo-400"
                                     size={72}
                                 />
-                                <h1 className="mt-5 text-4xl font-black text-white">
+                                <h2 className="mt-5 text-4xl font-black text-white">
                                     دنیای گیمینگ تو از اینجا شروع می‌شود
-                                </h1>
+                                </h2>
                             </div>
                         </div>
                     )}
@@ -673,7 +696,7 @@ export default function Home({
                                 <Icon size={21} />
                             </span>
                             <div>
-                                <strong className="text-sm text-white">
+                                <strong className="text-sm text-[var(--store-text)]">
                                     {String(title)}
                                 </strong>
                                 <p className="mt-1 text-xs text-slate-500">
@@ -798,7 +821,7 @@ export default function Home({
             >
                 <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
                     <p>
-                        © {new Date().getFullYear()} NEXUS PLAY — همراه دنیای
+                        © {new Date().getFullYear()} PLAY NEXUS — همراه دنیای
                         بازی
                     </p>
                     <div className="flex gap-5">

@@ -86,12 +86,16 @@ class StorefrontDataService
             'discontinued' => ['توقف فروش', 'danger'],
             default => $stock !== null ? [$stock > 0 ? 'موجود' : 'ناموجود', $stock > 0 ? 'success' : 'danger'] : null,
         };
-        if ($availability) $badges->push(['key' => 'availability', 'label' => 'وضعیت', 'value' => $availability[0], 'tone' => $availability[1], 'priority' => 10]);
+        if ($availability) {
+            $badges->push(['key' => 'availability', 'label' => 'وضعیت', 'value' => $availability[0], 'tone' => $availability[1], 'priority' => 10]);
+        }
         if (($pricing['discount_amount'] ?? 0) > 0 && ($pricing['regular_price'] ?? 0) > 0) {
             $percent = (int) round($pricing['discount_amount'] * 100 / $pricing['regular_price']);
             $badges->push(['key' => 'discount', 'label' => 'تخفیف', 'value' => $percent.'٪', 'tone' => 'danger', 'priority' => 20]);
         }
-        if ($product->category?->name) $badges->push(['key' => 'category', 'label' => 'دسته', 'value' => $product->category->name, 'tone' => 'accent', 'priority' => 30]);
+        if ($product->category?->name) {
+            $badges->push(['key' => 'category', 'label' => 'دسته', 'value' => $product->category->name, 'tone' => 'accent', 'priority' => 30]);
+        }
         if ($product->relationLoaded('platforms') && $product->platforms->isNotEmpty()) {
             $badges->push(['key' => 'platform', 'label' => 'پلتفرم', 'value' => $product->platforms->take(2)->pluck('name')->join('، '), 'tone' => 'info', 'priority' => 40]);
         }
@@ -104,14 +108,24 @@ class StorefrontDataService
             ['keys' => ['region', 'ریجن', 'منطقه'], 'key' => 'region', 'label' => 'ریجن', 'tone' => 'success', 'priority' => 55],
         ] as $meta) {
             $match = $attributes->first(fn ($item, $key) => in_array($key, $meta['keys'], true));
-            if ($match) $badges->push(['key' => $meta['key'], 'label' => $meta['label'], 'value' => (string) $match->value, 'tone' => $meta['tone'], 'priority' => $meta['priority']]);
+            if ($match) {
+                $badges->push(['key' => $meta['key'], 'label' => $meta['label'], 'value' => (string) $match->value, 'tone' => $meta['tone'], 'priority' => $meta['priority']]);
+            }
         }
-        if ($product->game?->developer) $badges->push(['key' => 'developer', 'label' => 'استودیو', 'value' => $product->game->developer, 'tone' => 'neutral', 'priority' => 60]);
-        if ($product->game?->publisher) $badges->push(['key' => 'publisher', 'label' => 'ناشر', 'value' => $product->game->publisher, 'tone' => 'neutral', 'priority' => 65]);
+        if ($product->game?->developer) {
+            $badges->push(['key' => 'developer', 'label' => 'استودیو', 'value' => $product->game->developer, 'tone' => 'neutral', 'priority' => 60]);
+        }
+        if ($product->game?->publisher) {
+            $badges->push(['key' => 'publisher', 'label' => 'ناشر', 'value' => $product->game->publisher, 'tone' => 'neutral', 'priority' => 65]);
+        }
         $genre = $attributes->first(fn ($item, $key) => in_array($key, ['genre', 'ژانر'], true));
-        if ($genre) $badges->push(['key' => 'genre', 'label' => 'ژانر', 'value' => (string) $genre->value, 'tone' => 'neutral', 'priority' => 70]);
+        if ($genre) {
+            $badges->push(['key' => 'genre', 'label' => 'ژانر', 'value' => (string) $genre->value, 'tone' => 'neutral', 'priority' => 70]);
+        }
         $type = $product->type?->title ?? $product->product_type;
-        if ($type) $badges->push(['key' => 'type', 'label' => 'نوع', 'value' => $type, 'tone' => 'neutral', 'priority' => 80]);
+        if ($type) {
+            $badges->push(['key' => 'type', 'label' => 'نوع', 'value' => $type, 'tone' => 'neutral', 'priority' => 80]);
+        }
 
         return $badges->filter(fn ($badge) => filled($badge['value']))->sortBy('priority')->take(5)
             ->map(fn ($badge) => collect($badge)->except('priority')->all())->values()->all();
@@ -135,6 +149,12 @@ class StorefrontDataService
             'duration' => $content->duration,
             'views' => $content->views,
             'published_at' => $content->published_at?->toISOString(),
+            'channel' => $content->relationLoaded('game') && $content->game ? [
+                'id' => $content->game->id,
+                'name' => $content->game->name,
+                'url' => route('channels.show', $content->game->slug, false),
+                'avatar_url' => MediaStorage::url($content->game->cover),
+            ] : null,
         ];
     }
 }

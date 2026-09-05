@@ -3,20 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Admin\HomeSettingsController;
-use App\Models\Category;
 use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Game;
 use App\Models\HomeSection;
 use App\Models\HomeSetting;
 use App\Models\HomeSlide;
-use App\Models\Product;
 use App\Models\Platform;
+use App\Models\Product;
 use App\Models\SocialContent;
+use App\Services\MediaStorage;
 use App\Services\ProductPriceService;
 use App\Services\StorefrontDataService;
+use App\Support\Seo;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use App\Services\MediaStorage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,15 +29,70 @@ class HomeController extends Controller
         $freshCutoff = now()->subDays(14);
         $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
+        $slides = HomeSlide::query()->visible()->orderBy('sort_order')->get()->map(fn (HomeSlide $slide) => [
+            ...$slide->only(['id', 'title', 'alt', 'link_type', 'product_id', 'button_url']),
+            'desktop_image_url' => MediaStorage::url($slide->desktop_image),
+            'mobile_image_url' => MediaStorage::url($slide->mobile_image),
+            'target_url' => $slide->button_url ?: '#',
+        ]);
+
+        $siteName = (string) config('seo.site_name', 'PlayNexus');
+        $locale = (string) config('seo.locale', 'fa-IR');
+        $canonical = route('home');
+        $logo = url((string) config('seo.default_image', '/logo.png'));
+        $socialImage = url((string) ($slides->first()['desktop_image_url'] ?? $logo));
+        $socialImageAlt = (string) ($slides->first()['alt'] ?? $slides->first()['title'] ?? "لوگوی {$siteName}");
+        $seoTitle = trim((string) ($settings['seo_title'] ?? '')) ?: "فروشگاه بازی و تجهیزات گیمینگ | {$siteName}";
+        $seoDescription = trim((string) ($settings['seo_description'] ?? '')) ?: "خرید بازی، کنسول و تجهیزات گیمینگ با تضمین اصالت و پشتیبانی تخصصی از {$siteName}.";
+        $seo = Seo::page([
+            'title' => $seoTitle,
+            'description' => $seoDescription,
+            'canonical' => $canonical,
+            'robots' => 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+            'type' => 'website',
+            'siteName' => $siteName,
+            'locale' => $locale,
+            'image' => $socialImage,
+            'imageAlt' => $socialImageAlt,
+            'heading' => "فروشگاه و پلتفرم گیمینگ {$siteName}",
+            'structuredData' => [
+                '@context' => 'https://schema.org',
+                '@graph' => [
+                    [
+                        '@type' => 'Organization',
+                        '@id' => $canonical.'#organization',
+                        'name' => $siteName,
+                        'url' => $canonical,
+                        'logo' => [
+                            '@type' => 'ImageObject',
+                            'url' => $logo,
+                        ],
+                    ],
+                    [
+                        '@type' => 'WebSite',
+                        '@id' => $canonical.'#website',
+                        'url' => $canonical,
+                        'name' => $siteName,
+                        'description' => $seoDescription,
+                        'inLanguage' => $locale,
+                        'publisher' => ['@id' => $canonical.'#organization'],
+                        'potentialAction' => [
+                            '@type' => 'SearchAction',
+                            'target' => [
+                                '@type' => 'EntryPoint',
+                                'urlTemplate' => route('search').'?q={search_term_string}',
+                            ],
+                            'query-input' => 'required name=search_term_string',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
 
         return Inertia::render('Home', [
+            ...$seo,
             'settings' => $settings,
-            'slides' => HomeSlide::query()->visible()->orderBy('sort_order')->get()->map(fn (HomeSlide $slide) => [
-                ...$slide->only(['id', 'title', 'alt', 'link_type', 'product_id', 'button_url']),
-                'desktop_image_url' => MediaStorage::url($slide->desktop_image),
-                'mobile_image_url' => MediaStorage::url($slide->mobile_image),
-                'target_url' => $slide->button_url ?: '#',
-            ]),
+            'slides' => $slides,
             'categories' => Category::query()
                 ->whereNull('parent_id')
                 ->where('status', 'active')

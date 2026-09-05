@@ -66,7 +66,9 @@ export default function DeploymentIndex({
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const canApply =
-        operation?.status === "verified" || operation?.status === "running";
+        operation?.status === "verified" ||
+        operation?.status === "running" ||
+        operation?.status === "failed";
     const changes = useMemo(() => operation?.diff?.changed ?? [], [operation]);
 
     const fail = async (error: unknown) => {
@@ -240,11 +242,13 @@ export default function DeploymentIndex({
                             variant="secondary"
                         >
                             <Download size={17} />
-                            بسته‌بندی PHP و دانلود خروجی
+                            ساخت و دانلود بسته هاست
                         </Button>
                         <p className="text-xs text-slate-500">
-                            هاست به Node.js نیاز ندارد؛ این بخش خروجی آماده
-                            public/build را بسته‌بندی می‌کند.
+                            ابتدا خودتان npm run build را اجرا کنید. Export کل
+                            پوشه public به‌جز public/hot و همین‌طور vendor موجود
+                            و composer.json لازم برای اجرای Laravel را بدون نصب
+                            هیچ پکیجی داخل بسته قرار می‌دهد.
                         </p>
                         {!capabilities.export && (
                             <div className="space-y-1 text-xs text-slate-500">

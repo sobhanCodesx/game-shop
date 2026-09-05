@@ -55,6 +55,7 @@ type Invoice = {
     cashback_amount: number;
     exchange_request_id: number | null;
     exchange_credit_used: number;
+    approved_trade_value: number | null;
     trade_item_title: string | null;
 };
 
@@ -62,6 +63,9 @@ const amount = (value: number) => `${money.format(value)} تومان`;
 
 export default function InvoicePage({ invoice }: { invoice: Invoice }) {
     const address = invoice.shipping_address;
+    const exchangeItem = invoice.items.find(
+        (item) => item.exchange_credit_used > 0,
+    );
 
     return (
         <StorefrontLayout>
@@ -165,6 +169,14 @@ export default function InvoicePage({ invoice }: { invoice: Invoice }) {
                                                         <span className="invoice-print-muted mt-1 block text-xs text-[var(--store-muted)]">
                                                             {[item.variant_name, `SKU: ${item.sku}`].filter(Boolean).join(" · ")}
                                                         </span>
+                                                        {item.exchange_credit_used > 0 && (
+                                                            <span className="mt-1 block text-xs font-bold text-indigo-600">
+                                                                کسر معاوضه: −{" "}
+                                                                {amount(
+                                                                    item.exchange_credit_used,
+                                                                )}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -179,12 +191,49 @@ export default function InvoicePage({ invoice }: { invoice: Invoice }) {
                         </div>
                     </section>
 
+                    {invoice.exchange_request_id && (
+                        <section className="invoice-avoid-break mb-6 rounded-2xl border border-indigo-500/30 bg-indigo-500/5 p-5">
+                            <h2 className="font-black text-indigo-600">
+                                جزئیات معاوضه این فاکتور
+                            </h2>
+                            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                                <p>
+                                    کالای تحویلی مشتری:{" "}
+                                    <strong>
+                                        {invoice.trade_item_title || "—"}
+                                    </strong>
+                                </p>
+                                <p>
+                                    محصولی که اعتبار از آن کسر شد:{" "}
+                                    <strong>
+                                        {exchangeItem?.title || "—"}
+                                    </strong>
+                                </p>
+                                <p>
+                                    ارزش توافق‌شده معاوضه:{" "}
+                                    <strong>
+                                        {amount(
+                                            invoice.approved_trade_value ?? 0,
+                                        )}
+                                    </strong>
+                                </p>
+                                <p>
+                                    مبلغ کسرشده از سفارش:{" "}
+                                    <strong>
+                                        {amount(invoice.exchange_credit_used)}
+                                    </strong>
+                                </p>
+                            </div>
+                        </section>
+                    )}
+
                     <section className="invoice-avoid-break mr-auto max-w-md rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-5">
                         <h2 className="mb-4 font-black">خلاصه مالی ثبت‌شده</h2>
                         <SummaryRow label="ارزش اولیه محصولات" value={amount(invoice.regular_subtotal)} />
                         {invoice.product_discount > 0 && <SummaryRow discount label="تخفیف محصولات" value={`− ${amount(invoice.product_discount)}`} />}
                         <SummaryRow label="جمع محصولات" value={amount(invoice.subtotal)} />
-                        {invoice.exchange_request_id && <SummaryRow discount label={`معاوضه: ${invoice.trade_item_title}`} value={`− ${amount(invoice.exchange_credit_used)}`} />}
+                        {invoice.exchange_request_id && <SummaryRow label={`ارزش توافق‌شده «${invoice.trade_item_title}»`} value={amount(invoice.approved_trade_value ?? 0)} />}
+                        {invoice.exchange_request_id && <SummaryRow discount label={`کسر معاوضه از «${exchangeItem?.title ?? "محصول مقصد"}»`} value={`− ${amount(invoice.exchange_credit_used)}`} />}
                         {invoice.coupon_code && <SummaryRow discount label={`کد تخفیف (${invoice.coupon_code})`} value={`− ${amount(invoice.coupon_discount)}`} />}
                         <SummaryRow label="هزینه ارسال" value={amount(invoice.delivery_fee)} />
                         <SummaryRow label="مبلغ نهایی سفارش" value={amount(invoice.grand_total)} />

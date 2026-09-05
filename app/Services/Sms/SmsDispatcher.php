@@ -3,15 +3,20 @@
 namespace App\Services\Sms;
 
 use App\Exceptions\SmsProviderException;
-use App\Models\SmsOutbox;
 use App\Models\SmsDeliveryAttempt;
+use App\Models\SmsOutbox;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Throwable;
+use ValueError;
 
 class SmsDispatcher
 {
-    public function __construct(private readonly SmsProvider $provider) {}
+    public function __construct(
+        private readonly SmsProvider $provider,
+        private readonly SmsPatternRegistry $patterns,
+    ) {}
 
     public function dispatchDue(?int $limit = null): void
     {
@@ -50,21 +55,34 @@ class SmsDispatcher
     {
         $attempt = $item->attempts + 1;
         try {
-            $pattern = SmsPattern::from($item->pattern);
-            $patternId = $pattern->providerId();
-            if ($patternId === '') {
-                $this->fail($item, $attempt, 'SMS pattern is not configured in config/sms.php.', false);
-                return;
+            if ($item->pattern === SmsService::PLAIN_TEST_PATTERN) {
+                $message = trim((string) ($item->payload['message'] ?? ''));
+                if ($message === '') {
+                    throw new InvalidArgumentException('Test SMS message cannot be empty.');
+                }
+                $result = $this->provider->send($item->mobile, SmsMessageFormatter::withOptOutFooter($message));
+            } else {
+                $pattern = SmsPattern::from($item->pattern);
+                if (! $this->patterns->isActive($pattern)) {
+                    $this->fail($item, $attempt, 'SMS pattern is inactive in the pattern registry.', false);
+
+                    return;
+                }
+                $variables = $pattern->validate($item->payload);
+                $patternId = $this->patterns->providerId($pattern);
+                $result = $patternId !== ''
+                    ? $this->provider->sendPattern($item->mobile, $patternId, SmsMessageFormatter::appendToLastVariable($variables))
+                    : $this->provider->send($item->mobile, SmsMessageFormatter::withOptOutFooter($pattern->render($variables)));
             }
-            $result = $this->provider->sendPattern($item->mobile, $patternId, $pattern->validate($item->payload));
             if (! $result->success) {
                 $this->fail($item, $attempt, $result->message, $this->isRetryableStatus($result->status), $result->status, $result->rawResponse, $result->messageIds[0] ?? null);
+
                 return;
             }
             $this->recordAttempt($item, $attempt, true, false, $result->status, $result->rawResponse, $result->messageIds[0] ?? null);
             $item->update(['status' => 'sent', 'attempts' => $attempt, 'sent_at' => now(), 'claimed_at' => null, 'next_attempt_at' => null, 'last_error' => null, 'provider_message_id' => isset($result->messageIds[0]) ? (string) $result->messageIds[0] : null]);
             Log::info('SMS outbox item sent', ['outbox_id' => $item->id, 'pattern' => $item->pattern, 'mobile' => $this->mask($item->mobile), 'attempt' => $attempt]);
-        } catch (InvalidArgumentException $exception) {
+        } catch (InvalidArgumentException|ValidationException|ValueError $exception) {
             $this->fail($item, $attempt, $exception->getMessage(), false);
         } catch (SmsProviderException $exception) {
             $this->fail($item, $attempt, $exception->getMessage(), $exception->retryable, $exception->providerStatus, $exception->providerResponse);

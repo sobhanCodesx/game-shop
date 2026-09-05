@@ -1,0 +1,42 @@
+{
+    "id": "/",
+    "name": "PlayNexus",
+    "short_name": "PlayNexus",
+    "description": "فروشگاه و شبکه محتوای بازی PlayNexus",
+    "lang": "fa-IR",
+    "dir": "rtl",
+    "start_url": "/?source=pwa",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#09090b",
+    "theme_color": "#09090b",
+    "categories": ["games", "shopping", "entertainment"],
+    "icons": [
+        {
+            "src": "/logo.png",
+            "sizes": "1254x1254",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "فروشگاه",
+            "short_name": "فروشگاه",
+            "url": "/shop?source=pwa",
+            "icons": [{ "src": "/logo.png", "sizes": "1254x1254", "type": "image/png" }]
+        },
+        {
+            "name": "جستجو",
+            "short_name": "جستجو",
+            "url": "/search?source=pwa",
+            "icons": [{ "src": "/logo.png", "sizes": "1254x1254", "type": "image/png" }]
+        },
+        {
+            "name": "سبد خرید",
+            "short_name": "سبد خرید",
+            "url": "/cart?source=pwa",
+            "icons": [{ "src": "/logo.png", "sizes": "1254x1254", "type": "image/png" }]
+        }
+    ]
+}

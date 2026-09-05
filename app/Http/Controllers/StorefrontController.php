@@ -3,17 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Game;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\SocialContent;
+use App\Services\MediaStorage;
+use App\Services\SmartSearchService;
 use App\Services\StorefrontDataService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use App\Services\MediaStorage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,7 +29,21 @@ class StorefrontController extends Controller
 
         return Inertia::render('Shop/Index', [
             'products' => $products,
-            'filters' => $request->only(['q', 'category', 'sort']),
+            'filters' => $request->only(['q', 'category', 'sort', 'trade']),
+            'tradeOnly' => false,
+        ]);
+    }
+
+    public function exchangeProducts(Request $request, StorefrontDataService $data): Response
+    {
+        $products = $this->productQuery($request)->where('trade_enabled', true)
+            ->paginate(18)->withQueryString()
+            ->through(fn (Product $product) => $data->product($product, $request->user()));
+
+        return Inertia::render('Shop/Index', [
+            'products' => $products,
+            'filters' => [...$request->only(['q', 'sort']), 'trade' => '1'],
+            'tradeOnly' => true,
         ]);
     }
 
@@ -45,7 +62,7 @@ class StorefrontController extends Controller
         return Inertia::render('Categories/Show', [
             'category' => $data->category($category),
             'products' => $products,
-            'filters' => $request->only(['q', 'sort']),
+            'filters' => $request->only(['q', 'sort', 'trade']),
         ]);
     }
 
@@ -66,7 +83,7 @@ class StorefrontController extends Controller
         $rows = collect($feed->items());
         $media = ProductMedia::query()->with(['product' => fn ($query) => $query->with($this->productRelations())])
             ->whereIn('id', $rows->where('kind', 'product_media')->pluck('id'))->get()->keyBy('id');
-        $content = SocialContent::query()
+        $content = SocialContent::query()->with('game:id,name,slug,cover')
             ->whereIn('id', $rows->where('kind', 'content')->pluck('id'))->get()->keyBy('id');
         $feed->setCollection($rows->map(function (object $row) use ($media, $content, $data, $request) {
             if ($row->kind === 'product_media' && $media->has($row->id)) {
@@ -98,23 +115,48 @@ class StorefrontController extends Controller
     {
         return Inertia::render('Videos/Index', [
             'videos' => SocialContent::query()->published()->where('type', 'video')
+                ->with('game:id,name,slug,cover')
                 ->latest('published_at')->paginate(18)->through(fn ($item) => $data->content($item)),
         ]);
     }
 
-    public function search(Request $request, StorefrontDataService $data): Response
+    public function search(Request $request, StorefrontDataService $data, SmartSearchService $search): Response
     {
-        $term = trim((string) $request->string('q'));
+        $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+        $term = trim($request->string('q')->toString());
+        $matches = $search->rankedIds($term);
+        $products = Product::query()->whereIn('id', $matches['products'])->with($this->productRelations())->get();
+        $content = SocialContent::query()->whereIn('id', $matches['content'])->with('game:id,name,slug,cover')->get();
+        $categories = Category::query()->whereIn('id', $matches['categories'])
+            ->withCount(['products' => fn ($query) => $query->publiclyVisible()])->get();
+        $games = Game::query()->whereIn('id', $matches['games'])->get();
 
         return Inertia::render('Search/Index', [
             'query' => $term,
-            'products' => $term === '' ? [] : Product::query()->publiclyVisible()->search($term)->with($this->productRelations())
-                ->limit(12)->get()->map(fn ($item) => $data->product($item, $request->user())),
-            'content' => $term === '' ? [] : SocialContent::query()->published()->where(fn (Builder $query) => $query
-                ->where('title', 'like', "%{$term}%")->orWhere('excerpt', 'like', "%{$term}%"))
-                ->limit(12)->get()->map(fn ($item) => $data->content($item)),
-            'categories' => $term === '' ? [] : Category::query()->where('status', 'active')->where('name', 'like', "%{$term}%")
-                ->limit(8)->get()->map(fn ($item) => $data->category($item)),
+            'products' => $this->sortByRank($products, $matches['products'])->map(fn ($item) => $data->product($item, $request->user())),
+            'content' => $this->sortByRank($content, $matches['content'])->map(fn ($item) => $data->content($item)),
+            'categories' => $this->sortByRank($categories, $matches['categories'])->map(fn ($item) => $data->category($item)),
+            'channels' => $this->sortByRank($games, $matches['games'])->map(fn ($game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'developer' => $game->developer,
+                'cover_url' => MediaStorage::url($game->cover),
+                'url' => route('channels.show', $game->slug, false),
+            ]),
+        ]);
+    }
+
+    public function searchSuggestions(Request $request, SmartSearchService $search): JsonResponse
+    {
+        $validated = $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+        $term = trim((string) ($validated['q'] ?? ''));
+
+        return response()->json([
+            'suggestions' => Cache::remember(
+                'smart-search:v4:'.sha1(mb_strtolower($term)),
+                now()->addSeconds(90),
+                fn () => $search->suggestions($term),
+            ),
         ]);
     }
 
@@ -123,6 +165,7 @@ class StorefrontController extends Controller
         return Product::query()->publiclyVisible()->with($this->productRelations())
             ->search($request->string('q')->toString() ?: null)
             ->when($request->filled('category'), fn (Builder $query) => $query->whereHas('category', fn ($query) => $query->where('slug', $request->string('category'))))
+            ->when($request->boolean('trade'), fn (Builder $query) => $query->where('trade_enabled', true))
             ->when($request->string('sort')->toString() === 'popular', fn (Builder $query) => $query->orderByDesc('sold_stock'))
             ->when($request->string('sort')->toString() === 'price_asc', fn (Builder $query) => $query->orderByRaw('COALESCE(discount_price, price) asc'))
             ->when($request->string('sort')->toString() === 'price_desc', fn (Builder $query) => $query->orderByRaw('COALESCE(discount_price, price) desc'))
@@ -136,5 +179,12 @@ class StorefrontController extends Controller
             'platforms:id,name', 'attributeValues.attribute:id,name,slug',
             'coverMedia', 'variants:id,product_id,status',
         ];
+    }
+
+    private function sortByRank(Collection $items, array $ids): Collection
+    {
+        $order = array_flip($ids);
+
+        return $items->sortBy(fn ($item) => $order[$item->id] ?? PHP_INT_MAX)->values();
     }
 }

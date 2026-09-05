@@ -143,7 +143,7 @@ class StorefrontCatalogSeeder extends Seeder
                 : 'مرجوعی کالای فیزیکی مطابق شرایط سلامت بسته‌بندی و قوانین فروشگاه انجام می‌شود.',
             'warranty' => $item['kind'] === 'account' ? 'ضمانت صحت اطلاعات هنگام تحویل' : 'ضمانت اصالت و سلامت فیزیکی',
             'tags' => array_values(array_unique([$item['kind'], $item['type'], 'ps5', ...array_values($details)])),
-            'seo_description' => $summary.' مشخصات کامل، قیمت روز و وضعیت موجودی را در نکسوس پلی ببینید.',
+            'seo_description' => $summary.' مشخصات کامل، قیمت روز و وضعیت موجودی را در پلی نکسوس ببینید.',
             'seo_keywords' => implode('، ', [$product->title, 'خرید بازی PS5', ...array_values($details)]),
         ]);
 

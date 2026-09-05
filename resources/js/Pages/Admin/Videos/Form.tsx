@@ -5,6 +5,7 @@ import {
     Checkbox,
     Input,
     ProgressBar,
+    TextArea,
 } from "@heroui/react";
 import { Head, Link, useForm } from "@inertiajs/react";
 import { ArrowRight, Film, Save, UploadCloud } from "lucide-react";
@@ -23,33 +24,53 @@ interface VideoData {
     id: number;
     title: string;
     excerpt: string | null;
+    body: string | null;
+    seo_title: string | null;
+    seo_description: string | null;
     status: string;
     featured: boolean;
     duration: number | null;
     video_url: string | null;
+    game_id: number | null;
+    playlist_ids: number[];
+    allow_comments: boolean;
 }
 interface Props {
     video: VideoData | null;
+    games: Array<{ id: number; name: string }>;
+    playlists: Array<{ id: number; game_id: number; title: string }>;
 }
 interface FormData {
     title: string;
     excerpt: string;
+    body: string;
+    seo_title: string;
+    seo_description: string;
     video?: File;
     status: string;
     featured: boolean;
+    game_id: string;
+    playlist_ids: number[];
+    allow_comments: boolean;
     _method?: "put";
     upload_token?: string;
 }
 
-export default function VideoForm({ video }: Props) {
+export default function VideoForm({ video, games, playlists }: Props) {
     const editing = Boolean(video);
     const [preview, setPreview] = useState<string | null>(null);
     const { data, setData, post, processing, errors, transform } =
         useForm<FormData>({
             title: video?.title ?? "",
             excerpt: video?.excerpt ?? "",
+            body: video?.body ?? "",
+            seo_title: video?.seo_title ?? "",
+            seo_description: video?.seo_description ?? "",
             status: video?.status ?? "draft",
             featured: video?.featured ?? false,
+            game_id: video?.game_id ? String(video.game_id) : "",
+            playlist_ids: video?.playlist_ids ?? [],
+            allow_comments: video?.allow_comments ?? true,
             ...(editing ? { _method: "put" as const } : {}),
         });
     const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
@@ -135,16 +156,152 @@ export default function VideoForm({ video }: Props) {
                             />
                         </FormField>
                         <FormField
-                            description="یک معرفی کوتاه برای صفحه و کارت ویدیو"
-                            label="توضیح کوتاه"
+                            description={`${data.excerpt.length.toLocaleString("fa-IR")} از ۵۰۰ کاراکتر؛ برای کارت و خلاصه نتایج استفاده می‌شود.`}
+                            error={errors.excerpt}
+                            label="خلاصه کوتاه"
                         >
-                            <RichTextEditor
-                                minHeight={180}
-                                onChange={(value) => setData("excerpt", value)}
-                                placeholder="معرفی ویدیو، نکات مهم یا توضیحی که کاربر قبل از تماشا بداند…"
+                            <TextArea
+                                fullWidth
+                                maxLength={500}
+                                onChange={(event) =>
+                                    setData("excerpt", event.target.value)
+                                }
+                                placeholder="خلاصه‌ای طبیعی و جذاب از محتوای ویدیو…"
                                 value={data.excerpt}
                             />
                         </FormField>
+                        <FormField
+                            description="H1 به‌صورت خودکار از عنوان ویدیو ساخته می‌شود؛ برای بخش‌های محتوا از H2 و H3 استفاده کنید."
+                            error={errors.body}
+                            label="محتوای کامل ویدیو"
+                        >
+                            <RichTextEditor
+                                enableBlocks
+                                minHeight={320}
+                                onChange={(value) => setData("body", value)}
+                                placeholder="راهنما، فصل‌بندی، توضیحات تکمیلی و لینک‌های مرتبط را بنویسید…"
+                                value={data.body}
+                            />
+                        </FormField>
+                        <div className="space-y-5 border-t border-slate-800 pt-5">
+                            <div>
+                                <h2 className="font-black text-white">
+                                    تنظیمات SEO ویدیو
+                                </h2>
+                                <p className="mt-1 text-xs leading-6 text-slate-500">
+                                    در صورت خالی بودن، عنوان و خلاصه ویدیو
+                                    به‌صورت خودکار استفاده می‌شوند.
+                                </p>
+                            </div>
+                            <FormField
+                                description={`${data.seo_title.length.toLocaleString("fa-IR")} از ۶۰ کاراکتر`}
+                                error={errors.seo_title}
+                                label="عنوان SEO"
+                            >
+                                <Input
+                                    fullWidth
+                                    maxLength={60}
+                                    onChange={(event) =>
+                                        setData("seo_title", event.target.value)
+                                    }
+                                    placeholder={
+                                        data.title
+                                            ? `${data.title} | PlayNexus`
+                                            : "عنوان ویدیو | PlayNexus"
+                                    }
+                                    value={data.seo_title}
+                                />
+                            </FormField>
+                            <FormField
+                                description={`${data.seo_description.length.toLocaleString("fa-IR")} از ۱۶۰ کاراکتر`}
+                                error={errors.seo_description}
+                                label="توضیحات متا"
+                            >
+                                <TextArea
+                                    fullWidth
+                                    maxLength={160}
+                                    onChange={(event) =>
+                                        setData(
+                                            "seo_description",
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="توضیح طبیعی و ترغیب‌کننده برای نتیجه جستجو…"
+                                    value={data.seo_description}
+                                />
+                            </FormField>
+                        </div>
+                        <FormField
+                            description="هر عنوان بازی نقش یک کانال مستقل را دارد."
+                            label="کانال ویدیو"
+                        >
+                            <select
+                                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
+                                onChange={(event) => {
+                                    setData("game_id", event.target.value);
+                                    setData("playlist_ids", []);
+                                }}
+                                value={data.game_id}
+                            >
+                                <option value="">کانال عمومی فروشگاه</option>
+                                {games.map((game) => (
+                                    <option key={game.id} value={game.id}>
+                                        {game.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </FormField>
+                        {data.game_id &&
+                            playlists.some(
+                                (playlist) =>
+                                    String(playlist.game_id) === data.game_id,
+                            ) && (
+                                <FormField
+                                    description="یک ویدیو می‌تواند در چند کالکشن از همین کانال قرار بگیرد."
+                                    label="کالکشن‌ها"
+                                >
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        {playlists
+                                            .filter(
+                                                (playlist) =>
+                                                    String(playlist.game_id) ===
+                                                    data.game_id,
+                                            )
+                                            .map((playlist) => (
+                                                <label
+                                                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300"
+                                                    key={playlist.id}
+                                                >
+                                                    <input
+                                                        checked={data.playlist_ids.includes(
+                                                            playlist.id,
+                                                        )}
+                                                        onChange={(event) =>
+                                                            setData(
+                                                                "playlist_ids",
+                                                                event.target
+                                                                    .checked
+                                                                    ? [
+                                                                          ...data.playlist_ids,
+                                                                          playlist.id,
+                                                                      ]
+                                                                    : data.playlist_ids.filter(
+                                                                          (
+                                                                              id,
+                                                                          ) =>
+                                                                              id !==
+                                                                              playlist.id,
+                                                                      ),
+                                                            )
+                                                        }
+                                                        type="checkbox"
+                                                    />
+                                                    {playlist.title}
+                                                </label>
+                                            ))}
+                                    </div>
+                                </FormField>
+                            )}
                         <HeroSelect
                             label="وضعیت"
                             onChange={(value) => setData("status", value)}
@@ -165,6 +322,19 @@ export default function VideoForm({ video }: Props) {
                             </Checkbox.Control>
                             <Checkbox.Content>
                                 ویدیوی ویژه باشد
+                            </Checkbox.Content>
+                        </Checkbox>
+                        <Checkbox
+                            isSelected={data.allow_comments}
+                            onChange={(selected) =>
+                                setData("allow_comments", selected)
+                            }
+                        >
+                            <Checkbox.Control>
+                                <Checkbox.Indicator />
+                            </Checkbox.Control>
+                            <Checkbox.Content>
+                                نظرات این ویدیو فعال باشد
                             </Checkbox.Content>
                         </Checkbox>
                     </Card.Content>

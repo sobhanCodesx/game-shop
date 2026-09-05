@@ -23,16 +23,77 @@ enum SmsPattern: string
         };
     }
 
-    public function providerId(): string
+    public function defaultProviderId(): string
     {
-        return trim((string) config("sms.patterns.{$this->value}"));
+        return match ($this) {
+            self::OtpVerifyMobile => 'CHANGE_ME_OTP_VERIFY_MOBILE',
+            self::OtpPasswordlessLogin => 'CHANGE_ME_OTP_PASSWORDLESS_LOGIN',
+            self::OtpResetPassword => 'CHANGE_ME_OTP_RESET_PASSWORD',
+            self::OrderActivity => 'CHANGE_ME_ORDER_ACTIVITY',
+            self::OrderCashback => 'CHANGE_ME_ORDER_CASHBACK',
+            self::TicketActivity => 'CHANGE_ME_TICKET_ACTIVITY',
+        };
+    }
+
+    public function defaultTemplate(): string
+    {
+        return match ($this) {
+            self::OtpVerifyMobile => 'کد تأیید موبایل شما: {code}',
+            self::OtpPasswordlessLogin => 'کد ورود یک‌بارمصرف شما: {code}',
+            self::OtpResetPassword => 'کد بازیابی رمز عبور شما: {code}',
+            self::OrderActivity => '{title} - سفارش {order} - {products} - مبلغ {amount} - {message}',
+            self::OrderCashback => 'اعتبار سفارش {order} برای {products} به کیف پول شما افزوده شد - مبلغ {amount}',
+            self::TicketActivity => '{title} - {message}',
+        };
+    }
+
+    public function hasRealProviderId(?string $providerId): bool
+    {
+        $providerId = trim((string) $providerId);
+
+        return $providerId !== '' && $providerId !== $this->defaultProviderId();
+    }
+
+    public function render(array $variables): string
+    {
+        $variables = $this->validate($variables);
+
+        return strtr($this->defaultTemplate(), collect($variables)
+            ->mapWithKeys(fn (string $value, string $key) => ["{{$key}}" => $value])
+            ->all());
+    }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::OtpVerifyMobile => 'کد تأیید موبایل',
+            self::OtpPasswordlessLogin => 'کد ورود بدون رمز',
+            self::OtpResetPassword => 'کد بازیابی رمز',
+            self::OrderActivity => 'اعلان سفارش',
+            self::OrderCashback => 'اعتبار کیف پول',
+            self::TicketActivity => 'اعلان تیکت',
+        };
+    }
+
+    public function description(): string
+    {
+        return match ($this) {
+            self::OtpVerifyMobile => 'ارسال کد تأیید هنگام ثبت یا تأیید شماره موبایل',
+            self::OtpPasswordlessLogin => 'ارسال کد ورود یک‌بارمصرف بدون رمز عبور',
+            self::OtpResetPassword => 'ارسال کد بازیابی و تغییر رمز عبور',
+            self::OrderActivity => 'ثبت سفارش، تغییر وضعیت، لغو و اعلان‌های سفارش',
+            self::OrderCashback => 'اطلاع‌رسانی ثبت اعتبار بازگشت وجه در کیف پول',
+            self::TicketActivity => 'ایجاد تیکت، پاسخ و تغییرات پشتیبانی یا معاوضه',
+        };
     }
 
     public function validate(array $variables): array
     {
-        $missing = array_diff($this->requiredVariables(), array_keys($variables));
-        if ($missing !== []) {
-            throw new InvalidArgumentException('Missing SMS pattern variables: '.implode(', ', $missing));
+        $invalid = collect($this->requiredVariables())->filter(fn (string $key) => ! array_key_exists($key, $variables)
+            || ! is_scalar($variables[$key])
+            || trim((string) $variables[$key]) === '')->values()->all();
+        if ($invalid !== []) {
+            throw new InvalidArgumentException('Missing or invalid SMS pattern variables: '.implode(', ', $invalid));
         }
 
         return collect($this->requiredVariables())

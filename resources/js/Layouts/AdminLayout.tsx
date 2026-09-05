@@ -210,7 +210,7 @@ export default function AdminLayout({
                     <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                             <p className="mb-2 text-xs font-bold text-indigo-400">
-                                کنسول مدیریت / NEXUS PLAY
+                                کنسول مدیریت / PLAY NEXUS
                             </p>
                             <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
                                 {title}

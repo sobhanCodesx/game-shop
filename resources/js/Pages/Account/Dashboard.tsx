@@ -2,6 +2,8 @@ import { Head, Link, router, useForm, usePage } from "@inertiajs/react";
 import {
     Camera,
     CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
     Home,
     KeyRound,
     LifeBuoy,
@@ -79,6 +81,8 @@ export default function Dashboard({
 }) {
     const { flash } = usePage<SharedPageProps>().props;
     const [tab, setTab] = useState<Tab>(filters.tab === "orders" ? "orders" : "overview");
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
     const tabs: [Tab, string, typeof Home][] = [
         ["overview", "نمای کلی", Home],
         ["orders", "سفارش‌های من", ShoppingBag],
@@ -132,25 +136,78 @@ export default function Dashboard({
                         {flash.success}
                     </p>
                 )}
-                <div className="mt-4 grid gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-[240px_1fr]">
-                    <nav aria-label="بخش‌های حساب کاربری" className="grid grid-cols-3 gap-2 rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-2 lg:block lg:space-y-2 lg:self-start lg:p-3">
+                <div
+                    className={`relative mt-4 grid grid-cols-[64px_minmax(0,1fr)] gap-3 sm:mt-6 sm:gap-4 lg:gap-6 ${desktopSidebarCollapsed ? "lg:grid-cols-[76px_minmax(0,1fr)]" : "lg:grid-cols-[240px_minmax(0,1fr)]"}`}
+                >
+                    {mobileSidebarOpen && (
+                        <button
+                            aria-label="بستن منوی حساب"
+                            className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-[2px] lg:hidden"
+                            onClick={() => setMobileSidebarOpen(false)}
+                            type="button"
+                        />
+                    )}
+                    <nav
+                        aria-label="بخش‌های حساب کاربری"
+                        className={`border border-[var(--store-border)] bg-[var(--store-surface)] p-2 transition-[width,transform,box-shadow] duration-300 ${mobileSidebarOpen ? "fixed bottom-20 right-3 top-20 z-[60] w-[min(17rem,calc(100vw-1.5rem))] overflow-y-auto rounded-3xl shadow-2xl" : "sticky top-20 w-16 self-start rounded-2xl"} lg:sticky lg:bottom-auto lg:right-auto lg:top-24 lg:z-auto lg:w-auto lg:self-start lg:overflow-visible lg:rounded-3xl lg:p-3 lg:shadow-none`}
+                    >
+                        <div
+                            className={`mb-2 flex items-center ${mobileSidebarOpen ? "justify-between px-2" : "justify-center"} ${desktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "lg:justify-between lg:px-2"}`}
+                        >
+                            <strong
+                                className={`text-xs text-[var(--store-text)] ${mobileSidebarOpen ? "block" : "hidden"} ${desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}`}
+                            >
+                                منوی حساب
+                            </strong>
+                            <button
+                                aria-label={mobileSidebarOpen ? "جمع کردن سایدبار" : "باز کردن سایدبار"}
+                                className="grid size-10 place-items-center rounded-xl text-indigo-500 transition hover:bg-[var(--store-bg)] lg:hidden"
+                                onClick={() => setMobileSidebarOpen((current) => !current)}
+                                title={mobileSidebarOpen ? "جمع کردن منو" : "باز کردن منو"}
+                                type="button"
+                            >
+                                {mobileSidebarOpen ? <ChevronRight size={19} /> : <ChevronLeft size={19} />}
+                            </button>
+                            <button
+                                aria-label={desktopSidebarCollapsed ? "باز کردن سایدبار" : "جمع کردن سایدبار"}
+                                className="hidden size-10 place-items-center rounded-xl text-indigo-500 transition hover:bg-[var(--store-bg)] lg:grid"
+                                onClick={() => setDesktopSidebarCollapsed((current) => !current)}
+                                title={desktopSidebarCollapsed ? "باز کردن منو" : "جمع کردن منو"}
+                                type="button"
+                            >
+                                {desktopSidebarCollapsed ? <ChevronLeft size={19} /> : <ChevronRight size={19} />}
+                            </button>
+                        </div>
+                        <div className="space-y-1.5">
                         {tabs.map(([id, label, Icon]) => (
                             <button
-                                className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl px-1 py-2 text-[10px] font-bold transition sm:text-xs lg:min-h-0 lg:w-full lg:flex-row lg:justify-start lg:gap-3 lg:px-4 lg:py-3 lg:text-sm ${tab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-[var(--store-muted)] hover:bg-[var(--store-bg)]"}`}
+                                aria-current={tab === id ? "page" : undefined}
+                                className={`flex min-h-12 w-full items-center rounded-xl text-sm font-bold transition ${mobileSidebarOpen ? "justify-start gap-3 px-3" : "justify-center px-0"} ${desktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "lg:justify-start lg:gap-3 lg:px-4"} ${tab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-[var(--store-muted)] hover:bg-[var(--store-bg)]"}`}
                                 key={id}
-                                onClick={() => setTab(id)}
+                                onClick={() => {
+                                    setTab(id);
+                                    setMobileSidebarOpen(false);
+                                }}
+                                title={label}
+                                type="button"
                             >
-                                <Icon size={19} />
-                                {label}
+                                <Icon className="shrink-0" size={20} />
+                                <span className={`${mobileSidebarOpen ? "block" : "hidden"} ${desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}`}>
+                                    {label}
+                                </span>
                             </button>
                         ))}
                         <a
-                            className="flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl px-1 py-2 text-center text-[10px] font-bold text-[var(--store-muted)] transition hover:bg-[var(--store-bg)] sm:text-xs lg:min-h-0 lg:w-full lg:flex-row lg:justify-start lg:gap-3 lg:px-4 lg:py-3 lg:text-right lg:text-sm"
+                            className={`flex min-h-12 w-full items-center rounded-xl text-sm font-bold text-[var(--store-muted)] transition hover:bg-[var(--store-bg)] ${mobileSidebarOpen ? "justify-start gap-3 px-3" : "justify-center px-0"} ${desktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "lg:justify-start lg:gap-3 lg:px-4"}`}
                             href="/account/tickets"
+                            title="تیکت‌های پشتیبانی"
                         >
-                            <LifeBuoy size={19} />
-                            تیکت‌های پشتیبانی
+                            <LifeBuoy className="shrink-0" size={20} />
+                            <span className={`${mobileSidebarOpen ? "block" : "hidden"} ${desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}`}>
+                                تیکت‌های پشتیبانی
+                            </span>
                         </a>
+                        </div>
                     </nav>
                     <section className="min-w-0 rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:rounded-3xl sm:p-7">
                         {tab === "overview" && (

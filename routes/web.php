@@ -14,24 +14,33 @@ use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductTypeController;
 use App\Http\Controllers\Admin\ShortController as AdminShortController;
+use App\Http\Controllers\Admin\SmsPatternController;
 use App\Http\Controllers\Admin\SmsTestController;
 use App\Http\Controllers\Admin\TemporaryUploadController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\VideoController as AdminVideoController;
+use App\Http\Controllers\Admin\VideoPlaylistController as AdminVideoPlaylistController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaStreamController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SocialContentController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StorefrontController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\VideoCommunityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
+Route::get('sitemaps/{type}.xml', [SitemapController::class, 'show'])
+    ->whereIn('type', ['static', 'products', 'categories', 'content', 'channels', 'playlists'])
+    ->name('sitemap.show');
 Route::get('media/{path}', MediaStreamController::class)->where('path', '.*')->name('media.stream');
 
 Route::middleware('guest')->group(function () {
@@ -75,6 +84,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
 // pages are introduced. These destinations point to real sections on home
 // instead of sending visitors to a 404 page.
 Route::get('shop', [StorefrontController::class, 'shop'])->name('shop.index');
+Route::get('exchange-products', [StorefrontController::class, 'exchangeProducts'])->name('exchange-products.index');
 Route::get('products', [StorefrontController::class, 'shop'])->name('products.index');
 Route::get('discover', [StorefrontController::class, 'discover'])->name('discover');
 Route::get('categories', [StorefrontController::class, 'shop'])->name('categories.index');
@@ -82,12 +92,20 @@ Route::get('categories/{category:slug}', [StorefrontController::class, 'category
 Route::get('games', [StorefrontController::class, 'shop'])->name('games.index');
 Route::get('offers', [StorefrontController::class, 'shop'])->defaults('sort', 'latest')->name('offers.index');
 Route::get('videos', [StorefrontController::class, 'videos'])->name('videos.index');
+Route::get('channels/{game:slug}', [ChannelController::class, 'show'])->name('channels.show');
+Route::get('channels/{game:slug}/playlists/{playlist:slug}', [ChannelController::class, 'playlist'])->name('channels.playlists.show');
+Route::get('search/suggestions', [StorefrontController::class, 'searchSuggestions'])->middleware('throttle:120,1')->name('search.suggestions');
 Route::get('search', [StorefrontController::class, 'search'])->name('search');
 Route::get('cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('cart/items', [CartController::class, 'store'])->name('cart.items.store');
 Route::patch('cart/items/{key}', [CartController::class, 'update'])->name('cart.items.update');
 Route::delete('cart/items/{key}', [CartController::class, 'destroy'])->name('cart.items.destroy');
 Route::middleware('auth')->group(function () {
+    Route::post('videos/{content:slug}/reaction', [VideoCommunityController::class, 'react'])->middleware('throttle:60,1')->name('videos.reaction');
+    Route::post('videos/{content:slug}/comments', [VideoCommunityController::class, 'comment'])->middleware('throttle:20,1')->name('videos.comments.store');
+    Route::post('comments/{comment}/like', [VideoCommunityController::class, 'likeComment'])->middleware('throttle:60,1')->name('comments.like');
+    Route::delete('comments/{comment}', [VideoCommunityController::class, 'destroyComment'])->name('comments.destroy');
+    Route::post('channels/{game:slug}/subscription', [VideoCommunityController::class, 'subscribe'])->middleware('throttle:30,1')->name('channels.subscription');
     Route::post('cart/restore', [CartController::class, 'restore'])->name('cart.restore');
     Route::get('checkout', [CheckoutController::class, 'show'])->name('checkout.show');
     Route::post('checkout/preview', [CheckoutController::class, 'preview'])->name('checkout.preview');
@@ -128,11 +146,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('tickets/{ticket}/replies', [AdminTicketController::class, 'reply'])->name('tickets.reply');
         Route::patch('tickets/{ticket}', [AdminTicketController::class, 'update'])->name('tickets.update');
         Route::patch('tickets/{ticket}/exchange-offer', [AdminTicketController::class, 'offer'])->name('tickets.exchange-offer');
+        Route::patch('tickets/{ticket}/exchange-cancel', [AdminTicketController::class, 'cancelExchange'])->name('tickets.exchange-cancel');
         Route::patch('tickets/{ticket}/exchange-complete', [AdminTicketController::class, 'completeExchange'])->name('tickets.exchange-complete');
         Route::delete('tickets/{ticket}/attachments', [AdminTicketController::class, 'destroyAttachments'])->name('tickets.attachments.destroy');
         Route::resource('coupons', AdminCouponController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::get('settings', [CommerceSettingsController::class, 'edit'])->name('settings.edit');
         Route::put('settings', [CommerceSettingsController::class, 'update'])->name('settings.update');
+        Route::get('sms-patterns', [SmsPatternController::class, 'index'])->name('sms-patterns.index');
+        Route::put('sms-patterns', [SmsPatternController::class, 'update'])->name('sms-patterns.update');
         Route::get('sms-test', [SmsTestController::class, 'index'])->name('sms-test.index');
         Route::post('sms-test', [SmsTestController::class, 'store'])->middleware('throttle:5,1')->name('sms-test.store');
         Route::prefix('deployments')->name('deployments.')->middleware(['deployment.guard', 'throttle:300,1'])->group(function () {
@@ -155,6 +176,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('products/{product}/media', [ProductMediaController::class, 'update'])->name('products.media.update');
         Route::patch('products/{product}/exchange', [CatalogController::class, 'toggleExchange'])->name('products.exchange.toggle');
         Route::resource('videos', AdminVideoController::class)->except('show');
+        Route::resource('video-playlists', AdminVideoPlaylistController::class)
+            ->parameters(['video-playlists' => 'playlist'])
+            ->only(['index', 'store', 'update', 'destroy']);
         Route::resource('shorts', AdminShortController::class)
             ->parameters(['shorts' => 'short'])
             ->except('show');

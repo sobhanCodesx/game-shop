@@ -14,6 +14,7 @@ interface VideoItem {
     featured: boolean;
     thumbnail_url: string | null;
     edit_url: string;
+    channel: string | null;
 }
 interface Props {
     videos: {
@@ -101,6 +102,7 @@ export default function VideoIndex({ videos }: Props) {
                                     {video.excerpt || "بدون توضیح کوتاه"}
                                 </p>
                                 <p className="mt-3 text-[11px] text-slate-600">
+                                    {video.channel ?? "کانال عمومی"} ·{" "}
                                     {number.format(video.views)} بازدید
                                 </p>
                             </Card.Content>

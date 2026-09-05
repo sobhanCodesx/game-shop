@@ -18,12 +18,19 @@ class CheckoutController extends Controller
         if (empty($request->session()->get('cart', []))) {
             return to_route('cart.index')->with('error', 'سبد خرید خالی است.');
         }
-        $preview = $orders->preview($request->session()->get('cart', []), $request->user());
+        $cart = $request->session()->get('cart', []);
+        $preview = $orders->preview($cart, $request->user());
 
         $productIds = collect($preview['items'])->pluck('product_id');
-        $exchanges = Ticket::query()->where('type', 'exchange')->where('user_id', $request->user()->id)->where('exchange_status', 'accepted')->whereNull('exchange_order_id')->whereIn('target_product_id', $productIds)->where(fn ($q) => $q->whereNull('exchange_credit_expires_at')->orWhere('exchange_credit_expires_at', '>', now()))->with('targetProduct:id,title')->get()->map(fn (Ticket $ticket) => ['id' => $ticket->id, 'number' => $ticket->number, 'amount' => (int) $ticket->exchange_offer_amount, 'expires_at' => $ticket->exchange_credit_expires_at?->toIso8601String(), 'product' => $ticket->targetProduct]);
+        $exchanges = Ticket::query()->where('type', 'exchange')->where('user_id', $request->user()->id)->where('exchange_status', 'accepted')->whereNull('exchange_order_id')->whereIn('target_product_id', $productIds)->where(fn ($q) => $q->whereNull('exchange_credit_expires_at')->orWhere('exchange_credit_expires_at', '>', now()))->with('targetProduct:id,title')->get()->map(fn (Ticket $ticket) => ['id' => $ticket->id, 'number' => $ticket->number, 'amount' => (int) $ticket->exchange_offer_amount, 'trade_item_title' => $ticket->trade_item_title, 'expires_at' => $ticket->exchange_credit_expires_at?->toIso8601String(), 'product' => $ticket->targetProduct]);
+        $selectedExchangeId = $exchanges->contains('id', $request->integer('exchange_request_id'))
+            ? $request->integer('exchange_request_id')
+            : null;
+        if ($selectedExchangeId) {
+            $preview = $orders->preview($cart, $request->user(), exchangeRequestId: $selectedExchangeId);
+        }
 
-        return Inertia::render('Checkout/Index', ['addresses' => $request->user()->addresses()->orderByDesc('is_default')->get(), 'profile' => $request->user()->only(['name', 'phone']), 'walletBalance' => (int) $request->user()->wallet_balance, 'availableExchanges' => $exchanges, 'summary' => collect($preview)->except('items')]);
+        return Inertia::render('Checkout/Index', ['addresses' => $request->user()->addresses()->orderByDesc('is_default')->get(), 'profile' => $request->user()->only(['name', 'phone']), 'walletBalance' => (int) $request->user()->wallet_balance, 'availableExchanges' => $exchanges, 'selectedExchangeId' => $selectedExchangeId, 'summary' => collect($preview)->except('items')]);
     }
 
     public function preview(Request $request, OrderService $orders)

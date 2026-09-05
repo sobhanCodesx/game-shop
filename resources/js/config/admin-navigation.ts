@@ -18,6 +18,8 @@ import {
     RefreshCw,
     Rocket,
     MessageSquareText,
+    ListVideo,
+    ListChecks,
     type LucideIcon,
 } from "lucide-react";
 
@@ -85,6 +87,11 @@ export const adminNavigation: NavigationGroup[] = [
             // { label: "کریتورها", href: "/admin/creators", icon: BriefcaseBusiness },
             // { label: "پست‌ها", href: "/admin/posts", icon: FileText },
             { label: "ویدیوها", href: "/admin/videos", icon: Video },
+            {
+                label: "کالکشن‌های ویدیو",
+                href: "/admin/video-playlists",
+                icon: ListVideo,
+            },
             { label: "ویدیوهای کوتاه", href: "/admin/shorts", icon: Images },
             // { label: "نظرات", href: "/admin/comments", icon: MessageSquareText },
         ],
@@ -109,8 +116,21 @@ export const adminNavigation: NavigationGroup[] = [
             // { label: "بنرها", href: "/admin/banners", icon: PackageSearch },
             // { label: "صفحات", href: "/admin/pages", icon: Tags },
             { label: "تنظیمات", href: "/admin/settings", icon: Settings },
-            { label: "تست پیامک", href: "/admin/sms-test", icon: MessageSquareText },
-            { label: "به‌روزرسانی سیستم", href: "/admin/deployments", icon: Rocket },
+            {
+                label: "پترن‌های پیامک",
+                href: "/admin/sms-patterns",
+                icon: ListChecks,
+            },
+            {
+                label: "تست پیامک",
+                href: "/admin/sms-test",
+                icon: MessageSquareText,
+            },
+            {
+                label: "به‌روزرسانی سیستم",
+                href: "/admin/deployments",
+                icon: Rocket,
+            },
             // { label: "گزارش مدیران", href: "/admin/audit-logs", icon: WalletCards },
         ],
     },

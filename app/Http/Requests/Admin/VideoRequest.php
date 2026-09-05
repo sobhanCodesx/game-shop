@@ -16,7 +16,13 @@ class VideoRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:160'],
-            'excerpt' => ['nullable', 'string', 'max:10000'],
+            'game_id' => ['nullable', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
+            'playlist_ids' => ['array'],
+            'playlist_ids.*' => ['integer', Rule::exists('video_playlists', 'id')->where(fn ($query) => $query->where('game_id', $this->integer('game_id')))],
+            'excerpt' => ['nullable', 'string', 'max:500'],
+            'body' => ['nullable', 'string', 'max:100000'],
+            'seo_title' => ['nullable', 'string', 'max:60'],
+            'seo_description' => ['nullable', 'string', 'max:160'],
             'video' => [
                 Rule::requiredIf(! $this->route('video')?->video_path && ! $this->filled('upload_token')),
                 'nullable', 'file',
@@ -26,6 +32,7 @@ class VideoRequest extends FormRequest
             'upload_token' => ['nullable', 'uuid'],
             'status' => ['required', Rule::in(['draft', 'published'])],
             'featured' => ['boolean'],
+            'allow_comments' => ['boolean'],
         ];
     }
 }

@@ -4,12 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\CategoryAttribute;
+use App\Models\Game;
+use App\Models\Platform;
 use App\Models\Product;
 use App\Models\ProductAttributeValue;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
-use App\Models\Game;
-use App\Models\Platform;
 use App\Models\SocialContent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -123,6 +123,68 @@ class StorefrontExperienceTest extends TestCase
 
         $this->get(route('search', ['q' => 'تست']))->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Search/Index')->where('query', 'تست')->has('products', 1));
+    }
+
+    public function test_smart_search_returns_ranked_image_suggestions_and_tolerates_typos(): void
+    {
+        $game = Game::factory()->create([
+            'name' => 'الدن رینگ',
+            'slug' => 'elden-ring-search',
+            'cover' => 'games/elden-ring.jpg',
+            'status' => 'active',
+        ]);
+        $product = Product::factory()->create([
+            'game_id' => $game->id,
+            'title' => 'الدن رینگ نسخه دیلاکس',
+            'slug' => 'elden-ring-deluxe-search',
+        ]);
+        ProductMedia::query()->create([
+            'product_id' => $product->id,
+            'type' => 'image',
+            'path' => 'products/elden-ring.jpg',
+            'is_primary' => true,
+        ]);
+
+        $response = $this->getJson(route('search.suggestions', ['q' => 'الدن رینگگ']))
+            ->assertOk()
+            ->assertJsonStructure(['suggestions' => [['id', 'kind', 'kind_label', 'title', 'subtitle', 'image_url', 'url']]]);
+
+        $suggestions = collect($response->json('suggestions'));
+        $this->assertContains('الدن رینگ', $suggestions->pluck('title'));
+        $this->assertContains('http://localhost/storage/games/elden-ring.jpg', $suggestions->pluck('image_url'));
+    }
+
+    public function test_search_normalizes_arabic_characters_and_lists_game_channels(): void
+    {
+        $game = Game::factory()->create([
+            'name' => 'بازی کیهانی',
+            'slug' => 'cosmic-game-search',
+            'status' => 'active',
+        ]);
+
+        $this->get(route('search', ['q' => 'بازي كيهاني']))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Search/Index')
+                ->where('channels.0.id', $game->id)
+                ->where('channels.0.name', 'بازی کیهانی'));
+    }
+
+    public function test_smart_search_ignores_generic_words_and_prioritizes_fuzzy_core_term(): void
+    {
+        Game::factory()->create(['name' => 'Demon Souls', 'slug' => 'demon-souls-search', 'status' => 'active']);
+        SocialContent::query()->create([
+            'type' => 'video',
+            'title' => 'بازی اکشن جدید',
+            'slug' => 'generic-action-game-search',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+
+        $response = $this->getJson(route('search.suggestions', ['q' => 'بازی demen']))->assertOk();
+        $titles = collect($response->json('suggestions'))->pluck('title');
+
+        $this->assertContains('Demon Souls', $titles);
+        $this->assertNotContains('بازی اکشن جدید', $titles);
     }
 
     public function test_home_automatically_prioritizes_recent_products_and_long_videos(): void

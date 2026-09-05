@@ -1,1 +1,37 @@
-<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>{{ $title }}</title></head><body style="margin:0;background:#050816;color:#e5e7eb;font-family:Tahoma,Arial,sans-serif"><div style="display:none;max-height:0;overflow:hidden">کد امنیتی NEXUS PLAY شما {{ $code }} است و ۱۰ دقیقه اعتبار دارد.</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#050816"><tr><td align="center" style="padding:36px 14px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px"><tr><td style="padding:0 4px 22px;text-align:center"><div style="display:inline-block;width:48px;height:48px;line-height:48px;border-radius:15px;background:linear-gradient(135deg,#8b5cf6,#4f46e5);font-size:22px;font-weight:bold;color:#fff">N</div><div style="margin-top:12px;font-size:16px;font-weight:900;letter-spacing:1px;color:#fff">NEXUS PLAY</div><div style="margin-top:4px;font-size:9px;letter-spacing:3px;color:#64748b">PREMIUM GAMING</div></td></tr><tr><td style="border:1px solid #1e293b;border-radius:28px;background:#0b1020;padding:40px 34px;text-align:right"><div style="display:inline-block;border:1px solid #4c1d95;border-radius:99px;background:#2e1065;padding:7px 12px;font-size:11px;font-weight:bold;color:#c4b5fd">ورود امن به دنیای بازی</div><h1 style="margin:22px 0 12px;font-size:25px;line-height:1.5;color:#fff">{{ $title }}</h1><p style="margin:0;font-size:14px;line-height:2;color:#94a3b8">سلام {{ $name }}،</p><p style="margin:3px 0 25px;font-size:14px;line-height:2;color:#94a3b8">{{ $description }}</p><div style="border:1px solid #3730a3;border-radius:20px;background:#11183a;padding:23px;text-align:center"><div style="margin-bottom:9px;font-size:11px;color:#818cf8">کد امنیتی یک‌بار مصرف</div><div dir="ltr" style="font-family:Arial,sans-serif;font-size:38px;font-weight:900;letter-spacing:12px;color:#fff">{{ $code }}</div></div><table role="presentation" width="100%" style="margin-top:24px;border-radius:15px;background:#111827"><tr><td style="padding:16px;font-size:12px;line-height:1.9;color:#94a3b8"><strong style="color:#f8fafc">⏱ اعتبار کد: ۱۰ دقیقه</strong><br>این کد محرمانه است؛ آن را در اختیار هیچ شخصی قرار ندهید.</td></tr></table><p style="margin:24px 0 0;font-size:11px;line-height:2;color:#64748b">اگر این درخواست توسط شما ثبت نشده، نیازی به انجام کاری نیست و می‌توانید این ایمیل را نادیده بگیرید.</p></td></tr><tr><td style="padding:22px;text-align:center;font-size:10px;line-height:1.9;color:#475569">این پیام به درخواست شما از فروشگاه NEXUS PLAY ارسال شده است.<br>لطفاً به این ایمیل پاسخ ندهید.</td></tr></table></td></tr></table></body></html>
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>{{ $title }}</title>
+</head>
+<body style="margin:0;background:#050816;color:#e5e7eb;font-family:Tahoma,Arial,sans-serif">
+<div style="display:none;max-height:0;overflow:hidden">کد امنیتی PLAY NEXUS شما {{ $code }} است و ۱۰ دقیقه اعتبار دارد.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#050816">
+    <tr><td align="center" style="padding:36px 14px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
+            <tr><td style="padding:0 4px 22px;text-align:center">
+                <img src="{{ asset('logo.png') }}" alt="PLAY NEXUS" width="56" height="56" style="display:inline-block;border-radius:16px">
+                <div style="margin-top:12px;font-size:16px;font-weight:900;letter-spacing:1px;color:#fff">PLAY NEXUS</div>
+                <div style="margin-top:4px;font-size:9px;letter-spacing:3px;color:#64748b">PREMIUM GAMING</div>
+            </td></tr>
+            <tr><td style="border:1px solid #1e293b;border-radius:28px;background:#0b1020;padding:40px 34px;text-align:right">
+                <div style="display:inline-block;border:1px solid #4c1d95;border-radius:99px;background:#2e1065;padding:7px 12px;font-size:11px;font-weight:bold;color:#c4b5fd">ورود امن به دنیای بازی</div>
+                <h1 style="margin:22px 0 12px;font-size:25px;line-height:1.5;color:#fff">{{ $title }}</h1>
+                <p style="margin:0;font-size:14px;line-height:2;color:#94a3b8">سلام {{ $name }}،</p>
+                <p style="margin:3px 0 25px;font-size:14px;line-height:2;color:#94a3b8">{{ $description }}</p>
+                <div style="border:1px solid #3730a3;border-radius:20px;background:#11183a;padding:23px;text-align:center">
+                    <div style="margin-bottom:9px;font-size:11px;color:#818cf8">کد امنیتی یک‌بار مصرف</div>
+                    <div dir="ltr" style="font-family:Arial,sans-serif;font-size:38px;font-weight:900;letter-spacing:12px;color:#fff">{{ $code }}</div>
+                </div>
+                <table role="presentation" width="100%" style="margin-top:24px;border-radius:15px;background:#111827">
+                    <tr><td style="padding:16px;font-size:12px;line-height:1.9;color:#94a3b8"><strong style="color:#f8fafc">⏱ اعتبار کد: ۱۰ دقیقه</strong><br>این کد محرمانه است؛ آن را در اختیار هیچ شخصی قرار ندهید.</td></tr>
+                </table>
+                <p style="margin:24px 0 0;font-size:11px;line-height:2;color:#64748b">اگر این درخواست توسط شما ثبت نشده، نیازی به انجام کاری نیست و می‌توانید این ایمیل را نادیده بگیرید.</p>
+            </td></tr>
+            <tr><td style="padding:22px;text-align:center;font-size:10px;line-height:1.9;color:#475569">این پیام به درخواست شما از فروشگاه PLAY NEXUS ارسال شده است.<br>لطفاً به این ایمیل پاسخ ندهید.</td></tr>
+        </table>
+    </td></tr>
+</table>
+</body>
+</html>

@@ -47,6 +47,7 @@ interface Variant {
     pricing: StorefrontPricing;
 }
 interface Props {
+    exchangeRequestId: number | null;
     product: {
         id: number;
         title: string;
@@ -194,7 +195,7 @@ function GameplayTheater({
 
                 {videos.length > 1 && (
                     <div className="border-t border-white/10 bg-slate-950 p-3 lg:max-h-[470px] lg:overflow-y-auto lg:border-r lg:border-t-0">
-                        <p className="mb-3 px-1 text-xs font-black text-white">
+                        <p className="mb-3 px-1 text-xs font-black text-[var(--store-text)]">
                             ویدیوهای این محصول
                         </p>
                         <div className="flex snap-x gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
@@ -223,7 +224,7 @@ function GameplayTheater({
                                         </span>
                                     </span>
                                     <span className="min-w-0">
-                                        <strong className="line-clamp-2 text-xs leading-5 text-white">
+                                        <strong className="line-clamp-2 text-xs leading-5 text-[var(--store-text)]">
                                             {video.alt ||
                                                 `ویدیوی ${number.format(index + 1)}`}
                                         </strong>
@@ -241,7 +242,7 @@ function GameplayTheater({
     );
 }
 
-export default function ProductShow({ product }: Props) {
+export default function ProductShow({ exchangeRequestId, product }: Props) {
     const { flash } = usePage<SharedPageProps>().props;
     const primary =
         product.media.find((item) => item.is_primary) ??
@@ -308,7 +309,16 @@ export default function ProductShow({ product }: Props) {
                 variant_id: variant?.id ?? null,
                 quantity: 1,
             },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (exchangeRequestId) {
+                        router.visit(
+                            `/checkout?exchange_request_id=${exchangeRequestId}`,
+                        );
+                    }
+                },
+            },
         );
     const share = async () => {
         setSharing(true);
@@ -489,9 +499,9 @@ export default function ProductShow({ product }: Props) {
                                                         src={media.url}
                                                     />
                                                 ) : (
-                                                    <span className="grid h-full place-items-center bg-slate-950 text-white">
+                                                    <span className="grid h-full place-items-center bg-slate-950 text-[var(--store-text)]">
                                                         <span className="flex flex-col items-center gap-1 text-[10px]">
-                                                            <span className="grid size-8 place-items-center rounded-full bg-indigo-600">
+                                                            <span className="grid size-8 place-items-center rounded-full bg-indigo-600 text-white">
                                                                 <Play
                                                                     fill="currentColor"
                                                                     size={14}
@@ -674,7 +684,9 @@ export default function ProductShow({ product }: Props) {
                                     >
                                         <ShoppingBag size={19} />
                                         {available
-                                            ? "افزودن به سبد خرید"
+                                            ? exchangeRequestId
+                                                ? "افزودن و ادامه سفارش معاوضه"
+                                                : "افزودن به سبد خرید"
                                             : "در حال حاضر ناموجود"}
                                     </Button>
                                     {product.trade_enabled && (
@@ -863,7 +875,9 @@ export default function ProductShow({ product }: Props) {
                         variant="primary"
                     >
                         <ShoppingBag size={17} />
-                        افزودن به سبد
+                        {exchangeRequestId
+                            ? "ادامه سفارش معاوضه"
+                            : "افزودن به سبد"}
                     </Button>
                 </div>
             </div>

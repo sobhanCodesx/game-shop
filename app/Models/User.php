@@ -94,4 +94,19 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Permission::class);
     }
+
+    public function contentReactions(): HasMany
+    {
+        return $this->hasMany(SocialContentReaction::class);
+    }
+
+    public function socialComments(): HasMany
+    {
+        return $this->hasMany(SocialComment::class);
+    }
+
+    public function subscribedGames(): BelongsToMany
+    {
+        return $this->belongsToMany(Game::class, 'game_subscriptions')->withTimestamps();
+    }
 }

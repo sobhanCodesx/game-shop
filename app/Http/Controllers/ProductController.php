@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\Ticket;
 use App\Services\ProductPriceService;
 use App\Support\RichText;
 use Illuminate\Http\Request;
@@ -20,6 +21,18 @@ class ProductController extends Controller
         $product->loadMissing(['category:id,name', 'brand:id,name', 'platforms:id,name', 'attributeValues.attribute:id,name', 'media', 'variants']);
 
         $isPartner = $request->user()?->role === 'partner';
+        $exchangeRequestId = null;
+        if ($request->user() && $request->integer('exchange_request_id')) {
+            $exchangeRequestId = Ticket::query()
+                ->whereKey($request->integer('exchange_request_id'))
+                ->where('type', 'exchange')
+                ->where('user_id', $request->user()->id)
+                ->where('exchange_status', 'accepted')
+                ->whereNull('exchange_order_id')
+                ->where('target_product_id', $product->id)
+                ->where(fn ($query) => $query->whereNull('exchange_credit_expires_at')->orWhere('exchange_credit_expires_at', '>', now()))
+                ->value('id');
+        }
 
         return Inertia::render('Products/Show', [
             'product' => [
@@ -58,6 +71,7 @@ class ProductController extends Controller
                 }),
                 'pricing' => $prices->forUser($product, $request->user()),
             ],
+            'exchangeRequestId' => $exchangeRequestId,
         ]);
     }
 }

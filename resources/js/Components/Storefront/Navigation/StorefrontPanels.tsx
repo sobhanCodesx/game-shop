@@ -1,16 +1,17 @@
-import { Avatar, Button, Chip, Input } from "@heroui/react";
+import { Avatar, Button, Chip } from "@heroui/react";
 import { Link } from "@inertiajs/react";
 import {
     ArrowRight,
     ChevronLeft,
     CircleUserRound,
-    Search,
+    Repeat2,
     ShoppingBag,
     X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { router } from "@inertiajs/react";
 
+import SmartSearch from "../Search/SmartSearch";
 import type { NavigationCategory, StorefrontNavigationProps } from "./types";
 
 export type StorefrontPanel =
@@ -28,8 +29,6 @@ export default function StorefrontPanels({
     onClose,
 }: Props) {
     const [categoryPath, setCategoryPath] = useState<NavigationCategory[]>([]);
-    const [search, setSearch] = useState("");
-    const searchRef = useRef<HTMLInputElement>(null);
     const currentCategories = categoryPath.length
         ? (categoryPath.at(-1)?.children ?? [])
         : categories;
@@ -37,8 +36,16 @@ export default function StorefrontPanels({
 
     useEffect(() => {
         if (!panel) setCategoryPath([]);
-        if (panel === "search")
-            window.setTimeout(() => searchRef.current?.focus(), 100);
+    }, [panel]);
+    useEffect(() => {
+        if (!panel) return;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
     }, [panel]);
     useEffect(() => {
         const close = (event: KeyboardEvent) =>
@@ -56,14 +63,6 @@ export default function StorefrontPanels({
             })[panel ?? "categories"],
         [panel],
     );
-    const submitSearch = (event: FormEvent) => {
-        event.preventDefault();
-        if (search.trim()) {
-            onClose();
-            router.get("/search", { q: search.trim() });
-        }
-    };
-
     if (!panel) return null;
     return (
         <div
@@ -114,7 +113,13 @@ export default function StorefrontPanels({
                         <X size={19} />
                     </Button>
                 </header>
-                <div className="max-h-[calc(88dvh-64px)] overflow-y-auto p-5 lg:max-h-[calc(70vh-64px)]">
+                <div
+                    className={`max-h-[calc(88dvh-64px)] p-5 lg:max-h-[calc(70vh-64px)] ${
+                        panel === "search"
+                            ? "h-[calc(88dvh-64px)] overflow-hidden lg:h-[calc(70vh-64px)]"
+                            : "overflow-y-auto"
+                    }`}
+                >
                     {panel === "categories" && (
                         <div className="space-y-2">
                             <div className="mb-4 flex gap-1 overflow-x-auto pb-1 text-[11px] text-[var(--store-muted)]">
@@ -140,6 +145,20 @@ export default function StorefrontPanels({
                                     </button>
                                 ))}
                             </div>
+                            <Link
+                                className="mb-3 flex items-center justify-between rounded-2xl border border-indigo-500/25 bg-indigo-500/10 p-4 text-sm font-black text-indigo-500"
+                                href={
+                                    currentCategory
+                                        ? `/categories/${currentCategory.slug}?trade=1`
+                                        : "/exchange-products"
+                                }
+                                onClick={onClose}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Repeat2 size={17} /> کالاهای قابل معاوضه
+                                </span>
+                                <ChevronLeft size={17} />
+                            </Link>
                             {currentCategory ? (
                                 <Link
                                     className="mb-4 flex items-center justify-between rounded-2xl bg-indigo-600 p-4 text-sm font-black text-white"
@@ -225,33 +244,24 @@ export default function StorefrontPanels({
                         </div>
                     )}
                     {panel === "search" && (
-                        <form onSubmit={submitSearch}>
-                            <div className="relative">
-                                <Search
-                                    className="absolute right-4 top-1/2 z-10 -translate-y-1/2 text-indigo-500"
-                                    size={20}
-                                />
-                                <Input
-                                    aria-label="عبارت جستجو"
-                                    className="store-panel-search"
-                                    fullWidth
-                                    onChange={(event) =>
-                                        setSearch(event.target.value)
-                                    }
-                                    placeholder="محصول، بازی، ویدیو یا دسته‌بندی..."
-                                    ref={searchRef}
-                                    value={search}
-                                />
+                        <div className="h-full">
+                            <SmartSearch
+                                autoFocus
+                                className="search-panel-smart-search"
+                                onNavigate={onClose}
+                            />
+                            <div className="mt-5 grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-[var(--store-muted)]">
+                                <span className="rounded-xl bg-[var(--store-surface)] px-2 py-2.5">
+                                    جستجوی غلط املایی
+                                </span>
+                                <span className="rounded-xl bg-[var(--store-surface)] px-2 py-2.5">
+                                    نمایش همراه تصویر
+                                </span>
+                                <span className="rounded-xl bg-[var(--store-surface)] px-2 py-2.5">
+                                    محصول و محتوا
+                                </span>
                             </div>
-                            <Button
-                                className="mt-4"
-                                fullWidth
-                                type="submit"
-                                variant="primary"
-                            >
-                                نمایش نتایج واقعی
-                            </Button>
-                        </form>
+                        </div>
                     )}
                     {panel === "cart" && (
                         <div className="py-12 text-center">
@@ -277,7 +287,12 @@ export default function StorefrontPanels({
                             {user ? (
                                 <>
                                     <Avatar className="mx-auto" size="lg">
-                                        {user.avatar_url && <Avatar.Image alt={user.name} src={user.avatar_url} />}
+                                        {user.avatar_url && (
+                                            <Avatar.Image
+                                                alt={user.name}
+                                                src={user.avatar_url}
+                                            />
+                                        )}
                                         <Avatar.Fallback>
                                             {user.name.slice(0, 2)}
                                         </Avatar.Fallback>
@@ -290,18 +305,28 @@ export default function StorefrontPanels({
                                     </p>
                                     <div className="mt-6 flex flex-wrap justify-center gap-2">
                                         <Link href="/account" onClick={onClose}>
-                                            <Button variant="primary">داشبورد کاربری</Button>
-                                        </Link>
-                                    {user.is_admin && (
-                                        <Link href="/admin" onClick={onClose}>
-                                            <Button
-                                                variant="secondary"
-                                            >
-                                                ورود به پنل مدیریت
+                                            <Button variant="primary">
+                                                داشبورد کاربری
                                             </Button>
                                         </Link>
-                                    )}
-                                        <Button onPress={() => router.post('/logout')} variant="ghost">خروج</Button>
+                                        {user.is_admin && (
+                                            <Link
+                                                href="/admin"
+                                                onClick={onClose}
+                                            >
+                                                <Button variant="secondary">
+                                                    ورود به پنل مدیریت
+                                                </Button>
+                                            </Link>
+                                        )}
+                                        <Button
+                                            onPress={() =>
+                                                router.post("/logout")
+                                            }
+                                            variant="ghost"
+                                        >
+                                            خروج
+                                        </Button>
                                     </div>
                                 </>
                             ) : (
@@ -313,11 +338,23 @@ export default function StorefrontPanels({
                                         حساب فروشگاه
                                     </h3>
                                     <p className="mx-auto mt-2 max-w-sm text-sm leading-7 text-[var(--store-muted)]">
-                                        برای خرید سریع‌تر و دسترسی به امکانات فروشگاه وارد حساب خود شوید.
+                                        برای خرید سریع‌تر و دسترسی به امکانات
+                                        فروشگاه وارد حساب خود شوید.
                                     </p>
                                     <div className="mt-6 flex justify-center gap-3">
-                                        <Link href="/login" onClick={onClose}><Button variant="primary">ورود</Button></Link>
-                                        <Link href="/register" onClick={onClose}><Button variant="secondary">ثبت‌نام</Button></Link>
+                                        <Link href="/login" onClick={onClose}>
+                                            <Button variant="primary">
+                                                ورود
+                                            </Button>
+                                        </Link>
+                                        <Link
+                                            href="/register"
+                                            onClick={onClose}
+                                        >
+                                            <Button variant="secondary">
+                                                ثبت‌نام
+                                            </Button>
+                                        </Link>
                                     </div>
                                 </>
                             )}

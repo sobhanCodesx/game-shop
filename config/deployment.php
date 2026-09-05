@@ -16,6 +16,6 @@ return [
     'token_ttl' => (int) env('DEPLOYMENT_TOKEN_TTL', 3600),
     'retention' => (int) env('DEPLOYMENT_RETENTION', 3),
     'directory' => storage_path('app/deployments'),
-    'allowed_roots' => ['app', 'bootstrap', 'config', 'database/migrations', 'routes', 'resources/views', 'lang', 'public/build', 'vendor'],
-    'allowed_files' => ['artisan', 'composer.json', 'composer.lock', 'public/index.php', 'public/.htaccess', 'public/favicon.ico', 'public/robots.txt', 'deployment-manifest.json', 'deployment-manifest.sig'],
+    'allowed_roots' => ['app', 'bootstrap', 'config', 'database/migrations', 'routes', 'resources/views', 'lang', 'public', 'vendor','storage'],
+    'allowed_files' => ['composer.json', 'deployment-manifest.json', 'deployment-manifest.sig'],
 ];

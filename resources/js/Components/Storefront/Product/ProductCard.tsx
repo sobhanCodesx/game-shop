@@ -10,6 +10,13 @@ export default function ProductCard({
 }: {
     product: StorefrontProduct;
 }) {
+    const highlightedMetaKeys = new Set(["availability", "discount"]);
+    const highlightedBadges = product.meta_badges.filter((meta) =>
+        highlightedMetaKeys.has(meta.key),
+    );
+    const detailBadges = product.meta_badges.filter(
+        (meta) => !highlightedMetaKeys.has(meta.key),
+    );
     const toneClasses = {
         success: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600",
         danger: "border-rose-500/20 bg-rose-500/10 text-rose-500",
@@ -19,13 +26,21 @@ export default function ProductCard({
         neutral:
             "border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-muted)]",
     } as const;
+    const highlightToneClasses = {
+        success: "border-emerald-300/40 bg-emerald-600 text-white",
+        danger: "border-rose-300/40 bg-rose-600 text-white",
+        warning: "border-amber-200/50 bg-amber-400 text-amber-950",
+        accent: "border-indigo-300/40 bg-indigo-600 text-white",
+        info: "border-sky-300/40 bg-sky-600 text-white",
+        neutral: "border-white/20 bg-slate-900/90 text-white",
+    } as const;
     return (
         <Link className="group block h-full" href={product.url}>
             <Card
-                className="h-full overflow-hidden rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] transition duration-300 hover:-translate-y-1.5 hover:border-indigo-500/60 hover:shadow-2xl hover:shadow-indigo-500/10"
+                className="h-full overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] transition duration-300 hover:-translate-y-1 hover:border-indigo-500/60 hover:shadow-xl hover:shadow-indigo-500/10"
                 variant="secondary"
             >
-                <div className="relative aspect-[3/4] overflow-hidden bg-[var(--store-surface-strong)]">
+                <div className="relative aspect-[4/5] overflow-hidden bg-[var(--store-surface-strong)]">
                     {product.cover_url ? (
                         <img
                             alt={product.cover_alt}
@@ -38,22 +53,37 @@ export default function ProductCard({
                             <Gamepad2 className="text-indigo-400" size={48} />
                         </div>
                     )}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent opacity-60 transition group-hover:opacity-80" />
-                    <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/45 to-transparent opacity-60 transition group-hover:opacity-80" />
+                    <div className="absolute right-2.5 top-2.5 flex max-w-[72%] flex-col items-start gap-1.5">
                         {product.badge && (
-                            <Chip color="accent" size="sm" variant="primary">
+                            <span className="inline-flex max-w-full truncate rounded-lg border border-indigo-300/40 bg-indigo-600 px-2.5 py-1 text-[11px] font-black leading-5 text-white shadow-lg shadow-black/25">
                                 {product.badge}
-                            </Chip>
+                            </span>
                         )}
-                        {product.trade_enabled && (
-                            <Chip className="mr-auto" size="sm" variant="soft">
-                                <Repeat2 size={13} /> معاوضه
-                            </Chip>
-                        )}
+                        {highlightedBadges.map((meta) => (
+                            <span
+                                className={`inline-flex max-w-full items-center rounded-lg border px-2.5 py-1 text-[11px] font-black leading-5 shadow-lg shadow-black/25 ${highlightToneClasses[meta.tone]}`}
+                                key={meta.key}
+                                title={`${meta.label}: ${meta.value}`}
+                            >
+                                {meta.key === "discount"
+                                    ? `${meta.label} ${meta.value}`
+                                    : meta.value}
+                            </span>
+                        ))}
                     </div>
+                    {product.trade_enabled && (
+                        <Chip
+                            className="absolute left-2.5 top-2.5 shadow-lg shadow-black/20"
+                            size="sm"
+                            variant="soft"
+                        >
+                            <Repeat2 size={13} /> معاوضه
+                        </Chip>
+                    )}
                 </div>
-                <Card.Content className="space-y-3 p-3.5 sm:p-4">
-                    <div className="flex min-h-5 flex-wrap gap-1.5 text-[11px] text-[var(--store-muted)]">
+                <Card.Content className="space-y-2.5 p-3">
+                    <div className="flex min-h-4 flex-wrap gap-1 text-[10px] text-[var(--store-muted)]">
                         <span>{product.category}</span>
                         {product.product_type && (
                             <>
@@ -62,17 +92,17 @@ export default function ProductCard({
                             </>
                         )}
                     </div>
-                    <h3 className="line-clamp-2 min-h-12 font-black leading-6 text-[var(--store-text)]">
+                    <h3 className="line-clamp-2 min-h-11 text-sm font-black leading-[1.4rem] text-[var(--store-text)] sm:text-[15px]">
                         {product.title}
                     </h3>
-                    {product.meta_badges.length > 0 && (
+                    {detailBadges.length > 0 && (
                         <div
-                            className="flex max-h-[58px] flex-wrap items-start justify-start gap-1.5 overflow-hidden"
+                            className="flex max-h-[52px] flex-wrap items-start justify-start gap-1 overflow-hidden"
                             dir="rtl"
                         >
-                            {product.meta_badges.slice(0, 5).map((meta) => (
+                            {detailBadges.slice(0, 3).map((meta) => (
                                 <span
-                                    className={`inline-flex max-w-full items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold leading-4 ${toneClasses[meta.tone]}`}
+                                    className={`inline-flex max-w-full items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9px] font-bold leading-4 ${toneClasses[meta.tone]}`}
                                     key={meta.key}
                                     title={`${meta.label}: ${meta.value}`}
                                 >

@@ -54,6 +54,11 @@ export default function ContentCard({
                         <Eye size={14} />
                         {number.format(content.views)} بازدید
                     </span>
+                    {content.channel && (
+                        <span className="block truncate text-xs font-bold text-[var(--store-muted)]">
+                            {content.channel.name}
+                        </span>
+                    )}
                 </div>
             </article>
         </Link>

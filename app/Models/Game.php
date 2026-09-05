@@ -31,4 +31,19 @@ class Game extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    public function videos(): HasMany
+    {
+        return $this->hasMany(SocialContent::class)->where('type', 'video');
+    }
+
+    public function playlists(): HasMany
+    {
+        return $this->hasMany(VideoPlaylist::class)->orderBy('sort_order');
+    }
+
+    public function subscribers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'game_subscriptions')->withTimestamps();
+    }
 }

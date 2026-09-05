@@ -27,7 +27,7 @@ class PayamakPanelSmsServiceTest extends TestCase
         $this->assertTrue($result->success);
         Http::assertSent(fn ($request) => $request->url() === 'https://sms.example.test/pattern'
             && $request['username'] === 'user' && $request['password'] === 'secret-key'
-            && $request['to'] === '09121234567' && $request['bodyId'] === '12345' && $request['text'] === '654321');
+            && $request['to'] === '09121234567' && $request['bodyId'] === '12345' && $request['text'] === "654321\nلغو11");
     }
 
     public function test_send_uses_api_key_as_password_and_parses_ids(): void
@@ -36,7 +36,10 @@ class PayamakPanelSmsServiceTest extends TestCase
         $result = app(PayamakPanelSmsService::class)->send(['+989121234567', '۰۹۱۲۱۲۳۴۵۶۸'], 'test');
         $this->assertTrue($result->success);
         $this->assertSame([123, 124], $result->messageIds);
-        Http::assertSent(fn ($request) => $request['password'] === 'secret-key' && $request['to'] === '09121234567,09121234568' && ! isset($request['fromSupportOne']));
+        Http::assertSent(fn ($request) => $request['password'] === 'secret-key'
+            && $request['to'] === '09121234567,09121234568'
+            && $request['text'] === "test\nلغو11"
+            && ! isset($request['fromSupportOne']));
     }
 
     public function test_provider_failure_is_returned_without_retry(): void
@@ -49,18 +52,51 @@ class PayamakPanelSmsServiceTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_opt_out_footer_is_not_duplicated(): void
+    {
+        Http::fake(['*/Send' => Http::response(['Value' => '125', 'RetStatus' => 1, 'StrRetStatus' => 'Ok'])]);
+
+        app(PayamakPanelSmsService::class)->send('09121234567', "متن آزمایشی\nلغو11");
+
+        Http::assertSent(fn ($request) => $request['text'] === "متن آزمایشی\nلغو11");
+    }
+
     public function test_http_and_connection_failures_throw_provider_exception(): void
     {
         Http::fake(['*/Send' => Http::response([], 500)]);
-        $this->expectException(SmsProviderException::class);
-        app(PayamakPanelSmsService::class)->send('09121234567', 'test');
+
+        try {
+            app(PayamakPanelSmsService::class)->send('09121234567', 'test');
+            $this->fail('The provider exception was not thrown.');
+        } catch (SmsProviderException $exception) {
+            $this->assertTrue($exception->retryable);
+            $this->assertSame(500, $exception->providerStatus);
+        }
+    }
+
+    public function test_http_configuration_failure_is_not_retried(): void
+    {
+        Http::fake(['*/Send' => Http::response(['message' => 'Unauthorized'], 401)]);
+
+        try {
+            app(PayamakPanelSmsService::class)->send('09121234567', 'test');
+            $this->fail('The provider exception was not thrown.');
+        } catch (SmsProviderException $exception) {
+            $this->assertFalse($exception->retryable);
+            $this->assertSame(401, $exception->providerStatus);
+        }
     }
 
     public function test_connection_failure_throws_provider_exception(): void
     {
         Http::fake(fn () => throw new ConnectionException('timeout'));
-        $this->expectException(SmsProviderException::class);
-        app(PayamakPanelSmsService::class)->send('09121234567', 'test');
+
+        try {
+            app(PayamakPanelSmsService::class)->send('09121234567', 'test');
+            $this->fail('The provider exception was not thrown.');
+        } catch (SmsProviderException $exception) {
+            $this->assertTrue($exception->retryable);
+        }
     }
 
     public function test_send_multiple_preserves_recipient_message_ids(): void
@@ -70,6 +106,7 @@ class PayamakPanelSmsServiceTest extends TestCase
         $this->assertTrue($result->success);
         $this->assertSame([31, 32], $result->messageIds);
         $this->assertCount(2, $result->recipients);
+        Http::assertSent(fn ($request) => $request['text'] === ["one\nلغو11", "two\nلغو11"]);
     }
 
     public function test_more_than_one_hundred_recipients_is_rejected_before_request(): void
@@ -92,6 +129,6 @@ class PayamakPanelSmsServiceTest extends TestCase
         $result = app(PayamakPanelSmsService::class)->getDelivery(123);
         $this->assertTrue($result->isDelivered);
         $this->assertTrue($result->isFinal);
-        $this->assertSame(1,$result->code);
+        $this->assertSame(1, $result->code);
     }
 }

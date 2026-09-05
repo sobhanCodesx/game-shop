@@ -1,0 +1,165 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Game;
+use App\Models\SocialComment;
+use App\Models\SocialContent;
+use App\Models\User;
+use App\Models\VideoPlaylist;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
+
+class VideoCommunityTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_only_authenticated_users_can_react_comment_and_subscribe(): void
+    {
+        [$game, $video] = $this->channelWithVideo();
+
+        $this->postJson(route('videos.reaction', $video->slug), ['type' => 'like'])->assertUnauthorized();
+        $this->postJson(route('videos.comments.store', $video->slug), ['body' => 'نظر'])->assertUnauthorized();
+        $this->postJson(route('channels.subscription', $game->slug))->assertUnauthorized();
+    }
+
+    public function test_member_can_toggle_video_reactions_and_channel_subscription(): void
+    {
+        [$game, $video] = $this->channelWithVideo();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->postJson(route('videos.reaction', $video->slug), ['type' => 'like'])
+            ->assertOk()->assertJsonPath('reaction', 'like');
+        $this->assertDatabaseHas('social_content_reactions', ['social_content_id' => $video->id, 'user_id' => $user->id, 'type' => 'like']);
+
+        $this->actingAs($user)->postJson(route('videos.reaction', $video->slug), ['type' => 'dislike'])
+            ->assertOk()->assertJsonPath('reaction', 'dislike');
+        $this->assertDatabaseCount('social_content_reactions', 1);
+
+        $this->actingAs($user)->postJson(route('videos.reaction', $video->slug), ['type' => 'dislike'])
+            ->assertOk()->assertJsonPath('reaction', null);
+        $this->assertDatabaseCount('social_content_reactions', 0);
+
+        $this->actingAs($user)->postJson(route('channels.subscription', $game->slug))
+            ->assertOk()->assertJsonPath('subscribed', true);
+        $this->assertDatabaseHas('game_subscriptions', ['game_id' => $game->id, 'user_id' => $user->id]);
+
+        $this->actingAs($user)->postJson(route('channels.subscription', $game->slug))
+            ->assertOk()->assertJsonPath('subscribed', false);
+        $this->assertDatabaseMissing('game_subscriptions', ['game_id' => $game->id, 'user_id' => $user->id]);
+    }
+
+    public function test_member_can_comment_reply_like_and_delete_own_comment(): void
+    {
+        [, $video] = $this->channelWithVideo();
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson(route('videos.comments.store', $video->slug), ['body' => 'نظر اصلی'])
+            ->assertCreated();
+        $comment = SocialComment::query()->findOrFail($response->json('comment_id'));
+
+        $replyResponse = $this->actingAs($other)->postJson(route('videos.comments.store', $video->slug), [
+            'body' => 'پاسخ نظر', 'parent_id' => $comment->id,
+        ])->assertCreated();
+        $reply = SocialComment::query()->findOrFail($replyResponse->json('comment_id'));
+
+        $this->actingAs($user)->postJson(route('videos.comments.store', $video->slug), [
+            'body' => 'پاسخ سطح سوم', 'parent_id' => $reply->id,
+        ])->assertStatus(422);
+
+        $this->actingAs($user)->postJson(route('comments.like', $comment))->assertOk()->assertJsonPath('liked', true);
+        $this->assertDatabaseHas('social_comment_likes', ['social_comment_id' => $comment->id, 'user_id' => $user->id]);
+
+        $this->actingAs($other)->deleteJson(route('comments.destroy', $comment))->assertForbidden();
+        $this->actingAs($user)->deleteJson(route('comments.destroy', $comment))->assertOk();
+        $this->assertSoftDeleted($comment);
+    }
+
+    public function test_channel_and_playlist_expose_published_videos_and_watch_context(): void
+    {
+        [$game, $video] = $this->channelWithVideo();
+        $playlist = VideoPlaylist::query()->create([
+            'game_id' => $game->id, 'title' => 'شروع بازی', 'slug' => 'getting-started', 'visibility' => 'public',
+        ]);
+        $playlist->videos()->attach($video->id, ['position' => 0]);
+
+        $this->get(route('channels.show', $game->slug))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Channels/Show')->where('channel.name', $game->name)->has('videos.data', 1)->has('playlists', 1));
+
+        $this->get(route('channels.playlists.show', ['game' => $game->slug, 'playlist' => $playlist->slug]))
+            ->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Channels/Playlist')->where('playlist.title', 'شروع بازی')->has('playlist.videos', 1));
+
+        $this->get(route('content.show', ['type' => 'videos', 'content' => $video->slug, 'list' => $playlist->slug]))
+            ->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Content/Show')->where('playlist.title', 'شروع بازی')->has('playlist.items', 1));
+    }
+
+    public function test_video_view_is_counted_once_per_session(): void
+    {
+        [, $video] = $this->channelWithVideo();
+        $url = route('content.show', ['type' => 'videos', 'content' => $video->slug]);
+
+        $this->get($url)->assertOk();
+        $this->get($url)->assertOk();
+
+        $this->assertSame(1, $video->refresh()->views);
+    }
+
+    public function test_admin_can_create_a_playlist_and_assign_a_video_to_it(): void
+    {
+        [$game, $video] = $this->channelWithVideo();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)->post(route('admin.video-playlists.store'), [
+            'game_id' => $game->id,
+            'title' => 'راهنمای شروع',
+            'description' => 'ویدیوهای مناسب بازیکن تازه‌وارد',
+            'visibility' => 'unlisted',
+            'sort_order' => 1,
+        ])->assertRedirect();
+
+        $playlist = VideoPlaylist::query()->firstOrFail();
+        $this->actingAs($admin)->put(route('admin.videos.update', $video), [
+            'title' => $video->title,
+            'excerpt' => $video->excerpt,
+            'status' => 'published',
+            'featured' => false,
+            'game_id' => $game->id,
+            'playlist_ids' => [$playlist->id],
+            'allow_comments' => false,
+        ])->assertRedirect(route('admin.videos.index'));
+
+        $this->assertDatabaseHas('playlist_video', [
+            'video_playlist_id' => $playlist->id,
+            'social_content_id' => $video->id,
+            'position' => 0,
+        ]);
+        $this->assertFalse($video->refresh()->allow_comments);
+
+        $this->get(route('channels.show', $game->slug))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('playlists', 0));
+        $this->get(route('channels.playlists.show', ['game' => $game->slug, 'playlist' => $playlist->slug]))
+            ->assertOk();
+    }
+
+    private function channelWithVideo(): array
+    {
+        $game = Game::factory()->create(['name' => 'Elden Ring', 'slug' => 'elden-ring', 'status' => 'active']);
+        $video = SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'video',
+            'title' => 'راهنمای بازی',
+            'slug' => 'game-guide',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+            'allow_comments' => true,
+            'video_path' => 'videos/game-guide.mp4',
+            'video_mime' => 'video/mp4',
+        ]);
+
+        return [$game, $video];
+    }
+}
