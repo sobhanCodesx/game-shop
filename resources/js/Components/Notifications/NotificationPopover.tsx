@@ -1,30 +1,30 @@
 import { router, usePage } from "@inertiajs/react";
-import {
-    Bell,
-    CheckCheck,
-    ExternalLink,
-} from "lucide-react";
-import {
-    useEffect,
-    useRef,
-    useState,
-} from "react";
+import { Bell, CheckCheck, ExternalLink } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { SharedPageProps } from "../../types";
 
 let pollSubscribers = 0;
 let pollTimer: number | undefined;
 const refreshNotifications = () => {
-    if (document.visibilityState === "visible" && navigator.onLine) router.reload({ only: ["notifications", "admin"] });
+    if (document.visibilityState === "visible" && navigator.onLine)
+        router.reload({ only: ["notifications", "admin"] });
 };
 const schedulePoll = () => {
     window.clearTimeout(pollTimer);
-    pollTimer = window.setTimeout(() => {
-        refreshNotifications();
-        schedulePoll();
-    }, document.visibilityState === "visible" ? 15_000 : 60_000);
+    pollTimer = window.setTimeout(
+        () => {
+            refreshNotifications();
+            schedulePoll();
+        },
+        document.visibilityState === "visible" ? 15_000 : 60_000,
+    );
 };
-const handleVisibility = () => { if (document.visibilityState === "visible") refreshNotifications(); schedulePoll(); };
+const handleVisibility = () => {
+    if (document.visibilityState === "visible") refreshNotifications();
+    schedulePoll();
+};
 const startPolling = () => {
     if (++pollSubscribers !== 1) return;
     document.addEventListener("visibilitychange", handleVisibility);
@@ -46,44 +46,38 @@ export default function NotificationPopover({
 }: {
     admin?: boolean;
 }) {
-    const { notifications } =
-        usePage<SharedPageProps>().props;
+    const { notifications } = usePage<SharedPageProps>().props;
 
     const [open, setOpen] = useState(false);
     const [navigating, setNavigating] = useState<string | null>(null);
 
     const root = useRef<HTMLDivElement>(null);
+    const panel = useRef<HTMLElement>(null);
 
-    const unread =
-        notifications?.unread_count ?? 0;
+    const unread = notifications?.unread_count ?? 0;
 
     useEffect(() => {
-        const handleOutsidePress = (
-            event: PointerEvent,
-        ) => {
+        const handleOutsidePress = (event: PointerEvent) => {
+            const target = event.target as Node;
             if (
-                !root.current?.contains(
-                    event.target as Node,
-                )
+                !root.current?.contains(target) &&
+                !panel.current?.contains(target)
             ) {
                 setOpen(false);
             }
         };
 
-        document.addEventListener(
-            "pointerdown",
-            handleOutsidePress,
-        );
+        document.addEventListener("pointerdown", handleOutsidePress);
 
         return () => {
-            document.removeEventListener(
-                "pointerdown",
-                handleOutsidePress,
-            );
+            document.removeEventListener("pointerdown", handleOutsidePress);
         };
     }, []);
 
-    useEffect(() => { startPolling(); return stopPolling; }, []);
+    useEffect(() => {
+        startPolling();
+        return stopPolling;
+    }, []);
 
     const read = (id: string) => {
         setNavigating(id);
@@ -108,7 +102,12 @@ export default function NotificationPopover({
                 aria-expanded={open}
                 aria-haspopup="dialog"
                 aria-label="اعلان‌ها"
-                onClick={() => { setOpen((current) => { if (!current) refreshNotifications(); return !current; }); }}
+                onClick={() => {
+                    setOpen((current) => {
+                        if (!current) refreshNotifications();
+                        return !current;
+                    });
+                }}
                 className={`
                     relative
                     inline-grid
@@ -152,16 +151,17 @@ export default function NotificationPopover({
                             }
                         `}
                     >
-                        {unread.toLocaleString(
-                            "fa-IR",
-                        )}
+                        {unread.toLocaleString("fa-IR")}
                     </span>
                 )}
             </button>
 
-            {open && (
-                <section
-                    className={`
+            {open &&
+                typeof document !== "undefined" &&
+                createPortal(
+                    <section
+                        ref={panel}
+                        className={`
                         fixed
                         inset-x-3
                         top-20
@@ -172,10 +172,10 @@ export default function NotificationPopover({
                         rounded-3xl
                         border
                         shadow-2xl
-                        lg:absolute
+                        lg:fixed
                         lg:inset-x-auto
-                        lg:left-0
-                        lg:top-[calc(100%+.7rem)]
+                        lg:left-5
+                        lg:top-20
                         lg:max-h-none
                         lg:w-[min(390px,calc(100vw-2rem))]
                         ${
@@ -184,9 +184,9 @@ export default function NotificationPopover({
                                 : "border-[var(--store-border)] bg-[var(--store-panel)] text-[var(--store-text)]"
                         }
                     `}
-                >
-                    <header
-                        className={`
+                    >
+                        <header
+                            className={`
                             flex
                             items-center
                             justify-between
@@ -198,14 +198,12 @@ export default function NotificationPopover({
                                     : "border-[var(--store-border)]"
                             }
                         `}
-                    >
-                        <div>
-                            <h2 className="font-black">
-                                اعلان‌ها
-                            </h2>
+                        >
+                            <div>
+                                <h2 className="font-black">اعلان‌ها</h2>
 
-                            <p
-                                className={`
+                                <p
+                                    className={`
                                     mt-1
                                     text-xs
                                     ${
@@ -214,48 +212,41 @@ export default function NotificationPopover({
                                             : "text-[var(--store-muted)]"
                                     }
                                 `}
-                            >
-                                {unread
-                                    ? `${unread.toLocaleString(
-                                          "fa-IR",
-                                      )} اعلان خوانده‌نشده`
-                                    : "همه اعلان‌ها خوانده شده‌اند"}
-                            </p>
-                        </div>
+                                >
+                                    {unread
+                                        ? `${unread.toLocaleString(
+                                              "fa-IR",
+                                          )} اعلان خوانده‌نشده`
+                                        : "همه اعلان‌ها خوانده شده‌اند"}
+                                </p>
+                            </div>
 
-                        {unread > 0 && (
-                            <button
-                                type="button"
-                                className="flex cursor-pointer items-center gap-1 text-xs font-bold text-indigo-500"
-                                onClick={() =>
-                                    router.patch(
-                                        "/account/notifications",
-                                        {},
-                                        {
-                                            preserveScroll:
-                                                true,
-                                        },
-                                    )
-                                }
-                            >
-                                <CheckCheck
-                                    size={15}
-                                />
+                            {unread > 0 && (
+                                <button
+                                    type="button"
+                                    className="flex cursor-pointer items-center gap-1 text-xs font-bold text-indigo-500"
+                                    onClick={() =>
+                                        router.patch(
+                                            "/account/notifications",
+                                            {},
+                                            {
+                                                preserveScroll: true,
+                                            },
+                                        )
+                                    }
+                                >
+                                    <CheckCheck size={15} />
+                                    خواندن همه
+                                </button>
+                            )}
+                        </header>
 
-                                خواندن همه
-                            </button>
-                        )}
-                    </header>
-
-                    <div className="max-h-[calc(100dvh-11.5rem)] overflow-y-auto p-2 lg:max-h-[420px]">
-                        {notifications?.latest.map(
-                            (item) => (
+                        <div className="max-h-[calc(100dvh-11.5rem)] overflow-y-auto p-2 lg:max-h-[420px]">
+                            {notifications?.latest.map((item) => (
                                 <button
                                     key={item.id}
                                     type="button"
-                                    onClick={() =>
-                                        read(item.id)
-                                    }
+                                    onClick={() => read(item.id)}
                                     disabled={navigating === item.id}
                                     className={`
                                         mb-1
@@ -295,17 +286,15 @@ export default function NotificationPopover({
 
                                     <span className="min-w-0 flex-1">
                                         <strong className="block truncate text-sm">
-                                            {
-                                                item.title
-                                            }
+                                            {item.title}
                                         </strong>
 
                                         <span className="mt-1 line-clamp-2 text-xs leading-5 opacity-75">
-                                            {
-                                                item.message
-                                            }
+                                            {item.message}
                                         </span>
-                                        <small className="mt-1 block text-[10px] opacity-45">{relativeTime(item.created_at)}</small>
+                                        <small className="mt-1 block text-[10px] opacity-45">
+                                            {relativeTime(item.created_at)}
+                                        </small>
                                     </span>
 
                                     <ExternalLink
@@ -313,24 +302,27 @@ export default function NotificationPopover({
                                         className="shrink-0 opacity-35"
                                     />
                                 </button>
-                            ),
-                        )}
+                            ))}
 
-                        {!notifications?.latest
-                            .length && (
-                            <div className="py-12 text-center text-sm opacity-50">
-                                اعلانی وجود ندارد.
-                            </div>
-                        )}
-                    </div>
-                </section>
-            )}
+                            {!notifications?.latest.length && (
+                                <div className="py-12 text-center text-sm opacity-50">
+                                    اعلانی وجود ندارد.
+                                </div>
+                            )}
+                        </div>
+                    </section>,
+                    document.querySelector(".storefront-theme") ??
+                        document.body,
+                )}
         </div>
     );
 }
 
 function relativeTime(value: string): string {
-    const seconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+    const seconds = Math.max(
+        0,
+        Math.floor((Date.now() - new Date(value).getTime()) / 1000),
+    );
     if (seconds < 60) return "همین حالا";
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes.toLocaleString("fa-IR")} دقیقه پیش`;

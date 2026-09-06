@@ -17,6 +17,7 @@ export interface StorefrontStory {
     thumbnail_url: string | null;
     duration: number | null;
     link_url: string | null;
+    link_label: string | null;
 }
 
 export interface StorefrontNavigationProps {

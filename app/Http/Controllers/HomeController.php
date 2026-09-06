@@ -215,6 +215,23 @@ class HomeController extends Controller
                         'published_at' => $video->published_at->toISOString(), 'duration' => $video->duration, 'views' => $video->views,
                     ]))
                 ->sortByDesc('published_at')->take(10)->values(),
+            'channels' => Game::query()
+                ->whereIn('status', ['active', 'published'])
+                ->with(['playlists' => fn ($query) => $query->publiclyVisible()->whereNotNull('logo')->select(['id', 'game_id', 'logo', 'sort_order'])])
+                ->withCount([
+                    'videos' => fn ($query) => $query->published(),
+                    'subscribers',
+                ])
+                ->orderByDesc('videos_count')
+                ->limit(16)
+                ->get(['id', 'name', 'slug', 'cover'])
+                ->map(fn (Game $game) => [
+                    ...$game->only(['id', 'name', 'slug']),
+                    'url' => route('channels.show', $game->slug, false),
+                    'image_url' => MediaStorage::url($game->cover ?: $game->playlists->first()?->logo),
+                    'videos_count' => $game->videos_count,
+                    'subscribers_count' => $game->subscribers_count,
+                ]),
         ]);
     }
 

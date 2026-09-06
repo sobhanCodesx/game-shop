@@ -69,6 +69,16 @@ interface Props {
     latestProducts: StorefrontProduct[];
     contentSections: ContentSection[];
     freshContent: FreshItem[];
+    channels: ChannelItem[];
+}
+interface ChannelItem {
+    id: number;
+    name: string;
+    slug: string;
+    url: string;
+    image_url: string | null;
+    videos_count: number;
+    subscribers_count: number;
 }
 interface FreshItem {
     key: string;
@@ -133,7 +143,7 @@ function ProductGrid({ products }: { products: StorefrontProduct[] }) {
 
 const durationLabel = (seconds?: number | null) =>
     seconds
-        ? `${Math.floor(seconds / 60).toLocaleString("fa-IR")}:${String(seconds % 60).padStart(2, "0")}`
+        ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
         : null;
 
 const freshSeenKey = "nexus:fresh-content-seen-at";
@@ -252,7 +262,10 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                                             className={`grid size-9 shrink-0 place-items-center rounded-xl text-white ${video ? "bg-rose-500" : "bg-indigo-600"}`}
                                         >
                                             {video ? (
-                                                <Play fill="currentColor" size={15} />
+                                                <Play
+                                                    fill="currentColor"
+                                                    size={15}
+                                                />
                                             ) : (
                                                 <Gamepad2 size={17} />
                                             )}
@@ -307,7 +320,10 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                                             </>
                                         )}
                                         {durationLabel(item.duration) && (
-                                            <span className="absolute bottom-2 left-2 rounded-md bg-black/75 px-1.5 py-0.5 font-mono text-[9px] text-white">
+                                            <span
+                                                className="absolute bottom-2 left-2 rounded-md bg-black/75 px-1.5 py-0.5 font-mono text-[9px] text-white"
+                                                dir="ltr"
+                                            >
                                                 {durationLabel(item.duration)}
                                             </span>
                                         )}
@@ -320,7 +336,8 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                                             {item.pricing ? (
                                                 <strong className="text-sm text-emerald-500">
                                                     {money.format(
-                                                        item.pricing.final_price,
+                                                        item.pricing
+                                                            .final_price,
                                                     )}{" "}
                                                     <small className="text-[9px] font-bold">
                                                         تومان
@@ -348,6 +365,86 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                         );
                     })}
                 </div>
+            </div>
+        </section>
+    );
+}
+
+function ChannelRail({ channels }: { channels: ChannelItem[] }) {
+    const railRef = useRef<HTMLDivElement>(null);
+    if (!channels.length) return null;
+
+    const scroll = (offset: number) =>
+        railRef.current?.scrollBy({ left: offset, behavior: "smooth" });
+
+    return (
+        <section className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
+            <div className="mb-5 flex items-end justify-between gap-4">
+                <div>
+                    <p className="text-xs font-black text-indigo-400">
+                        کانال‌های PLAY NEXUS
+                    </p>
+                    <h2 className="mt-1 text-xl font-black sm:text-2xl">
+                        کانال موردعلاقه‌ات را دنبال کن
+                    </h2>
+                </div>
+                <div className="hidden items-center gap-2 sm:flex">
+                    <Button
+                        aria-label="کانال قبلی"
+                        isIconOnly
+                        onPress={() => scroll(360)}
+                        size="sm"
+                        variant="secondary"
+                    >
+                        <ChevronRight size={17} />
+                    </Button>
+                    <Button
+                        aria-label="کانال بعدی"
+                        isIconOnly
+                        onPress={() => scroll(-360)}
+                        size="sm"
+                        variant="secondary"
+                    >
+                        <ChevronLeft size={17} />
+                    </Button>
+                </div>
+            </div>
+            <div
+                className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4"
+                ref={railRef}
+            >
+                {channels.map((channel) => (
+                    <Link
+                        className="group w-[132px] shrink-0 snap-start rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 text-center transition duration-300 hover:-translate-y-1 hover:border-indigo-500/70 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[154px] sm:p-4"
+                        href={channel.url}
+                        key={channel.id}
+                    >
+                        <span className="relative mx-auto block size-20 rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-[3px] shadow-lg shadow-indigo-500/15 sm:size-24">
+                            <span className="grid size-full overflow-hidden rounded-full border-[3px] border-[var(--store-surface)] bg-[var(--store-surface-strong)]">
+                                {channel.image_url ? (
+                                    <img
+                                        alt={`کانال ${channel.name}`}
+                                        className="size-full object-cover transition duration-300 group-hover:scale-110"
+                                        loading="lazy"
+                                        src={channel.image_url}
+                                    />
+                                ) : (
+                                    <Gamepad2
+                                        className="m-auto text-indigo-400"
+                                        size={34}
+                                    />
+                                )}
+                            </span>
+                            <span className="absolute bottom-0 right-0 size-4 rounded-full border-[3px] border-[var(--store-surface)] bg-emerald-400" />
+                        </span>
+                        <strong className="mt-3 block truncate text-sm text-[var(--store-text)]">
+                            {channel.name}
+                        </strong>
+                        <span className="mt-1 block text-[10px] text-[var(--store-muted)]">
+                            {money.format(channel.videos_count)} ویدیو
+                        </span>
+                    </Link>
+                ))}
             </div>
         </section>
     );
@@ -449,6 +546,7 @@ function ContentRail({ section }: { section: ContentSection }) {
                                 {durationLabel(item.duration) && (
                                     <Chip
                                         className="absolute bottom-2 left-2 bg-black/75 text-white"
+                                        dir="ltr"
                                         size="sm"
                                     >
                                         {durationLabel(item.duration)}
@@ -534,6 +632,7 @@ export default function Home({
     latestProducts,
     contentSections,
     freshContent,
+    channels,
 }: Props) {
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
@@ -562,7 +661,7 @@ export default function Home({
 
     return (
         <div
-            className="storefront-theme min-h-screen bg-[var(--store-bg)] pb-20 text-[var(--store-text)] transition-colors duration-200 lg:pb-0"
+            className="storefront-theme min-h-screen w-full max-w-full overflow-x-clip bg-[var(--store-bg)] pb-20 text-[var(--store-text)] transition-colors duration-200 lg:pb-0"
             data-theme={theme}
             dir="rtl"
         >
@@ -601,8 +700,8 @@ export default function Home({
                                 touchStartX.current = event.touches[0].clientX;
                             }}
                         >
-                            <div className="relative overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_70px_-30px_rgba(15,23,42,.55)] ring-1 ring-black/5 lg:rounded-[28px]">
-                                <picture className="block">
+                            <div className="relative aspect-[2.15/1] w-full overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_70px_-30px_rgba(15,23,42,.55)] ring-1 ring-black/5 sm:aspect-[2.6/1] lg:aspect-[3.2/1] lg:rounded-[28px]">
+                                <picture className="absolute inset-0 block size-full">
                                     <source
                                         media="(max-width: 640px)"
                                         srcSet={
@@ -612,7 +711,7 @@ export default function Home({
                                     />
                                     <img
                                         alt={slide.alt || slide.title}
-                                        className="block h-auto w-full"
+                                        className="block size-full object-cover object-center"
                                         decoding="async"
                                         fetchPriority="high"
                                         key={slide.id}
@@ -681,6 +780,7 @@ export default function Home({
                     )}
                 </section>
                 <FreshReleases items={freshContent} />
+                <ChannelRail channels={channels} />
                 <section className="mx-auto grid max-w-7xl grid-cols-2 gap-3 px-4 py-8 lg:grid-cols-4">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],

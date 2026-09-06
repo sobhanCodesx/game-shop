@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SocialContent extends Model
 {
-    protected $fillable = ['user_id', 'game_id', 'type', 'media_type', 'title', 'slug', 'excerpt', 'body', 'seo_title', 'seo_description', 'link_url', 'thumbnail', 'video_path', 'video_mime', 'duration', 'views', 'allow_comments', 'featured', 'sort_order', 'status', 'published_at'];
+    protected $fillable = ['user_id', 'game_id', 'type', 'media_type', 'title', 'slug', 'excerpt', 'body', 'seo_title', 'seo_description', 'link_url', 'link_label', 'thumbnail', 'video_path', 'video_mime', 'duration', 'views', 'allow_comments', 'featured', 'sort_order', 'status', 'published_at'];
 
     protected function casts(): array
     {

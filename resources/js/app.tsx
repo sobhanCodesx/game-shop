@@ -5,6 +5,7 @@ import { createInertiaApp } from "@inertiajs/react";
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
 import type { ComponentType } from "react";
 import { createRoot } from "react-dom/client";
+import PageTransitionLoader from "./Components/PageTransitionLoader";
 
 if ("serviceWorker" in navigator) {
     if (import.meta.env.PROD) {
@@ -47,7 +48,12 @@ createInertiaApp({
         return page.default;
     },
     setup({ el, App, props }) {
-        createRoot(el).render(<App {...props} />);
+        createRoot(el).render(
+            <>
+                <App {...props} />
+                <PageTransitionLoader />
+            </>,
+        );
     },
     progress: {
         color: "#4f46e5",

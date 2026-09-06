@@ -16,7 +16,7 @@ export default function StorefrontLayout({ children, announcement }: Props) {
 
     return (
         <div
-            className="storefront-theme min-h-screen bg-[var(--store-bg)] pb-24 text-[var(--store-text)] lg:pb-0"
+            className="storefront-theme min-h-screen w-full max-w-full overflow-x-clip bg-[var(--store-bg)] pb-24 text-[var(--store-text)] lg:pb-0"
             data-theme={theme}
             dir="rtl"
         >

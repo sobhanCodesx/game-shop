@@ -17,8 +17,13 @@ final class Seo
      */
     public static function page(array $data): array
     {
-        $title = preg_replace('/\bplay\s*nexus\b/iu', 'پلی نکسوس', (string) $data['title'])
+        $brand = 'پلی نکسوس';
+        $normalizedTitle = preg_replace('/\bplay\s*nexus\b/iu', $brand, (string) $data['title'])
             ?? (string) $data['title'];
+        $pageTitle = trim((string) preg_replace('/\s*[|\-–—]\s*پلی نکسوس\s*$/u', '', $normalizedTitle));
+        $title = $pageTitle === '' || $pageTitle === $brand
+            ? $brand
+            : "{$pageTitle} - {$brand}";
 
         $seo = [
             'title' => $title,

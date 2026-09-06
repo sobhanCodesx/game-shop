@@ -14,7 +14,7 @@ return [
     'max_extracted_size' => (int) env('DEPLOYMENT_MAX_EXTRACTED_SIZE', 1610612736),
     'max_compression_ratio' => (float) env('DEPLOYMENT_MAX_COMPRESSION_RATIO', 100),
     'token_ttl' => (int) env('DEPLOYMENT_TOKEN_TTL', 3600),
-    'retention' => (int) env('DEPLOYMENT_RETENTION', 3),
+    'retention' => (int) env('DEPLOYMENT_RETENTION', 1),
     'directory' => storage_path('app/deployments'),
     'allowed_roots' => ['app', 'bootstrap', 'config', 'database/migrations', 'routes', 'resources/views', 'lang', 'public', 'vendor','storage'],
     'allowed_files' => ['composer.json', 'deployment-manifest.json', 'deployment-manifest.sig'],

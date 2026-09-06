@@ -59,7 +59,7 @@ class VideoController extends Controller
         $token = $request->string('upload_token')->toString();
         $file = $token ? $uploads->claim($request->user()->id, $token) : $request->file('video');
         try {
-            $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null);
+            $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null, $request->boolean('custom_thumbnail'));
             $video->save();
             $video->playlists()->sync($this->playlistSync($request->validated('playlist_ids', [])));
         } catch (\Throwable $exception) {
@@ -85,6 +85,7 @@ class VideoController extends Controller
             'video' => [
                 ...$video->only(['id', 'title', 'excerpt', 'body', 'seo_title', 'seo_description', 'status', 'featured', 'duration', 'game_id', 'allow_comments']),
                 'video_url' => MediaStorage::url($video->video_path),
+                'thumbnail_url' => MediaStorage::url($video->thumbnail),
                 'playlist_ids' => $video->playlists()->pluck('video_playlists.id'),
             ],
             ...$this->formOptions(),
@@ -98,19 +99,26 @@ class VideoController extends Controller
         $this->prepareEditorialContent($video);
         $video->published_at = $video->status === 'published' ? ($video->published_at ?? now()) : null;
         $token = $request->string('upload_token')->toString();
+        $oldThumbnail = null;
         if ($request->hasFile('video') || $token) {
             $oldFiles = array_filter([$video->video_path, $video->thumbnail]);
             $file = $token ? $uploads->claim($request->user()->id, $token) : $request->file('video');
             try {
-                $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null);
+                $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null, $request->boolean('custom_thumbnail'));
             } finally {
                 if ($token) {
                     $uploads->forget($request->user()->id, $token);
                 }
             }
             MediaStorage::disk()->delete($oldFiles);
+        } elseif ($request->hasFile('thumbnail')) {
+            $oldThumbnail = $video->thumbnail;
+            $video->thumbnail = $optimizer->store($request->file('thumbnail'), 'videos/thumbnails')['path'];
         }
         $video->save();
+        if ($oldThumbnail) {
+            MediaStorage::disk()->delete($oldThumbnail);
+        }
         $video->playlists()->sync($this->playlistSync($request->validated('playlist_ids', [])));
 
         return to_route('admin.videos.index')->with('success', 'ویدیو با موفقیت ویرایش شد.');
@@ -131,6 +139,7 @@ class VideoController extends Controller
         MediaOptimizationService $optimizer,
         ?UploadedFile $browserThumbnail = null,
         ?int $browserDuration = null,
+        bool $customThumbnail = false,
     ): void {
         $stored = $optimizer->store($file, 'videos');
         $video->video_path = $stored['path'];
@@ -138,8 +147,9 @@ class VideoController extends Controller
         // Chunk assembly already produced a local file. Read metadata from that
         // source so remote disks are not downloaded again after the upload.
         $metadata = $optimizer->videoMetadata($file, 'videos/thumbnails');
-        $video->thumbnail = $metadata['thumbnail']
-            ?? ($browserThumbnail ? $optimizer->store($browserThumbnail, 'videos/thumbnails')['path'] : null);
+        $video->thumbnail = $customThumbnail && $browserThumbnail
+            ? $optimizer->store($browserThumbnail, 'videos/thumbnails')['path']
+            : ($metadata['thumbnail'] ?? ($browserThumbnail ? $optimizer->store($browserThumbnail, 'videos/thumbnails')['path'] : null));
         $video->duration = $metadata['duration'] ?? $browserDuration;
     }
 

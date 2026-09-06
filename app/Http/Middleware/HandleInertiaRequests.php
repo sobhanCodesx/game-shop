@@ -73,7 +73,7 @@ class HandleInertiaRequests extends Middleware
                 'categories' => app(StorefrontDataService::class)->navigation(),
                 'stories' => SocialContent::query()->published()->where('type', 'short')->whereNotNull('video_path')
                     ->orderBy('sort_order')->orderByDesc('published_at')->limit(20)->get()->map(fn (SocialContent $story) => [
-                        ...$story->only(['id', 'title', 'excerpt', 'media_type', 'duration', 'link_url']),
+                        ...$story->only(['id', 'title', 'excerpt', 'media_type', 'duration', 'link_url', 'link_label']),
                         'media_url' => MediaStorage::url($story->video_path),
                         'thumbnail_url' => MediaStorage::url($story->thumbnail),
                     ]),

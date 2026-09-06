@@ -13,6 +13,21 @@ import { useEffect, useRef, useState } from "react";
 import type { StorefrontStory } from "./types";
 
 const imageDuration = 5000;
+const seenStoriesKey = "playnexus:seen-stories:v1";
+
+function loadSeenStories(): Set<number> {
+    if (typeof window === "undefined") return new Set();
+    try {
+        const stored = JSON.parse(localStorage.getItem(seenStoriesKey) ?? "[]");
+        return new Set(
+            Array.isArray(stored)
+                ? stored.filter((id): id is number => Number.isInteger(id))
+                : [],
+        );
+    } catch {
+        return new Set();
+    }
+}
 
 export default function StorefrontStories({
     stories,
@@ -23,6 +38,8 @@ export default function StorefrontStories({
     const [progress, setProgress] = useState(0);
     const [paused, setPaused] = useState(false);
     const [muted, setMuted] = useState(false);
+    const [seenStories, setSeenStories] =
+        useState<Set<number>>(loadSeenStories);
     const videoRef = useRef<HTMLVideoElement>(null);
     const story = active === null ? null : stories[active];
     const next = () =>
@@ -40,6 +57,21 @@ export default function StorefrontStories({
         setProgress(0);
         setPaused(false);
     }, [active]);
+    useEffect(() => {
+        if (!story || seenStories.has(story.id)) return;
+        setSeenStories((current) => {
+            const updated = new Set(current).add(story.id);
+            try {
+                localStorage.setItem(
+                    seenStoriesKey,
+                    JSON.stringify(Array.from(updated).slice(-100)),
+                );
+            } catch {
+                // The visual state still works when browser storage is unavailable.
+            }
+            return updated;
+        });
+    }, [story?.id]);
     useEffect(() => {
         if (!story || story.media_type !== "image" || paused) return;
         const started = performance.now() - progress * imageDuration;
@@ -78,36 +110,49 @@ export default function StorefrontStories({
                 className="border-b border-[var(--store-border)] bg-[var(--store-header)]/95"
             >
                 <div className="scrollbar-none mx-auto flex max-w-7xl gap-4 overflow-x-auto px-4 py-3">
-                    {stories.map((item, index) => (
-                        <button
-                            className="group w-[72px] shrink-0 text-center"
-                            key={item.id}
-                            onClick={() => setActive(index)}
-                            type="button"
-                        >
-                            <span className="mx-auto block size-16 rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-indigo-600 p-[2px] shadow-md">
-                                <span className="block size-full overflow-hidden rounded-full border-2 border-[var(--store-header)] bg-slate-900">
-                                    {item.thumbnail_url ? (
-                                        <img
-                                            alt=""
-                                            className="size-full object-cover transition group-hover:scale-110"
-                                            src={item.thumbnail_url}
-                                        />
-                                    ) : (
-                                        <video
-                                            className="size-full object-cover"
-                                            muted
-                                            preload="metadata"
-                                            src={item.media_url}
-                                        />
+                    {stories.map((item, index) => {
+                        const seen = seenStories.has(item.id);
+                        return (
+                            <button
+                                aria-label={`${item.title}${seen ? "، دیده شده" : "، جدید"}`}
+                                className="group w-[72px] shrink-0 text-center"
+                                key={item.id}
+                                onClick={() => setActive(index)}
+                                type="button"
+                            >
+                                <span
+                                    className={`relative mx-auto block size-16 rounded-full bg-gradient-to-tr p-[3px] transition duration-300 group-hover:scale-105 ${seen ? "from-cyan-400/70 via-indigo-500/70 to-fuchsia-500/70 shadow-md shadow-indigo-500/10" : "from-amber-300 via-fuchsia-500 to-violet-600 shadow-lg shadow-fuchsia-500/30 ring-2 ring-fuchsia-500/15"}`}
+                                >
+                                    <span className="block size-full overflow-hidden rounded-full border-[3px] border-[var(--store-header)] bg-slate-900">
+                                        {item.thumbnail_url ? (
+                                            <img
+                                                alt=""
+                                                className={`size-full object-cover transition duration-300 group-hover:scale-110 ${seen ? "brightness-90 saturate-75" : "brightness-105 saturate-110"}`}
+                                                src={item.thumbnail_url}
+                                            />
+                                        ) : (
+                                            <video
+                                                className="size-full object-cover"
+                                                muted
+                                                preload="metadata"
+                                                src={item.media_url}
+                                            />
+                                        )}
+                                    </span>
+                                    {!seen && (
+                                        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border-2 border-[var(--store-header)] bg-gradient-to-r from-fuchsia-600 to-violet-600 px-1.5 py-0.5 text-[7px] font-black leading-none text-white shadow-md">
+                                            جدید
+                                        </span>
                                     )}
                                 </span>
-                            </span>
-                            <span className="mt-1.5 block truncate text-[11px] font-bold text-[var(--store-text)]">
-                                {item.title}
-                            </span>
-                        </button>
-                    ))}
+                                <span
+                                    className={`mt-1.5 block truncate text-[11px] font-bold ${seen ? "text-[var(--store-muted)]" : "text-[var(--store-text)]"}`}
+                                >
+                                    {item.title}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             </section>
             {story && (
@@ -234,7 +279,8 @@ export default function StorefrontStories({
                                     className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-xl transition hover:bg-indigo-50"
                                     href={story.link_url}
                                 >
-                                    <ArrowUpLeft size={17} /> مشاهده لینک
+                                    <ArrowUpLeft size={17} />
+                                    {story.link_label?.trim() || "مشاهده لینک"}
                                 </a>
                             )}
                         </div>

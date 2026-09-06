@@ -59,9 +59,9 @@ export default function ChannelShow({
     return (
         <StorefrontLayout>
             <Head title={`کانال ${channel.name}`} />
-            <main className="pb-16">
-                <div className="mx-auto max-w-7xl px-3 pt-4 sm:px-5">
-                    <div className="relative aspect-[5/1] min-h-32 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#111827,#312e81)]">
+            <main className="w-full max-w-full overflow-x-clip pb-16">
+                <div className="mx-auto w-full max-w-7xl px-3 pt-3 sm:px-5 sm:pt-5">
+                    <div className="relative h-36 overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_20%_0%,#4f46e5,#171338_45%,#080c14)] sm:h-52 sm:rounded-3xl lg:h-64">
                         {channel.background_url && (
                             <img
                                 alt={`بنر کانال ${channel.name}`}
@@ -69,10 +69,11 @@ export default function ChannelShow({
                                 src={channel.background_url}
                             />
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                        <div className="absolute -bottom-16 -left-8 size-40 rounded-full bg-indigo-500/25 blur-3xl" />
                     </div>
-                    <section className="flex flex-col gap-5 px-2 py-6 sm:flex-row sm:items-center">
-                        <Avatar className="size-20 text-2xl sm:size-28">
+                    <section className="relative mx-2 -mt-10 flex min-w-0 flex-col gap-4 rounded-3xl border border-[var(--store-border)] bg-[var(--store-panel)] p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:-mt-14 sm:flex-row sm:items-center sm:p-5">
+                        <Avatar className="size-20 shrink-0 border-4 border-[var(--store-panel)] text-2xl shadow-xl sm:size-28">
                             {channel.cover_url && (
                                 <Avatar.Image
                                     alt={channel.name}
@@ -84,21 +85,24 @@ export default function ChannelShow({
                             </Avatar.Fallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                            <h1 className="text-3xl font-black sm:text-4xl">
+                            <h1 className="break-words text-2xl font-black sm:text-4xl">
                                 {channel.name}
                             </h1>
-                            <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--store-muted)]">
-                                <strong className="text-[var(--store-text)]">
+                            <p className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--store-muted)] sm:text-xs">
+                                <strong
+                                    className="max-w-full break-all text-[var(--store-text)]"
+                                    dir="ltr"
+                                >
                                     @{channel.slug}
                                 </strong>
-                                <span>•</span>
+                                <span className="text-indigo-400">•</span>
                                 <span>
                                     {channel.subscribers_count.toLocaleString(
                                         "fa-IR",
                                     )}{" "}
                                     مشترک
                                 </span>
-                                <span>•</span>
+                                <span className="text-indigo-400">•</span>
                                 <span>
                                     {channel.videos_count.toLocaleString(
                                         "fa-IR",
@@ -107,13 +111,13 @@ export default function ChannelShow({
                                 </span>
                             </p>
                             {channel.description && (
-                                <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-7 text-[var(--store-muted)]">
+                                <p className="mt-3 line-clamp-2 max-w-3xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm sm:leading-7">
                                     {channel.description}
                                 </p>
                             )}
                         </div>
                         <Button
-                            className="min-w-28 font-black"
+                            className="w-full shrink-0 font-black sm:w-auto sm:min-w-28"
                             onPress={subscribe}
                             variant={
                                 channel.is_subscribed ? "secondary" : "primary"
@@ -122,23 +126,23 @@ export default function ChannelShow({
                             {channel.is_subscribed ? "مشترک هستید" : "عضویت"}
                         </Button>
                     </section>
-                    <nav className="flex gap-7 overflow-x-auto border-b border-[var(--store-border)] text-sm font-bold">
+                    <nav className="mt-4 flex max-w-full gap-6 overflow-x-auto border-b border-[var(--store-border)] px-2 text-sm font-bold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-6 sm:gap-8">
                         <a
-                            className="border-b-2 border-indigo-500 py-4"
+                            className="shrink-0 border-b-2 border-indigo-500 py-4"
                             href="#videos"
                         >
                             ویدیوها
                         </a>
                         {playlists.length > 0 && (
                             <a
-                                className="py-4 text-[var(--store-muted)]"
+                                className="shrink-0 py-4 text-[var(--store-muted)] transition hover:text-[var(--store-text)]"
                                 href="#playlists"
                             >
                                 کالکشن‌ها
                             </a>
                         )}
                         <a
-                            className="py-4 text-[var(--store-muted)]"
+                            className="shrink-0 py-4 text-[var(--store-muted)] transition hover:text-[var(--store-text)]"
                             href="#about"
                         >
                             درباره
@@ -146,14 +150,17 @@ export default function ChannelShow({
                     </nav>
 
                     {videos.data.length > 0 && (
-                        <section className="py-9" id="videos">
+                        <section
+                            className="scroll-mt-24 py-7 sm:py-9"
+                            id="videos"
+                        >
                             <div className="mb-5 flex items-center gap-2">
                                 <Play className="text-indigo-500" size={18} />
                                 <h2 className="text-xl font-black">
                                     ویدیوهای کانال
                                 </h2>
                             </div>
-                            <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            <div className="grid min-w-0 gap-x-5 gap-y-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                 {videos.data.map((video) => (
                                     <ContentCard
                                         content={video}
@@ -167,7 +174,7 @@ export default function ChannelShow({
 
                     {playlists.length > 0 && (
                         <section
-                            className="border-t border-[var(--store-border)] py-9"
+                            className="scroll-mt-24 border-t border-[var(--store-border)] py-7 sm:py-9"
                             id="playlists"
                         >
                             <div className="mb-5 flex items-center gap-2">
@@ -179,10 +186,10 @@ export default function ChannelShow({
                                     کالکشن‌های کانال
                                 </h2>
                             </div>
-                            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            <div className="flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3 xl:grid-cols-4">
                                 {playlists.map((playlist) => (
                                     <Link
-                                        className="group"
+                                        className="group w-[82vw] max-w-[340px] shrink-0 snap-start sm:w-auto sm:max-w-none"
                                         href={playlist.url}
                                         key={playlist.id}
                                     >
@@ -223,7 +230,7 @@ export default function ChannelShow({
                     )}
 
                     <section
-                        className="border-t border-[var(--store-border)] py-9"
+                        className="scroll-mt-24 border-t border-[var(--store-border)] py-7 sm:py-9"
                         id="about"
                     >
                         <h2 className="text-xl font-black">درباره کانال</h2>
@@ -232,7 +239,7 @@ export default function ChannelShow({
                                 {channel.description ??
                                     `تمام ویدیوها، کالکشن‌ها و محتوای مرتبط با ${channel.name} در این کانال جمع‌آوری می‌شود.`}
                             </p>
-                            <div className="space-y-3 border-r border-[var(--store-border)] pr-5 text-sm">
+                            <div className="space-y-3 text-sm md:border-r md:border-[var(--store-border)] md:pr-5">
                                 <span className="flex items-center gap-2">
                                     <Users size={16} />
                                     {channel.subscribers_count.toLocaleString(

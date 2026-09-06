@@ -58,10 +58,11 @@ class ChannelController extends Controller
     {
         $game->loadMissing('platforms:id,name');
         $subscribersCount = $game->subscribers()->count();
+        $logo = $game->cover ?: $game->playlists()->publiclyVisible()->whereNotNull('logo')->value('logo');
 
         return [
             ...$game->only(['id', 'name', 'slug', 'description', 'developer', 'publisher']),
-            'cover_url' => MediaStorage::url($game->cover),
+            'cover_url' => MediaStorage::url($logo),
             'background_url' => MediaStorage::url($game->background),
             'platforms' => $game->platforms->pluck('name')->values(),
             'subscribers_count' => $subscribersCount,
@@ -74,12 +75,10 @@ class ChannelController extends Controller
 
     private function playlistData(Game $game, VideoPlaylist $playlist): array
     {
-        $cover = $playlist->videos->first()?->thumbnail;
-
         return [
             ...$playlist->only(['id', 'title', 'slug']),
             'url' => route('channels.playlists.show', ['game' => $game->slug, 'playlist' => $playlist->slug], false),
-            'cover_url' => MediaStorage::url($cover),
+            'cover_url' => MediaStorage::url($playlist->logo),
             'videos_count' => $playlist->videos_count ?? $playlist->videos->count(),
         ];
     }

@@ -81,8 +81,8 @@ export default function StorefrontNavigation({
                     theme={theme}
                     hasFreshContent={hasFreshContent}
                 />
-                <StorefrontStories stories={stories} />
             </div>
+            <StorefrontStories stories={stories} />
             <StorefrontPanels
                 categories={categories}
                 onClose={closePanel}

@@ -43,6 +43,7 @@ class ShortManagementTest extends TestCase
 
         $this->actingAs($admin)->delete("/admin/shorts/{$short->id}")->assertRedirect();
         $this->assertDatabaseMissing('social_contents', ['id' => $short->id]);
+        Storage::disk('public')->assertMissing($short->video_path);
     }
 
     public function test_published_shorts_are_shared_as_stories_but_excluded_from_explore(): void

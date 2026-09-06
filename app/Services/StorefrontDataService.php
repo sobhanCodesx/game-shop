@@ -153,7 +153,9 @@ class StorefrontDataService
                 'id' => $content->game->id,
                 'name' => $content->game->name,
                 'url' => route('channels.show', $content->game->slug, false),
-                'avatar_url' => MediaStorage::url($content->game->cover),
+                'avatar_url' => MediaStorage::url(
+                    $content->game->cover ?: ($content->game->relationLoaded('playlists') ? $content->game->playlists->first()?->logo : null)
+                ),
             ] : null,
         ];
     }

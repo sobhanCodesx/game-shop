@@ -178,7 +178,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('videos', AdminVideoController::class)->except('show');
         Route::resource('video-playlists', AdminVideoPlaylistController::class)
             ->parameters(['video-playlists' => 'playlist'])
-            ->only(['index', 'store', 'update', 'destroy']);
+            ->except('show');
         Route::resource('shorts', AdminShortController::class)
             ->parameters(['shorts' => 'short'])
             ->except('show');

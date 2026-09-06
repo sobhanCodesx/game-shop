@@ -17,6 +17,8 @@ class VideoPlaylistRequest extends FormRequest
         return [
             'game_id' => ['required', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
             'title' => ['required', 'string', 'max:160'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
+            'remove_logo' => ['nullable', 'boolean'],
             'description' => ['nullable', 'string', 'max:2000'],
             'visibility' => ['required', Rule::in(['public', 'unlisted', 'private'])],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],

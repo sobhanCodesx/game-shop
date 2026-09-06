@@ -53,6 +53,31 @@ final class DeploymentStateStore
         foreach (glob($this->paths->root().'/*/state.json') ?: [] as $file) {
             try { $state=$this->paths->readJson($file); if (in_array($state['status'], ['failed','uploading'], true) && strtotime($state['updated_at']) < now()->subDay()->timestamp) { File::deleteDirectory(dirname($file)); $removed++; } } catch (\Throwable) { /* keep unreadable state for manual inspection */ }
         }
+        return $removed + $this->pruneSuccessful();
+    }
+
+    public function pruneSuccessful(?int $keep = null): int
+    {
+        $keep = max(1, $keep ?? (int) config('deployment.retention', 1));
+        $completed = [];
+
+        foreach (glob($this->paths->root().'/*/state.json') ?: [] as $file) {
+            try {
+                $state = $this->paths->readJson($file);
+                if (($state['status'] ?? null) === 'completed') {
+                    $completed[] = ['file' => $file, 'updated_at' => strtotime((string) ($state['updated_at'] ?? '')) ?: 0];
+                }
+            } catch (\Throwable) {
+                // Keep unreadable state for manual inspection.
+            }
+        }
+
+        usort($completed, fn (array $a, array $b) => $b['updated_at'] <=> $a['updated_at']);
+        $removed = 0;
+        foreach (array_slice($completed, $keep) as $deployment) {
+            if (File::deleteDirectory(dirname($deployment['file']))) $removed++;
+        }
+
         return $removed;
     }
 }

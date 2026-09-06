@@ -1,258 +1,147 @@
-import { Button, Card, Chip, Input } from "@heroui/react";
-import { Head, router, useForm } from "@inertiajs/react";
-import { Edit3, ListVideo, Plus, Save, Trash2, X } from "lucide-react";
-import { type FormEvent, useState } from "react";
-
+import { Avatar, Button, Card, Chip } from "@heroui/react";
+import { Head, Link, router } from "@inertiajs/react";
+import {
+    ChevronLeft,
+    ChevronRight,
+    Edit3,
+    Gamepad2,
+    ListVideo,
+    Plus,
+    Trash2,
+} from "lucide-react";
 import AdminLayout from "../../../Layouts/AdminLayout";
 
 interface Playlist {
     id: number;
-    game_id: number;
     game: string | null;
     title: string;
-    description: string | null;
     visibility: "public" | "unlisted" | "private";
     sort_order: number;
     videos_count: number;
+    logo_url: string | null;
+    channel_image_url: string | null;
 }
-
-interface GameOption {
-    id: number;
-    name: string;
+interface Page {
+    data: Playlist[];
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
 }
+const fa = new Intl.NumberFormat("fa-IR");
 
-export default function PlaylistIndex({
-    playlists,
-    games,
-}: {
-    playlists: Playlist[];
-    games: GameOption[];
-}) {
-    const [editing, setEditing] = useState<Playlist | null>(null);
-    const { data, setData, post, put, processing, errors, reset } = useForm({
-        game_id: "",
-        title: "",
-        description: "",
-        visibility: "public",
-        sort_order: 0,
-    });
-    const startEdit = (playlist: Playlist) => {
-        setEditing(playlist);
-        setData({
-            game_id: String(playlist.game_id),
-            title: playlist.title,
-            description: playlist.description ?? "",
-            visibility: playlist.visibility,
-            sort_order: playlist.sort_order,
-        });
-    };
-    const cancel = () => {
-        setEditing(null);
-        reset();
-    };
-    const submit = (event: FormEvent) => {
-        event.preventDefault();
-        const options = { preserveScroll: true, onSuccess: cancel };
-        editing
-            ? put(`/admin/video-playlists/${editing.id}`, options)
-            : post("/admin/video-playlists", options);
-    };
-
+export default function PlaylistIndex({ playlists }: { playlists: Page }) {
+    const go = (page: number) =>
+        router.get(
+            "/admin/video-playlists",
+            { page },
+            { preserveScroll: true, preserveState: true },
+        );
     return (
         <AdminLayout
-            description="کالکشن‌های هر کانال را بسازید و سپس هنگام ویرایش ویدیو آن‌ها را انتخاب کنید."
+            description="کالکشن‌های ویدیویی کانال‌ها را مدیریت کنید."
             title="کالکشن‌های ویدیو"
         >
             <Head title="کالکشن‌های ویدیو" />
-            <div className="grid items-start gap-6 xl:grid-cols-[380px_1fr]">
-                <Card
-                    className="border border-slate-800 bg-slate-900/60"
-                    variant="secondary"
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-slate-400">
+                    {fa.format(playlists.total)} کالکشن در کانال‌ها ثبت شده است.
+                </p>
+                <Link
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white transition hover:bg-indigo-500"
+                    href="/admin/video-playlists/create"
                 >
-                    <Card.Header className="flex items-center gap-2 border-b border-slate-800 p-5">
-                        <Plus size={18} />
-                        <Card.Title>
-                            {editing ? "ویرایش کالکشن" : "کالکشن جدید"}
-                        </Card.Title>
-                    </Card.Header>
-                    <Card.Content>
-                        <form className="space-y-4 p-5" onSubmit={submit}>
-                            <label className="block">
-                                <span className="mb-2 block text-xs font-bold text-slate-300">
-                                    کانال / عنوان بازی
-                                </span>
-                                <select
-                                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
-                                    onChange={(event) =>
-                                        setData("game_id", event.target.value)
-                                    }
-                                    required
-                                    value={data.game_id}
-                                >
-                                    <option value="">انتخاب کانال</option>
-                                    {games.map((game) => (
-                                        <option key={game.id} value={game.id}>
-                                            {game.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.game_id && (
-                                    <small className="mt-1 block text-rose-400">
-                                        {errors.game_id}
-                                    </small>
-                                )}
-                            </label>
-                            <label className="block">
-                                <span className="mb-2 block text-xs font-bold text-slate-300">
-                                    عنوان کالکشن
-                                </span>
-                                <Input
-                                    fullWidth
-                                    onChange={(event) =>
-                                        setData("title", event.target.value)
-                                    }
-                                    required
-                                    value={data.title}
-                                />
-                                {errors.title && (
-                                    <small className="mt-1 block text-rose-400">
-                                        {errors.title}
-                                    </small>
-                                )}
-                            </label>
-                            <label className="block">
-                                <span className="mb-2 block text-xs font-bold text-slate-300">
-                                    توضیحات
-                                </span>
-                                <textarea
-                                    className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white"
-                                    onChange={(event) =>
-                                        setData(
-                                            "description",
-                                            event.target.value,
-                                        )
-                                    }
-                                    value={data.description}
-                                />
-                            </label>
-                            <div className="grid grid-cols-2 gap-3">
-                                <label>
-                                    <span className="mb-2 block text-xs font-bold text-slate-300">
-                                        نمایش
-                                    </span>
-                                    <select
-                                        className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
-                                        onChange={(event) =>
-                                            setData(
-                                                "visibility",
-                                                event.target.value,
-                                            )
-                                        }
-                                        value={data.visibility}
-                                    >
-                                        <option value="public">عمومی</option>
-                                        <option value="unlisted">
-                                            با لینک
-                                        </option>
-                                        <option value="private">خصوصی</option>
-                                    </select>
-                                </label>
-                                <label>
-                                    <span className="mb-2 block text-xs font-bold text-slate-300">
-                                        ترتیب
-                                    </span>
-                                    <input
-                                        className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
-                                        min={0}
-                                        onChange={(event) =>
-                                            setData(
-                                                "sort_order",
-                                                Number(event.target.value),
-                                            )
-                                        }
-                                        type="number"
-                                        value={data.sort_order}
-                                    />
-                                </label>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    isDisabled={processing}
-                                    type="submit"
-                                    variant="primary"
-                                >
-                                    <Save size={16} />
-                                    {editing ? "ذخیره تغییرات" : "ساخت کالکشن"}
-                                </Button>
-                                {editing && (
-                                    <Button
-                                        onPress={cancel}
-                                        type="button"
-                                        variant="ghost"
-                                    >
-                                        <X size={16} />
-                                        انصراف
-                                    </Button>
-                                )}
-                            </div>
-                        </form>
-                    </Card.Content>
-                </Card>
-                <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-                    {playlists.map((playlist) => (
+                    <Plus size={17} />
+                    افزودن کالکشن
+                </Link>
+            </div>
+            {playlists.data.length ? (
+                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {playlists.data.map((p) => (
                         <Card
-                            className="border border-slate-800 bg-slate-900/60"
-                            key={playlist.id}
+                            className="group overflow-hidden border border-slate-800 bg-slate-900/60"
+                            key={p.id}
                             variant="secondary"
                         >
-                            <Card.Content className="p-5">
-                                <div className="flex items-start justify-between gap-3">
-                                    <span className="grid size-11 place-items-center rounded-xl bg-indigo-500/10 text-indigo-400">
-                                        <ListVideo size={21} />
-                                    </span>
+                            <Card.Content className="p-0">
+                                <div className="relative aspect-video overflow-hidden bg-slate-950">
+                                    {p.logo_url ? (
+                                        <img
+                                            alt={p.title}
+                                            className="size-full object-cover transition duration-300 group-hover:scale-105"
+                                            src={p.logo_url}
+                                        />
+                                    ) : (
+                                        <span className="grid size-full place-items-center bg-gradient-to-br from-indigo-500/15 to-slate-950 text-indigo-400">
+                                            <ListVideo size={48} />
+                                        </span>
+                                    )}
                                     <Chip
+                                        className="absolute left-3 top-3"
                                         color={
-                                            playlist.visibility === "public"
+                                            p.visibility === "public"
                                                 ? "success"
-                                                : "warning"
+                                                : p.visibility === "private"
+                                                  ? "danger"
+                                                  : "warning"
                                         }
                                         size="sm"
                                         variant="soft"
                                     >
-                                        {playlist.visibility === "public"
+                                        {p.visibility === "public"
                                             ? "عمومی"
-                                            : playlist.visibility === "unlisted"
+                                            : p.visibility === "unlisted"
                                               ? "با لینک"
                                               : "خصوصی"}
                                     </Chip>
                                 </div>
-                                <h2 className="mt-4 font-black text-white">
-                                    {playlist.title}
-                                </h2>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    کانال {playlist.game}
-                                </p>
-                                <p className="mt-4 text-xs text-slate-400">
-                                    {playlist.videos_count.toLocaleString(
-                                        "fa-IR",
-                                    )}{" "}
-                                    ویدیو
-                                </p>
+                                <div className="p-5">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar size="sm">
+                                            {p.channel_image_url && (
+                                                <Avatar.Image
+                                                    src={p.channel_image_url}
+                                                />
+                                            )}
+                                            <Avatar.Fallback>
+                                                <Gamepad2 size={16} />
+                                            </Avatar.Fallback>
+                                        </Avatar>
+                                        <div className="min-w-0">
+                                            <h2 className="truncate font-black text-white">
+                                                {p.title}
+                                            </h2>
+                                            <p className="truncate text-xs text-slate-500">
+                                                کانال {p.game ?? "نامشخص"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-5 flex justify-between text-xs text-slate-400">
+                                        <span>
+                                            {fa.format(p.videos_count)} ویدیو
+                                        </span>
+                                        <span>
+                                            ترتیب {fa.format(p.sort_order)}
+                                        </span>
+                                    </div>
+                                </div>
                             </Card.Content>
                             <Card.Footer className="flex justify-end gap-2 border-t border-slate-800 px-4 py-3">
-                                <Button
-                                    onPress={() => startEdit(playlist)}
-                                    size="sm"
-                                    variant="ghost"
+                                <Link
+                                    className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-bold text-slate-300 transition hover:bg-white/5 hover:text-white"
+                                    href={`/admin/video-playlists/${p.id}/edit`}
                                 >
                                     <Edit3 size={15} />
                                     ویرایش
-                                </Button>
+                                </Link>
                                 <Button
                                     onPress={() =>
-                                        window.confirm("این کالکشن حذف شود؟") &&
+                                        window.confirm(
+                                            "این کالکشن و لوگوی آن حذف شود؟",
+                                        ) &&
                                         router.delete(
-                                            `/admin/video-playlists/${playlist.id}`,
+                                            `/admin/video-playlists/${p.id}`,
                                             { preserveScroll: true },
                                         )
                                     }
@@ -265,13 +154,59 @@ export default function PlaylistIndex({
                             </Card.Footer>
                         </Card>
                     ))}
-                    {!playlists.length && (
-                        <div className="col-span-full rounded-2xl border border-dashed border-slate-700 p-12 text-center text-sm text-slate-500">
-                            هنوز کالکشنی ساخته نشده است.
-                        </div>
-                    )}
                 </div>
-            </div>
+            ) : (
+                <div className="rounded-3xl border border-dashed border-slate-700 p-14 text-center">
+                    <ListVideo className="mx-auto text-slate-600" size={48} />
+                    <h2 className="mt-4 font-black text-white">
+                        هنوز کالکشنی ساخته نشده است
+                    </h2>
+                    <Link
+                        className="mt-5 inline-flex h-10 items-center justify-center rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white"
+                        href="/admin/video-playlists/create"
+                    >
+                        ساخت اولین کالکشن
+                    </Link>
+                </div>
+            )}
+            {playlists.last_page > 1 && (
+                <nav
+                    aria-label="صفحه‌بندی کالکشن‌ها"
+                    className="mt-6 flex flex-col items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:flex-row"
+                >
+                    <p className="text-xs text-slate-500">
+                        نمایش {fa.format(playlists.from ?? 0)} تا{" "}
+                        {fa.format(playlists.to ?? 0)} از{" "}
+                        {fa.format(playlists.total)}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            isDisabled={playlists.current_page === 1}
+                            isIconOnly
+                            onPress={() => go(playlists.current_page - 1)}
+                            size="sm"
+                            variant="ghost"
+                        >
+                            <ChevronRight size={18} />
+                        </Button>
+                        <span className="px-2 text-xs">
+                            صفحه {fa.format(playlists.current_page)} از{" "}
+                            {fa.format(playlists.last_page)}
+                        </span>
+                        <Button
+                            isDisabled={
+                                playlists.current_page === playlists.last_page
+                            }
+                            isIconOnly
+                            onPress={() => go(playlists.current_page + 1)}
+                            size="sm"
+                            variant="ghost"
+                        >
+                            <ChevronLeft size={18} />
+                        </Button>
+                    </div>
+                </nav>
+            )}
         </AdminLayout>
     );
 }

@@ -5,7 +5,6 @@ import {
     Compass,
     FolderTree,
     Home,
-    LifeBuoy,
     Search,
     ShoppingBag,
 } from "lucide-react";
@@ -41,19 +40,9 @@ export default function MobileNavigation({
         `relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-bold transition ${active ? "text-indigo-500" : "text-[var(--store-muted)]"}`;
     return (
         <>
-            <header className="sticky top-0 z-40 flex h-16 items-center border-b border-[var(--store-border)] bg-[var(--store-header)] px-4 backdrop-blur-2xl lg:hidden">
+            <header className="sticky top-0 z-40 flex h-16 min-w-0 items-center gap-1 border-b border-[var(--store-border)] bg-[var(--store-header)] px-3 backdrop-blur-2xl sm:px-4 lg:hidden">
                 <StorefrontBrand compact />
-                <div className="mr-auto flex items-center gap-1">
-                    {auth.user && (
-                        <Link
-                            aria-label="درخواست پشتیبانی"
-                            className="flex h-9 items-center gap-1.5 rounded-xl bg-emerald-500/10 px-2.5 text-[11px] font-black text-emerald-600"
-                            href="/account/tickets/create"
-                        >
-                            <LifeBuoy size={17} />
-                            <span>پشتیبانی</span>
-                        </Link>
-                    )}
+                <div className="mr-auto flex min-w-0 shrink-0 items-center gap-0.5 sm:gap-1">
                     {auth.user && <NotificationPopover />}
                     <ThemeToggle onToggle={onToggleTheme} theme={theme} />
                     <Button
@@ -119,7 +108,25 @@ export default function MobileNavigation({
                         onClick={() => onOpenPanel("account")}
                         type="button"
                     >
-                        <CircleUserRound size={20} />
+                        {auth.user ? (
+                            <span
+                                className={`grid size-7 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-cyan-400 p-[2px] ${activePanel === "account" ? "ring-2 ring-indigo-500/25" : ""}`}
+                            >
+                                <span className="grid size-full place-items-center overflow-hidden rounded-full bg-[var(--store-bottom-nav)] text-[10px] font-black text-indigo-500">
+                                    {auth.user.avatar_url ? (
+                                        <img
+                                            alt={auth.user.name}
+                                            className="size-full object-cover"
+                                            src={auth.user.avatar_url}
+                                        />
+                                    ) : (
+                                        auth.user.name.trim().slice(0, 1)
+                                    )}
+                                </span>
+                            </span>
+                        ) : (
+                            <CircleUserRound size={20} />
+                        )}
                         <span>حساب</span>
                     </button>
                 </div>

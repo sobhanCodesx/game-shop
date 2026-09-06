@@ -15,7 +15,7 @@ export default function StorefrontBrand({
                 className="size-11 shrink-0 rounded-2xl object-cover shadow-lg shadow-cyan-500/20 transition group-hover:-translate-y-0.5"
                 src="/logo.png"
             />
-            <span className={compact ? "hidden min-[360px]:block" : "block"}>
+            <span className={compact ? "hidden sm:block" : "block"}>
                 <strong className="block text-[15px] font-black tracking-tight text-[var(--store-text)]">
                     PLAY NEXUS
                 </strong>

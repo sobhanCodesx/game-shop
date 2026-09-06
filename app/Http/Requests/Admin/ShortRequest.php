@@ -22,6 +22,8 @@ class ShortRequest extends FormRequest
                     $fail('لینک شورت باید با / شروع شود یا یک آدرس کامل معتبر باشد.');
                 }
             }],
+            'link_label' => ['nullable', 'string', 'max:60'],
+            'thumbnail' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
             'media' => [
                 Rule::requiredIf(! $this->route('short')?->video_path && ! $this->filled('upload_token')),
                 'nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime', 'max:2097152',

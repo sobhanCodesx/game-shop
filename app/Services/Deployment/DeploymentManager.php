@@ -109,7 +109,7 @@ final class DeploymentManager
         if (in_array(false, $checks, true)) throw new RuntimeException('Health check پس از نصب ناموفق بود.');
         return $this->states->update($state['id'], ['stage' => 'health_checked', 'progress' => 95]);
     }
-    private function completeDeployment(array $state): array { Artisan::call('up'); return $this->states->update($state['id'], ['status' => 'completed', 'stage' => 'completed', 'progress' => 100]); }
+    private function completeDeployment(array $state): array { Artisan::call('up'); $state = $this->states->update($state['id'], ['status' => 'completed', 'stage' => 'completed', 'progress' => 100]); $this->states->pruneSuccessful(); return $state; }
     private function artisan(string $command, array $arguments, array $state): void { $start = microtime(true); $code = Artisan::call($command, $arguments); $log = ['command' => $command, 'exit_code' => $code, 'duration_ms' => (int) ((microtime(true)-$start)*1000), 'output' => mb_substr(Artisan::output(), 0, 4000)]; $fresh = $this->states->get($state['id']); $fresh['logs'][] = $log; $this->states->save($fresh); if ($code !== 0) throw new RuntimeException("فرمان {$command} ناموفق بود."); }
     private function preflight(array $manifest, array $dangerous, string $stage): array
     {

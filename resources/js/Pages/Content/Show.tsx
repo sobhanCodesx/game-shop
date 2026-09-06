@@ -1,6 +1,11 @@
 import { Avatar, Button } from "@heroui/react";
 import { Link, router, useForm, usePage } from "@inertiajs/react";
-import { MediaPlayer, MediaProvider } from "@vidstack/react";
+import {
+    MediaPlayer,
+    type MediaPlayerInstance,
+    MediaProvider,
+    Poster,
+} from "@vidstack/react";
 import {
     defaultLayoutIcons,
     DefaultVideoLayout,
@@ -11,6 +16,7 @@ import {
     ChevronDown,
     Eye,
     Gamepad2,
+    GripHorizontal,
     ListFilter,
     ListVideo,
     MessageCircle,
@@ -20,8 +26,15 @@ import {
     ThumbsDown,
     ThumbsUp,
     Trash2,
+    X,
 } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import {
+    type FormEvent,
+    type PointerEvent as ReactPointerEvent,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
 
 import Pagination from "../../Components/Storefront/Shared/Pagination";
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
@@ -86,6 +99,134 @@ function timeAgo(value: string) {
     return relative.format(Math.round(days / 30), "month");
 }
 
+function FloatingVideoPlayer({ content }: { content: WatchContent }) {
+    const anchorRef = useRef<HTMLDivElement>(null);
+    const playerRef = useRef<MediaPlayerInstance>(null);
+    const dragRef = useRef({ pointerX: 0, pointerY: 0, x: 0, y: 0 });
+    const [hasStarted, setHasStarted] = useState(false);
+    const [isFloating, setIsFloating] = useState(false);
+    const [isClosed, setIsClosed] = useState(false);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+    useEffect(() => {
+        const anchor = anchorRef.current;
+        if (!anchor || !hasStarted) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                const leftAboveViewport = entry.boundingClientRect.top < 0;
+                setIsFloating(
+                    !entry.isIntersecting && leftAboveViewport && !isClosed,
+                );
+                if (entry.isIntersecting) setOffset({ x: 0, y: 0 });
+            },
+            { threshold: 0.35 },
+        );
+        observer.observe(anchor);
+        return () => observer.disconnect();
+    }, [hasStarted, isClosed]);
+
+    const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        dragRef.current = {
+            pointerX: event.clientX,
+            pointerY: event.clientY,
+            ...offset,
+        };
+    };
+
+    const drag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+        const container = event.currentTarget.parentElement;
+        if (!container) return;
+
+        const start = dragRef.current;
+        const rect = container.getBoundingClientRect();
+        const nextX = start.x + event.clientX - start.pointerX;
+        const nextY = start.y + event.clientY - start.pointerY;
+        const deltaX = nextX - offset.x;
+        const deltaY = nextY - offset.y;
+        setOffset({
+            x:
+                nextX -
+                Math.max(0, rect.right + deltaX - window.innerWidth) +
+                Math.max(0, -(rect.left + deltaX)),
+            y:
+                nextY -
+                Math.max(0, rect.bottom + deltaY - window.innerHeight) +
+                Math.max(0, -(rect.top + deltaY)),
+        });
+    };
+
+    return (
+        <div className="size-full" ref={anchorRef}>
+            <div
+                className={
+                    isFloating
+                        ? "fixed bottom-20 right-3 z-[60] aspect-video w-[min(88vw,390px)] overflow-hidden rounded-2xl bg-black shadow-2xl shadow-black/50 ring-1 ring-white/20 sm:bottom-5 sm:right-5"
+                        : "absolute inset-0"
+                }
+                style={
+                    isFloating
+                        ? {
+                              transform: `translate(${offset.x}px, ${offset.y}px)`,
+                          }
+                        : undefined
+                }
+            >
+                <MediaPlayer
+                    className="size-full"
+                    onPlay={() => {
+                        setHasStarted(true);
+                        setIsClosed(false);
+                    }}
+                    playsInline
+                    poster={content.thumbnail_url ?? undefined}
+                    ref={playerRef}
+                    src={content.video_url ?? undefined}
+                    title={content.title}
+                >
+                    <MediaProvider>
+                        {content.thumbnail_url && (
+                            <Poster
+                                alt={`تصویر بندانگشتی ${content.title}`}
+                                className="absolute inset-0 size-full object-cover opacity-0 transition-opacity data-[visible]:opacity-100"
+                                src={content.thumbnail_url}
+                            />
+                        )}
+                    </MediaProvider>
+                    <DefaultVideoLayout icons={defaultLayoutIcons} />
+                </MediaPlayer>
+                {isFloating && (
+                    <>
+                        <button
+                            aria-label="جابه‌جایی پخش‌کننده کوچک"
+                            className="absolute left-2 top-2 z-50 grid size-9 touch-none cursor-grab place-items-center rounded-full bg-black/75 text-white shadow-lg backdrop-blur active:cursor-grabbing"
+                            onPointerDown={startDrag}
+                            onPointerMove={drag}
+                            type="button"
+                        >
+                            <GripHorizontal size={19} />
+                        </button>
+                        <button
+                            aria-label="بستن پخش‌کننده کوچک"
+                            className="absolute right-2 top-2 z-50 grid size-9 place-items-center rounded-full bg-black/75 text-white shadow-lg backdrop-blur transition hover:bg-rose-600"
+                            onClick={() => {
+                                playerRef.current?.pause();
+                                setIsClosed(true);
+                                setIsFloating(false);
+                            }}
+                            type="button"
+                        >
+                            <X size={19} />
+                        </button>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function CommentItem({
     comment,
     contentSlug,
@@ -100,6 +241,7 @@ function CommentItem({
     isReply?: boolean;
 }) {
     const [replying, setReplying] = useState(false);
+    const [repliesOpen, setRepliesOpen] = useState(false);
     const [liked, setLiked] = useState(comment.is_liked);
     const [likes, setLikes] = useState(comment.likes_count);
     const reply = useForm({ body: "", parent_id: comment.id });
@@ -134,7 +276,7 @@ function CommentItem({
         });
     };
     return (
-        <article className={`flex gap-3 ${isReply ? "mt-5" : "py-5"}`}>
+        <article className={`flex gap-3 ${isReply ? "mt-4" : "py-5"}`}>
             <Avatar className={isReply ? "size-8" : "size-10"}>
                 {comment.user.avatar_url && (
                     <Avatar.Image
@@ -147,8 +289,10 @@ function CommentItem({
                 </Avatar.Fallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                    <strong className="text-xs">{comment.user.name}</strong>
+                <div className="flex flex-wrap items-center gap-2">
+                    <strong className="rounded-full bg-[var(--store-surface)] px-2 py-1 text-xs">
+                        {comment.user.name}
+                    </strong>
                     <span className="text-[11px] text-[var(--store-muted)]">
                         {timeAgo(comment.created_at)}
                     </span>
@@ -237,79 +381,122 @@ function CommentItem({
                         </Button>
                     </form>
                 )}
-                {comment.replies?.map((item) => (
-                    <CommentItem
-                        comment={item}
-                        contentSlug={contentSlug}
-                        isReply
-                        key={item.id}
-                        signedIn={signedIn}
-                    />
-                ))}
+                {!isReply && Boolean(comment.replies?.length) && (
+                    <button
+                        className="mt-2 flex items-center gap-2 rounded-full px-3 py-2 text-xs font-black text-indigo-500 transition hover:bg-indigo-500/10"
+                        onClick={() => setRepliesOpen((value) => !value)}
+                        type="button"
+                    >
+                        <ChevronDown
+                            className={`transition ${repliesOpen ? "rotate-180" : ""}`}
+                            size={17}
+                        />
+                        {fullNumber.format(comment.replies?.length ?? 0)} پاسخ
+                    </button>
+                )}
+                {repliesOpen && (
+                    <div className="border-r-2 border-indigo-500/20 pr-3 sm:pr-5">
+                        {comment.replies?.map((item) => (
+                            <CommentItem
+                                comment={item}
+                                contentSlug={contentSlug}
+                                isReply
+                                key={item.id}
+                                signedIn={signedIn}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
         </article>
     );
 }
 
 function PlaylistPanel({ playlist }: { playlist: PlaylistContext }) {
+    const [open, setOpen] = useState(false);
+    const currentIndex = playlist.items.findIndex(
+        (item) => item.id === playlist.current_id,
+    );
+    const current = playlist.items[currentIndex];
+
     return (
-        <section className="mb-5 overflow-hidden rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)]">
-            <header className="flex items-center gap-3 border-b border-[var(--store-border)] p-4">
-                <ListVideo size={19} />
-                <div>
-                    <Link
-                        className="font-black hover:text-indigo-500"
-                        href={playlist.url}
-                    >
+        <section className="mb-5 overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-lg shadow-black/5">
+            <button
+                aria-expanded={open}
+                className="flex w-full items-center gap-3 p-3 text-right transition hover:bg-[var(--store-accent-soft)]"
+                onClick={() => setOpen((value) => !value)}
+                type="button"
+            >
+                <span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-black text-white">
+                    {current?.thumbnail_url ? (
+                        <img
+                            alt=""
+                            className="size-full object-cover opacity-70"
+                            src={current.thumbnail_url}
+                        />
+                    ) : (
+                        <ListVideo size={26} />
+                    )}
+                    <span className="absolute inset-0 grid place-items-center bg-black/20">
+                        <ListVideo size={24} />
+                    </span>
+                </span>
+                <div className="min-w-0 flex-1">
+                    <span className="block text-[10px] font-black text-indigo-500">
+                        در حال پخش از کالکشن
+                    </span>
+                    <span className="mt-1 block truncate text-sm font-black">
                         {playlist.title}
-                    </Link>
-                    <p className="text-[11px] text-[var(--store-muted)]">
+                    </span>
+                    <p className="mt-1 truncate text-[11px] text-[var(--store-muted)]">
                         {playlist.channel_name}
+                        <span className="mx-1">•</span>
+                        {fullNumber.format(currentIndex + 1)} /{" "}
+                        {fullNumber.format(playlist.items.length)}
                     </p>
                 </div>
-                <span className="mr-auto text-xs text-[var(--store-muted)]">
-                    {fullNumber.format(
-                        playlist.items.findIndex(
-                            (item) => item.id === playlist.current_id,
-                        ) + 1,
-                    )}{" "}
-                    / {fullNumber.format(playlist.items.length)}
-                </span>
-            </header>
-            <div className="max-h-96 overflow-y-auto py-2">
-                {playlist.items.map((item, index) => (
-                    <Link
-                        className={`flex gap-3 px-3 py-2 hover:bg-[var(--store-accent-soft)] ${item.id === playlist.current_id ? "bg-indigo-500/10" : ""}`}
-                        href={`${item.url}?list=${playlist.slug}`}
-                        key={item.id}
-                    >
-                        <span className="grid w-5 shrink-0 place-items-center text-xs text-[var(--store-muted)]">
-                            {item.id === playlist.current_id ? (
-                                <Play fill="currentColor" size={12} />
-                            ) : (
-                                fullNumber.format(index + 1)
-                            )}
-                        </span>
-                        <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-lg bg-black">
-                            {item.thumbnail_url && (
-                                <img
-                                    alt=""
-                                    className="size-full object-cover"
-                                    src={item.thumbnail_url}
-                                />
-                            )}
-                        </div>
-                        <div className="min-w-0">
-                            <h3 className="line-clamp-2 text-xs font-bold leading-5">
-                                {item.title}
-                            </h3>
-                            <span className="mt-1 block text-[10px] text-[var(--store-muted)]">
-                                {item.channel?.name}
+                <ChevronDown
+                    className={`shrink-0 transition duration-200 ${open ? "rotate-180" : ""}`}
+                    size={20}
+                />
+            </button>
+            {open && (
+                <div className="max-h-[420px] overflow-y-auto border-t border-[var(--store-border)] py-2">
+                    {playlist.items.map((item, index) => (
+                        <Link
+                            className={`flex gap-3 border-r-2 px-3 py-2 transition hover:bg-[var(--store-accent-soft)] ${item.id === playlist.current_id ? "border-indigo-500 bg-indigo-500/10" : "border-transparent"}`}
+                            href={`${item.url}?list=${playlist.slug}`}
+                            key={item.id}
+                            preserveScroll
+                        >
+                            <span className="grid w-5 shrink-0 place-items-center text-xs text-[var(--store-muted)]">
+                                {item.id === playlist.current_id ? (
+                                    <Play fill="currentColor" size={12} />
+                                ) : (
+                                    fullNumber.format(index + 1)
+                                )}
                             </span>
-                        </div>
-                    </Link>
-                ))}
-            </div>
+                            <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-lg bg-black">
+                                {item.thumbnail_url && (
+                                    <img
+                                        alt=""
+                                        className="size-full object-cover"
+                                        src={item.thumbnail_url}
+                                    />
+                                )}
+                            </div>
+                            <div className="min-w-0">
+                                <h3 className="line-clamp-2 text-xs font-bold leading-5">
+                                    {item.title}
+                                </h3>
+                                <span className="mt-1 block text-[10px] text-[var(--store-muted)]">
+                                    {item.channel?.name}
+                                </span>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            )}
         </section>
     );
 }
@@ -449,18 +636,7 @@ export default function Show({
                             className={`relative overflow-hidden bg-black ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-xl" : "aspect-video w-full rounded-xl"}`}
                         >
                             {content.video_url ? (
-                                <MediaPlayer
-                                    className="size-full"
-                                    playsInline
-                                    poster={content.thumbnail_url ?? undefined}
-                                    src={content.video_url}
-                                    title={content.title}
-                                >
-                                    <MediaProvider />
-                                    <DefaultVideoLayout
-                                        icons={defaultLayoutIcons}
-                                    />
-                                </MediaPlayer>
+                                <FloatingVideoPlayer content={content} />
                             ) : content.thumbnail_url ? (
                                 <img
                                     alt={content.title}
@@ -621,8 +797,9 @@ export default function Show({
 
                         {content.type === "video" && (
                             <section className="mt-8" id="comments">
-                                <div className="flex items-center gap-4">
-                                    <h2 className="font-black">
+                                <div className="flex items-center gap-4 border-b border-[var(--store-border)] pb-4">
+                                    <h2 className="flex items-center gap-2 font-black">
+                                        <MessageCircle size={20} />
                                         {fullNumber.format(
                                             content.comments_count,
                                         )}{" "}
@@ -630,7 +807,7 @@ export default function Show({
                                     </h2>
                                     {content.allow_comments && (
                                         <button
-                                            className="flex items-center gap-2 text-xs font-bold"
+                                            className="flex items-center gap-2 rounded-full bg-[var(--store-surface)] px-3 py-2 text-xs font-bold transition hover:bg-[var(--store-accent-soft)]"
                                             onClick={() =>
                                                 router.get(
                                                     window.location.pathname,
@@ -663,7 +840,7 @@ export default function Show({
                                     <>
                                         {auth.user ? (
                                             <form
-                                                className="mt-6 flex items-start gap-3"
+                                                className="mt-6 flex items-start gap-3 rounded-2xl bg-[var(--store-surface)] p-4"
                                                 onSubmit={submitComment}
                                             >
                                                 <Avatar size="sm">
@@ -684,7 +861,7 @@ export default function Show({
                                                 </Avatar>
                                                 <div className="flex-1">
                                                     <textarea
-                                                        className="min-h-10 w-full resize-none border-b border-[var(--store-border)] bg-transparent p-2 text-sm outline-none transition focus:border-indigo-500"
+                                                        className="min-h-12 w-full resize-none border-b border-[var(--store-border)] bg-transparent p-2 text-sm outline-none transition focus:border-indigo-500"
                                                         maxLength={2000}
                                                         onChange={(event) =>
                                                             commentForm.setData(
@@ -749,7 +926,7 @@ export default function Show({
                                                 </strong>
                                             </Link>
                                         )}
-                                        <div className="mt-4 divide-y divide-[var(--store-border)]">
+                                        <div className="mt-4">
                                             {comments?.data.map((comment) => (
                                                 <CommentItem
                                                     comment={comment}
@@ -760,6 +937,22 @@ export default function Show({
                                                     )}
                                                 />
                                             ))}
+                                            {!comments?.data.length && (
+                                                <div className="py-12 text-center text-[var(--store-muted)]">
+                                                    <MessageCircle
+                                                        className="mx-auto mb-3 opacity-50"
+                                                        size={36}
+                                                    />
+                                                    <p className="text-sm font-bold">
+                                                        هنوز نظری ثبت نشده است.
+                                                    </p>
+                                                    <p className="mt-1 text-xs">
+                                                        اولین نفری باشید که
+                                                        درباره این ویدیو نظر
+                                                        می‌دهد.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                         {comments && (
                                             <Pagination

@@ -8,7 +8,7 @@ import {
     TextArea,
 } from "@heroui/react";
 import { Head, Link, useForm } from "@inertiajs/react";
-import { ArrowRight, Film, Save, UploadCloud } from "lucide-react";
+import { ArrowRight, Film, ImagePlus, Save, UploadCloud } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 
 import FormField from "../../../Components/Admin/Form/FormField";
@@ -31,6 +31,7 @@ interface VideoData {
     featured: boolean;
     duration: number | null;
     video_url: string | null;
+    thumbnail_url: string | null;
     game_id: number | null;
     playlist_ids: number[];
     allow_comments: boolean;
@@ -55,6 +56,7 @@ interface FormData {
     _method?: "put";
     upload_token?: string;
     thumbnail?: File;
+    custom_thumbnail: boolean;
     client_duration?: number;
 }
 
@@ -122,6 +124,10 @@ function browserVideoMetadata(
 export default function VideoForm({ video, games, playlists }: Props) {
     const editing = Boolean(video);
     const [preview, setPreview] = useState<string | null>(null);
+    const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(
+        video?.thumbnail_url ?? null,
+    );
+    const [customThumbnail, setCustomThumbnail] = useState(false);
     const { data, setData, post, processing, errors, transform } =
         useForm<FormData>({
             title: video?.title ?? "",
@@ -134,6 +140,7 @@ export default function VideoForm({ video, games, playlists }: Props) {
             game_id: video?.game_id ? String(video.game_id) : "",
             playlist_ids: video?.playlist_ids ?? [],
             allow_comments: video?.allow_comments ?? true,
+            custom_thumbnail: false,
             ...(editing ? { _method: "put" as const } : {}),
         });
     const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
@@ -157,6 +164,12 @@ export default function VideoForm({ video, games, playlists }: Props) {
         setPreview(url);
         return () => URL.revokeObjectURL(url);
     }, [data.video]);
+    useEffect(() => {
+        if (!data.thumbnail) return;
+        const url = URL.createObjectURL(data.thumbnail);
+        setThumbnailPreview(url);
+        return () => URL.revokeObjectURL(url);
+    }, [data.thumbnail]);
     const submit = async (event: FormEvent) => {
         event.preventDefault();
         setUploadError("");
@@ -200,7 +213,10 @@ export default function VideoForm({ video, games, playlists }: Props) {
     };
     const selectVideo = async (file?: File) => {
         setData("video", file);
-        setData("thumbnail", undefined);
+        if (!customThumbnail) {
+            setData("thumbnail", undefined);
+            setData("custom_thumbnail", false);
+        }
         setData("client_duration", undefined);
         setCompletedUpload(null);
         if (!file) return;
@@ -208,7 +224,10 @@ export default function VideoForm({ video, games, playlists }: Props) {
         setPreparingThumbnail(true);
         try {
             const metadata = await browserVideoMetadata(file);
-            setData("thumbnail", metadata.thumbnail);
+            if (!customThumbnail) {
+                setData("thumbnail", metadata.thumbnail);
+                setData("custom_thumbnail", false);
+            }
             setData("client_duration", metadata.duration);
         } catch {
             // FFmpeg on the application server remains the primary fallback.
@@ -492,6 +511,60 @@ export default function VideoForm({ video, games, playlists }: Props) {
                                 {data.video.name}
                             </p>
                         )}
+                        <div className="border-t border-slate-800 pt-4">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="text-sm font-black text-white">
+                                        تصویر بندانگشتی
+                                    </h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        اختیاری؛ در صورت انتخاب نکردن، خودکار
+                                        ساخته می‌شود.
+                                    </p>
+                                </div>
+                                {customThumbnail && (
+                                    <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-400">
+                                        تصویر انتخابی شما
+                                    </span>
+                                )}
+                            </div>
+                            <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+                                {thumbnailPreview ? (
+                                    <img
+                                        alt="پیش‌نمایش تصویر بندانگشتی"
+                                        className="aspect-video w-full object-cover"
+                                        src={thumbnailPreview}
+                                    />
+                                ) : (
+                                    <div className="grid aspect-video place-items-center text-slate-600">
+                                        <ImagePlus size={38} />
+                                    </div>
+                                )}
+                            </div>
+                            <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-xs font-bold text-slate-200 transition hover:border-indigo-500 hover:text-white">
+                                <ImagePlus size={17} />
+                                {thumbnailPreview
+                                    ? "تغییر تصویر بندانگشتی"
+                                    : "انتخاب تصویر بندانگشتی"}
+                                <input
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={(event) => {
+                                        const file = event.target.files?.[0];
+                                        if (!file) return;
+                                        setCustomThumbnail(true);
+                                        setData("custom_thumbnail", true);
+                                        setData("thumbnail", file);
+                                    }}
+                                    type="file"
+                                />
+                            </label>
+                            {errors.thumbnail && (
+                                <small className="mt-2 block text-rose-400">
+                                    {errors.thumbnail}
+                                </small>
+                            )}
+                        </div>
                         {preparingThumbnail && (
                             <p className="text-xs text-indigo-300">
                                 در حال ساخت تصویر بندانگشتی…

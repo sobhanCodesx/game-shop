@@ -10,17 +10,16 @@ use App\Models\CategoryAttribute;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\Product;
+use App\Services\MediaStorage;
 use App\Services\ProductMediaService;
 use App\Services\ProductTypeRegistry;
+use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use App\Support\RichText;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use App\Services\MediaStorage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -145,7 +144,24 @@ class CatalogController extends Controller
     public function destroy(string $catalog, int $id): RedirectResponse
     {
         $definition = $this->definition($catalog);
-        $this->find($catalog, $id)->delete();
+        $model = $this->find($catalog, $id);
+        $mediaPaths = match (true) {
+            $model instanceof Product => $model->media()->pluck('path')->all(),
+            $model instanceof Category => [$model->image],
+            $model instanceof Brand => [$model->logo],
+            $model instanceof Game => [$model->cover, $model->background],
+            $model instanceof Platform => [$model->icon],
+            default => [],
+        };
+
+        DB::transaction(function () use ($model): void {
+            if ($model instanceof Product) {
+                $model->media()->delete();
+            }
+            $model->delete();
+        });
+
+        MediaStorage::disk()->delete(array_values(array_unique(array_filter($mediaPaths))));
 
         return back()->with('success', "{$definition['singular']} حذف شد.");
     }

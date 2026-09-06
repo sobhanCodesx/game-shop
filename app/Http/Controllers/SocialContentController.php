@@ -33,7 +33,11 @@ class SocialContentController extends Controller
             }
         }
 
-        $content->load(['game:id,name,slug,cover,background,developer,publisher', 'user:id,name,avatar']);
+        $content->load([
+            'game:id,name,slug,cover,background,developer,publisher',
+            'game.playlists' => fn ($query) => $query->publiclyVisible()->whereNotNull('logo')->select(['id', 'game_id', 'logo', 'sort_order']),
+            'user:id,name,avatar',
+        ]);
         $reactionCounts = $content->reactions()->selectRaw('type, COUNT(*) as aggregate')->groupBy('type')->pluck('aggregate', 'type');
         $userReaction = $request->user()
             ? $content->reactions()->where('user_id', $request->user()->id)->value('type')
@@ -80,7 +84,7 @@ class SocialContentController extends Controller
                 'name' => $content->game->name,
                 'slug' => $content->game->slug,
                 'url' => route('channels.show', $content->game->slug, false),
-                'avatar_url' => MediaStorage::url($content->game->cover),
+                'avatar_url' => MediaStorage::url($content->game->cover ?: $content->game->playlists->first()?->logo),
                 'subscribers_count' => $content->game->subscribers()->count(),
                 'is_subscribed' => $request->user()
                     ? $content->game->subscribers()->whereKey($request->user()->id)->exists()
@@ -236,13 +240,15 @@ class SocialContentController extends Controller
     private function playlistContext(Request $request, SocialContent $content, StorefrontDataService $data): ?array
     {
         $slug = $request->string('list')->toString();
-        if ($content->type !== 'video' || $slug === '') {
+        if ($content->type !== 'video') {
             return null;
         }
 
-        $playlist = VideoPlaylist::query()->whereIn('visibility', ['public', 'unlisted'])->where('slug', $slug)
+        $playlist = VideoPlaylist::query()->whereIn('visibility', ['public', 'unlisted'])
+            ->when($slug !== '', fn ($query) => $query->where('slug', $slug))
             ->whereHas('videos', fn ($query) => $query->whereKey($content->id))
             ->with(['game:id,name,slug', 'videos' => fn ($query) => $query->published()->where('type', 'video')->with('game:id,name,slug,cover')])
+            ->orderBy('sort_order')
             ->first();
         if (! $playlist) {
             return null;

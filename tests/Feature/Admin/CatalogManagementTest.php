@@ -316,6 +316,27 @@ class CatalogManagementTest extends TestCase
         $this->assertDatabaseHas('products', ['id' => $product->id, 'status' => 'archived']);
     }
 
+    public function test_deleting_product_removes_its_files_from_media_disk(): void
+    {
+        $product = Product::factory()->create();
+        Storage::disk('public')->put('products/delete-cover.jpg', 'cover');
+        Storage::disk('public')->put('products/delete-video.mp4', 'video');
+        $product->media()->createMany([
+            ['type' => 'image', 'path' => 'products/delete-cover.jpg', 'sort_order' => 0, 'is_primary' => true],
+            ['type' => 'video', 'path' => 'products/delete-video.mp4', 'sort_order' => 1, 'is_primary' => false],
+        ]);
+
+        $this->actingAs($this->admin)
+            ->delete("/admin/products/{$product->id}")
+            ->assertRedirect();
+
+        Storage::disk('public')->assertMissing([
+            'products/delete-cover.jpg',
+            'products/delete-video.mp4',
+        ]);
+        $this->assertDatabaseMissing('product_media', ['product_id' => $product->id]);
+    }
+
     public function test_non_admin_cannot_manage_catalog(): void
     {
         $user = User::factory()->create(['is_admin' => false]);
