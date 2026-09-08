@@ -77,6 +77,28 @@ class VideoCommunityTest extends TestCase
         $this->assertSoftDeleted($comment);
     }
 
+    public function test_social_activity_reuses_database_notifications_with_real_content_urls(): void
+    {
+        [, $video] = $this->channelWithVideo();
+        $owner = User::factory()->create();
+        $commenter = User::factory()->create();
+        $video->update(['user_id' => $owner->id]);
+
+        $response = $this->actingAs($commenter)->postJson(route('videos.comments.store', $video->slug), [
+            'body' => 'نظر تازه',
+        ])->assertCreated();
+
+        $notification = $owner->notifications()->firstOrFail();
+        $this->assertSame('comment', $notification->data['activity']);
+        $this->assertSame('/videos/'.$video->slug.'#comments', $notification->data['url']);
+        $this->assertSame($response->json('comment_id'), $notification->data['comment_id']);
+
+        $this->actingAs($commenter)->postJson(route('videos.reaction', $video->slug), ['type' => 'like'])
+            ->assertOk();
+
+        $this->assertSame(2, $owner->notifications()->count());
+    }
+
     public function test_channel_and_playlist_expose_published_videos_and_watch_context(): void
     {
         [$game, $video] = $this->channelWithVideo();

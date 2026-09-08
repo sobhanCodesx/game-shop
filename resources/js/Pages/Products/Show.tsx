@@ -31,6 +31,7 @@ import Price from "../../Components/Storefront/Commerce/Price";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import RichText from "../../Components/Storefront/Shared/RichText";
 import type { SharedPageProps, StorefrontPricing } from "../../types";
+import { requestNativeShare } from "../../lib/nativeBridge";
 
 interface Media {
     id: number;
@@ -323,6 +324,7 @@ export default function ProductShow({ exchangeRequestId, product }: Props) {
     const share = async () => {
         setSharing(true);
         try {
+            if (requestNativeShare(product.title, window.location.href)) return;
             if (navigator.share)
                 await navigator.share({
                     title: product.title,

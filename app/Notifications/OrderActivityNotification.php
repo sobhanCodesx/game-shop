@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Order;
+use App\Notifications\Channels\ExpoPushChannel;
 use App\Notifications\Channels\SmsChannel;
 use App\Services\Sms\SmsPattern;
 use Illuminate\Bus\Queueable;
@@ -16,7 +17,7 @@ class OrderActivityNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database', SmsChannel::class];
+        return ['database', SmsChannel::class, ExpoPushChannel::class];
     }
 
     public function toArray(object $notifiable): array

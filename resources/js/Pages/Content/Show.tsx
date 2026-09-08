@@ -28,6 +28,7 @@ import {
     Trash2,
     X,
 } from "lucide-react";
+import { requestNativeShare } from "../../lib/nativeBridge";
 import {
     type FormEvent,
     type PointerEvent as ReactPointerEvent,
@@ -586,13 +587,15 @@ export default function Show({
             onSuccess: () => commentForm.reset("body"),
         });
     };
-    const share = () =>
+    const share = () => {
+        if (requestNativeShare(content.title, window.location.href)) return;
         navigator.share
             ? void navigator.share({
                   title: content.title,
                   url: window.location.href,
               })
             : void navigator.clipboard.writeText(window.location.href);
+    };
     const typeLabel =
         content.type === "video"
             ? "ویدیو"

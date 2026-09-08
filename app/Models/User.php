@@ -105,6 +105,11 @@ class User extends Authenticatable
         return $this->hasMany(SocialComment::class);
     }
 
+    public function mobileDevices(): HasMany
+    {
+        return $this->hasMany(MobileDevice::class);
+    }
+
     public function subscribedGames(): BelongsToMany
     {
         return $this->belongsToMany(Game::class, 'game_subscriptions')->withTimestamps();

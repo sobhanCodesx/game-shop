@@ -27,10 +27,11 @@ use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaStreamController;
+use App\Http\Controllers\MobileDeviceController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
-use App\Http\Controllers\SocialContentController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\SocialContentController;
 use App\Http\Controllers\StorefrontController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\VideoCommunityController;
@@ -78,6 +79,11 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::get('notifications/{notification}', [AccountController::class, 'readNotification'])->name('notifications.read');
     Route::patch('notifications/{notification}', [AccountController::class, 'readNotification'])->name('notifications.mark-read');
     Route::patch('notifications', [AccountController::class, 'readAllNotifications'])->name('notifications.read-all');
+});
+Route::middleware(['auth', 'throttle:60,1'])->prefix('mobile')->name('mobile.')->group(function () {
+    Route::get('session', [MobileDeviceController::class, 'status'])->name('session');
+    Route::put('devices', [MobileDeviceController::class, 'store'])->name('devices.store');
+    Route::delete('devices/{installationId}', [MobileDeviceController::class, 'destroy'])->whereUuid('installationId')->name('devices.destroy');
 });
 
 // Keep the public navigation useful until dedicated listing and information

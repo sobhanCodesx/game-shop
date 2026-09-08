@@ -1,11 +1,15 @@
 import "../css/app.css";
 import "@fontsource-variable/vazirmatn";
 
-import { createInertiaApp } from "@inertiajs/react";
+import { createInertiaApp, router } from "@inertiajs/react";
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
 import type { ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 import PageTransitionLoader from "./Components/PageTransitionLoader";
+import {
+    notifyNativeAuthState,
+    notifyNativeNavigation,
+} from "./lib/nativeBridge";
 
 if ("serviceWorker" in navigator) {
     if (import.meta.env.PROD) {
@@ -29,6 +33,13 @@ if ("serviceWorker" in navigator) {
 const appName = "پلی نکسوس";
 type PageModule = { default: ComponentType };
 type PageSeoProps = { seo?: { absoluteTitle?: boolean } };
+type NativePageProps = { auth?: { user?: { id: number } | null } };
+
+router.on("navigate", (event) => {
+    const pageProps = event.detail.page.props as NativePageProps;
+    notifyNativeAuthState(pageProps.auth?.user?.id ?? null);
+    notifyNativeNavigation(event.detail.page.url);
+});
 
 createInertiaApp({
     title: (title, page) => {
@@ -48,6 +59,10 @@ createInertiaApp({
         return page.default;
     },
     setup({ el, App, props }) {
+        const pageProps = props.initialPage.props as NativePageProps;
+        notifyNativeAuthState(pageProps.auth?.user?.id ?? null);
+        notifyNativeNavigation(props.initialPage.url);
+
         createRoot(el).render(
             <>
                 <App {...props} />

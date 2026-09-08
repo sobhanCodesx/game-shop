@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MobileDevice;
 use App\Models\User;
 use App\Services\EmailCodeService;
 use App\Services\MobileCodeService;
@@ -228,6 +229,13 @@ class AuthController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
+        if ($installationId = $request->session()->get('mobile_installation_id')) {
+            MobileDevice::query()
+                ->whereBelongsTo($request->user())
+                ->where('installation_id', $installationId)
+                ->delete();
+        }
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

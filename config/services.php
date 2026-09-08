@@ -47,4 +47,12 @@ return [
         'timeout' => 5,
     ],
 
+    'expo_push' => [
+        'enabled' => env('EXPO_PUSH_ENABLED', false),
+        'url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
+        'access_token' => env('EXPO_ACCESS_TOKEN'),
+        'connect_timeout' => 3,
+        'timeout' => 10,
+    ],
+
 ];
