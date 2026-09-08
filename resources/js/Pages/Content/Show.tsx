@@ -17,7 +17,6 @@ import {
     Eye,
     Gamepad2,
     GripHorizontal,
-    ListFilter,
     ListVideo,
     MessageCircle,
     MoreHorizontal,
@@ -277,8 +276,8 @@ function CommentItem({
         });
     };
     return (
-        <article className={`flex gap-3 ${isReply ? "mt-4" : "py-5"}`}>
-            <Avatar className={isReply ? "size-8" : "size-10"}>
+        <article className={`flex gap-2.5 ${isReply ? "mt-3" : "py-3"}`}>
+            <Avatar className={isReply ? "size-7" : "size-9"}>
                 {comment.user.avatar_url && (
                     <Avatar.Image
                         alt={comment.user.name}
@@ -290,18 +289,18 @@ function CommentItem({
                 </Avatar.Fallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                    <strong className="rounded-full bg-[var(--store-surface)] px-2 py-1 text-xs">
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <strong className="text-xs font-black">
                         {comment.user.name}
                     </strong>
                     <span className="text-[11px] text-[var(--store-muted)]">
                         {timeAgo(comment.created_at)}
                     </span>
                 </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-[var(--store-text)]">
+                <p className="mt-1 whitespace-pre-wrap text-[13px] leading-6 text-[var(--store-text)] sm:text-sm">
                     {comment.body}
                 </p>
-                <div className="mt-2 flex items-center gap-1 text-[var(--store-muted)]">
+                <div className="mt-1 flex min-h-8 items-center gap-0.5 text-[var(--store-muted)]">
                     <button
                         aria-label="پسندیدن نظر"
                         className={`video-icon-button ${liked ? "text-indigo-500" : ""}`}
@@ -320,7 +319,7 @@ function CommentItem({
                     )}
                     {!isReply && (
                         <button
-                            className="rounded-full px-3 py-2 text-xs font-bold hover:bg-[var(--store-surface)]"
+                            className="rounded-full px-3 py-1.5 text-[11px] font-black hover:bg-[var(--store-surface)]"
                             onClick={() =>
                                 signedIn
                                     ? setReplying((value) => !value)
@@ -384,7 +383,7 @@ function CommentItem({
                 )}
                 {!isReply && Boolean(comment.replies?.length) && (
                     <button
-                        className="mt-2 flex items-center gap-2 rounded-full px-3 py-2 text-xs font-black text-indigo-500 transition hover:bg-indigo-500/10"
+                        className="mt-1 flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black text-indigo-500 transition hover:bg-indigo-500/10"
                         onClick={() => setRepliesOpen((value) => !value)}
                         type="button"
                     >
@@ -396,7 +395,7 @@ function CommentItem({
                     </button>
                 )}
                 {repliesOpen && (
-                    <div className="border-r-2 border-indigo-500/20 pr-3 sm:pr-5">
+                    <div className="pr-8 sm:pr-10">
                         {comment.replies?.map((item) => (
                             <CommentItem
                                 comment={item}
@@ -421,14 +420,14 @@ function PlaylistPanel({ playlist }: { playlist: PlaylistContext }) {
     const current = playlist.items[currentIndex];
 
     return (
-        <section className="mb-5 overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-lg shadow-black/5">
+        <section className="overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm">
             <button
                 aria-expanded={open}
-                className="flex w-full items-center gap-3 p-3 text-right transition hover:bg-[var(--store-accent-soft)]"
+                className="flex w-full items-center gap-3 p-2.5 text-right transition hover:bg-[var(--store-accent-soft)] sm:p-3"
                 onClick={() => setOpen((value) => !value)}
                 type="button"
             >
-                <span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-black text-white">
+                <span className="relative grid aspect-video w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-black text-white sm:w-24">
                     {current?.thumbnail_url ? (
                         <img
                             alt=""
@@ -526,11 +525,39 @@ export default function Show({
     const [subscriberCount, setSubscriberCount] = useState(
         channel?.subscribers_count ?? 0,
     );
+    const [commentFocused, setCommentFocused] = useState(false);
+    const [commentsOpen, setCommentsOpen] = useState(false);
+    const commentInputRef = useRef<HTMLTextAreaElement>(null);
     const commentForm = useForm({ body: "", parent_id: null as number | null });
     useEffect(() => {
         setReaction(content.user_reaction);
         setLikes(content.likes_count);
     }, [content.user_reaction, content.likes_count]);
+    useEffect(() => {
+        if (!commentsOpen) return;
+
+        const previousOverflow = document.body.style.overflow;
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setCommentsOpen(false);
+        };
+        const desktopQuery = window.matchMedia("(min-width: 1280px)");
+        const syncScrollLock = (event: MediaQueryListEvent) => {
+            document.body.style.overflow = event.matches
+                ? previousOverflow
+                : "hidden";
+        };
+
+        if (!desktopQuery.matches) document.body.style.overflow = "hidden";
+        window.addEventListener("keydown", closeOnEscape);
+        desktopQuery.addEventListener("change", syncScrollLock);
+        window.requestAnimationFrame(() => commentInputRef.current?.focus());
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener("keydown", closeOnEscape);
+            desktopQuery.removeEventListener("change", syncScrollLock);
+        };
+    }, [commentsOpen]);
     const requireAuth = () => {
         if (auth.user) return true;
         router.visit(
@@ -584,8 +611,18 @@ export default function Show({
         event.preventDefault();
         commentForm.post(`/videos/${content.slug}/comments`, {
             preserveScroll: true,
-            onSuccess: () => commentForm.reset("body"),
+            onSuccess: () => {
+                commentForm.reset("body");
+                setCommentFocused(false);
+            },
         });
+    };
+    const setCommentSort = (sort: "top" | "newest") => {
+        router.get(
+            window.location.pathname,
+            { comment_sort: sort },
+            { preserveScroll: true, preserveState: true },
+        );
     };
     const share = () => {
         if (requestNativeShare(content.title, window.location.href)) return;
@@ -602,6 +639,113 @@ export default function Show({
             : content.type === "short"
               ? "شورت"
               : "پست";
+    const currentCommentSort =
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("comment_sort") ===
+            "newest"
+            ? "newest"
+            : "top";
+    const firstComment = comments?.data[0];
+    const renderCommentComposer = (sheet = false) =>
+        auth.user ? (
+            <form
+                className={`flex items-start gap-3 ${sheet ? "border-t border-[var(--store-border)] bg-[var(--store-bg)] px-4 py-3" : "mt-2 py-2"}`}
+                onSubmit={submitComment}
+            >
+                <Avatar className="size-8 shrink-0">
+                    {auth.user.avatar_url && (
+                        <Avatar.Image src={auth.user.avatar_url} />
+                    )}
+                    <Avatar.Fallback>
+                        {auth.user.name.slice(0, 1)}
+                    </Avatar.Fallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                    <textarea
+                        ref={commentInputRef}
+                        className={`w-full resize-none bg-transparent px-1 text-sm outline-none transition ${sheet ? "min-h-9 rounded-full bg-[var(--store-surface)] px-4 py-2 focus:rounded-2xl" : "min-h-9 border-b border-[var(--store-border)] py-2 focus:border-[var(--store-text)]"}`}
+                        maxLength={2000}
+                        onFocus={() => setCommentFocused(true)}
+                        onChange={(event) =>
+                            commentForm.setData("body", event.target.value)
+                        }
+                        placeholder="نظر خود را بنویسید…"
+                        rows={1}
+                        value={commentForm.data.body}
+                    />
+                    {commentForm.errors.body && (
+                        <p className="mt-1 text-xs text-rose-500">
+                            {commentForm.errors.body}
+                        </p>
+                    )}
+                    {(commentFocused || commentForm.data.body) && (
+                        <div className="mt-2 flex justify-end gap-2">
+                            <Button
+                                onPress={() => {
+                                    commentForm.reset("body");
+                                    setCommentFocused(false);
+                                }}
+                                size="sm"
+                                type="button"
+                                variant="ghost"
+                            >
+                                انصراف
+                            </Button>
+                            <Button
+                                isDisabled={
+                                    !commentForm.data.body.trim() ||
+                                    commentForm.processing
+                                }
+                                size="sm"
+                                type="submit"
+                                variant="primary"
+                            >
+                                ثبت نظر
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </form>
+        ) : (
+            <Link
+                className={`${sheet ? "border-t bg-[var(--store-bg)] px-4" : "mt-2 border-y"} flex items-center justify-between border-[var(--store-border)] py-3 text-xs`}
+                href={`/login?redirect=${encodeURIComponent(window.location.href)}`}
+            >
+                <span>برای ثبت نظر یا واکنش وارد حساب شوید.</span>
+                <strong className="text-indigo-500">ورود</strong>
+            </Link>
+        );
+    const renderCommentList = (sheet = false) => (
+        <>
+            <div
+                className={`${sheet ? "px-4" : "mt-1"} divide-y divide-[var(--store-border)]/60`}
+            >
+                {comments?.data.map((comment) => (
+                    <CommentItem
+                        comment={comment}
+                        contentSlug={content.slug}
+                        key={comment.id}
+                        signedIn={Boolean(auth.user)}
+                    />
+                ))}
+                {!comments?.data.length && (
+                    <div className="py-12 text-center text-[var(--store-muted)]">
+                        <MessageCircle
+                            className="mx-auto mb-3 opacity-50"
+                            size={32}
+                        />
+                        <p className="text-sm font-bold">
+                            هنوز نظری ثبت نشده است.
+                        </p>
+                        <p className="mt-1 text-xs">
+                            اولین نفری باشید که درباره این ویدیو نظر می‌دهد.
+                        </p>
+                    </div>
+                )}
+            </div>
+            {comments && <Pagination links={comments.links} />}
+        </>
+    );
 
     return (
         <StorefrontLayout>
@@ -634,7 +778,7 @@ export default function Show({
                     </span>
                 </nav>
                 <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
-                    <div className="min-w-0">
+                    <div className="flex min-w-0 flex-col">
                         <div
                             className={`relative overflow-hidden bg-black ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-xl" : "aspect-video w-full rounded-xl"}`}
                         >
@@ -758,7 +902,12 @@ export default function Show({
                                 </button>
                             </div>
                         </div>
-                        <article className="mt-4 overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm">
+                        {playlist && (
+                            <div className="mt-4">
+                                <PlaylistPanel playlist={playlist} />
+                            </div>
+                        )}
+                        <article className="order-2 mt-5 overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm">
                             <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--store-border)] bg-gradient-to-l from-indigo-500/[0.06] to-transparent px-5 py-4 text-xs">
                                 <h2 className="ml-auto text-base font-black text-[var(--store-text)]">
                                     درباره این {typeLabel}
@@ -799,177 +948,135 @@ export default function Show({
                         </article>
 
                         {content.type === "video" && (
-                            <section className="mt-8" id="comments">
-                                <div className="flex items-center gap-4 border-b border-[var(--store-border)] pb-4">
-                                    <h2 className="flex items-center gap-2 font-black">
-                                        <MessageCircle size={20} />
-                                        {fullNumber.format(
-                                            content.comments_count,
-                                        )}{" "}
-                                        نظر
-                                    </h2>
-                                    {content.allow_comments && (
+                            <section className="order-1 mt-5" id="comments">
+                                <div className="overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm">
+                                    <div className="flex items-center gap-3 px-4 pt-3.5">
+                                        <span className="grid size-8 place-items-center rounded-full bg-indigo-500/10 text-indigo-500">
+                                            <MessageCircle size={17} />
+                                        </span>
+                                        <div className="ml-auto">
+                                            <h2 className="text-sm font-black">
+                                                نظرات
+                                            </h2>
+                                            <p className="text-[10px] text-[var(--store-muted)]">
+                                                {fullNumber.format(
+                                                    content.comments_count,
+                                                )}{" "}
+                                                نظر ثبت شده
+                                            </p>
+                                        </div>
+                                        {firstComment && (
+                                            <span className="hidden max-w-[45%] truncate text-[11px] text-[var(--store-muted)] sm:block">
+                                                آخرین نظر: {firstComment.body}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button
+                                        aria-haspopup="dialog"
+                                        className="group m-3 flex w-[calc(100%-1.5rem)] items-center gap-2.5 rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-2.5 py-2 text-right transition hover:border-indigo-400/70 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                                        disabled={!content.allow_comments}
+                                        onClick={() => setCommentsOpen(true)}
+                                        type="button"
+                                    >
+                                        <Avatar className="size-7 shrink-0">
+                                            {auth.user?.avatar_url && (
+                                                <Avatar.Image
+                                                    src={auth.user.avatar_url}
+                                                />
+                                            )}
+                                            <Avatar.Fallback>
+                                                {auth.user
+                                                    ? auth.user.name.slice(0, 1)
+                                                    : "؟"}
+                                            </Avatar.Fallback>
+                                        </Avatar>
+                                        <span className="min-w-0 flex-1 text-xs text-[var(--store-muted)] group-hover:text-[var(--store-text)]">
+                                            {content.allow_comments
+                                                ? "نظر خود را بنویسید…"
+                                                : "نظرات این ویدیو غیرفعال است"}
+                                        </span>
+                                        {content.allow_comments && (
+                                            <span className="rounded-full bg-indigo-500/10 px-3 py-1.5 text-[10px] font-black text-indigo-500">
+                                                مشاهده
+                                            </span>
+                                        )}
+                                    </button>
+                                </div>
+
+                                {commentsOpen && content.allow_comments && (
+                                    <div
+                                        aria-label="نظرات ویدیو"
+                                        aria-modal="true"
+                                        className="pointer-events-none fixed inset-0 z-[80]"
+                                        role="dialog"
+                                    >
                                         <button
-                                            className="flex items-center gap-2 rounded-full bg-[var(--store-surface)] px-3 py-2 text-xs font-bold transition hover:bg-[var(--store-accent-soft)]"
+                                            aria-label="بستن نظرات"
+                                            className="pointer-events-auto absolute inset-0 bg-black/60 backdrop-blur-[1px] xl:hidden"
                                             onClick={() =>
-                                                router.get(
-                                                    window.location.pathname,
-                                                    {
-                                                        comment_sort:
-                                                            new URLSearchParams(
-                                                                window.location
-                                                                    .search,
-                                                            ).get(
-                                                                "comment_sort",
-                                                            ) === "newest"
-                                                                ? "top"
-                                                                : "newest",
-                                                    },
-                                                    { preserveScroll: true },
-                                                )
+                                                setCommentsOpen(false)
                                             }
                                             type="button"
-                                        >
-                                            <ListFilter size={17} />
-                                            مرتب‌سازی
-                                        </button>
-                                    )}
-                                </div>
-                                {!content.allow_comments ? (
-                                    <p className="mt-6 rounded-xl bg-[var(--store-surface)] p-5 text-sm text-[var(--store-muted)]">
-                                        نظرات این ویدیو غیرفعال است.
-                                    </p>
-                                ) : (
-                                    <>
-                                        {auth.user ? (
-                                            <form
-                                                className="mt-6 flex items-start gap-3 rounded-2xl bg-[var(--store-surface)] p-4"
-                                                onSubmit={submitComment}
-                                            >
-                                                <Avatar size="sm">
-                                                    {auth.user.avatar_url && (
-                                                        <Avatar.Image
-                                                            src={
-                                                                auth.user
-                                                                    .avatar_url
-                                                            }
-                                                        />
-                                                    )}
-                                                    <Avatar.Fallback>
-                                                        {auth.user.name.slice(
-                                                            0,
-                                                            1,
-                                                        )}
-                                                    </Avatar.Fallback>
-                                                </Avatar>
-                                                <div className="flex-1">
-                                                    <textarea
-                                                        className="min-h-12 w-full resize-none border-b border-[var(--store-border)] bg-transparent p-2 text-sm outline-none transition focus:border-indigo-500"
-                                                        maxLength={2000}
-                                                        onChange={(event) =>
-                                                            commentForm.setData(
-                                                                "body",
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        placeholder="نظر خود را بنویسید…"
-                                                        value={
-                                                            commentForm.data
-                                                                .body
-                                                        }
-                                                    />
-                                                    {commentForm.errors
-                                                        .body && (
-                                                        <p className="mt-1 text-xs text-rose-500">
-                                                            {
-                                                                commentForm
-                                                                    .errors.body
-                                                            }
-                                                        </p>
-                                                    )}
-                                                    <div className="mt-2 flex justify-end gap-2">
-                                                        <Button
-                                                            onPress={() =>
-                                                                commentForm.reset(
-                                                                    "body",
-                                                                )
-                                                            }
-                                                            size="sm"
-                                                            type="button"
-                                                            variant="ghost"
-                                                        >
-                                                            انصراف
-                                                        </Button>
-                                                        <Button
-                                                            isDisabled={
-                                                                !commentForm.data.body.trim() ||
-                                                                commentForm.processing
-                                                            }
-                                                            size="sm"
-                                                            type="submit"
-                                                            variant="primary"
-                                                        >
-                                                            ثبت نظر
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        ) : (
-                                            <Link
-                                                className="mt-6 flex items-center justify-between rounded-xl border border-[var(--store-border)] p-4 text-sm"
-                                                href={`/login?redirect=${encodeURIComponent(window.location.href)}`}
-                                            >
-                                                <span>
-                                                    برای ثبت نظر یا واکنش وارد
-                                                    حساب شوید.
-                                                </span>
-                                                <strong className="text-indigo-500">
-                                                    ورود
-                                                </strong>
-                                            </Link>
-                                        )}
-                                        <div className="mt-4">
-                                            {comments?.data.map((comment) => (
-                                                <CommentItem
-                                                    comment={comment}
-                                                    contentSlug={content.slug}
-                                                    key={comment.id}
-                                                    signedIn={Boolean(
-                                                        auth.user,
-                                                    )}
-                                                />
-                                            ))}
-                                            {!comments?.data.length && (
-                                                <div className="py-12 text-center text-[var(--store-muted)]">
-                                                    <MessageCircle
-                                                        className="mx-auto mb-3 opacity-50"
-                                                        size={36}
-                                                    />
-                                                    <p className="text-sm font-bold">
-                                                        هنوز نظری ثبت نشده است.
-                                                    </p>
-                                                    <p className="mt-1 text-xs">
-                                                        اولین نفری باشید که
-                                                        درباره این ویدیو نظر
-                                                        می‌دهد.
+                                        />
+                                        <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[82dvh] min-h-[58dvh] flex-col overflow-hidden rounded-t-3xl border-t border-[var(--store-border)] bg-[var(--store-bg)] shadow-2xl xl:inset-y-0 xl:left-0 xl:right-auto xl:max-h-none xl:min-h-0 xl:w-[430px] xl:rounded-none xl:border-r xl:border-t-0">
+                                            <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-[var(--store-muted)]/35 xl:hidden" />
+                                            <header className="flex shrink-0 items-center gap-3 border-b border-[var(--store-border)] px-4 pb-3 pt-2">
+                                                <div className="ml-auto">
+                                                    <h2 className="text-base font-black">
+                                                        نظرات
+                                                    </h2>
+                                                    <p className="text-[11px] text-[var(--store-muted)]">
+                                                        {fullNumber.format(
+                                                            content.comments_count,
+                                                        )}{" "}
+                                                        نظر
                                                     </p>
                                                 </div>
-                                            )}
+                                                <button
+                                                    aria-label="بستن"
+                                                    className="video-icon-button"
+                                                    onClick={() =>
+                                                        setCommentsOpen(false)
+                                                    }
+                                                    type="button"
+                                                >
+                                                    <X size={20} />
+                                                </button>
+                                            </header>
+                                            <div className="flex shrink-0 gap-2 border-b border-[var(--store-border)] px-4 py-2">
+                                                <button
+                                                    className={`rounded-lg px-3 py-2 text-xs font-black ${currentCommentSort === "top" ? "bg-[var(--store-text)] text-[var(--store-bg)]" : "bg-[var(--store-surface)]"}`}
+                                                    onClick={() =>
+                                                        setCommentSort("top")
+                                                    }
+                                                    type="button"
+                                                >
+                                                    برترین‌ها
+                                                </button>
+                                                <button
+                                                    className={`rounded-lg px-3 py-2 text-xs font-black ${currentCommentSort === "newest" ? "bg-[var(--store-text)] text-[var(--store-bg)]" : "bg-[var(--store-surface)]"}`}
+                                                    onClick={() =>
+                                                        setCommentSort("newest")
+                                                    }
+                                                    type="button"
+                                                >
+                                                    جدیدترین
+                                                </button>
+                                            </div>
+                                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                                                {renderCommentList(true)}
+                                            </div>
+                                            <div className="shrink-0">
+                                                {renderCommentComposer(true)}
+                                            </div>
                                         </div>
-                                        {comments && (
-                                            <Pagination
-                                                links={comments.links}
-                                            />
-                                        )}
-                                    </>
+                                    </div>
                                 )}
                             </section>
                         )}
                     </div>
 
                     <aside className="min-w-0">
-                        {playlist && <PlaylistPanel playlist={playlist} />}
                         <h2 className="mb-4 font-black">ویدیوهای پیشنهادی</h2>
                         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-1">
                             {related.map((item) => (

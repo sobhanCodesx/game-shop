@@ -40,7 +40,9 @@ class SocialActivityNotification extends Notification
             default => 'videos',
         };
 
-        $url = route('content.show', ['type' => $type, 'content' => $this->content->slug], false)
+        $url = ($this->content->type === 'post'
+            ? route('feed.show', $this->content->slug, false)
+            : route('content.show', ['type' => $type, 'content' => $this->content->slug], false))
             .($this->commentId ? '#comments' : '');
 
         return [

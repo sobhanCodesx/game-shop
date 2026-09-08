@@ -1,5 +1,6 @@
 import { Head, Link, router, useForm, usePage } from "@inertiajs/react";
 import {
+    BellRing,
     Camera,
     CheckCircle2,
     ChevronLeft,
@@ -7,15 +8,18 @@ import {
     Home,
     KeyRound,
     LifeBuoy,
+    Mail,
     MapPin,
     PackageCheck,
     PackageOpen,
     ReceiptText,
+    Rss,
     ShoppingBag,
     Truck,
     Pencil,
     Plus,
     ShieldCheck,
+    Smartphone,
     WalletCards,
     Trash2,
     UserRound,
@@ -32,6 +36,7 @@ type Profile = {
     phone: string | null;
     birth_date: string | null;
     avatar_url: string | null;
+    has_password: boolean;
 };
 type Address = {
     id: number;
@@ -46,10 +51,43 @@ type Address = {
     unit: string | null;
     is_default: boolean;
 };
-type Tab = "overview" | "orders" | "tracking" | "profile" | "addresses" | "security";
-type CurrentOrder = { id:number;number:string;status:string;grand_total:number;created_at:string;updated_at:string;items:{id:number;title:string;quantity:number}[] };
-type OrderSummary = { id:number;number:string;status:string;grand_total:number;cashback_amount:number;created_at:string };
-type PaginatedOrders = { data:OrderSummary[];links:PaginationLink[];current_page:number;last_page:number;total:number };
+type Tab =
+    | "overview"
+    | "orders"
+    | "tracking"
+    | "content-notifications"
+    | "profile"
+    | "addresses"
+    | "security";
+type ContentNotificationPreferences = {
+    sms_enabled: boolean;
+    email_enabled: boolean;
+    feed_enabled: boolean;
+};
+type CurrentOrder = {
+    id: number;
+    number: string;
+    status: string;
+    grand_total: number;
+    created_at: string;
+    updated_at: string;
+    items: { id: number; title: string; quantity: number }[];
+};
+type OrderSummary = {
+    id: number;
+    number: string;
+    status: string;
+    grand_total: number;
+    cashback_amount: number;
+    created_at: string;
+};
+type PaginatedOrders = {
+    data: OrderSummary[];
+    links: PaginationLink[];
+    current_page: number;
+    last_page: number;
+    total: number;
+};
 const field =
     "h-12 w-full rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] px-4 text-sm outline-none transition focus:border-indigo-500";
 
@@ -63,6 +101,7 @@ export default function Dashboard({
     filters,
     accountNotifications,
     currentOrder,
+    contentNotificationPreferences,
 }: {
     profile: Profile;
     addresses: Address[];
@@ -78,15 +117,31 @@ export default function Dashboard({
         read_at: string | null;
     }[];
     currentOrder: CurrentOrder | null;
+    contentNotificationPreferences: ContentNotificationPreferences;
 }) {
     const { flash } = usePage<SharedPageProps>().props;
-    const [tab, setTab] = useState<Tab>(filters.tab === "orders" ? "orders" : "overview");
+    const requestedTab = filters.tab as Tab;
+    const [tab, setTab] = useState<Tab>(
+        [
+            "overview",
+            "orders",
+            "tracking",
+            "content-notifications",
+            "profile",
+            "addresses",
+            "security",
+        ].includes(requestedTab)
+            ? requestedTab
+            : "overview",
+    );
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-    const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+    const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] =
+        useState(false);
     const tabs: [Tab, string, typeof Home][] = [
         ["overview", "نمای کلی", Home],
         ["orders", "سفارش‌های من", ShoppingBag],
         ["tracking", "پیگیری سفارش جاری", Truck],
+        ["content-notifications", "اطلاع‌رسانی محتوا", BellRing],
         ["profile", "اطلاعات حساب", UserRound],
         ["addresses", "آدرس‌ها", MapPin],
         ["security", "امنیت", KeyRound],
@@ -160,53 +215,89 @@ export default function Dashboard({
                                 منوی حساب
                             </strong>
                             <button
-                                aria-label={mobileSidebarOpen ? "جمع کردن سایدبار" : "باز کردن سایدبار"}
+                                aria-label={
+                                    mobileSidebarOpen
+                                        ? "جمع کردن سایدبار"
+                                        : "باز کردن سایدبار"
+                                }
                                 className="grid size-10 place-items-center rounded-xl text-indigo-500 transition hover:bg-[var(--store-bg)] lg:hidden"
-                                onClick={() => setMobileSidebarOpen((current) => !current)}
-                                title={mobileSidebarOpen ? "جمع کردن منو" : "باز کردن منو"}
+                                onClick={() =>
+                                    setMobileSidebarOpen((current) => !current)
+                                }
+                                title={
+                                    mobileSidebarOpen
+                                        ? "جمع کردن منو"
+                                        : "باز کردن منو"
+                                }
                                 type="button"
                             >
-                                {mobileSidebarOpen ? <ChevronRight size={19} /> : <ChevronLeft size={19} />}
+                                {mobileSidebarOpen ? (
+                                    <ChevronRight size={19} />
+                                ) : (
+                                    <ChevronLeft size={19} />
+                                )}
                             </button>
                             <button
-                                aria-label={desktopSidebarCollapsed ? "باز کردن سایدبار" : "جمع کردن سایدبار"}
+                                aria-label={
+                                    desktopSidebarCollapsed
+                                        ? "باز کردن سایدبار"
+                                        : "جمع کردن سایدبار"
+                                }
                                 className="hidden size-10 place-items-center rounded-xl text-indigo-500 transition hover:bg-[var(--store-bg)] lg:grid"
-                                onClick={() => setDesktopSidebarCollapsed((current) => !current)}
-                                title={desktopSidebarCollapsed ? "باز کردن منو" : "جمع کردن منو"}
+                                onClick={() =>
+                                    setDesktopSidebarCollapsed(
+                                        (current) => !current,
+                                    )
+                                }
+                                title={
+                                    desktopSidebarCollapsed
+                                        ? "باز کردن منو"
+                                        : "جمع کردن منو"
+                                }
                                 type="button"
                             >
-                                {desktopSidebarCollapsed ? <ChevronLeft size={19} /> : <ChevronRight size={19} />}
+                                {desktopSidebarCollapsed ? (
+                                    <ChevronLeft size={19} />
+                                ) : (
+                                    <ChevronRight size={19} />
+                                )}
                             </button>
                         </div>
                         <div className="space-y-1.5">
-                        {tabs.map(([id, label, Icon]) => (
-                            <button
-                                aria-current={tab === id ? "page" : undefined}
-                                className={`flex min-h-12 w-full items-center rounded-xl text-sm font-bold transition ${mobileSidebarOpen ? "justify-start gap-3 px-3" : "justify-center px-0"} ${desktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "lg:justify-start lg:gap-3 lg:px-4"} ${tab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-[var(--store-muted)] hover:bg-[var(--store-bg)]"}`}
-                                key={id}
-                                onClick={() => {
-                                    setTab(id);
-                                    setMobileSidebarOpen(false);
-                                }}
-                                title={label}
-                                type="button"
+                            {tabs.map(([id, label, Icon]) => (
+                                <button
+                                    aria-current={
+                                        tab === id ? "page" : undefined
+                                    }
+                                    className={`flex min-h-12 w-full items-center rounded-xl text-sm font-bold transition ${mobileSidebarOpen ? "justify-start gap-3 px-3" : "justify-center px-0"} ${desktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "lg:justify-start lg:gap-3 lg:px-4"} ${tab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-[var(--store-muted)] hover:bg-[var(--store-bg)]"}`}
+                                    key={id}
+                                    onClick={() => {
+                                        setTab(id);
+                                        setMobileSidebarOpen(false);
+                                    }}
+                                    title={label}
+                                    type="button"
+                                >
+                                    <Icon className="shrink-0" size={20} />
+                                    <span
+                                        className={`${mobileSidebarOpen ? "block" : "hidden"} ${desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}`}
+                                    >
+                                        {label}
+                                    </span>
+                                </button>
+                            ))}
+                            <a
+                                className={`flex min-h-12 w-full items-center rounded-xl text-sm font-bold text-[var(--store-muted)] transition hover:bg-[var(--store-bg)] ${mobileSidebarOpen ? "justify-start gap-3 px-3" : "justify-center px-0"} ${desktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "lg:justify-start lg:gap-3 lg:px-4"}`}
+                                href="/account/tickets"
+                                title="تیکت‌های پشتیبانی"
                             >
-                                <Icon className="shrink-0" size={20} />
-                                <span className={`${mobileSidebarOpen ? "block" : "hidden"} ${desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}`}>
-                                    {label}
+                                <LifeBuoy className="shrink-0" size={20} />
+                                <span
+                                    className={`${mobileSidebarOpen ? "block" : "hidden"} ${desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}`}
+                                >
+                                    تیکت‌های پشتیبانی
                                 </span>
-                            </button>
-                        ))}
-                        <a
-                            className={`flex min-h-12 w-full items-center rounded-xl text-sm font-bold text-[var(--store-muted)] transition hover:bg-[var(--store-bg)] ${mobileSidebarOpen ? "justify-start gap-3 px-3" : "justify-center px-0"} ${desktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "lg:justify-start lg:gap-3 lg:px-4"}`}
-                            href="/account/tickets"
-                            title="تیکت‌های پشتیبانی"
-                        >
-                            <LifeBuoy className="shrink-0" size={20} />
-                            <span className={`${mobileSidebarOpen ? "block" : "hidden"} ${desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}`}>
-                                تیکت‌های پشتیبانی
-                            </span>
-                        </a>
+                            </a>
                         </div>
                     </nav>
                     <section className="min-w-0 rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:rounded-3xl sm:p-7">
@@ -222,21 +313,28 @@ export default function Dashboard({
                                         <h3 className="mb-3 font-black">
                                             سفارش‌های اخیر
                                         </h3>
-                                        {orders.data.slice(0, 5).map((order) => (
-                                            <a
-                                                className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl bg-[var(--store-bg)] p-3 text-xs sm:text-sm"
-                                                href={`/orders/${order.id}`}
-                                                key={order.id}
-                                            >
-                                                <span className="truncate" dir="ltr">{order.number}</span>
-                                                <strong className="whitespace-nowrap">
-                                                    {order.grand_total.toLocaleString(
-                                                        "fa-IR",
-                                                    )}{" "}
-                                                    تومان
-                                                </strong>
-                                            </a>
-                                        ))}
+                                        {orders.data
+                                            .slice(0, 5)
+                                            .map((order) => (
+                                                <a
+                                                    className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl bg-[var(--store-bg)] p-3 text-xs sm:text-sm"
+                                                    href={`/orders/${order.id}`}
+                                                    key={order.id}
+                                                >
+                                                    <span
+                                                        className="truncate"
+                                                        dir="ltr"
+                                                    >
+                                                        {order.number}
+                                                    </span>
+                                                    <strong className="whitespace-nowrap">
+                                                        {order.grand_total.toLocaleString(
+                                                            "fa-IR",
+                                                        )}{" "}
+                                                        تومان
+                                                    </strong>
+                                                </a>
+                                            ))}
                                     </div>
                                     <div>
                                         <h3 className="mb-3 font-black">
@@ -258,16 +356,32 @@ export default function Dashboard({
                                 </div>
                             </>
                         )}{" "}
-                        {tab === "orders" && <OrdersPanel orders={orders} counts={orderStatusCounts} selectedStatus={filters.status} />}{" "}
+                        {tab === "orders" && (
+                            <OrdersPanel
+                                orders={orders}
+                                counts={orderStatusCounts}
+                                selectedStatus={filters.status}
+                            />
+                        )}{" "}
                         {tab === "profile" && <ProfileForm profile={profile} />}{" "}
-                        {tab === "tracking" && <OrderTracking order={currentOrder} />}{" "}
+                        {tab === "tracking" && (
+                            <OrderTracking order={currentOrder} />
+                        )}{" "}
+                        {tab === "content-notifications" && (
+                            <ContentNotificationsPanel
+                                preferences={contentNotificationPreferences}
+                                profile={profile}
+                            />
+                        )}{" "}
                         {tab === "addresses" && (
                             <Addresses
                                 addresses={addresses}
                                 profile={profile}
                             />
                         )}{" "}
-                        {tab === "security" && <PasswordForm />}
+                        {tab === "security" && (
+                            <PasswordForm hasPassword={profile.has_password} />
+                        )}
                     </section>
                 </div>
             </main>
@@ -286,22 +400,42 @@ const orderFilters = [
     { value: "cancelled", label: "لغوشده" },
 ] as const;
 
-function OrdersPanel({ orders, counts, selectedStatus }: { orders:PaginatedOrders;counts:Record<string, number>;selectedStatus:string|null }) {
+function OrdersPanel({
+    orders,
+    counts,
+    selectedStatus,
+}: {
+    orders: PaginatedOrders;
+    counts: Record<string, number>;
+    selectedStatus: string | null;
+}) {
     return (
         <div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h2 className="text-xl font-black">سفارش‌های من</h2>
-                    <p className="mt-2 text-sm text-[var(--store-muted)]">سفارش‌ها را براساس وضعیت بررسی کن؛ فاکتور پس از تحویل فعال می‌شود.</p>
+                    <p className="mt-2 text-sm text-[var(--store-muted)]">
+                        سفارش‌ها را براساس وضعیت بررسی کن؛ فاکتور پس از تحویل
+                        فعال می‌شود.
+                    </p>
                 </div>
-                <span className="text-xs font-bold text-[var(--store-muted)]">{orders.total.toLocaleString("fa-IR")} سفارش</span>
+                <span className="text-xs font-bold text-[var(--store-muted)]">
+                    {orders.total.toLocaleString("fa-IR")} سفارش
+                </span>
             </div>
 
             <div className="mt-5 flex gap-2 overflow-x-auto pb-2">
                 {orderFilters.map((filter) => {
                     const active = selectedStatus === filter.value;
-                    const count = filter.value ? (counts[filter.value] ?? 0) : Object.values(counts).reduce((sum, value) => sum + Number(value), 0);
-                    const href = filter.value ? `/account?tab=orders&status=${filter.value}` : "/account?tab=orders";
+                    const count = filter.value
+                        ? (counts[filter.value] ?? 0)
+                        : Object.values(counts).reduce(
+                              (sum, value) => sum + Number(value),
+                              0,
+                          );
+                    const href = filter.value
+                        ? `/account?tab=orders&status=${filter.value}`
+                        : "/account?tab=orders";
                     return (
                         <Link
                             className={`flex min-w-max items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition ${active ? "border-indigo-600 bg-indigo-600 text-white" : "border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-muted)] hover:border-indigo-500"}`}
@@ -310,7 +444,11 @@ function OrdersPanel({ orders, counts, selectedStatus }: { orders:PaginatedOrder
                             preserveScroll
                         >
                             {filter.label}
-                            <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-white/15" : "bg-[var(--store-surface)]"}`}>{count.toLocaleString("fa-IR")}</span>
+                            <span
+                                className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-white/15" : "bg-[var(--store-surface)]"}`}
+                            >
+                                {count.toLocaleString("fa-IR")}
+                            </span>
                         </Link>
                     );
                 })}
@@ -318,29 +456,68 @@ function OrdersPanel({ orders, counts, selectedStatus }: { orders:PaginatedOrder
 
             <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {orders.data.map((order) => (
-                    <article className="flex min-h-56 flex-col rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-4" key={order.id}>
+                    <article
+                        className="flex min-h-56 flex-col rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-4"
+                        key={order.id}
+                    >
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                                <p className="truncate text-xs font-bold text-[var(--store-muted)]" dir="ltr">{order.number}</p>
-                                <time className="mt-2 block text-xs text-[var(--store-muted)]">{new Date(order.created_at).toLocaleDateString("fa-IR")}</time>
+                                <p
+                                    className="truncate text-xs font-bold text-[var(--store-muted)]"
+                                    dir="ltr"
+                                >
+                                    {order.number}
+                                </p>
+                                <time className="mt-2 block text-xs text-[var(--store-muted)]">
+                                    {new Date(
+                                        order.created_at,
+                                    ).toLocaleDateString("fa-IR")}
+                                </time>
                             </div>
-                            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${order.status === "delivered" ? "bg-emerald-500/10 text-emerald-600" : order.status === "rejected" || order.status === "cancelled" ? "bg-rose-500/10 text-rose-600" : "bg-indigo-500/10 text-indigo-600"}`}>
-                                {orderFilters.find((item) => item.value === order.status)?.label ?? order.status}
+                            <span
+                                className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${order.status === "delivered" ? "bg-emerald-500/10 text-emerald-600" : order.status === "rejected" || order.status === "cancelled" ? "bg-rose-500/10 text-rose-600" : "bg-indigo-500/10 text-indigo-600"}`}
+                            >
+                                {orderFilters.find(
+                                    (item) => item.value === order.status,
+                                )?.label ?? order.status}
                             </span>
                         </div>
                         <div className="mt-5 flex-1 border-y border-[var(--store-border)] py-4">
-                            <span className="text-xs text-[var(--store-muted)]">مبلغ نهایی</span>
-                            <strong className="mt-1 block text-lg">{order.grand_total.toLocaleString("fa-IR")} تومان</strong>
-                            {order.cashback_amount > 0 && <span className="mt-2 block text-xs font-bold text-amber-600">Cashback: {order.cashback_amount.toLocaleString("fa-IR")} تومان</span>}
+                            <span className="text-xs text-[var(--store-muted)]">
+                                مبلغ نهایی
+                            </span>
+                            <strong className="mt-1 block text-lg">
+                                {order.grand_total.toLocaleString("fa-IR")}{" "}
+                                تومان
+                            </strong>
+                            {order.cashback_amount > 0 && (
+                                <span className="mt-2 block text-xs font-bold text-amber-600">
+                                    Cashback:{" "}
+                                    {order.cashback_amount.toLocaleString(
+                                        "fa-IR",
+                                    )}{" "}
+                                    تومان
+                                </span>
+                            )}
                         </div>
                         <div className="mt-4 grid grid-cols-2 gap-2">
-                            <Link className="flex min-h-10 items-center justify-center rounded-xl border border-[var(--store-border)] text-xs font-bold" href={`/orders/${order.id}`}>جزئیات سفارش</Link>
+                            <Link
+                                className="flex min-h-10 items-center justify-center rounded-xl border border-[var(--store-border)] text-xs font-bold"
+                                href={`/orders/${order.id}`}
+                            >
+                                جزئیات سفارش
+                            </Link>
                             {order.status === "delivered" ? (
-                                <Link className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 text-xs font-black text-white" href={`/orders/${order.id}/invoice`}>
+                                <Link
+                                    className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 text-xs font-black text-white"
+                                    href={`/orders/${order.id}/invoice`}
+                                >
                                     <ReceiptText size={15} /> مشاهده فاکتور
                                 </Link>
                             ) : (
-                                <span className="flex min-h-10 items-center justify-center rounded-xl bg-[var(--store-surface)] px-2 text-center text-[10px] text-[var(--store-muted)]">فاکتور پس از تحویل</span>
+                                <span className="flex min-h-10 items-center justify-center rounded-xl bg-[var(--store-surface)] px-2 text-center text-[10px] text-[var(--store-muted)]">
+                                    فاکتور پس از تحویل
+                                </span>
                             )}
                         </div>
                     </article>
@@ -349,7 +526,8 @@ function OrdersPanel({ orders, counts, selectedStatus }: { orders:PaginatedOrder
 
             {!orders.data.length && (
                 <div className="mt-5 rounded-3xl border border-dashed border-[var(--store-border)] py-16 text-center text-sm text-[var(--store-muted)]">
-                    <PackageOpen className="mx-auto mb-3" /> سفارشی با این وضعیت وجود ندارد.
+                    <PackageOpen className="mx-auto mb-3" /> سفارشی با این وضعیت
+                    وجود ندارد.
                 </div>
             )}
             <Pagination links={orders.links} />
@@ -413,33 +591,215 @@ function Overview({
 }
 
 const orderStages = [
-    { key: "pending", label: "ثبت سفارش", description: "سفارش با موفقیت ثبت شد", icon: ShoppingBag },
-    { key: "approved", label: "تأیید سفارش", description: "سفارش توسط فروشگاه تأیید شد", icon: CheckCircle2 },
-    { key: "processing", label: "آماده‌سازی", description: "محصولات در حال آماده‌سازی هستند", icon: PackageOpen },
-    { key: "shipped", label: "ارسال سفارش", description: "سفارش در مسیر تحویل قرار دارد", icon: Truck },
-    { key: "delivered", label: "تحویل‌شده", description: "سفارش با موفقیت تحویل شد", icon: PackageCheck },
+    {
+        key: "pending",
+        label: "ثبت سفارش",
+        description: "سفارش با موفقیت ثبت شد",
+        icon: ShoppingBag,
+    },
+    {
+        key: "approved",
+        label: "تأیید سفارش",
+        description: "سفارش توسط فروشگاه تأیید شد",
+        icon: CheckCircle2,
+    },
+    {
+        key: "processing",
+        label: "آماده‌سازی",
+        description: "محصولات در حال آماده‌سازی هستند",
+        icon: PackageOpen,
+    },
+    {
+        key: "shipped",
+        label: "ارسال سفارش",
+        description: "سفارش در مسیر تحویل قرار دارد",
+        icon: Truck,
+    },
+    {
+        key: "delivered",
+        label: "تحویل‌شده",
+        description: "سفارش با موفقیت تحویل شد",
+        icon: PackageCheck,
+    },
 ] as const;
 
 function OrderTracking({ order }: { order: CurrentOrder | null }) {
-    if (!order) return <div className="grid min-h-80 place-items-center rounded-3xl border border-dashed border-[var(--store-border)] bg-[var(--store-bg)] p-8 text-center"><div><ShoppingBag className="mx-auto text-indigo-500" size={42}/><h2 className="mt-4 text-xl font-black">هنوز سفارشی ثبت نکرده‌اید</h2><p className="mt-2 text-sm text-[var(--store-muted)]">بعد از اولین خرید، روند سفارش از این بخش قابل پیگیری است.</p><a className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white" href="/shop">رفتن به فروشگاه</a></div></div>;
+    if (!order)
+        return (
+            <div className="grid min-h-80 place-items-center rounded-3xl border border-dashed border-[var(--store-border)] bg-[var(--store-bg)] p-8 text-center">
+                <div>
+                    <ShoppingBag
+                        className="mx-auto text-indigo-500"
+                        size={42}
+                    />
+                    <h2 className="mt-4 text-xl font-black">
+                        هنوز سفارشی ثبت نکرده‌اید
+                    </h2>
+                    <p className="mt-2 text-sm text-[var(--store-muted)]">
+                        بعد از اولین خرید، روند سفارش از این بخش قابل پیگیری
+                        است.
+                    </p>
+                    <a
+                        className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white"
+                        href="/shop"
+                    >
+                        رفتن به فروشگاه
+                    </a>
+                </div>
+            </div>
+        );
     const stopped = ["rejected", "cancelled"].includes(order.status);
-    const activeIndex = stopped ? 0 : Math.max(0, orderStages.findIndex(stage => stage.key === order.status));
-    const progress = stopped ? 0 : (activeIndex / (orderStages.length - 1)) * 100;
-    const statusText = order.status === "rejected" ? "سفارش رد شده است" : order.status === "cancelled" ? "سفارش لغو شده است" : orderStages[activeIndex]?.description;
-    return <div>
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-indigo-700 via-violet-700 to-fuchsia-700 p-6 text-white shadow-xl shadow-indigo-500/15 sm:p-8">
-            <div className="absolute -left-12 -top-16 size-52 rounded-full bg-white/10 blur-3xl"/>
-            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-indigo-100">سفارش جاری</p><h2 className="mt-2 text-2xl font-black" dir="ltr">{order.number}</h2><p className="mt-2 text-sm text-indigo-100">{statusText}</p></div><div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur"><span className="block text-xs text-indigo-100">مبلغ سفارش</span><strong className="mt-1 block text-xl">{order.grand_total.toLocaleString("fa-IR")} تومان</strong></div></div>
+    const activeIndex = stopped
+        ? 0
+        : Math.max(
+              0,
+              orderStages.findIndex((stage) => stage.key === order.status),
+          );
+    const progress = stopped
+        ? 0
+        : (activeIndex / (orderStages.length - 1)) * 100;
+    const statusText =
+        order.status === "rejected"
+            ? "سفارش رد شده است"
+            : order.status === "cancelled"
+              ? "سفارش لغو شده است"
+              : orderStages[activeIndex]?.description;
+    return (
+        <div>
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-indigo-700 via-violet-700 to-fuchsia-700 p-6 text-white shadow-xl shadow-indigo-500/15 sm:p-8">
+                <div className="absolute -left-12 -top-16 size-52 rounded-full bg-white/10 blur-3xl" />
+                <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-xs font-bold text-indigo-100">
+                            سفارش جاری
+                        </p>
+                        <h2 className="mt-2 text-2xl font-black" dir="ltr">
+                            {order.number}
+                        </h2>
+                        <p className="mt-2 text-sm text-indigo-100">
+                            {statusText}
+                        </p>
+                    </div>
+                    <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur">
+                        <span className="block text-xs text-indigo-100">
+                            مبلغ سفارش
+                        </span>
+                        <strong className="mt-1 block text-xl">
+                            {order.grand_total.toLocaleString("fa-IR")} تومان
+                        </strong>
+                    </div>
+                </div>
+            </div>
+            {stopped ? (
+                <div className="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-5 text-rose-600">
+                    <strong>{statusText}</strong>
+                    <p className="mt-2 text-sm">
+                        برای جزئیات بیشتر وارد صفحه سفارش شوید یا با پشتیبانی
+                        تماس بگیرید.
+                    </p>
+                </div>
+            ) : (
+                <div className="mt-7 rounded-3xl border border-[var(--store-border)] bg-[var(--store-bg)] p-5 sm:p-7">
+                    <div className="relative hidden md:block">
+                        <div className="absolute right-[10%] left-[10%] top-6 h-1 rounded-full bg-[var(--store-border)]">
+                            <div
+                                className="h-full rounded-full bg-gradient-to-l from-indigo-500 to-emerald-500 transition-all duration-700"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+                        <div className="relative grid grid-cols-5">
+                            {orderStages.map((stage, index) => (
+                                <Stage
+                                    key={stage.key}
+                                    stage={stage}
+                                    complete={index < activeIndex}
+                                    active={index === activeIndex}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="space-y-0 md:hidden">
+                        {orderStages.map((stage, index) => (
+                            <div
+                                className="relative flex gap-4 pb-6 last:pb-0"
+                                key={stage.key}
+                            >
+                                {index < orderStages.length - 1 && (
+                                    <span
+                                        className={`absolute right-[23px] top-11 h-[calc(100%-20px)] w-0.5 ${index < activeIndex ? "bg-emerald-500" : "bg-[var(--store-border)]"}`}
+                                    />
+                                )}
+                                <Stage
+                                    stage={stage}
+                                    complete={index < activeIndex}
+                                    active={index === activeIndex}
+                                    mobile
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto]">
+                <div className="rounded-2xl border border-[var(--store-border)] p-5">
+                    <h3 className="font-black">محصولات این سفارش</h3>
+                    <div className="mt-3 space-y-2">
+                        {order.items.map((item) => (
+                            <div
+                                className="flex justify-between text-sm"
+                                key={item.id}
+                            >
+                                <span>{item.title}</span>
+                                <strong>
+                                    × {item.quantity.toLocaleString("fa-IR")}
+                                </strong>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <a
+                    className="flex items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 px-7 py-4 text-sm font-black text-indigo-600 transition hover:bg-indigo-500/15"
+                    href={`/orders/${order.id}`}
+                >
+                    مشاهده جزئیات سفارش
+                </a>
+            </div>
         </div>
-        {stopped ? <div className="mt-5 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-5 text-rose-600"><strong>{statusText}</strong><p className="mt-2 text-sm">برای جزئیات بیشتر وارد صفحه سفارش شوید یا با پشتیبانی تماس بگیرید.</p></div> : <div className="mt-7 rounded-3xl border border-[var(--store-border)] bg-[var(--store-bg)] p-5 sm:p-7">
-            <div className="relative hidden md:block"><div className="absolute right-[10%] left-[10%] top-6 h-1 rounded-full bg-[var(--store-border)]"><div className="h-full rounded-full bg-gradient-to-l from-indigo-500 to-emerald-500 transition-all duration-700" style={{width:`${progress}%`}}/></div><div className="relative grid grid-cols-5">{orderStages.map((stage,index)=><Stage key={stage.key} stage={stage} complete={index<activeIndex} active={index===activeIndex}/>)}</div></div>
-            <div className="space-y-0 md:hidden">{orderStages.map((stage,index)=><div className="relative flex gap-4 pb-6 last:pb-0" key={stage.key}>{index<orderStages.length-1&&<span className={`absolute right-[23px] top-11 h-[calc(100%-20px)] w-0.5 ${index<activeIndex?"bg-emerald-500":"bg-[var(--store-border)]"}`}/>}<Stage stage={stage} complete={index<activeIndex} active={index===activeIndex} mobile/></div>)}</div>
-        </div>}
-        <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto]"><div className="rounded-2xl border border-[var(--store-border)] p-5"><h3 className="font-black">محصولات این سفارش</h3><div className="mt-3 space-y-2">{order.items.map(item=><div className="flex justify-between text-sm" key={item.id}><span>{item.title}</span><strong>× {item.quantity.toLocaleString("fa-IR")}</strong></div>)}</div></div><a className="flex items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 px-7 py-4 text-sm font-black text-indigo-600 transition hover:bg-indigo-500/15" href={`/orders/${order.id}`}>مشاهده جزئیات سفارش</a></div>
-    </div>;
+    );
 }
 
-function Stage({stage,complete,active,mobile=false}:{stage:typeof orderStages[number];complete:boolean;active:boolean;mobile?:boolean}){const Icon=stage.icon;return <div className={mobile?"flex items-center gap-4":"text-center"}><span className={`${mobile?"":"mx-auto"} relative z-10 grid size-12 shrink-0 place-items-center rounded-2xl border transition ${complete?"border-emerald-500 bg-emerald-500 text-white":active?"border-indigo-500 bg-indigo-600 text-white shadow-lg shadow-indigo-500/30":"border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)]"}`}>{complete?<CheckCircle2 size={20}/>:<Icon size={20}/>}</span><div className={mobile?"":"mt-3"}><strong className={`block text-xs ${active?"text-indigo-500":""}`}>{stage.label}</strong><span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">{stage.description}</span></div></div>}
+function Stage({
+    stage,
+    complete,
+    active,
+    mobile = false,
+}: {
+    stage: (typeof orderStages)[number];
+    complete: boolean;
+    active: boolean;
+    mobile?: boolean;
+}) {
+    const Icon = stage.icon;
+    return (
+        <div className={mobile ? "flex items-center gap-4" : "text-center"}>
+            <span
+                className={`${mobile ? "" : "mx-auto"} relative z-10 grid size-12 shrink-0 place-items-center rounded-2xl border transition ${complete ? "border-emerald-500 bg-emerald-500 text-white" : active ? "border-indigo-500 bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)]"}`}
+            >
+                {complete ? <CheckCircle2 size={20} /> : <Icon size={20} />}
+            </span>
+            <div className={mobile ? "" : "mt-3"}>
+                <strong
+                    className={`block text-xs ${active ? "text-indigo-500" : ""}`}
+                >
+                    {stage.label}
+                </strong>
+                <span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">
+                    {stage.description}
+                </span>
+            </div>
+        </div>
+    );
+}
 function Card({
     icon: Icon,
     title,
@@ -459,9 +819,159 @@ function Card({
             <span className="grid size-11 place-items-center rounded-xl bg-indigo-500/10 text-indigo-500">
                 <Icon size={21} />
             </span>
-            <strong className="mt-3 block text-xs leading-5 sm:mt-4 sm:text-base">{title}</strong>
+            <strong className="mt-3 block text-xs leading-5 sm:mt-4 sm:text-base">
+                {title}
+            </strong>
             <span className="mt-1 block text-xs text-[var(--store-muted)]">
                 {text}
+            </span>
+        </button>
+    );
+}
+function ContentNotificationsPanel({
+    preferences,
+    profile,
+}: {
+    preferences: ContentNotificationPreferences;
+    profile: Profile;
+}) {
+    const { data, setData, put, processing, recentlySuccessful } =
+        useForm<ContentNotificationPreferences>(preferences);
+    const submit = (event: FormEvent) => {
+        event.preventDefault();
+        put("/account/content-notifications", { preserveScroll: true });
+    };
+
+    return (
+        <form onSubmit={submit}>
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-indigo-700 via-violet-700 to-fuchsia-700 p-5 text-white shadow-xl shadow-indigo-500/15 sm:p-7">
+                <div className="absolute -left-12 -top-16 size-52 rounded-full bg-white/10 blur-3xl" />
+                <div className="relative flex items-start gap-4">
+                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/10 backdrop-blur">
+                        <BellRing size={24} />
+                    </span>
+                    <div>
+                        <p className="text-xs font-bold text-indigo-100">
+                            فقط تازه‌های PlayNexus
+                        </p>
+                        <h2 className="mt-1 text-xl font-black sm:text-2xl">
+                            اطلاع‌رسانی محتوای کانال‌ها
+                        </h2>
+                        <p className="mt-2 max-w-2xl text-xs leading-6 text-indigo-100 sm:text-sm">
+                            وقتی کانالی که عضو آن هستید محصول، ویدیو یا مطلب
+                            تازه‌ای منتشر کند، از روش‌های دلخواهتان باخبر شوید.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs leading-6 text-amber-700 dark:text-amber-300">
+                این تنظیمات فقط برای محتوای سایت است و هیچ تغییری در اعلان‌های
+                سفارش، پرداخت یا پیام‌های پشتیبانی ایجاد نمی‌کند. اعلان داخل
+                حساب نیز فقط با فعال بودن «فید شخصی» نمایش داده می‌شود.
+            </div>
+
+            <div className="mt-5 grid gap-3">
+                <NotificationMethod
+                    active={data.sms_enabled}
+                    description={
+                        profile.phone
+                            ? `ارسال به ${profile.phone}`
+                            : "برای دریافت پیامک ابتدا شماره موبایل را در اطلاعات حساب ثبت کنید."
+                    }
+                    icon={Smartphone}
+                    label="پیامک"
+                    onChange={(active) => setData("sms_enabled", active)}
+                    recommended
+                />
+                <NotificationMethod
+                    active={data.email_enabled}
+                    description={`ارسال به ${profile.email}`}
+                    icon={Mail}
+                    label="ایمیل"
+                    onChange={(active) => setData("email_enabled", active)}
+                />
+                <NotificationMethod
+                    active={data.feed_enabled}
+                    description="نمایش اعلان انتشارهای تازه کانال‌ها داخل حساب PlayNexus"
+                    icon={Rss}
+                    label="فید شخصی"
+                    onChange={(active) => setData("feed_enabled", active)}
+                />
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <button
+                    className="min-h-12 rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+                    disabled={processing}
+                    type="submit"
+                >
+                    {processing ? "در حال ذخیره…" : "ذخیره روش‌های اطلاع‌رسانی"}
+                </button>
+                {recentlySuccessful && (
+                    <span className="text-xs font-bold text-emerald-600">
+                        تنظیمات ذخیره شد.
+                    </span>
+                )}
+            </div>
+        </form>
+    );
+}
+
+function NotificationMethod({
+    active,
+    description,
+    icon: Icon,
+    label,
+    onChange,
+    recommended = false,
+    soon = false,
+}: {
+    active: boolean;
+    description: string;
+    icon: typeof Home;
+    label: string;
+    onChange: (active: boolean) => void;
+    recommended?: boolean;
+    soon?: boolean;
+}) {
+    return (
+        <button
+            aria-checked={active}
+            className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-right transition sm:p-5 ${active ? "border-indigo-500/40 bg-indigo-500/[0.07] shadow-sm" : "border-[var(--store-border)] bg-[var(--store-bg)] hover:border-indigo-500/30"}`}
+            onClick={() => onChange(!active)}
+            role="switch"
+            type="button"
+        >
+            <span
+                className={`grid size-11 shrink-0 place-items-center rounded-xl ${active ? "bg-indigo-600 text-white" : "bg-[var(--store-surface)] text-[var(--store-muted)]"}`}
+            >
+                <Icon size={21} />
+            </span>
+            <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2">
+                    <strong className="text-sm sm:text-base">{label}</strong>
+                    {recommended && (
+                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-black text-emerald-600">
+                            پیش‌فرض و پیشنهادی
+                        </span>
+                    )}
+                    {soon && (
+                        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-600">
+                            به‌زودی
+                        </span>
+                    )}
+                </span>
+                <span className="mt-1 block text-xs leading-6 text-[var(--store-muted)]">
+                    {description}
+                </span>
+            </span>
+            <span
+                className={`relative h-7 w-12 shrink-0 rounded-full transition ${active ? "bg-indigo-600" : "bg-[var(--store-border)]"}`}
+            >
+                <span
+                    className={`absolute top-1 size-5 rounded-full bg-white shadow transition ${active ? "left-1" : "left-6"}`}
+                />
             </span>
         </button>
     );
@@ -786,7 +1296,7 @@ function Addresses({
         );
     }
 }
-function PasswordForm() {
+function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
     const { data, setData, put, processing, errors, reset } = useForm({
         current_password: "",
         password: "",
@@ -802,19 +1312,27 @@ function PasswordForm() {
         >
             <h2 className="text-xl font-black">امنیت حساب</h2>
             <p className="mt-2 text-sm text-[var(--store-muted)]">
-                برای امنیت بیشتر، رمز قوی و منحصربه‌فرد انتخاب کن.
+                {hasPassword
+                    ? "برای امنیت بیشتر، رمز قوی و منحصربه‌فرد انتخاب کن."
+                    : "برای اینکه علاوه بر Google با ایمیل هم وارد شوی، یک رمز امن برای PlayNexus تعیین کن."}
             </p>
             <div className="mt-7 space-y-5">
-                <Field label="رمز عبور فعلی" error={errors.current_password}>
-                    <input
-                        className={field}
-                        type="password"
-                        value={data.current_password}
-                        onChange={(e) =>
-                            setData("current_password", e.target.value)
-                        }
-                    />
-                </Field>
+                {hasPassword && (
+                    <Field
+                        label="رمز عبور فعلی"
+                        error={errors.current_password}
+                    >
+                        <input
+                            autoComplete="current-password"
+                            className={field}
+                            type="password"
+                            value={data.current_password}
+                            onChange={(e) =>
+                                setData("current_password", e.target.value)
+                            }
+                        />
+                    </Field>
+                )}
                 <Field label="رمز عبور جدید" error={errors.password}>
                     <input
                         className={field}
@@ -838,7 +1356,7 @@ function PasswordForm() {
                 className="mt-7 min-h-12 w-full rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-black text-white sm:w-auto"
                 disabled={processing}
             >
-                تغییر رمز عبور
+                {hasPassword ? "تغییر رمز عبور" : "تعیین رمز عبور"}
             </button>
         </form>
     );

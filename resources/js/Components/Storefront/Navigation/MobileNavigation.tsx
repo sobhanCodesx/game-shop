@@ -3,8 +3,9 @@ import { Link, usePage } from "@inertiajs/react";
 import {
     CircleUserRound,
     Compass,
-    FolderTree,
     Home,
+    Menu,
+    Radio,
     Search,
     ShoppingBag,
 } from "lucide-react";
@@ -31,13 +32,39 @@ export default function MobileNavigation({
     onOpenPanel,
     hasFreshContent,
 }: Props) {
-    const { auth, cart } = usePage<SharedPageProps>().props;
-    const homeActive =
-        typeof window !== "undefined" &&
-        window.location.pathname === "/" &&
-        !activePanel;
+    const page = usePage<SharedPageProps>();
+    const { auth, cart } = page.props;
+    const pathname = page.url.split("?")[0];
+    const homeActive = pathname === "/" && !activePanel;
+    const feedActive = pathname.startsWith("/feed") && !activePanel;
+    const discoverActive = pathname.startsWith("/discover") && !activePanel;
+    const menuRouteActive = [
+        "/shop",
+        "/products",
+        "/categories",
+        "/games",
+        "/videos",
+        "/shorts",
+        "/channels",
+        "/studios",
+        "/offers",
+        "/exchange-products",
+    ].some((path) => pathname === path || pathname.startsWith(`${path}/`));
+    const menuActive =
+        activePanel === "menu" || (!activePanel && menuRouteActive);
+    const cartActive =
+        !activePanel &&
+        ["/cart", "/checkout"].some(
+            (path) => pathname === path || pathname.startsWith(`${path}/`),
+        );
+    const accountActive =
+        activePanel === "account" ||
+        (!activePanel &&
+            ["/account", "/orders", "/tickets", "/login", "/register"].some(
+                (path) => pathname === path || pathname.startsWith(`${path}/`),
+            ));
     const itemClass = (active: boolean) =>
-        `relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-bold transition ${active ? "text-indigo-500" : "text-[var(--store-muted)]"}`;
+        `relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] font-bold transition max-[360px]:text-[9px] ${active ? "bg-indigo-500/[.08] text-indigo-500" : "text-[var(--store-muted)]"}`;
     return (
         <>
             <header className="sticky top-0 z-40 flex h-16 min-w-0 items-center gap-1 border-b border-[var(--store-border)] bg-[var(--store-header)] px-3 backdrop-blur-2xl sm:px-4 lg:hidden">
@@ -47,12 +74,23 @@ export default function MobileNavigation({
                     <ThemeToggle onToggle={onToggleTheme} theme={theme} />
                     <Button
                         aria-label="جستجو"
-                        className="store-nav-icon"
+                        aria-pressed={activePanel === "search"}
+                        className={`store-nav-icon ${activePanel === "search" ? "bg-indigo-500/[.08] text-indigo-500" : ""}`}
                         isIconOnly
                         onPress={() => onOpenPanel("search")}
                         variant="ghost"
                     >
                         <Search size={20} />
+                    </Button>
+                    <Button
+                        aria-label="باز کردن منوی اصلی"
+                        aria-pressed={activePanel === "menu"}
+                        className={`store-nav-icon ${menuActive ? "bg-indigo-500/[.08] text-indigo-500" : ""}`}
+                        isIconOnly
+                        onPress={() => onOpenPanel("menu")}
+                        variant="ghost"
+                    >
+                        <Menu size={21} />
                     </Button>
                 </div>
             </header>
@@ -60,30 +98,34 @@ export default function MobileNavigation({
                 aria-label="ناوبری پایین موبایل"
                 className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--store-border)] bg-[var(--store-bottom-nav)] px-2 pb-[max(.45rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-2xl lg:hidden"
             >
-                <div className="mx-auto flex max-w-md gap-1">
-                    <Link className={itemClass(homeActive)} href="/">
+                <div className="mx-auto grid max-w-md grid-cols-5 gap-0.5">
+                    <Link
+                        aria-current={homeActive ? "page" : undefined}
+                        className={itemClass(homeActive)}
+                        href="/"
+                    >
                         <Home
                             fill={homeActive ? "currentColor" : "none"}
                             size={20}
                         />
                         <span>خانه</span>
-                        {homeActive && (
-                            <span className="absolute top-0 h-0.5 w-6 rounded-full bg-indigo-500" />
-                        )}
                     </Link>
-                    <button
-                        className={itemClass(activePanel === "categories")}
-                        onClick={() => onOpenPanel("categories")}
-                        type="button"
-                    >
-                        <FolderTree size={20} />
-                        <span>دسته‌ها</span>
-                    </button>
                     <Link
-                        className={`${itemClass(!activePanel && typeof window !== "undefined" && window.location.pathname.startsWith("/discover"))} -mt-4`}
+                        aria-current={feedActive ? "page" : undefined}
+                        className={itemClass(feedActive)}
+                        href="/feed"
+                    >
+                        <Radio size={20} />
+                        <span>فید</span>
+                    </Link>
+                    <Link
+                        aria-current={discoverActive ? "page" : undefined}
+                        className={`${itemClass(discoverActive)} -mt-4`}
                         href="/discover"
                     >
-                        <span className="grid size-11 place-items-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30">
+                        <span
+                            className={`grid size-11 place-items-center rounded-2xl border transition ${discoverActive ? "border-indigo-500 bg-indigo-600 text-white shadow-lg shadow-indigo-500/25" : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)]"}`}
+                        >
                             <Compass size={20} />
                             {hasFreshContent && (
                                 <span
@@ -92,9 +134,13 @@ export default function MobileNavigation({
                                 />
                             )}
                         </span>
-                        <span>کشف</span>
+                        <span>اکسپلور</span>
                     </Link>
-                    <Link className={itemClass(false)} href="/cart">
+                    <Link
+                        aria-current={cartActive ? "page" : undefined}
+                        className={itemClass(cartActive)}
+                        href="/cart"
+                    >
                         <ShoppingBag size={20} />
                         {cart.item_count > 0 && (
                             <span className="absolute left-2 top-0 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white">
@@ -104,13 +150,14 @@ export default function MobileNavigation({
                         <span>سبد</span>
                     </Link>
                     <button
-                        className={itemClass(activePanel === "account")}
+                        aria-pressed={accountActive}
+                        className={itemClass(accountActive)}
                         onClick={() => onOpenPanel("account")}
                         type="button"
                     >
                         {auth.user ? (
                             <span
-                                className={`grid size-7 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-cyan-400 p-[2px] ${activePanel === "account" ? "ring-2 ring-indigo-500/25" : ""}`}
+                                className={`grid size-7 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-cyan-400 p-[2px] ${accountActive ? "ring-2 ring-indigo-500/25" : ""}`}
                             >
                                 <span className="grid size-full place-items-center overflow-hidden rounded-full bg-[var(--store-bottom-nav)] text-[10px] font-black text-indigo-500">
                                     {auth.user.avatar_url ? (

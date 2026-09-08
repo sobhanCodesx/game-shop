@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Game;
 use App\Models\Product;
 use App\Models\SocialContent;
+use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
@@ -13,7 +14,7 @@ use XMLWriter;
 
 class SitemapController extends Controller
 {
-    private const TYPES = ['static', 'products', 'categories', 'content', 'channels', 'playlists'];
+    private const TYPES = ['static', 'products', 'categories', 'feed', 'content', 'channels', 'studios', 'playlists'];
 
     public function index(): Response
     {
@@ -52,7 +53,7 @@ class SitemapController extends Controller
     private function urls(string $type): iterable
     {
         if ($type === 'static') {
-            foreach (['home', 'shop.index', 'exchange-products.index', 'discover', 'offers.index', 'videos.index'] as $routeName) {
+            foreach (['home', 'shop.index', 'exchange-products.index', 'discover', 'offers.index', 'videos.index', 'studios.index'] as $routeName) {
                 yield ['loc' => route($routeName)];
             }
 
@@ -75,8 +76,17 @@ class SitemapController extends Controller
             return;
         }
 
+        if ($type === 'feed') {
+            yield ['loc' => route('feed.index')];
+            foreach (SocialContent::query()->published()->where('type', 'post')->orderBy('id')->cursor() as $content) {
+                yield $this->entry(route('feed.show', $content->slug), $content->updated_at);
+            }
+
+            return;
+        }
+
         if ($type === 'content') {
-            foreach (SocialContent::query()->published()->whereIn('type', ['post', 'video', 'short'])->orderBy('id')->cursor() as $content) {
+            foreach (SocialContent::query()->published()->whereIn('type', ['video', 'short'])->orderBy('id')->cursor() as $content) {
                 $plural = match ($content->type) {
                     'video' => 'videos', 'short' => 'shorts', default => 'posts',
                 };
@@ -96,6 +106,14 @@ class SitemapController extends Controller
             return;
         }
 
+        if ($type === 'studios') {
+            foreach (Studio::query()->where('status', 'active')->orderBy('id')->cursor() as $studio) {
+                yield $this->entry(route('studios.show', $studio->slug), $studio->updated_at);
+            }
+
+            return;
+        }
+
         foreach (VideoPlaylist::query()->where('visibility', 'public')
             ->whereHas('game', fn (Builder $query) => $query->whereIn('status', ['active', 'published']))
             ->whereHas('videos', fn (Builder $query) => $query->published()->where('type', 'video'))
@@ -109,8 +127,10 @@ class SitemapController extends Controller
         $value = match ($type) {
             'products' => Product::query()->publiclyVisible()->max('updated_at'),
             'categories' => Category::query()->where('status', 'active')->max('updated_at'),
-            'content' => SocialContent::query()->published()->whereIn('type', ['post', 'video', 'short'])->max('updated_at'),
+            'feed' => SocialContent::query()->published()->where('type', 'post')->max('updated_at'),
+            'content' => SocialContent::query()->published()->whereIn('type', ['video', 'short'])->max('updated_at'),
             'channels' => Game::query()->whereIn('status', ['active', 'published'])->whereHas('videos', fn (Builder $query) => $query->published())->max('updated_at'),
+            'studios' => Studio::query()->where('status', 'active')->max('updated_at'),
             'playlists' => VideoPlaylist::query()->where('visibility', 'public')->max('updated_at'),
             default => null,
         };

@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\VideoPlaylistRequest;
 use App\Models\Game;
+use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
+use App\Support\RichText;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -43,12 +45,15 @@ class VideoPlaylistController extends Controller
         return Inertia::render('Admin/Playlists/Form', [
             'playlist' => null,
             'games' => $this->games(),
+            'studios' => $this->studios(),
         ]);
     }
 
     public function store(VideoPlaylistRequest $request, MediaOptimizationService $optimizer): RedirectResponse
     {
         $data = $request->safe()->except(['logo', 'remove_logo']);
+        $data['studio_id'] ??= Game::query()->whereKey($data['game_id'])->value('studio_id');
+        $data['description'] = RichText::sanitize($data['description'] ?? null);
         $data['slug'] = $this->uniqueSlug((int) $data['game_id'], $data['title']);
         if ($request->hasFile('logo')) {
             $data['logo'] = $optimizer->store($request->file('logo'), 'video-playlists/logos')['path'];
@@ -62,16 +67,19 @@ class VideoPlaylistController extends Controller
     {
         return Inertia::render('Admin/Playlists/Form', [
             'playlist' => [
-                ...$playlist->only(['id', 'game_id', 'title', 'description', 'visibility', 'sort_order']),
+                ...$playlist->only(['id', 'game_id', 'studio_id', 'title', 'description', 'visibility', 'sort_order']),
                 'logo_url' => MediaStorage::url($playlist->logo),
             ],
             'games' => $this->games(),
+            'studios' => $this->studios(),
         ]);
     }
 
     public function update(VideoPlaylistRequest $request, VideoPlaylist $playlist, MediaOptimizationService $optimizer): RedirectResponse
     {
         $data = $request->safe()->except(['logo', 'remove_logo']);
+        $data['studio_id'] ??= Game::query()->whereKey($data['game_id'])->value('studio_id');
+        $data['description'] = RichText::sanitize($data['description'] ?? null);
         if ($playlist->title !== $data['title'] || $playlist->game_id !== (int) $data['game_id']) {
             $data['slug'] = $this->uniqueSlug((int) $data['game_id'], $data['title'], $playlist->id);
         }
@@ -104,6 +112,12 @@ class VideoPlaylistController extends Controller
     private function games(): array
     {
         return Game::query()->whereIn('status', ['active', 'published'])
+            ->orderBy('name')->get(['id', 'name', 'studio_id'])->toArray();
+    }
+
+    private function studios(): array
+    {
+        return Studio::query()->where('status', 'active')
             ->orderBy('name')->get(['id', 'name'])->toArray();
     }
 

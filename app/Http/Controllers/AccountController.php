@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Account\AddressRequest;
+use App\Http\Requests\Account\UpdateContentNotificationPreferencesRequest;
 use App\Http\Requests\Account\UpdatePasswordRequest;
 use App\Http\Requests\Account\UpdateProfileRequest;
 use App\Models\UserAddress;
@@ -29,6 +30,7 @@ class AccountController extends Controller
                 ...$user->only(['name', 'email', 'phone']),
                 'birth_date' => $user->birth_date?->format('Y-m-d'),
                 'avatar_url' => MediaStorage::url($user->avatar),
+                'has_password' => filled($user->getAuthPassword()),
             ],
             'addresses' => $user->addresses()->latest('is_default')->latest()->get(),
             'walletBalance' => (int) $user->wallet_balance,
@@ -47,6 +49,11 @@ class AccountController extends Controller
                 'items' => $currentOrder->items->map->only(['id', 'title', 'quantity']),
             ] : null,
             'accountNotifications' => $user->notifications()->latest()->limit(10)->get()->map(fn ($notification) => ['id' => $notification->id, ...$notification->data, 'read_at' => $notification->read_at]),
+            'contentNotificationPreferences' => [
+                'sms_enabled' => $user->contentNotificationPreference?->sms_enabled ?? true,
+                'email_enabled' => $user->contentNotificationPreference?->email_enabled ?? false,
+                'feed_enabled' => $user->contentNotificationPreference?->feed_enabled ?? false,
+            ],
             'profileCompletion' => collect([$user->name, $user->email, $user->phone, $user->avatar, $user->addresses()->exists()])->filter()->count() * 20,
         ]);
     }
@@ -113,6 +120,13 @@ class AccountController extends Controller
         $request->user()->update(['password' => $request->validated('password')]);
 
         return back()->with('success', 'رمز عبور با موفقیت تغییر کرد.');
+    }
+
+    public function updateContentNotificationPreferences(UpdateContentNotificationPreferencesRequest $request): RedirectResponse
+    {
+        $request->user()->contentNotificationPreference()->updateOrCreate([], $request->validated());
+
+        return back()->with('success', 'تنظیمات اطلاع‌رسانی محتوا ذخیره شد.');
     }
 
     public function readNotification(Request $request, string $notification): RedirectResponse

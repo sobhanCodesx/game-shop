@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 const allowedTags = new Set([
     "P", "BR", "STRONG", "B", "EM", "I", "U", "UL", "OL", "LI",
+    "H2", "H3", "H4", "BLOCKQUOTE", "A", "HR",
 ]);
 
 function sanitize(value: string): string {
@@ -12,6 +13,15 @@ function sanitize(value: string): string {
     Array.from(document.body.querySelectorAll("*")).forEach((element) => {
         if (!allowedTags.has(element.tagName)) {
             element.replaceWith(...Array.from(element.childNodes));
+            return;
+        }
+        if (element.tagName === "A") {
+            const href = element.getAttribute("href")?.trim() ?? "";
+            Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name));
+            if (/^(https?:\/\/|\/|#|mailto:)/i.test(href)) {
+                element.setAttribute("href", href);
+                element.setAttribute("rel", "noopener noreferrer");
+            }
             return;
         }
         Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name));

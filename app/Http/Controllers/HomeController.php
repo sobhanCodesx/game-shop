@@ -12,23 +12,43 @@ use App\Models\HomeSlide;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\SocialContent;
+use App\Models\Studio;
+use App\Services\FeedService;
 use App\Services\MediaStorage;
 use App\Services\ProductPriceService;
 use App\Services\StorefrontDataService;
 use App\Support\Seo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront): Response
+    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed): Response
     {
         $settings = [...HomeSettingsController::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])];
         $limit = (int) $settings['products_limit'];
         $freshCutoff = now()->subDays(14);
         $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
+        $latestStudios = collect();
+
+        if (Schema::hasTable('studios') && Schema::hasTable('games') && Schema::hasColumn('games', 'studio_id')) {
+            $latestStudios = Studio::query()->where('status', 'active')
+                ->withCount(['games' => fn ($query) => $query->whereIn('status', ['active', 'published'])])
+                ->latest()->latest('id')->limit(10)->get()
+                ->map(fn (Studio $studio) => [
+                    'id' => $studio->id,
+                    'name' => $studio->name,
+                    'url' => route('studios.show', $studio->slug, false),
+                    'logo_url' => MediaStorage::url($studio->logo),
+                    'background_url' => MediaStorage::url($studio->background),
+                    'channels_count' => $studio->games_count,
+                    'created_at' => $studio->created_at?->toISOString(),
+                ]);
+        }
+
         $slides = HomeSlide::query()->visible()->orderBy('sort_order')->get()->map(fn (HomeSlide $slide) => [
             ...$slide->only(['id', 'title', 'alt', 'link_type', 'product_id', 'button_url']),
             'desktop_image_url' => MediaStorage::url($slide->desktop_image),
@@ -91,6 +111,8 @@ class HomeController extends Controller
 
         return Inertia::render('Home', [
             ...$seo,
+            'latestFeed' => $feed->latestImportant($request, 8),
+            'latestStudios' => $latestStudios,
             'settings' => $settings,
             'slides' => $slides,
             'categories' => Category::query()

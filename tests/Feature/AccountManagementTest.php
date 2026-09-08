@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Models\Order;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +90,28 @@ class AccountManagementTest extends TestCase
         $this->actingAs($user)->put(route('account.password.update'), ['current_password' => 'wrong', 'password' => 'newplayer123', 'password_confirmation' => 'newplayer123'])->assertSessionHasErrors('current_password');
         $this->actingAs($user)->put(route('account.password.update'), ['current_password' => 'oldplayer123', 'password' => 'newplayer123', 'password_confirmation' => 'newplayer123'])->assertSessionHasNoErrors();
         $this->assertTrue(Hash::check('newplayer123', $user->fresh()->password));
+
+        $this->post(route('logout'));
+        $this->post(route('login.store'), ['identifier' => $user->email, 'password' => 'newplayer123'])
+            ->assertRedirect(route('home'));
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_google_customer_can_set_their_first_password_without_a_current_password(): void
+    {
+        $user = User::factory()->create(['password' => null, 'google_id' => 'google-user']);
+
+        $this->actingAs($user)->put(route('account.password.update'), [
+            'password' => 'newplayer123',
+            'password_confirmation' => 'newplayer123',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue(Hash::check('newplayer123', $user->fresh()->password));
+
+        $this->post(route('logout'));
+        $this->post(route('login.store'), ['identifier' => $user->email, 'password' => 'newplayer123'])
+            ->assertRedirect(route('home'));
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_clicking_notification_marks_it_read_and_redirects_to_internal_destination(): void

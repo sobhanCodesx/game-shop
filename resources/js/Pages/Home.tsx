@@ -3,6 +3,7 @@ import { Link, usePage } from "@inertiajs/react";
 import {
     ChevronLeft,
     ChevronRight,
+    Factory,
     Gamepad2,
     Headphones,
     Eye,
@@ -10,6 +11,7 @@ import {
     ArrowUpLeft,
     Clock3,
     PackageOpen,
+    Radio,
     ShieldCheck,
     Sparkles,
     Truck,
@@ -19,8 +21,11 @@ import { useEffect, useRef, useState } from "react";
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
 import type { NavigationCategory } from "../Components/Storefront/Navigation/types";
 import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
-import type { SharedPageProps } from "../types";
-import type { StorefrontProduct } from "../types";
+import type {
+    FeedItemData,
+    SharedPageProps,
+    StorefrontProduct,
+} from "../types";
 import ProductCard from "../Components/Storefront/Product/ProductCard";
 import Seo, { type SeoData } from "../Components/Seo";
 
@@ -70,6 +75,8 @@ interface Props {
     contentSections: ContentSection[];
     freshContent: FreshItem[];
     channels: ChannelItem[];
+    latestFeed: FeedItemData[];
+    latestStudios: StudioItem[];
 }
 interface ChannelItem {
     id: number;
@@ -79,6 +86,15 @@ interface ChannelItem {
     image_url: string | null;
     videos_count: number;
     subscribers_count: number;
+}
+interface StudioItem {
+    id: number;
+    name: string;
+    url: string;
+    logo_url: string | null;
+    background_url: string | null;
+    channels_count: number;
+    created_at: string;
 }
 interface FreshItem {
     key: string;
@@ -124,8 +140,16 @@ const metaToneClasses: Record<string, string> = {
     info: "bg-sky-500/10 text-sky-500",
     neutral: "bg-white/5 text-slate-400",
 };
+const homeFeedBadgeLabels: Record<string, string> = {
+    breaking: "فوری",
+    news: "خبر",
+    trailer: "تریلر",
+    update: "آپدیت",
+    review: "نقد",
+};
 
 function ProductGrid({ products }: { products: StorefrontProduct[] }) {
+    const railRef = useRef<HTMLDivElement>(null);
     if (!products.length)
         return (
             <div className="rounded-2xl border border-dashed border-slate-800 p-10 text-center text-slate-500">
@@ -133,10 +157,37 @@ function ProductGrid({ products }: { products: StorefrontProduct[] }) {
             </div>
         );
     return (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-            ))}
+        <div className="min-w-0 max-w-full overflow-hidden">
+            <div className="mb-3 hidden justify-end sm:flex">
+                <RailButtons
+                    onNext={() =>
+                        railRef.current?.scrollBy({
+                            left: -320,
+                            behavior: "smooth",
+                        })
+                    }
+                    onPrevious={() =>
+                        railRef.current?.scrollBy({
+                            left: 320,
+                            behavior: "smooth",
+                        })
+                    }
+                    prefix="محصول"
+                />
+            </div>
+            <div
+                className="home-slider flex max-w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                ref={railRef}
+            >
+                {products.map((product) => (
+                    <div
+                        className="w-[calc((100%_-_1rem)/2)] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
+                        key={product.id}
+                    >
+                        <ProductCard product={product} />
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
@@ -198,7 +249,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                             </p>
                         </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="hidden shrink-0 items-center gap-2 sm:flex">
                         <span className="hidden rounded-full bg-[var(--store-bg)] px-3 py-1.5 text-[10px] font-bold text-[var(--store-muted)] sm:block">
                             {money.format(items.length)} انتشار تازه
                         </span>
@@ -237,7 +288,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                     </div>
                 </div>
                 <div
-                    className="flex snap-x snap-mandatory gap-3 overflow-x-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:p-4"
+                    className="home-slider flex max-w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-4"
                     ref={railRef}
                 >
                     {items.map((item) => {
@@ -245,7 +296,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                         const video = item.type === "video";
                         return (
                             <Link
-                                className={`group w-[78vw] max-w-[292px] shrink-0 snap-start overflow-hidden rounded-[22px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[292px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
+                                className={`group w-[calc((100%_-_1rem)/2)] shrink-0 snap-start overflow-hidden rounded-[22px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
                                 href={item.url}
                                 key={item.key}
                                 onClick={() =>
@@ -378,7 +429,7 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
         railRef.current?.scrollBy({ left: offset, behavior: "smooth" });
 
     return (
-        <section className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
+        <section className="mx-auto min-w-0 max-w-7xl px-4 py-6 sm:py-8">
             <div className="mb-5 flex items-end justify-between gap-4">
                 <div>
                     <p className="text-xs font-black text-indigo-400">
@@ -410,12 +461,12 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
                 </div>
             </div>
             <div
-                className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4"
+                className="home-slider flex max-w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 ref={railRef}
             >
                 {channels.map((channel) => (
                     <Link
-                        className="group w-[132px] shrink-0 snap-start rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 text-center transition duration-300 hover:-translate-y-1 hover:border-indigo-500/70 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[154px] sm:p-4"
+                        className="group w-[calc((100%_-_1rem)/2)] shrink-0 snap-start rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-4 text-center transition duration-300 hover:-translate-y-1 hover:border-indigo-500/70 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[170px]"
                         href={channel.url}
                         key={channel.id}
                     >
@@ -461,7 +512,7 @@ function ContentRail({ section }: { section: ContentSection }) {
     const isShort = section.content_type === "shorts";
 
     return (
-        <section className="mx-auto max-w-7xl px-4 py-10">
+        <section className="mx-auto min-w-0 max-w-7xl px-4 py-10">
             <div className="mb-6 flex items-end justify-between gap-4">
                 <div>
                     <p className="text-sm font-bold text-indigo-400">
@@ -474,7 +525,7 @@ function ContentRail({ section }: { section: ContentSection }) {
                         {section.title}
                     </h2>
                 </div>
-                <div className="flex gap-2">
+                <div className="hidden gap-2 sm:flex">
                     <Button
                         aria-label="قبلی"
                         isIconOnly
@@ -494,12 +545,12 @@ function ContentRail({ section }: { section: ContentSection }) {
                 </div>
             </div>
             <div
-                className="scrollbar-none -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3"
+                className="home-slider -mx-4 flex max-w-[calc(100%+2rem)] snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 ref={railRef}
             >
                 {section.items.map((item) => (
                     <Link
-                        className={`block shrink-0 snap-start ${isShort ? "w-[190px] sm:w-[220px]" : "w-[270px] sm:w-[300px]"}`}
+                        className={`block w-[calc((100%_-_1rem)/2)] shrink-0 snap-start ${isShort ? "sm:w-[240px]" : "sm:w-[320px]"}`}
                         href={item.url}
                         key={item.id}
                     >
@@ -623,6 +674,243 @@ function ContentRail({ section }: { section: ContentSection }) {
     );
 }
 
+function LatestFeedRail({ items }: { items: FeedItemData[] }) {
+    const railRef = useRef<HTMLDivElement>(null);
+    if (!items.length) return null;
+
+    return (
+        <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)]">
+            <header className="flex items-center gap-3 border-b border-[var(--store-border)] px-4 py-3.5">
+                <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-indigo-500/10 text-indigo-400">
+                    <Radio size={19} />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <h2 className="truncate text-base font-black">
+                        فیدهای مهم و تازه
+                    </h2>
+                    <p className="mt-0.5 text-[11px] text-[var(--store-muted)]">
+                        جدیدترین انتشارهای منتخب PlayNexus
+                    </p>
+                </div>
+                <Link
+                    className="shrink-0 text-[11px] font-black text-indigo-400 hover:text-indigo-300"
+                    href="/feed"
+                >
+                    همه فیدها
+                </Link>
+                {items.length > 1 && (
+                    <RailButtons
+                        onNext={() =>
+                            railRef.current?.scrollBy({
+                                left: -300,
+                                behavior: "smooth",
+                            })
+                        }
+                        onPrevious={() =>
+                            railRef.current?.scrollBy({
+                                left: 300,
+                                behavior: "smooth",
+                            })
+                        }
+                        prefix="فید"
+                    />
+                )}
+            </header>
+            <div
+                className="home-slider flex max-w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                ref={railRef}
+            >
+                {items.map((item) => {
+                    const media = item.media[0];
+                    const preview =
+                        media?.type === "image" ? media.url : media?.thumbnail;
+                    return (
+                        <Link
+                            className="group relative aspect-[16/10] w-[calc((100%_-_1rem)/2)] shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/5 sm:w-[320px]"
+                            href={item.url}
+                            key={item.id}
+                        >
+                            {preview ? (
+                                <img
+                                    alt={media?.alt ?? item.title}
+                                    className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                                    loading="lazy"
+                                    src={preview}
+                                />
+                            ) : (
+                                <span className="grid size-full place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] text-indigo-300">
+                                    <Radio size={36} />
+                                </span>
+                            )}
+                            <span className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                            {item.badge && (
+                                <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[9px] font-black text-white backdrop-blur-md">
+                                    {homeFeedBadgeLabels[item.badge] ??
+                                        item.badge}
+                                </span>
+                            )}
+                            <span className="absolute inset-x-3 bottom-3 flex items-end gap-2 text-white">
+                                <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-800 ring-2 ring-white/20">
+                                    {item.author.avatar_url ? (
+                                        <img
+                                            alt={item.author.name}
+                                            className="size-full object-cover"
+                                            loading="lazy"
+                                            src={item.author.avatar_url}
+                                        />
+                                    ) : (
+                                        <Gamepad2 size={16} />
+                                    )}
+                                </span>
+                                <span className="min-w-0">
+                                    <small className="block truncate text-[10px] text-white/70">
+                                        {item.author.name}
+                                    </small>
+                                    <strong className="mt-0.5 block line-clamp-2 text-xs leading-5">
+                                        {item.title}
+                                    </strong>
+                                </span>
+                            </span>
+                        </Link>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+function LatestStudioRail({ items }: { items: StudioItem[] }) {
+    const railRef = useRef<HTMLDivElement>(null);
+    if (!items.length) return null;
+
+    return (
+        <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)]">
+            <header className="flex items-center gap-3 border-b border-[var(--store-border)] px-4 py-3.5">
+                <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-violet-500/10 text-violet-400">
+                    <Factory size={19} />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <h2 className="truncate text-base font-black">
+                        استودیوهای تازه‌وارد
+                    </h2>
+                    <p className="mt-0.5 text-[11px] text-[var(--store-muted)]">
+                        آخرین استودیوهای اضافه‌شده
+                    </p>
+                </div>
+                <Link
+                    className="shrink-0 text-[11px] font-black text-violet-400 hover:text-violet-300"
+                    href="/studios"
+                >
+                    همه استودیوها
+                </Link>
+                {items.length > 1 && (
+                    <RailButtons
+                        onNext={() =>
+                            railRef.current?.scrollBy({
+                                left: -300,
+                                behavior: "smooth",
+                            })
+                        }
+                        onPrevious={() =>
+                            railRef.current?.scrollBy({
+                                left: 300,
+                                behavior: "smooth",
+                            })
+                        }
+                        prefix="استودیو"
+                    />
+                )}
+            </header>
+            <div
+                className="home-slider flex max-w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                ref={railRef}
+            >
+                {items.map((studio) => (
+                    <Link
+                        className="group relative aspect-[16/10] w-[calc((100%_-_1rem)/2)] shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/5 sm:w-[320px]"
+                        href={studio.url}
+                        key={studio.id}
+                    >
+                        {studio.background_url ? (
+                            <img
+                                alt={`پس‌زمینه ${studio.name}`}
+                                className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                                loading="lazy"
+                                src={studio.background_url}
+                            />
+                        ) : (
+                            <span className="grid size-full place-items-center text-slate-600">
+                                <Factory size={42} />
+                            </span>
+                        )}
+                        <span className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                        <span className="absolute inset-x-3 bottom-3 flex items-center gap-2 text-white">
+                            <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-800 ring-2 ring-white/20">
+                                {studio.logo_url ? (
+                                    <img
+                                        alt={`لوگوی ${studio.name}`}
+                                        className="size-full object-cover"
+                                        loading="lazy"
+                                        src={studio.logo_url}
+                                    />
+                                ) : (
+                                    <Gamepad2 size={18} />
+                                )}
+                            </span>
+                            <span className="min-w-0">
+                                <strong className="block truncate text-sm">
+                                    {studio.name}
+                                </strong>
+                                <small className="mt-0.5 block text-[10px] text-white/65">
+                                    {studio.channels_count.toLocaleString(
+                                        "fa-IR",
+                                    )}{" "}
+                                    کانال مرتبط
+                                </small>
+                            </span>
+                        </span>
+                    </Link>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function RailButtons({
+    onPrevious,
+    onNext,
+    prefix,
+}: {
+    onPrevious: () => void;
+    onNext: () => void;
+    prefix: string;
+}) {
+    return (
+        <div className="hidden shrink-0 gap-1 sm:flex">
+            <Button
+                aria-label={`${prefix} قبلی`}
+                className="size-8 min-w-8 rounded-xl"
+                isIconOnly
+                onPress={onPrevious}
+                size="sm"
+                variant="ghost"
+            >
+                <ChevronRight size={16} />
+            </Button>
+            <Button
+                aria-label={`${prefix} بعدی`}
+                className="size-8 min-w-8 rounded-xl"
+                isIconOnly
+                onPress={onNext}
+                size="sm"
+                variant="ghost"
+            >
+                <ChevronLeft size={16} />
+            </Button>
+        </div>
+    );
+}
+
 export default function Home({
     seo,
     settings,
@@ -633,11 +921,14 @@ export default function Home({
     contentSections,
     freshContent,
     channels,
+    latestFeed,
+    latestStudios,
 }: Props) {
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
     const [activeSlide, setActiveSlide] = useState(0);
     const touchStartX = useRef<number | null>(null);
+    const categoryRailRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (slides.length < 2) return;
         const timer = window.setInterval(
@@ -781,7 +1072,16 @@ export default function Home({
                 </section>
                 <FreshReleases items={freshContent} />
                 <ChannelRail channels={channels} />
-                <section className="mx-auto grid max-w-7xl grid-cols-2 gap-3 px-4 py-8 lg:grid-cols-4">
+                {(latestFeed.length > 0 || latestStudios.length > 0) && (
+                    <section
+                        aria-label="تازه‌های فید و استودیو"
+                        className="mx-auto grid max-w-7xl gap-4 px-4 pb-4 lg:grid-cols-2"
+                    >
+                        <LatestFeedRail items={latestFeed} />
+                        <LatestStudioRail items={latestStudios} />
+                    </section>
+                )}
+                <section className="home-slider mx-auto flex max-w-7xl snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],
                         [Truck, "ارسال سریع", "تحویل امن سفارش"],
@@ -789,7 +1089,7 @@ export default function Home({
                         [Sparkles, "پیشنهادهای ویژه", "تخفیف‌های واقعی"],
                     ].map(([Icon, title, text]) => (
                         <div
-                            className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
+                            className="flex w-[calc((100%_-_.75rem)/2)] shrink-0 snap-start items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 lg:w-auto lg:flex-1"
                             key={String(title)}
                         >
                             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-indigo-500/10 text-indigo-400">
@@ -812,8 +1112,8 @@ export default function Home({
                             className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10"
                             id="categories"
                         >
-                            <div className="mb-6 flex items-end justify-between">
-                                <div>
+                            <div className="mb-6 flex items-end justify-between gap-4">
+                                <div className="min-w-0">
                                     <p className="text-sm font-bold text-indigo-400">
                                         انتخاب سریع
                                     </p>
@@ -821,11 +1121,31 @@ export default function Home({
                                         {settings.featured_categories_title}
                                     </h2>
                                 </div>
+                                {categories.length > 1 && (
+                                    <RailButtons
+                                        onNext={() =>
+                                            categoryRailRef.current?.scrollBy({
+                                                left: -220,
+                                                behavior: "smooth",
+                                            })
+                                        }
+                                        onPrevious={() =>
+                                            categoryRailRef.current?.scrollBy({
+                                                left: 220,
+                                                behavior: "smooth",
+                                            })
+                                        }
+                                        prefix="دسته‌بندی"
+                                    />
+                                )}
                             </div>
-                            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">
+                            <div
+                                className="home-slider flex max-w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                                ref={categoryRailRef}
+                            >
                                 {categories.map((category) => (
                                     <Link
-                                        className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-center transition hover:border-indigo-500 hover:bg-indigo-500/10"
+                                        className="w-[calc((100%_-_1rem)/2)] shrink-0 snap-start rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-center transition hover:border-indigo-500 hover:bg-indigo-500/10 sm:w-[180px]"
                                         href={`/categories/${category.slug}`}
                                         key={category.id}
                                     >
@@ -901,14 +1221,20 @@ export default function Home({
                                         {settings.newsletter_description}
                                     </p>
                                 </div>
-                                <div className="flex w-full max-w-md gap-2">
+                                <div className="grid w-full min-w-0 max-w-md grid-cols-[minmax(0,1fr)_auto] gap-2">
                                     <Input
                                         aria-label="ایمیل خبرنامه"
+                                        className="min-w-0"
                                         dir="ltr"
                                         placeholder="you@example.com"
                                         type="email"
                                     />
-                                    <Button variant="primary">عضویت</Button>
+                                    <Button
+                                        className="shrink-0"
+                                        variant="primary"
+                                    >
+                                        عضویت
+                                    </Button>
                                 </div>
                             </Card.Content>
                         </Card>

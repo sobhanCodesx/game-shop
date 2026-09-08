@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\EmailVerificationCode;
 use App\Models\MobileVerificationCode;
-use App\Models\SmsOutbox;
 use App\Models\User;
 use App\Notifications\AuthenticationCodeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,6 +70,21 @@ class CustomerAuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_logout_expires_all_first_party_cookies(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        $response = $this->actingAs($user)
+            ->withCookie('google_oauth_stale', 'old-state')
+            ->withCookie('playnexus_preference', 'old-value')
+            ->post(route('logout'));
+
+        $response->assertRedirect(route('home'));
+        $response->assertCookieExpired('google_oauth_stale');
+        $response->assertCookieExpired('playnexus_preference');
+        $this->assertGuest();
+    }
+
     public function test_password_login_ignores_a_stale_intended_url_that_would_return_404(): void
     {
         $user = User::factory()->create([
@@ -103,6 +117,19 @@ class CustomerAuthenticationTest extends TestCase
                 'password' => 'player1234',
             ])
             ->assertRedirect(route('checkout.show'));
+
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_password_login_from_inline_prompt_keeps_the_full_local_url(): void
+    {
+        $user = User::factory()->create(['password' => 'player1234', 'email_verified_at' => now()]);
+
+        $this->post(route('login.store'), [
+            'identifier' => $user->email,
+            'password' => 'player1234',
+            'redirect' => '/explore?type=game&page=3#results',
+        ])->assertRedirect('/explore?type=game&page=3#results');
 
         $this->assertAuthenticatedAs($user);
     }

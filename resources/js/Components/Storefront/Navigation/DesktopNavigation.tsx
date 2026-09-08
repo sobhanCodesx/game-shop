@@ -5,6 +5,7 @@ import {
     ChevronLeft,
     CircleUserRound,
     Flame,
+    Factory,
     FolderOpen,
     Gamepad2,
     LayoutDashboard,
@@ -12,6 +13,7 @@ import {
     LogOut,
     Package,
     Repeat2,
+    Radio,
     Search,
     ShieldCheck,
     ShoppingBag,
@@ -187,7 +189,23 @@ export default function DesktopNavigation({
     onOpenAccount,
     hasFreshContent,
 }: Props) {
-    const { cart } = usePage<SharedPageProps>().props;
+    const page = usePage<SharedPageProps>();
+    const { cart } = page.props;
+    const pathname = page.url.split("?")[0];
+    const matchesPath = (...paths: string[]) =>
+        paths.some(
+            (path) => pathname === path || pathname.startsWith(`${path}/`),
+        );
+    const navLinkClass = (active: boolean) =>
+        `store-nav-link shrink-0 whitespace-nowrap ${active ? "store-nav-link--active" : ""}`;
+    const cartActive = matchesPath("/cart", "/checkout");
+    const accountActive = matchesPath(
+        "/account",
+        "/orders",
+        "/tickets",
+        "/login",
+        "/register",
+    );
 
     const [megaOpen, setMegaOpen] = useState(false);
     const [accountOpen, setAccountOpen] = useState(false);
@@ -322,7 +340,7 @@ export default function DesktopNavigation({
                         <Link
                             aria-label="سبد خرید"
                             href="/cart"
-                            className="store-nav-icon relative inline-grid size-11 place-items-center"
+                            className={`store-nav-icon relative inline-grid size-11 place-items-center ${cartActive ? "bg-indigo-500/[.08] text-indigo-500" : ""}`}
                         >
                             <ShoppingBag size={20} />
 
@@ -347,7 +365,7 @@ export default function DesktopNavigation({
                                 aria-label="حساب کاربری"
                                 aria-expanded={user ? accountOpen : undefined}
                                 onClick={handleAccountPress}
-                                className="
+                                className={`
                                     flex h-11 max-w-[180px]
                                     cursor-pointer items-center
                                     gap-2 rounded-2xl px-2.5
@@ -357,7 +375,8 @@ export default function DesktopNavigation({
                                     focus-visible:outline-none
                                     focus-visible:ring-2
                                     focus-visible:ring-indigo-500/50
-                                "
+                                    ${accountActive ? "bg-indigo-500/[.08] text-indigo-500" : ""}
+                                `}
                             >
                                 {user ? (
                                     <Avatar size="sm" className="shrink-0">
@@ -483,7 +502,22 @@ export default function DesktopNavigation({
                     </div>
 
                     <Link
-                        className="store-nav-link shrink-0 whitespace-nowrap"
+                        className={navLinkClass(matchesPath("/feed"))}
+                        href="/feed"
+                    >
+                        <Radio size={15} className="shrink-0" />
+                        فید
+                    </Link>
+
+                    <Link
+                        className={navLinkClass(
+                            matchesPath(
+                                "/shop",
+                                "/products",
+                                "/games",
+                                "/categories",
+                            ),
+                        )}
                         href="/shop"
                     >
                         <ShoppingBag size={15} className="shrink-0" />
@@ -491,7 +525,9 @@ export default function DesktopNavigation({
                     </Link>
 
                     <Link
-                        className="store-nav-link shrink-0 whitespace-nowrap"
+                        className={navLinkClass(
+                            matchesPath("/exchange-products"),
+                        )}
                         href="/exchange-products"
                     >
                         <Repeat2 size={15} className="shrink-0" />
@@ -499,7 +535,7 @@ export default function DesktopNavigation({
                     </Link>
 
                     <Link
-                        className="store-nav-link shrink-0 whitespace-nowrap"
+                        className={navLinkClass(matchesPath("/discover"))}
                         href="/discover"
                     >
                         <Sparkles size={15} className="shrink-0" />
@@ -507,7 +543,7 @@ export default function DesktopNavigation({
                     </Link>
 
                     <Link
-                        className="store-nav-link relative shrink-0 whitespace-nowrap"
+                        className={`${navLinkClass(matchesPath("/videos", "/shorts", "/channels"))} relative`}
                         href="/videos"
                     >
                         <Flame size={15} className="shrink-0" />
@@ -521,7 +557,15 @@ export default function DesktopNavigation({
                     </Link>
 
                     <Link
-                        className="store-nav-link shrink-0 whitespace-nowrap"
+                        className={navLinkClass(matchesPath("/studios"))}
+                        href="/studios"
+                    >
+                        <Factory size={15} className="shrink-0" />
+                        استودیوها
+                    </Link>
+
+                    <Link
+                        className={navLinkClass(matchesPath("/offers"))}
                         href="/offers"
                     >
                         <Tags size={15} className="shrink-0" />

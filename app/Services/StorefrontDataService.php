@@ -142,7 +142,9 @@ class StorefrontDataService
             'type' => $content->type,
             'title' => $content->title,
             'slug' => $content->slug,
-            'url' => route('content.show', [$plural, $content], false),
+            'url' => $content->type === 'post'
+                ? route('feed.show', $content->slug, false)
+                : route('content.show', [$plural, $content], false),
             'excerpt' => $content->excerpt,
             'thumbnail_url' => MediaStorage::url($content->thumbnail),
             'video_url' => MediaStorage::url($content->video_path),

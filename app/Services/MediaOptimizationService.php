@@ -106,7 +106,22 @@ class MediaOptimizationService
             return $file->store($directory, (string) config('media.disk', 'public'));
         }
 
-        $source = @imagecreatefromstring((string) file_get_contents($file->getRealPath()));
+        $dimensions = @getimagesize($file->getRealPath());
+        if (! $dimensions) {
+            throw new RuntimeException('فایل تصویر قابل پردازش نیست.');
+        }
+
+        [$width, $height] = $dimensions;
+        if (! $this->hasEnoughMemoryForGd($file, $width, $height)) {
+            return $this->storeLargeImage($file, $directory);
+        }
+
+        $source = match ($file->getMimeType()) {
+            'image/jpeg' => @imagecreatefromjpeg($file->getRealPath()),
+            'image/png' => @imagecreatefrompng($file->getRealPath()),
+            'image/webp' => @imagecreatefromwebp($file->getRealPath()),
+            default => false,
+        };
         if (! $source) {
             throw new RuntimeException('فایل تصویر قابل پردازش نیست.');
         }
@@ -152,6 +167,106 @@ class MediaOptimizationService
         @unlink($temporary);
 
         return $path;
+    }
+
+    private function hasEnoughMemoryForGd(UploadedFile $file, int $width, int $height): bool
+    {
+        $limit = $this->memoryLimitBytes();
+        if ($limit === null) {
+            return true;
+        }
+
+        $targetWidthLimit = (int) config('media.image.max_width', 1600);
+        $targetHeightLimit = (int) config('media.image.max_height', 1600);
+        $scale = min(1, $targetWidthLimit / max(1, $width), $targetHeightLimit / max(1, $height));
+        $targetPixels = (int) ceil($width * $scale) * (int) ceil($height * $scale);
+
+        // GD keeps an uncompressed source bitmap in memory. JPEG orientation
+        // may temporarily create a second full-size bitmap during rotation.
+        $sourceCopies = $file->getMimeType() === 'image/jpeg' ? 2 : 1;
+        $estimated = ($width * $height * 4 * $sourceCopies)
+            + ($targetPixels * 4)
+            + max(16 * 1024 * 1024, $file->getSize() * 2);
+        $available = $limit - memory_get_usage(true) - (16 * 1024 * 1024);
+
+        return $estimated < $available;
+    }
+
+    private function memoryLimitBytes(): ?int
+    {
+        $value = trim((string) ini_get('memory_limit'));
+        if ($value === '' || $value === '-1') {
+            return null;
+        }
+
+        $unit = strtolower(substr($value, -1));
+        $amount = (float) $value;
+        $multiplier = match ($unit) {
+            'g' => 1024 ** 3,
+            'm' => 1024 ** 2,
+            'k' => 1024,
+            default => 1,
+        };
+
+        return (int) floor($amount * $multiplier);
+    }
+
+    private function storeLargeImage(UploadedFile $file, string $directory): string
+    {
+        $temporary = tempnam(sys_get_temp_dir(), 'nexus-large-image-');
+        $binary = (string) config('media.video.ffmpeg_binary');
+
+        if ($temporary && is_file($binary)) {
+            @unlink($temporary);
+            $temporary .= '.webp';
+            $process = new Process([
+                $binary,
+                '-y',
+                '-i',
+                $file->getRealPath(),
+                '-vf',
+                sprintf(
+                    'scale=%d:%d:force_original_aspect_ratio=decrease',
+                    (int) config('media.image.max_width', 1600),
+                    (int) config('media.image.max_height', 1600),
+                ),
+                '-frames:v',
+                '1',
+                '-quality',
+                (string) config('media.image.webp_quality', 82),
+                $temporary,
+            ]);
+
+            try {
+                $process->setTimeout(120)->run();
+                if ($process->isSuccessful() && is_file($temporary) && filesize($temporary) > 0) {
+                    $path = trim($directory, '/').'/'.Str::uuid().'.webp';
+                    MediaStorage::disk()->put($path, fopen($temporary, 'rb'));
+                    @unlink($temporary);
+
+                    return $path;
+                }
+            } catch (\Throwable) {
+                // Fall through to stream storage; never decode a risky image in PHP.
+            }
+
+            @unlink($temporary);
+        } elseif ($temporary) {
+            @unlink($temporary);
+        }
+
+        $extension = match ($file->getMimeType()) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => throw new RuntimeException('فرمت تصویر پشتیبانی نمی‌شود.'),
+        };
+
+        return $file->storeAs(
+            trim($directory, '/'),
+            Str::uuid().'.'.$extension,
+            (string) config('media.disk', 'public'),
+        );
     }
 
     private function storeVideo(UploadedFile $file, string $directory): string

@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -26,6 +27,8 @@ class User extends Authenticatable
         'first_name',
         'last_name',
         'email',
+        'email_verified_at',
+        'google_id',
         'username',
         'phone',
         'avatar',
@@ -45,6 +48,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'google_id',
     ];
 
     /**
@@ -100,6 +104,11 @@ class User extends Authenticatable
         return $this->hasMany(SocialContentReaction::class);
     }
 
+    public function savedContent(): BelongsToMany
+    {
+        return $this->belongsToMany(SocialContent::class, 'social_content_saves')->withTimestamps();
+    }
+
     public function socialComments(): HasMany
     {
         return $this->hasMany(SocialComment::class);
@@ -113,5 +122,10 @@ class User extends Authenticatable
     public function subscribedGames(): BelongsToMany
     {
         return $this->belongsToMany(Game::class, 'game_subscriptions')->withTimestamps();
+    }
+
+    public function contentNotificationPreference(): HasOne
+    {
+        return $this->hasOne(ContentNotificationPreference::class);
     }
 }

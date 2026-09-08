@@ -28,6 +28,7 @@ interface CatalogItem {
     category_id?: number | null;
     brand_id?: number | null;
     game_id?: number | null;
+    studio_id?: number | null;
     platform_ids?: number[];
     sku?: string;
     product_type?: string;
@@ -45,6 +46,7 @@ interface FormOptions {
     brands: Option[];
     games: Option[];
     platforms: Option[];
+    studios: Option[];
 }
 
 interface CatalogFormProps {
@@ -71,6 +73,7 @@ interface CatalogFormData {
     category_id: string;
     brand_id: string;
     game_id: string;
+    studio_id: string;
     platform_ids: number[];
     sku: string;
     product_type: string;
@@ -105,6 +108,7 @@ export default function CatalogForm({ resource, title, item, options }: CatalogF
         category_id: item?.category_id?.toString() ?? '',
         brand_id: item?.brand_id?.toString() ?? '',
         game_id: item?.game_id?.toString() ?? '',
+        studio_id: item?.studio_id?.toString() ?? '',
         platform_ids: item?.platform_ids ?? [],
         sku: item?.sku ?? '',
         product_type: item?.product_type ?? 'physical',
@@ -186,6 +190,7 @@ export default function CatalogForm({ resource, title, item, options }: CatalogF
 
                             {resource === 'games' && (
                                 <>
+                                    {field('studio_id', 'استودیو / شرکت سازنده', <select className={inputClassName} onChange={(event) => setData('studio_id', event.target.value)} value={data.studio_id}><option value="">بدون استودیو</option>{options.studios.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select>)}
                                     {field('developer', 'توسعه‌دهنده', <input className={inputClassName} onChange={(event) => setData('developer', event.target.value)} value={data.developer} />)}
                                     {field('publisher', 'ناشر', <input className={inputClassName} onChange={(event) => setData('publisher', event.target.value)} value={data.publisher} />)}
                                     {field('release_date', 'تاریخ انتشار', <input className={inputClassName} onChange={(event) => setData('release_date', event.target.value)} type="date" value={data.release_date} />)}

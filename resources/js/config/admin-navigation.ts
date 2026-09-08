@@ -18,8 +18,11 @@ import {
     RefreshCw,
     Rocket,
     MessageSquareText,
+    Newspaper,
+    Factory,
     ListVideo,
     ListChecks,
+    TerminalSquare,
     type LucideIcon,
 } from "lucide-react";
 
@@ -84,6 +87,12 @@ export const adminNavigation: NavigationGroup[] = [
     {
         label: "اجتماعی و محتوا",
         items: [
+            { label: "فید", href: "/admin/feed", icon: Newspaper },
+            {
+                label: "استودیوهای بازی‌سازی",
+                href: "/admin/studios",
+                icon: Factory,
+            },
             // { label: "کریتورها", href: "/admin/creators", icon: BriefcaseBusiness },
             // { label: "پست‌ها", href: "/admin/posts", icon: FileText },
             { label: "ویدیوها", href: "/admin/videos", icon: Video },
@@ -130,6 +139,11 @@ export const adminNavigation: NavigationGroup[] = [
                 label: "به‌روزرسانی سیستم",
                 href: "/admin/deployments",
                 icon: Rocket,
+            },
+            {
+                label: "نگهداری سیستم",
+                href: "/admin/system-maintenance",
+                icon: TerminalSquare,
             },
             // { label: "گزارش مدیران", href: "/admin/audit-logs", icon: WalletCards },
         ],

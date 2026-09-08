@@ -12,6 +12,7 @@ enum SmsPattern: string
     case OrderActivity = 'order_activity';
     case OrderCashback = 'order_cashback';
     case TicketActivity = 'ticket_activity';
+    case ContentPublished = 'content_published';
 
     public function requiredVariables(): array
     {
@@ -20,6 +21,7 @@ enum SmsPattern: string
             self::OrderActivity => ['title', 'order', 'products', 'amount', 'message'],
             self::OrderCashback => ['order', 'products', 'amount'],
             self::TicketActivity => ['title', 'message'],
+            self::ContentPublished => ['channel', 'type', 'title'],
         };
     }
 
@@ -32,6 +34,7 @@ enum SmsPattern: string
             self::OrderActivity => 'CHANGE_ME_ORDER_ACTIVITY',
             self::OrderCashback => 'CHANGE_ME_ORDER_CASHBACK',
             self::TicketActivity => 'CHANGE_ME_TICKET_ACTIVITY',
+            self::ContentPublished => 'CHANGE_ME_CONTENT_PUBLISHED',
         };
     }
 
@@ -44,6 +47,7 @@ enum SmsPattern: string
             self::OrderActivity => '{title} - سفارش {order} - {products} - مبلغ {amount} - {message}',
             self::OrderCashback => 'اعتبار سفارش {order} برای {products} به کیف پول شما افزوده شد - مبلغ {amount}',
             self::TicketActivity => '{title} - {message}',
+            self::ContentPublished => '{type} جدید در کانال {channel}: {title}',
         };
     }
 
@@ -72,6 +76,7 @@ enum SmsPattern: string
             self::OrderActivity => 'اعلان سفارش',
             self::OrderCashback => 'اعتبار کیف پول',
             self::TicketActivity => 'اعلان تیکت',
+            self::ContentPublished => 'انتشار محتوای جدید',
         };
     }
 
@@ -84,6 +89,7 @@ enum SmsPattern: string
             self::OrderActivity => 'ثبت سفارش، تغییر وضعیت، لغو و اعلان‌های سفارش',
             self::OrderCashback => 'اطلاع‌رسانی ثبت اعتبار بازگشت وجه در کیف پول',
             self::TicketActivity => 'ایجاد تیکت، پاسخ و تغییرات پشتیبانی یا معاوضه',
+            self::ContentPublished => 'اطلاع‌رسانی محصول، ویدیو یا محتوای جدید به اعضای کانال',
         };
     }
 

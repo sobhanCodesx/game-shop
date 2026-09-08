@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from "@inertiajs/react";
 import { Gamepad2, ListVideo, Play } from "lucide-react";
 
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
+import RichText from "../../Components/Storefront/Shared/RichText";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import type { SharedPageProps, StorefrontContent } from "../../types";
 
@@ -19,6 +20,7 @@ interface PlaylistData {
     title: string;
     slug: string;
     description: string | null;
+    description_html: string | null;
     cover_url: string | null;
     videos_count: number;
     videos: StorefrontContent[];
@@ -72,10 +74,11 @@ export default function PlaylistShow({
                             <h1 className="text-2xl font-black">
                                 {playlist.title}
                             </h1>
-                            {playlist.description && (
-                                <p className="mt-3 text-sm leading-7 text-[var(--store-muted)]">
-                                    {playlist.description}
-                                </p>
+                            {playlist.description_html && (
+                                <RichText
+                                    className="mt-3 text-sm leading-7 text-[var(--store-muted)]"
+                                    html={playlist.description_html}
+                                />
                             )}
                             <Link
                                 className="mt-5 flex items-center gap-3"

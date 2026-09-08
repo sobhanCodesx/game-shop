@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Game;
 use App\Models\Product;
 use App\Models\SocialContent;
+use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,7 +19,7 @@ class SitemapTest extends TestCase
     {
         $response = $this->get('/sitemap.xml')->assertOk()->assertHeader('Content-Type', 'application/xml; charset=UTF-8');
 
-        foreach (['static', 'products', 'categories', 'content', 'channels', 'playlists'] as $type) {
+        foreach (['static', 'products', 'categories', 'feed', 'content', 'channels', 'studios', 'playlists'] as $type) {
             $response->assertSee("http://localhost/sitemaps/{$type}.xml", false);
         }
 
@@ -43,6 +44,13 @@ class SitemapTest extends TestCase
             'status' => 'published',
             'published_at' => now()->subMinute(),
         ]);
+        $feedPost = SocialContent::query()->create([
+            'type' => 'post',
+            'title' => 'پست فید عمومی',
+            'slug' => 'public-feed-post',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
         SocialContent::query()->create([
             'type' => 'video',
             'title' => 'ویدیوی پیش‌نویس',
@@ -63,6 +71,16 @@ class SitemapTest extends TestCase
             'visibility' => 'unlisted',
         ]);
         $unlistedPlaylist->videos()->attach($video);
+        $studio = Studio::query()->create([
+            'name' => 'Public Studio',
+            'slug' => 'public-studio',
+            'status' => 'active',
+        ]);
+        Studio::query()->create([
+            'name' => 'Private Studio',
+            'slug' => 'private-studio',
+            'status' => 'inactive',
+        ]);
 
         $this->get('/sitemaps/products.xml')->assertOk()
             ->assertSee(route('products.show', $visibleProduct->slug), false)
@@ -72,9 +90,16 @@ class SitemapTest extends TestCase
             ->assertDontSee('inactive-category');
         $this->get('/sitemaps/content.xml')->assertOk()
             ->assertSee(route('content.show', ['videos', $video->slug]), false)
+            ->assertDontSee('public-feed-post')
             ->assertDontSee('draft-video');
+        $this->get('/sitemaps/feed.xml')->assertOk()
+            ->assertSee(route('feed.index'), false)
+            ->assertSee(route('feed.show', $feedPost->slug), false);
         $this->get('/sitemaps/channels.xml')->assertOk()
             ->assertSee(route('channels.show', $game->slug), false);
+        $this->get('/sitemaps/studios.xml')->assertOk()
+            ->assertSee(route('studios.show', $studio->slug), false)
+            ->assertDontSee('private-studio');
         $this->get('/sitemaps/playlists.xml')->assertOk()
             ->assertSee(route('channels.playlists.show', [$game->slug, $publicPlaylist->slug]), false)
             ->assertDontSee('unlisted-playlist');
@@ -84,7 +109,7 @@ class SitemapTest extends TestCase
     {
         $response = $this->get('/sitemaps/static.xml')->assertOk();
 
-        foreach (['/', '/shop', '/exchange-products', '/discover', '/offers', '/videos'] as $path) {
+        foreach (['/', '/shop', '/exchange-products', '/discover', '/offers', '/videos', '/studios'] as $path) {
             $response->assertSee('http://localhost'.$path, false);
         }
 

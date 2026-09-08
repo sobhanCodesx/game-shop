@@ -5,15 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\Game;
 use App\Models\SocialContent;
 use App\Models\VideoPlaylist;
+use App\Services\FeedService;
 use App\Services\MediaStorage;
 use App\Services\StorefrontDataService;
+use App\Support\RichText;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ChannelController extends Controller
 {
-    public function show(Request $request, Game $game, StorefrontDataService $data): Response
+    public function show(Request $request, Game $game, StorefrontDataService $data, FeedService $feed): Response
     {
         $this->ensureVisible($game);
 
@@ -30,6 +32,7 @@ class ChannelController extends Controller
             'channel' => $this->channelData($request, $game),
             'videos' => $videos,
             'playlists' => $playlists,
+            'feed' => $feed->channel($request, $game),
         ]);
     }
 
@@ -43,7 +46,8 @@ class ChannelController extends Controller
             'channel' => $this->channelData($request, $game),
             'playlist' => [
                 ...$this->playlistData($game, $playlist),
-                'description' => $playlist->description,
+                'description' => RichText::plainText($playlist->description),
+                'description_html' => RichText::sanitize($playlist->description),
                 'videos' => $playlist->videos->map(fn (SocialContent $video) => $data->content($video))->values(),
             ],
         ]);
@@ -56,7 +60,7 @@ class ChannelController extends Controller
 
     private function channelData(Request $request, Game $game): array
     {
-        $game->loadMissing('platforms:id,name');
+        $game->loadMissing(['platforms:id,name', 'studio:id,name,slug,logo,status']);
         $subscribersCount = $game->subscribers()->count();
         $logo = $game->cover ?: $game->playlists()->publiclyVisible()->whereNotNull('logo')->value('logo');
 
@@ -70,6 +74,11 @@ class ChannelController extends Controller
             'is_subscribed' => $request->user()
                 ? $game->subscribers()->whereKey($request->user()->id)->exists()
                 : false,
+            'studio' => $game->studio?->status === 'active' ? [
+                'name' => $game->studio->name,
+                'url' => route('studios.show', $game->studio->slug, false),
+                'logo_url' => MediaStorage::url($game->studio->logo),
+            ] : null,
         ];
     }
 

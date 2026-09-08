@@ -56,6 +56,7 @@ class HandleInertiaRequests extends Middleware
                         'is_admin',
                     ]),
                     'avatar_url' => MediaStorage::url($request->user()->avatar),
+                    'has_password' => filled($request->user()->getAuthPassword()),
                 ] : null,
             ],
             'flash' => [

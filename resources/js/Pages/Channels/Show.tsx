@@ -1,7 +1,8 @@
 import { Avatar, Button } from "@heroui/react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
-import { Gamepad2, ListVideo, Play, Users } from "lucide-react";
+import { Gamepad2, ListVideo, Play, Radio, Users } from "lucide-react";
 
+import FeedItem from "../../Components/Storefront/Feed/FeedItem";
 import Pagination from "../../Components/Storefront/Shared/Pagination";
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
@@ -9,6 +10,7 @@ import type {
     Paginated,
     SharedPageProps,
     StorefrontContent,
+    FeedItemData,
 } from "../../types";
 
 interface Channel {
@@ -24,6 +26,7 @@ interface Channel {
     subscribers_count: number;
     videos_count: number;
     is_subscribed: boolean;
+    studio: { name: string; url: string; logo_url: string | null } | null;
 }
 
 interface Playlist {
@@ -39,10 +42,12 @@ export default function ChannelShow({
     channel,
     videos,
     playlists,
+    feed,
 }: {
     channel: Channel;
     videos: Paginated<StorefrontContent>;
     playlists: Playlist[];
+    feed: FeedItemData[];
 }) {
     const { auth } = usePage<SharedPageProps>().props;
     const subscribe = () => {
@@ -115,6 +120,7 @@ export default function ChannelShow({
                                     {channel.description}
                                 </p>
                             )}
+                            {channel.studio && <Link className="mt-3 inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1.5 text-[11px] font-black text-violet-400 transition hover:bg-violet-500/20" href={channel.studio.url}>{channel.studio.logo_url && <img alt="" className="size-5 rounded-full object-cover" src={channel.studio.logo_url} />}ساخته‌شده توسط {channel.studio.name}</Link>}
                         </div>
                         <Button
                             className="w-full shrink-0 font-black sm:w-auto sm:min-w-28"
@@ -127,8 +133,11 @@ export default function ChannelShow({
                         </Button>
                     </section>
                     <nav className="mt-4 flex max-w-full gap-6 overflow-x-auto border-b border-[var(--store-border)] px-2 text-sm font-bold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-6 sm:gap-8">
+                        {feed.length > 0 && (
+                            <a className="shrink-0 border-b-2 border-indigo-500 py-4" href="#feed">فید کانال</a>
+                        )}
                         <a
-                            className="shrink-0 border-b-2 border-indigo-500 py-4"
+                            className={`shrink-0 py-4 ${feed.length ? "text-[var(--store-muted)] transition hover:text-[var(--store-text)]" : "border-b-2 border-indigo-500"}`}
                             href="#videos"
                         >
                             ویدیوها
@@ -148,6 +157,15 @@ export default function ChannelShow({
                             درباره
                         </a>
                     </nav>
+
+                    {feed.length > 0 && (
+                        <section className="scroll-mt-24 py-7 sm:py-9" id="feed">
+                            <div className="mb-5 flex items-center gap-2"><Radio className="text-indigo-500" size={18} /><h2 className="text-xl font-black">فید {channel.name}</h2></div>
+                            <div className="mx-auto max-w-[720px] space-y-4">
+                                {feed.map((item) => <FeedItem item={item} key={item.id} />)}
+                            </div>
+                        </section>
+                    )}
 
                     {videos.data.length > 0 && (
                         <section

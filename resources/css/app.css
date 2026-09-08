@@ -50,12 +50,17 @@
 
 html {
     direction: rtl;
+    max-width: 100%;
+    overflow-x: clip;
 }
 
 body {
-    min-width: 320px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     min-height: 100vh;
     margin: 0;
+    overflow-x: clip;
     background:
         radial-gradient(
             circle at 10% -10%,
@@ -105,27 +110,28 @@ textarea {
 .page-transition-loader {
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    z-index: 35;
     display: grid;
     place-items: center;
     overflow: hidden;
     color: #f8fafc;
-    background: rgb(7 11 20 / 94%);
-    backdrop-filter: blur(14px);
+    background: rgb(7 11 20 / 78%);
+    backdrop-filter: blur(10px);
+    pointer-events: none;
     animation: page-loader-in 180ms ease-out both;
 }
 
 .page-transition-loader--light {
     color: #111827;
-    background: rgb(246 247 251 / 94%);
+    background: rgb(246 247 251 / 82%);
 }
 
 .page-transition-loader__glow {
     position: absolute;
-    width: min(72vw, 34rem);
+    width: min(72vw, 32rem);
     aspect-ratio: 1;
     border-radius: 999px;
-    background: radial-gradient(circle, rgb(99 102 241 / 22%), transparent 68%);
+    background: radial-gradient(circle, rgb(99 102 241 / 20%), transparent 68%);
     animation: page-loader-pulse 1.8s ease-in-out infinite;
 }
 
@@ -133,24 +139,39 @@ textarea {
     position: relative;
     display: flex;
     min-width: 13rem;
+    max-width: calc(100vw - 2rem);
     flex-direction: column;
     align-items: center;
+    overflow: hidden;
+    border: 1px solid rgb(148 163 184 / 24%);
+    border-radius: 1.5rem;
+    background: rgb(7 11 20 / 92%);
+    padding: 1.4rem 1.6rem 1.25rem;
+    box-shadow: 0 16px 45px rgb(2 6 23 / 28%);
+    backdrop-filter: blur(14px);
+}
+
+.page-transition-loader--light .page-transition-loader__content {
+    border-color: rgb(148 163 184 / 32%);
+    background: rgb(255 255 255 / 94%);
+    box-shadow: 0 16px 45px rgb(15 23 42 / 14%);
 }
 
 .page-transition-loader__logo {
     position: relative;
     display: grid;
-    width: 5rem;
-    height: 5rem;
+    width: 4.5rem;
+    height: 4.5rem;
+    flex: 0 0 auto;
     place-items: center;
 }
 
 .page-transition-loader__logo img {
-    width: 3.75rem;
-    height: 3.75rem;
-    border-radius: 1.15rem;
+    width: 3.35rem;
+    height: 3.35rem;
+    border-radius: 1rem;
     object-fit: cover;
-    box-shadow: 0 18px 50px rgb(79 70 229 / 35%);
+    box-shadow: 0 8px 22px rgb(79 70 229 / 28%);
     animation: page-loader-float 1.4s ease-in-out infinite;
 }
 
@@ -164,9 +185,10 @@ textarea {
 }
 
 .page-transition-loader__content strong {
-    margin-top: 0.8rem;
-    font-size: 1rem;
+    margin-top: 0.85rem;
+    font-size: 0.95rem;
     font-weight: 900;
+    white-space: nowrap;
 }
 
 .page-transition-loader__label {
@@ -230,6 +252,15 @@ textarea {
     }
 }
 
+@keyframes feed-shimmer {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(-100%);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .page-transition-loader *,
     .page-transition-loader {
@@ -269,7 +300,43 @@ textarea {
     --field-foreground: var(--store-text);
     --field-placeholder: var(--store-muted);
     --field-border: var(--store-border);
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
     color-scheme: dark;
+}
+
+.storefront-theme main {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.home-slider {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
+}
+
+.home-slider > * {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+}
+
+.mobile-menu-drawer {
+    animation: mobile-menu-drawer-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mobile-menu-drawer-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0.7;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
 .storefront-theme[data-theme="light"] {
@@ -338,6 +405,12 @@ textarea {
     background: var(--store-accent-soft);
     color: #6366f1;
     outline: none;
+}
+
+.store-nav-link--active {
+    background: color-mix(in srgb, #6366f1 10%, var(--store-surface));
+    color: #6366f1;
+    box-shadow: inset 0 -2px 0 rgb(99 102 241 / 80%);
 }
 
 .video-icon-button {
@@ -639,6 +712,13 @@ textarea {
     color: #f8fafc;
     font-weight: 900;
     line-height: 1.7;
+}
+
+.rich-text-editor {
+    min-width: 0;
+    cursor: text;
+    overflow-wrap: anywhere;
+    user-select: text;
 }
 
 .rich-text-editor h2 {

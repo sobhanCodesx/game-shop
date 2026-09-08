@@ -1,21 +1,80 @@
 import { Avatar, Button, Chip } from "@heroui/react";
-import { Link } from "@inertiajs/react";
+import { Link, router, usePage } from "@inertiajs/react";
 import {
     ArrowRight,
     ChevronLeft,
     CircleUserRound,
+    Compass,
+    Factory,
+    Flame,
+    FolderTree,
+    Home,
+    Radio,
     Repeat2,
     ShoppingBag,
+    Tags,
     X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { router } from "@inertiajs/react";
 
 import SmartSearch from "../Search/SmartSearch";
 import type { NavigationCategory, StorefrontNavigationProps } from "./types";
 
 export type StorefrontPanel =
-    "categories" | "search" | "cart" | "account" | null;
+    "categories" | "menu" | "search" | "cart" | "account" | null;
+
+const mobileMenuLinks = [
+    { href: "/", matches: ["/"], label: "خانه", hint: "صفحه اصلی", icon: Home },
+    {
+        href: "/feed",
+        matches: ["/feed"],
+        label: "فید",
+        hint: "تازه‌ترین پست‌ها",
+        icon: Radio,
+    },
+    {
+        href: "/discover",
+        matches: ["/discover"],
+        label: "اکسپلور",
+        hint: "کشف محتوای تازه",
+        icon: Compass,
+    },
+    {
+        href: "/shop",
+        matches: ["/shop", "/products", "/categories", "/games"],
+        label: "فروشگاه",
+        hint: "محصولات گیمینگ",
+        icon: ShoppingBag,
+    },
+    {
+        href: "/videos",
+        matches: ["/videos", "/shorts", "/channels"],
+        label: "ویدیوها",
+        hint: "تماشا و دنبال‌کردن",
+        icon: Flame,
+    },
+    {
+        href: "/studios",
+        matches: ["/studios"],
+        label: "استودیوها",
+        hint: "سازندگان بازی",
+        icon: Factory,
+    },
+    {
+        href: "/exchange-products",
+        matches: ["/exchange-products"],
+        label: "معاوضه",
+        hint: "کالاهای قابل معاوضه",
+        icon: Repeat2,
+    },
+    {
+        href: "/offers",
+        matches: ["/offers"],
+        label: "تخفیف‌ها",
+        hint: "پیشنهادهای ویژه",
+        icon: Tags,
+    },
+] as const;
 
 interface Props extends Pick<StorefrontNavigationProps, "categories" | "user"> {
     panel: StorefrontPanel;
@@ -33,6 +92,7 @@ export default function StorefrontPanels({
         ? (categoryPath.at(-1)?.children ?? [])
         : categories;
     const currentCategory = categoryPath.at(-1);
+    const pathname = usePage().url.split("?")[0];
 
     useEffect(() => {
         if (!panel) setCategoryPath([]);
@@ -57,6 +117,7 @@ export default function StorefrontPanels({
         () =>
             ({
                 categories: "دسته‌بندی محصولات",
+                menu: "منوی اصلی",
                 search: "جستجو در فروشگاه",
                 cart: "سبد خرید",
                 account: "حساب کاربری",
@@ -64,6 +125,211 @@ export default function StorefrontPanels({
         [panel],
     );
     if (!panel) return null;
+    if (panel === "menu") {
+        return (
+            <div
+                aria-label={title}
+                aria-modal="true"
+                className="fixed inset-0 z-50 lg:hidden"
+                role="dialog"
+            >
+                <button
+                    aria-label="بستن منوی اصلی"
+                    className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
+                    onClick={onClose}
+                    type="button"
+                />
+                <aside className="mobile-menu-drawer absolute inset-y-0 right-0 flex w-[min(88vw,380px)] max-w-full flex-col border-l border-[var(--store-border)] bg-[var(--store-panel)] shadow-2xl">
+                    <header className="flex min-h-20 shrink-0 items-center gap-3 border-b border-[var(--store-border)] px-4">
+                        {categoryPath.length > 0 ? (
+                            <Button
+                                aria-label="بازگشت به منوی اصلی"
+                                isIconOnly
+                                onPress={() =>
+                                    setCategoryPath((path) => path.slice(0, -1))
+                                }
+                                size="sm"
+                                variant="ghost"
+                            >
+                                <ArrowRight size={18} />
+                            </Button>
+                        ) : (
+                            <span className="grid size-11 place-items-center rounded-2xl bg-indigo-500/10 text-indigo-500">
+                                <FolderTree size={21} />
+                            </span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                            <h2 className="truncate font-black text-[var(--store-text)]">
+                                {currentCategory?.name ?? "منوی PlayNexus"}
+                            </h2>
+                            <p className="mt-1 truncate text-[10px] text-[var(--store-muted)]">
+                                {currentCategory
+                                    ? "انتخاب زیرمجموعه یا مشاهده همه محصولات"
+                                    : "دسترسی سریع به همه بخش‌ها"}
+                            </p>
+                        </div>
+                        <Button
+                            aria-label="بستن"
+                            isIconOnly
+                            onPress={onClose}
+                            size="sm"
+                            variant="ghost"
+                        >
+                            <X size={19} />
+                        </Button>
+                    </header>
+
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+                        {!currentCategory && (
+                            <nav
+                                aria-label="بخش‌های اصلی سایت"
+                                className="grid grid-cols-2 gap-2"
+                            >
+                                {mobileMenuLinks.map(
+                                    ({
+                                        href,
+                                        matches,
+                                        label,
+                                        hint,
+                                        icon: Icon,
+                                    }) => {
+                                        const active = matches.some((path) =>
+                                            path === "/"
+                                                ? pathname === "/"
+                                                : pathname === path ||
+                                                  pathname.startsWith(
+                                                      `${path}/`,
+                                                  ),
+                                        );
+                                        return (
+                                            <Link
+                                                aria-current={
+                                                    active ? "page" : undefined
+                                                }
+                                                className={`flex min-w-0 items-center gap-3 rounded-2xl border p-3 transition ${
+                                                    active
+                                                        ? "border-indigo-500/35 bg-indigo-500/10 text-indigo-500"
+                                                        : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-text)]"
+                                                }`}
+                                                href={href}
+                                                key={href}
+                                                onClick={onClose}
+                                            >
+                                                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--store-accent-soft)]">
+                                                    <Icon size={18} />
+                                                </span>
+                                                <span className="min-w-0">
+                                                    <strong className="block truncate text-xs">
+                                                        {label}
+                                                    </strong>
+                                                    <small className="mt-1 block truncate text-[9px] text-[var(--store-muted)]">
+                                                        {hint}
+                                                    </small>
+                                                </span>
+                                            </Link>
+                                        );
+                                    },
+                                )}
+                            </nav>
+                        )}
+
+                        <section className={currentCategory ? "" : "mt-6"}>
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="text-sm font-black text-[var(--store-text)]">
+                                        {currentCategory
+                                            ? `زیرمجموعه‌های ${currentCategory.name}`
+                                            : "دسته‌بندی محصولات"}
+                                    </h3>
+                                    <p className="mt-1 text-[10px] text-[var(--store-muted)]">
+                                        دسته موردنظرت را سریع پیدا کن
+                                    </p>
+                                </div>
+                                <Link
+                                    className="shrink-0 text-[11px] font-black text-indigo-500"
+                                    href={
+                                        currentCategory
+                                            ? `/categories/${currentCategory.slug}`
+                                            : "/shop"
+                                    }
+                                    onClick={onClose}
+                                >
+                                    مشاهده همه
+                                </Link>
+                            </div>
+
+                            <div className="space-y-2">
+                                {currentCategories.map((category) => {
+                                    const content = (
+                                        <>
+                                            {category.image_url ? (
+                                                <img
+                                                    alt=""
+                                                    className="size-11 shrink-0 rounded-xl object-cover"
+                                                    src={category.image_url}
+                                                />
+                                            ) : (
+                                                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--store-accent-soft)] text-indigo-500">
+                                                    <ShoppingBag size={18} />
+                                                </span>
+                                            )}
+                                            <span className="min-w-0 flex-1">
+                                                <strong className="block truncate text-sm text-[var(--store-text)]">
+                                                    {category.name}
+                                                </strong>
+                                                <small className="mt-1 block text-[10px] text-[var(--store-muted)]">
+                                                    {category.products_count.toLocaleString(
+                                                        "fa-IR",
+                                                    )}{" "}
+                                                    محصول
+                                                </small>
+                                            </span>
+                                            {category.children.length > 0 && (
+                                                <ChevronLeft
+                                                    className="shrink-0 text-[var(--store-muted)]"
+                                                    size={17}
+                                                />
+                                            )}
+                                        </>
+                                    );
+
+                                    return category.children.length > 0 ? (
+                                        <button
+                                            className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 text-right transition hover:border-indigo-500/40"
+                                            key={category.id}
+                                            onClick={() =>
+                                                setCategoryPath((path) => [
+                                                    ...path,
+                                                    category,
+                                                ])
+                                            }
+                                            type="button"
+                                        >
+                                            {content}
+                                        </button>
+                                    ) : (
+                                        <Link
+                                            className="flex min-h-16 items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:border-indigo-500/40"
+                                            href={`/categories/${category.slug}`}
+                                            key={category.id}
+                                            onClick={onClose}
+                                        >
+                                            {content}
+                                        </Link>
+                                    );
+                                })}
+                                {!currentCategories.length && (
+                                    <div className="rounded-2xl border border-dashed border-[var(--store-border)] px-5 py-10 text-center text-xs text-[var(--store-muted)]">
+                                        زیرمجموعه دیگری ثبت نشده است.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+                </aside>
+            </div>
+        );
+    }
     return (
         <div
             aria-label={title}

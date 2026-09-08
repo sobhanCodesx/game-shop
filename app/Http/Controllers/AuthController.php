@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MobileDevice;
 use App\Models\User;
+use App\Services\AuthenticationSessionService;
 use App\Services\EmailCodeService;
 use App\Services\MobileCodeService;
 use App\Support\PhoneNumber;
@@ -18,9 +19,11 @@ use Inertia\Response;
 
 class AuthController extends Controller
 {
-    public function login(): Response
+    public function login(Request $request, AuthenticationSessionService $sessions): Response
     {
-        return Inertia::render('Auth/Login');
+        $sessions->rememberDestination($request, $request->query('redirect'));
+
+        return Inertia::render('Auth/Login', ['redirect' => $request->session()->get('auth.redirect')]);
     }
 
     public function register(): Response
@@ -229,6 +232,8 @@ class AuthController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
+        $firstPartyCookies = array_keys($request->cookies->all());
+
         if ($installationId = $request->session()->get('mobile_installation_id')) {
             MobileDevice::query()
                 ->whereBelongsTo($request->user())
@@ -240,18 +245,21 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return to_route('home');
+        $response = to_route('home');
+
+        foreach ($firstPartyCookies as $cookie) {
+            $response->withoutCookie(
+                $cookie,
+                config('session.path', '/'),
+                config('session.domain'),
+            );
+        }
+
+        return $response;
     }
 
     private function completeLogin(Request $request, User $user): RedirectResponse
     {
-        $intended = (string) $request->session()->pull('url.intended', '');
-        $request->session()->regenerate();
-        $user->forceFill(['last_login_at' => now()])->save();
-
-        $path = '/'.ltrim((string) parse_url($intended, PHP_URL_PATH), '/');
-        $safeDestinations = ['/account', '/account/tickets', '/account/tickets/create', '/checkout'];
-
-        return redirect()->to(in_array($path, $safeDestinations, true) ? $intended : route('home'));
+        return app(AuthenticationSessionService::class)->complete($request, $user);
     }
 }

@@ -133,14 +133,11 @@ export default function SmsTest({
                     Body IDها و وضعیت پترن‌ها از منوی مستقل پترن‌های پیامک
                     مدیریت می‌شوند.
                 </span>
-                <Button
-                    as={Link}
-                    href="/admin/sms-patterns"
-                    size="sm"
-                    variant="secondary"
-                >
-                    مدیریت پترن‌ها
-                </Button>
+                <Link href="/admin/sms-patterns">
+                    <Button size="sm" variant="secondary">
+                        مدیریت پترن‌ها
+                    </Button>
+                </Link>
             </div>
 
             <Card className="mt-5" variant="secondary">
@@ -239,11 +236,6 @@ export default function SmsTest({
                             !selected?.configured
                         }
                         onPress={submit}
-                        title={
-                            !selected?.configured
-                                ? "این Pattern هنوز تنظیم نشده است"
-                                : undefined
-                        }
                         variant="primary"
                     >
                         <MessageSquareText size={17} />{" "}

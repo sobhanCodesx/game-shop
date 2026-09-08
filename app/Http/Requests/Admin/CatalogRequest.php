@@ -69,6 +69,7 @@ class CatalogRequest extends FormRequest
                 'slug' => ['required', 'string', 'max:255', Rule::unique('games')->ignore($id)],
                 'developer' => ['nullable', 'string', 'max:255'],
                 'publisher' => ['nullable', 'string', 'max:255'],
+                'studio_id' => ['nullable', 'integer', Rule::exists('studios', 'id')->whereNull('deleted_at')],
                 'release_date' => ['nullable', 'date'],
                 'age_rating' => ['nullable', 'string', 'max:20'],
                 'description' => ['nullable', 'string'],

@@ -1,12 +1,14 @@
-import { Button, Card, Input, TextArea } from "@heroui/react";
+import { Button, Card, Input } from "@heroui/react";
 import { Head, Link, useForm } from "@inertiajs/react";
 import { ArrowRight, ImagePlus, ListVideo, Save, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
+import RichTextEditor from "../../../Components/Admin/Form/RichTextEditor";
 import AdminLayout from "../../../Layouts/AdminLayout";
 
 interface Playlist {
     id: number;
     game_id: number;
+    studio_id: number | null;
     title: string;
     description: string | null;
     visibility: "public" | "unlisted" | "private";
@@ -15,6 +17,7 @@ interface Playlist {
 }
 interface FormData {
     game_id: string;
+    studio_id: string;
     title: string;
     description: string;
     visibility: string;
@@ -27,9 +30,11 @@ interface FormData {
 export default function PlaylistForm({
     playlist,
     games,
+    studios,
 }: {
     playlist: Playlist | null;
-    games: Array<{ id: number; name: string }>;
+    games: Array<{ id: number; name: string; studio_id: number | null }>;
+    studios: Array<{ id: number; name: string }>;
 }) {
     const editing = Boolean(playlist);
     const [preview, setPreview] = useState<string | null>(
@@ -37,6 +42,7 @@ export default function PlaylistForm({
     );
     const { data, setData, post, processing, errors } = useForm<FormData>({
         game_id: playlist ? String(playlist.game_id) : "",
+        studio_id: playlist?.studio_id ? String(playlist.studio_id) : "",
         title: playlist?.title ?? "",
         description: playlist?.description ?? "",
         visibility: playlist?.visibility ?? "public",
@@ -156,9 +162,12 @@ export default function PlaylistForm({
                                 </span>
                                 <select
                                     className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
-                                    onChange={(e) =>
-                                        setData("game_id", e.target.value)
-                                    }
+                                    onChange={(e) => {
+                                        const gameId = e.target.value;
+                                        setData("game_id", gameId);
+                                        const studioId = games.find((game) => String(game.id) === gameId)?.studio_id;
+                                        if (studioId) setData("studio_id", String(studioId));
+                                    }}
                                     required
                                     value={data.game_id}
                                 >
@@ -174,6 +183,21 @@ export default function PlaylistForm({
                                         {errors.game_id}
                                     </small>
                                 )}
+                            </label>
+                            <label className="block sm:col-span-2">
+                                <span className="mb-2 block text-xs font-bold text-slate-300">
+                                    شرکت / استودیوی بازی‌سازی
+                                </span>
+                                <select
+                                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
+                                    onChange={(e) => setData("studio_id", e.target.value)}
+                                    required
+                                    value={data.studio_id}
+                                >
+                                    <option value="">انتخاب شرکت بازی‌سازی</option>
+                                    {studios.map((studio) => <option key={studio.id} value={studio.id}>{studio.name}</option>)}
+                                </select>
+                                {errors.studio_id && <small className="mt-1 block text-rose-400">{errors.studio_id}</small>}
                             </label>
                             <label className="block sm:col-span-2">
                                 <span className="mb-2 block text-xs font-bold text-slate-300">
@@ -193,14 +217,17 @@ export default function PlaylistForm({
                                     </small>
                                 )}
                             </label>
-                            <label className="block sm:col-span-2">
+                            <div className="block sm:col-span-2">
                                 <span className="mb-2 block text-xs font-bold text-slate-300">
                                     توضیحات
                                 </span>
-                                <TextArea
-                                    onChange={(e) =>
-                                        setData("description", e.target.value)
+                                <RichTextEditor
+                                    enableBlocks
+                                    minHeight={280}
+                                    onChange={(value) =>
+                                        setData("description", value)
                                     }
+                                    placeholder="معرفی کالکشن، ترتیب پیشنهادی تماشا و نکات مهم…"
                                     value={data.description}
                                 />
                                 {errors.description && (
@@ -208,7 +235,7 @@ export default function PlaylistForm({
                                         {errors.description}
                                     </small>
                                 )}
-                            </label>
+                            </div>
                             <label>
                                 <span className="mb-2 block text-xs font-bold text-slate-300">
                                     وضعیت نمایش

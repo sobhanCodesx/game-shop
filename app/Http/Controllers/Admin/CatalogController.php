@@ -10,6 +10,7 @@ use App\Models\CategoryAttribute;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\Product;
+use App\Models\Studio;
 use App\Services\MediaStorage;
 use App\Services\ProductMediaService;
 use App\Services\ProductTypeRegistry;
@@ -28,7 +29,7 @@ class CatalogController extends Controller
     private const DEFINITIONS = [
         'categories' => ['model' => Category::class, 'title' => 'دسته‌بندی‌ها', 'singular' => 'دسته‌بندی', 'columns' => ['عنوان', 'والد', 'محصولات', 'ترتیب', 'وضعیت']],
         'brands' => ['model' => Brand::class, 'title' => 'برندها', 'singular' => 'برند', 'columns' => ['برند', 'وب‌سایت', 'محصولات', 'وضعیت']],
-        'games' => ['model' => Game::class, 'title' => 'بازی‌ها', 'singular' => 'بازی', 'columns' => ['بازی', 'سازنده', 'ناشر', 'تاریخ انتشار', 'محصولات']],
+        'games' => ['model' => Game::class, 'title' => 'بازی‌ها', 'singular' => 'بازی', 'columns' => ['بازی / کانال', 'استودیو سازنده', 'ناشر', 'تاریخ انتشار', 'محصولات']],
         'platforms' => ['model' => Platform::class, 'title' => 'پلتفرم‌ها', 'singular' => 'پلتفرم', 'columns' => ['پلتفرم', 'سازنده', 'بازی‌ها', 'محصولات', 'وضعیت']],
         'products' => ['model' => Product::class, 'title' => 'محصولات', 'singular' => 'محصول', 'columns' => ['محصول', 'SKU', 'دسته‌بندی', 'قیمت', 'موجودی', 'وضعیت']],
     ];
@@ -187,7 +188,7 @@ class CatalogController extends Controller
         return match ($catalog) {
             'categories' => Category::query()->with('parent:id,name')->withCount('products'),
             'brands' => Brand::query()->withCount('products'),
-            'games' => Game::query()->withCount('products'),
+            'games' => Game::query()->with('studio:id,name')->withCount('products'),
             'platforms' => Platform::query()->withCount(['games', 'products']),
             'products' => Product::query()->with(['category:id,name', 'coverMedia:id,product_id,path,type,is_primary,sort_order']),
             default => abort(404),
@@ -199,7 +200,7 @@ class CatalogController extends Controller
         return match ($catalog) {
             'categories' => [$item->name, $item->parent?->name ?? '—', $item->products_count, $item->sort_order, $item->status],
             'brands' => [$item->name, $item->website ?? '—', $item->products_count, $item->status],
-            'games' => [$item->name, $item->developer ?? '—', $item->publisher ?? '—', $item->release_date?->format('Y-m-d') ?? '—', $item->products_count],
+            'games' => [$item->name, $item->studio?->name ?? $item->developer ?? '—', $item->publisher ?? '—', $item->release_date?->format('Y-m-d') ?? '—', $item->products_count],
             'platforms' => [$item->name, $item->manufacturer ?? '—', $item->games_count, $item->products_count, $item->status],
             'products' => [$item->title, $item->sku, $item->category?->name ?? '—', number_format($item->discount_price ?? $item->price).' تومان', $item->stock, $item->status],
             default => [],
@@ -251,6 +252,7 @@ class CatalogController extends Controller
                 'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
                 'brands' => Brand::query()->orderBy('name')->get(['id', 'name']),
                 'games' => Game::query()->orderBy('name')->get(['id', 'name']),
+                'studios' => Studio::query()->where('status', 'active')->orderBy('name')->get(['id', 'name']),
                 'platforms' => Platform::query()->orderBy('sort_order')->get(['id', 'name']),
                 'attributes' => CategoryAttribute::query()->orderBy('sort_order')->get([
                     'id', 'category_id', 'name', 'type', 'options', 'is_required',

@@ -49,13 +49,11 @@ export default function SmsPatterns({
                             عادی فرستاده می‌شود.
                         </p>
                     </div>
-                    <Button
-                        as={Link}
-                        href="/admin/sms-test"
-                        variant="secondary"
-                    >
-                        رفتن به ارسال تست <ArrowLeft size={16} />
-                    </Button>
+                    <Link href="/admin/sms-test">
+                        <Button variant="secondary">
+                            رفتن به ارسال تست <ArrowLeft size={16} />
+                        </Button>
+                    </Link>
                 </Card.Header>
 
                 <Card.Content className="grid gap-4 p-5 lg:grid-cols-2">

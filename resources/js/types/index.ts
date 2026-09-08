@@ -6,6 +6,7 @@ export interface AuthUser {
     avatar_url: string | null;
     role: string;
     is_admin: boolean;
+    has_password: boolean;
 }
 
 export interface SharedPageProps {
@@ -82,6 +83,66 @@ export interface StorefrontContent {
         url: string;
         avatar_url: string | null;
     } | null;
+}
+
+export type FeedItemType =
+    | "post"
+    | "news"
+    | "article"
+    | "video"
+    | "clip"
+    | "trailer"
+    | "game_update"
+    | "review"
+    | "image";
+
+export type FeedMedia =
+    | {
+          id: number;
+          type: "image";
+          url: string;
+          thumbnail: null;
+          width: number | null;
+          height: number | null;
+          duration: null;
+          alt: string;
+      }
+    | {
+          id: number;
+          type: "video";
+          url: string;
+          thumbnail: string | null;
+          width: number | null;
+          height: number | null;
+          duration: number | null;
+          alt: string;
+      };
+
+export interface FeedItemData {
+    id: number;
+    type: FeedItemType;
+    title: string;
+    body: string | null;
+    body_html: string | null;
+    badge: string | null;
+    url: string;
+    feed_slug: string;
+    created_at: string;
+    media: FeedMedia[];
+    author: { name: string; avatar_url: string | null; url: string | null };
+    likes_count: number;
+    comments_count: number;
+    is_liked: boolean;
+    is_saved: boolean;
+    allow_comments: boolean;
+    related_product: {
+        id: number;
+        title: string;
+        url: string;
+        image_url: string | null;
+        price: number;
+    } | null;
+    related_video: { id: number; title: string; url: string } | null;
 }
 
 export interface PaginationLink {

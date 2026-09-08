@@ -49,14 +49,11 @@ export default function RichTextEditor({
     const [linkEditorOpen, setLinkEditorOpen] = useState(false);
     const [linkUrl, setLinkUrl] = useState("");
     const savedSelection = useRef<Range | null>(null);
+    const focusedRef = useRef(false);
 
     useEffect(() => {
         const editor = editorRef.current;
-        if (
-            editor &&
-            editor !== document.activeElement &&
-            editor.innerHTML !== value
-        )
+        if (editor && !focusedRef.current && editor.innerHTML !== value)
             editor.innerHTML = value;
     }, [value]);
 
@@ -251,13 +248,22 @@ export default function RichTextEditor({
             )}
             <div
                 className="rich-text-editor prose prose-invert max-w-none px-4 py-3 text-sm leading-8 text-slate-200 empty:before:pointer-events-none empty:before:text-slate-500 empty:before:content-[attr(data-placeholder)] focus:outline-none"
-                contentEditable
+                aria-multiline="true"
+                contentEditable={true}
                 data-placeholder={placeholder}
+                onBlur={(event) => {
+                    focusedRef.current = false;
+                    onChange(event.currentTarget.innerHTML);
+                }}
+                onFocus={() => {
+                    focusedRef.current = true;
+                }}
                 onInput={(event) => onChange(event.currentTarget.innerHTML)}
                 ref={editorRef}
                 role="textbox"
                 style={{ minHeight }}
                 suppressContentEditableWarning
+                tabIndex={0}
             />
         </div>
     );

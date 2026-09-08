@@ -103,7 +103,9 @@ class VideoCommunityTest extends TestCase
     {
         [$game, $video] = $this->channelWithVideo();
         $playlist = VideoPlaylist::query()->create([
-            'game_id' => $game->id, 'title' => 'شروع بازی', 'slug' => 'getting-started', 'visibility' => 'public',
+            'game_id' => $game->id, 'title' => 'شروع بازی', 'slug' => 'getting-started',
+            'description' => '<h2>راهنمای شروع</h2><script>alert(1)</script><p>از اینجا شروع کنید.</p>',
+            'visibility' => 'public',
         ]);
         $playlist->videos()->attach($video->id, ['position' => 0]);
 
@@ -112,7 +114,10 @@ class VideoCommunityTest extends TestCase
 
         $this->get(route('channels.playlists.show', ['game' => $game->slug, 'playlist' => $playlist->slug]))
             ->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Channels/Playlist')->where('playlist.title', 'شروع بازی')->has('playlist.videos', 1));
+            ->component('Channels/Playlist')
+            ->where('playlist.title', 'شروع بازی')
+            ->where('playlist.description_html', '<h2>راهنمای شروع</h2><p>از اینجا شروع کنید.</p>')
+            ->has('playlist.videos', 1));
 
         $this->get(route('content.show', ['type' => 'videos', 'content' => $video->slug, 'list' => $playlist->slug]))
             ->assertOk()->assertInertia(fn (Assert $page) => $page
@@ -138,12 +143,13 @@ class VideoCommunityTest extends TestCase
         $this->actingAs($admin)->post(route('admin.video-playlists.store'), [
             'game_id' => $game->id,
             'title' => 'راهنمای شروع',
-            'description' => 'ویدیوهای مناسب بازیکن تازه‌وارد',
+            'description' => '<h2>بازیکن تازه‌وارد</h2><script>alert(1)</script><p>ویدیوهای مناسب شروع بازی</p>',
             'visibility' => 'unlisted',
             'sort_order' => 1,
         ])->assertRedirect();
 
         $playlist = VideoPlaylist::query()->firstOrFail();
+        $this->assertSame('<h2>بازیکن تازه‌وارد</h2><p>ویدیوهای مناسب شروع بازی</p>', $playlist->description);
         $this->actingAs($admin)->put(route('admin.videos.update', $video), [
             'title' => $video->title,
             'excerpt' => $video->excerpt,

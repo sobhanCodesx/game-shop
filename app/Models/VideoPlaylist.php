@@ -9,11 +9,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class VideoPlaylist extends Model
 {
-    protected $fillable = ['game_id', 'title', 'slug', 'logo', 'description', 'visibility', 'sort_order'];
+    protected $fillable = ['game_id', 'studio_id', 'title', 'slug', 'logo', 'description', 'visibility', 'sort_order'];
 
     public function game(): BelongsTo
     {
         return $this->belongsTo(Game::class);
+    }
+
+    public function studio(): BelongsTo
+    {
+        return $this->belongsTo(Studio::class);
     }
 
     public function videos(): BelongsToMany
