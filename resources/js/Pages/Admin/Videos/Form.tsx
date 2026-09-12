@@ -358,7 +358,6 @@ export default function VideoForm({ video, games, playlists }: Props) {
                                 className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
                                 onChange={(event) => {
                                     setData("game_id", event.target.value);
-                                    setData("playlist_ids", []);
                                 }}
                                 value={data.game_id}
                             >
@@ -370,23 +369,13 @@ export default function VideoForm({ video, games, playlists }: Props) {
                                 ))}
                             </select>
                         </FormField>
-                        {data.game_id &&
-                            playlists.some(
-                                (playlist) =>
-                                    String(playlist.game_id) === data.game_id,
-                            ) && (
+                        {playlists.length > 0 && (
                                 <FormField
-                                    description="یک ویدیو می‌تواند در چند کالکشن از همین کانال قرار بگیرد."
+                                    description="یک ویدیو می‌تواند در چند کالکشن قرار بگیرد."
                                     label="کالکشن‌ها"
                                 >
                                     <div className="grid gap-2 sm:grid-cols-2">
-                                        {playlists
-                                            .filter(
-                                                (playlist) =>
-                                                    String(playlist.game_id) ===
-                                                    data.game_id,
-                                            )
-                                            .map((playlist) => (
+                                        {playlists.map((playlist) => (
                                                 <label
                                                     className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300"
                                                     key={playlist.id}

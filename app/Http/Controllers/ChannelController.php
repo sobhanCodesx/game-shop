@@ -53,6 +53,24 @@ class ChannelController extends Controller
         ]);
     }
 
+    public function collection(VideoPlaylist $playlist, StorefrontDataService $data): Response
+    {
+        abort_unless(in_array($playlist->visibility, ['public', 'unlisted'], true), 404);
+        $playlist->load(['videos' => fn ($query) => $query->published()->where('type', 'video')->with(['game:id,name,slug,cover', 'user:id,name,avatar'])]);
+
+        return Inertia::render('Channels/Playlist', [
+            'channel' => null,
+            'playlist' => [
+                ...$playlist->only(['id', 'title', 'slug']),
+                'cover_url' => MediaStorage::url($playlist->logo),
+                'description' => RichText::plainText($playlist->description),
+                'description_html' => RichText::sanitize($playlist->description),
+                'videos_count' => $playlist->videos->count(),
+                'videos' => $playlist->videos->map(fn (SocialContent $video) => $data->content($video))->values(),
+            ],
+        ]);
+    }
+
     private function ensureVisible(Game $game): void
     {
         abort_unless(in_array($game->status, ['active', 'published'], true), 404);

@@ -15,7 +15,6 @@ class VideoPlaylistRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'game_id' => ['required', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
             'studio_id' => ['nullable', 'integer', Rule::exists('studios', 'id')->whereNull('deleted_at')],
             'title' => ['required', 'string', 'max:160'],
             'logo' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],

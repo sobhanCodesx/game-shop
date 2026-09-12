@@ -115,6 +115,7 @@ Route::get('studios', [StudioController::class, 'index'])->name('studios.index')
 Route::get('studios/{studio:slug}', [StudioController::class, 'show'])->name('studios.show');
 Route::get('channels/{game:slug}', [ChannelController::class, 'show'])->name('channels.show');
 Route::get('channels/{game:slug}/playlists/{playlist:slug}', [ChannelController::class, 'playlist'])->name('channels.playlists.show');
+Route::get('collections/{playlist:slug}', [ChannelController::class, 'collection'])->name('collections.show');
 Route::get('search/suggestions', [StorefrontController::class, 'searchSuggestions'])->middleware('throttle:120,1')->name('search.suggestions');
 Route::get('search', [StorefrontController::class, 'search'])->name('search');
 Route::get('cart', [CartController::class, 'index'])->name('cart.index');

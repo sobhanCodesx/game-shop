@@ -62,16 +62,15 @@ class StudioController extends Controller
                 'followers_count' => $game->subscribers_count,
             ]);
         $collections = VideoPlaylist::query()->whereBelongsTo($studio)->publiclyVisible()
-            ->whereHas('game', fn ($query) => $query->whereIn('status', ['active', 'published']))
             ->with('game:id,name,slug,cover')->withCount('videos')
             ->orderBy('sort_order')->latest('id')->paginate(12, ['*'], 'collections_page')->withQueryString()
             ->through(fn (VideoPlaylist $playlist) => [
                 'id' => $playlist->id,
                 'title' => $playlist->title,
                 'description' => RichText::plainText($playlist->description),
-                'url' => route('channels.playlists.show', [$playlist->game->slug, $playlist->slug], false),
-                'logo_url' => MediaStorage::url($playlist->logo ?: $playlist->game->cover),
-                'channel_name' => $playlist->game->name,
+                'url' => route('collections.show', $playlist->slug, false),
+                'logo_url' => MediaStorage::url($playlist->logo ?: $playlist->game?->cover),
+                'channel_name' => $studio->name,
                 'videos_count' => $playlist->videos_count,
             ]);
         $canonical = route('studios.show', $studio->slug);

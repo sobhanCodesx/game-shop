@@ -7,7 +7,6 @@ import AdminLayout from "../../../Layouts/AdminLayout";
 
 interface Playlist {
     id: number;
-    game_id: number;
     studio_id: number | null;
     title: string;
     description: string | null;
@@ -16,7 +15,6 @@ interface Playlist {
     logo_url: string | null;
 }
 interface FormData {
-    game_id: string;
     studio_id: string;
     title: string;
     description: string;
@@ -29,11 +27,9 @@ interface FormData {
 
 export default function PlaylistForm({
     playlist,
-    games,
     studios,
 }: {
     playlist: Playlist | null;
-    games: Array<{ id: number; name: string; studio_id: number | null }>;
     studios: Array<{ id: number; name: string }>;
 }) {
     const editing = Boolean(playlist);
@@ -41,7 +37,6 @@ export default function PlaylistForm({
         playlist?.logo_url ?? null,
     );
     const { data, setData, post, processing, errors } = useForm<FormData>({
-        game_id: playlist ? String(playlist.game_id) : "",
         studio_id: playlist?.studio_id ? String(playlist.studio_id) : "",
         title: playlist?.title ?? "",
         description: playlist?.description ?? "",
@@ -156,34 +151,6 @@ export default function PlaylistForm({
                     </Card.Header>
                     <Card.Content>
                         <div className="grid gap-5 p-5 sm:grid-cols-2">
-                            <label className="block sm:col-span-2">
-                                <span className="mb-2 block text-xs font-bold text-slate-300">
-                                    کانال / عنوان بازی
-                                </span>
-                                <select
-                                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
-                                    onChange={(e) => {
-                                        const gameId = e.target.value;
-                                        setData("game_id", gameId);
-                                        const studioId = games.find((game) => String(game.id) === gameId)?.studio_id;
-                                        if (studioId) setData("studio_id", String(studioId));
-                                    }}
-                                    required
-                                    value={data.game_id}
-                                >
-                                    <option value="">انتخاب کانال</option>
-                                    {games.map((g) => (
-                                        <option key={g.id} value={g.id}>
-                                            {g.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.game_id && (
-                                    <small className="mt-1 block text-rose-400">
-                                        {errors.game_id}
-                                    </small>
-                                )}
-                            </label>
                             <label className="block sm:col-span-2">
                                 <span className="mb-2 block text-xs font-bold text-slate-300">
                                     شرکت / استودیوی بازی‌سازی

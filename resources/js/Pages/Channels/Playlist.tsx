@@ -30,22 +30,22 @@ export default function PlaylistShow({
     channel,
     playlist,
 }: {
-    channel: Channel;
+    channel: Channel | null;
     playlist: PlaylistData;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
     const first = playlist.videos[0];
-    const subscribe = () =>
+    const subscribe = () => channel && (
         auth.user
             ? router.post(
                   `/channels/${channel.slug}/subscription`,
                   {},
                   { preserveScroll: true },
               )
-            : router.visit("/login");
+            : router.visit("/login"));
     return (
         <StorefrontLayout>
-            <Head title={`${playlist.title} - ${channel.name}`} />
+            <Head title={channel ? `${playlist.title} - ${channel.name}` : playlist.title} />
             <main className="mx-auto max-w-7xl px-4 py-7 md:py-10">
                 <div className="grid items-start gap-8 lg:grid-cols-[360px_1fr]">
                     <aside className="sticky top-28 overflow-hidden rounded-2xl bg-[var(--store-surface)]">
@@ -80,7 +80,7 @@ export default function PlaylistShow({
                                     html={playlist.description_html}
                                 />
                             )}
-                            <Link
+                            {channel && <><Link
                                 className="mt-5 flex items-center gap-3"
                                 href={`/channels/${channel.slug}`}
                             >
@@ -108,7 +108,7 @@ export default function PlaylistShow({
                                 {channel.is_subscribed
                                     ? "مشترک هستید"
                                     : "عضویت در کانال"}
-                            </Button>
+                            </Button></>}
                             {first && (
                                 <Link
                                     className="mt-3 flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--store-text)] text-sm font-black text-[var(--store-bg)]"
