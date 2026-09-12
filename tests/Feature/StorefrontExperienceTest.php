@@ -27,7 +27,12 @@ class StorefrontExperienceTest extends TestCase
 
         $this->get(route('shop.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Shop/Index')->has('products.data', 1)
-            ->where('products.data.0.title', 'محصول قابل نمایش'));
+            ->where('products.data.0.title', 'محصول قابل نمایش')
+            ->where('seo.canonical', route('shop.index'))
+            ->where('seo.robots', 'index, follow, max-image-preview:large, max-snippet:-1')
+            ->where('seo.structuredData.@graph.0.@type', 'CollectionPage')
+            ->where('seo.structuredData.@graph.1.@type', 'ItemList')
+            ->where('seo.structuredData.@graph.2.@type', 'BreadcrumbList'));
     }
 
     public function test_active_category_has_a_real_landing_page(): void

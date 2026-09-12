@@ -89,6 +89,10 @@ final class Seo
         }
 
         if (isset($seo['video']) && is_array($seo['video'])) {
+            $tags[] = sprintf(
+                '<link data-inertia="video-thumbnail-preload" rel="preload" as="image" href="%s" fetchpriority="high">',
+                self::escape((string) $seo['image']),
+            );
             $tags[] = self::meta('og:video', 'property', 'og:video', (string) $seo['video']['url']);
             if (filled($seo['video']['type'] ?? null)) {
                 $tags[] = self::meta('og:video:type', 'property', 'og:video:type', (string) $seo['video']['type']);

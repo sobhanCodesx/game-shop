@@ -163,8 +163,19 @@ class VideoManagementTest extends TestCase
                 ->where('seo.structuredData.@graph.1.duration', 'PT2M5S')
                 ->where('seo.structuredData.@graph.2.@type', 'BreadcrumbList'));
 
-        $response->assertSee('<link data-inertia="canonical" rel="canonical" href="http://localhost/videos/published-video">', false);
-        $response->assertSee('<meta data-inertia="og:video" property="og:video" content="http://localhost/storage/videos/published.mp4">', false);
-        $response->assertSee('<script data-inertia="structured-data" type="application/ld+json">', false);
+        $document = new \DOMDocument;
+        @$document->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($document);
+
+        $this->assertCount(1, $xpath->query('//link[@rel="canonical" and @href="http://localhost/videos/published-video"]'));
+        $this->assertCount(1, $xpath->query('//link[@rel="preload" and @as="image" and @href="http://localhost/storage/videos/thumbnails/published.jpg"]'));
+        $this->assertCount(1, $xpath->query('//meta[@property="og:video" and @content="http://localhost/storage/videos/published.mp4"]'));
+        $this->assertCount(1, $xpath->query('//script[@type="application/ld+json"]'));
+
+        if ($xpath->query('//*[@id="app" and @data-server-rendered="true"]')->length === 1) {
+            $this->assertSame('ویدیوی منتشر شده', trim($xpath->evaluate('string(//*[@id="app"]//h1)')));
+            $this->assertStringContainsString('محتوای کامل ویدیو', $xpath->evaluate('string(//*[@id="app"]//article)'));
+            $this->assertCount(1, $xpath->query('//*[@id="app"]//video/source[@src="http://localhost/storage/videos/published.mp4"]'));
+        }
     }
 }

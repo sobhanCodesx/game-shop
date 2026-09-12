@@ -10,6 +10,7 @@ use App\Models\SocialContent;
 use App\Services\MediaStorage;
 use App\Services\SmartSearchService;
 use App\Services\StorefrontDataService;
+use App\Support\Seo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,13 +25,71 @@ class StorefrontController extends Controller
 {
     public function shop(Request $request, StorefrontDataService $data): Response
     {
-        $products = $this->productQuery($request)->paginate(18)->withQueryString()
+        $isOffers = $request->routeIs('offers.index');
+        $products = $this->productQuery($request)
+            ->when($isOffers, fn (Builder $query) => $query->whereNotNull('discount_price')->whereColumn('discount_price', '<', 'price'))
+            ->paginate(18)->withQueryString()
             ->through(fn (Product $product) => $data->product($product, $request->user()));
+        $canonical = route($isOffers ? 'offers.index' : 'shop.index');
+        $siteName = (string) config('seo.site_name', 'PlayNexus');
+        $description = $isOffers
+            ? "تخفیف‌ها و پیشنهادهای ویژه بازی و محصولات گیمینگ در {$siteName}."
+            : "خرید بازی، اکانت و تجهیزات گیمینگ از فروشگاه {$siteName}؛ مشاهده قیمت، موجودی و جدیدترین محصولات.";
+        $pageName = $isOffers ? 'پیشنهادهای ویژه گیمینگ' : "فروشگاه گیمینگ {$siteName}";
+        $firstProduct = collect($products->items())->first();
+        $image = url(data_get($firstProduct, 'cover_url') ?: (string) config('seo.default_image', '/logo.png'));
+        $itemListId = $canonical.'#products';
+        $hasFilters = array_intersect(array_keys($request->query()), ['q', 'category', 'sort', 'trade', 'page']) !== [];
 
         return Inertia::render('Shop/Index', [
+            ...Seo::page([
+                'title' => $isOffers ? 'تخفیف‌ها و پیشنهادهای ویژه بازی' : "فروشگاه بازی و محصولات گیمینگ {$siteName}",
+                'description' => $description,
+                'canonical' => $canonical,
+                'robots' => $hasFilters
+                    ? 'noindex, follow'
+                    : 'index, follow, max-image-preview:large, max-snippet:-1',
+                'type' => 'website',
+                'image' => $image,
+                'imageAlt' => data_get($firstProduct, 'cover_alt') ?: "فروشگاه {$siteName}",
+                'structuredData' => [
+                    '@context' => 'https://schema.org',
+                    '@graph' => [
+                        [
+                            '@type' => 'CollectionPage',
+                            '@id' => $canonical.'#shop',
+                            'name' => $pageName,
+                            'url' => $canonical,
+                            'description' => $description,
+                            'mainEntity' => ['@id' => $itemListId],
+                        ],
+                        [
+                            '@type' => 'ItemList',
+                            '@id' => $itemListId,
+                            'name' => $isOffers ? 'محصولات تخفیف‌دار' : 'محصولات فروشگاه',
+                            'numberOfItems' => count($products->items()),
+                            'itemListElement' => collect($products->items())->values()->map(fn (array $product, int $index) => [
+                                '@type' => 'ListItem',
+                                'position' => $index + 1,
+                                'name' => $product['title'],
+                                'url' => url($product['url']),
+                            ])->all(),
+                        ],
+                        [
+                            '@type' => 'BreadcrumbList',
+                            '@id' => $canonical.'#breadcrumb',
+                            'itemListElement' => [
+                                ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => route('home')],
+                                ['@type' => 'ListItem', 'position' => 2, 'name' => $isOffers ? 'پیشنهادهای ویژه' : 'فروشگاه', 'item' => $canonical],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
             'products' => $products,
             'filters' => $request->only(['q', 'category', 'sort', 'trade']),
             'tradeOnly' => false,
+            'pageType' => $isOffers ? 'offers' : 'shop',
         ]);
     }
 
@@ -39,8 +98,48 @@ class StorefrontController extends Controller
         $products = $this->productQuery($request)->where('trade_enabled', true)
             ->paginate(18)->withQueryString()
             ->through(fn (Product $product) => $data->product($product, $request->user()));
+        $canonical = route('exchange-products.index');
+        $description = 'مشاهده و انتخاب بازی‌ها و محصولات قابل معاوضه؛ ثبت درخواست معاوضه سریع و امن در PlayNexus.';
+        $firstProduct = collect($products->items())->first();
 
         return Inertia::render('Shop/Index', [
+            ...Seo::page([
+                'title' => 'معاوضه بازی و محصولات گیمینگ',
+                'description' => $description,
+                'canonical' => $canonical,
+                'robots' => $request->hasAny(['q', 'sort', 'page']) ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1',
+                'type' => 'website',
+                'image' => url(data_get($firstProduct, 'cover_url') ?: (string) config('seo.default_image', '/logo.png')),
+                'imageAlt' => data_get($firstProduct, 'cover_alt') ?: 'محصولات قابل معاوضه',
+                'structuredData' => [
+                    '@context' => 'https://schema.org',
+                    '@graph' => [
+                        [
+                            '@type' => 'CollectionPage',
+                            'name' => 'محصولات قابل معاوضه',
+                            'url' => $canonical,
+                            'description' => $description,
+                        ],
+                        [
+                            '@type' => 'ItemList',
+                            'numberOfItems' => count($products->items()),
+                            'itemListElement' => collect($products->items())->values()->map(fn (array $product, int $index) => [
+                                '@type' => 'ListItem',
+                                'position' => $index + 1,
+                                'name' => $product['title'],
+                                'url' => url($product['url']),
+                            ])->all(),
+                        ],
+                        [
+                            '@type' => 'BreadcrumbList',
+                            'itemListElement' => [
+                                ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => route('home')],
+                                ['@type' => 'ListItem', 'position' => 2, 'name' => 'محصولات قابل معاوضه', 'item' => $canonical],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
             'products' => $products,
             'filters' => [...$request->only(['q', 'sort']), 'trade' => '1'],
             'tradeOnly' => true,
@@ -108,15 +207,103 @@ class StorefrontController extends Controller
             return response()->json($feed);
         }
 
-        return Inertia::render('Discover/Index', ['feed' => $feed]);
+        $canonical = route('discover');
+        $description = 'کشف تازه‌ترین بازی‌ها، ویدیوها و محصولات گیمینگ منتخب در اکسپلور PlayNexus.';
+        $firstItem = collect($feed->items())->first();
+        $imagePath = data_get($firstItem, 'kind') === 'product_media'
+            ? data_get($firstItem, 'data.media_url')
+            : data_get($firstItem, 'data.thumbnail_url');
+
+        return Inertia::render('Discover/Index', [
+            ...Seo::page([
+                'title' => 'اکسپلور بازی‌ها و محتوای گیمینگ',
+                'description' => $description,
+                'canonical' => $canonical,
+                'robots' => $request->filled('page') ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+                'type' => 'website',
+                'image' => url($imagePath ?: (string) config('seo.default_image', '/logo.png')),
+                'imageAlt' => data_get($firstItem, 'data.media_alt') ?: data_get($firstItem, 'data.title') ?: 'اکسپلور PlayNexus',
+                'structuredData' => [
+                    '@context' => 'https://schema.org',
+                    '@graph' => [
+                        [
+                            '@type' => 'CollectionPage',
+                            'name' => 'اکسپلور PlayNexus',
+                            'url' => $canonical,
+                            'description' => $description,
+                        ],
+                        [
+                            '@type' => 'ItemList',
+                            'numberOfItems' => count($feed->items()),
+                            'itemListElement' => collect($feed->items())->values()->map(fn (array $item, int $index) => [
+                                '@type' => 'ListItem',
+                                'position' => $index + 1,
+                                'name' => data_get($item, 'data.title'),
+                                'url' => url(data_get($item, 'data.url')),
+                            ])->all(),
+                        ],
+                        [
+                            '@type' => 'BreadcrumbList',
+                            'itemListElement' => [
+                                ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => route('home')],
+                                ['@type' => 'ListItem', 'position' => 2, 'name' => 'اکسپلور', 'item' => $canonical],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+            'feed' => $feed,
+        ]);
     }
 
-    public function videos(StorefrontDataService $data): Response
+    public function videos(Request $request, StorefrontDataService $data): Response
     {
+        $videos = SocialContent::query()->published()->where('type', 'video')
+            ->with('game:id,name,slug,cover')
+            ->latest('published_at')->paginate(18)->through(fn ($item) => $data->content($item));
+        $canonical = route('videos.index');
+        $description = 'تماشای تازه‌ترین تریلرها، گیم‌پلی‌ها، بررسی‌ها و ویدیوهای دنیای بازی در PlayNexus.';
+        $firstVideo = collect($videos->items())->first();
+
         return Inertia::render('Videos/Index', [
-            'videos' => SocialContent::query()->published()->where('type', 'video')
-                ->with('game:id,name,slug,cover')
-                ->latest('published_at')->paginate(18)->through(fn ($item) => $data->content($item)),
+            ...Seo::page([
+                'title' => 'ویدیوهای گیمینگ؛ تریلر، گیم‌پلی و بررسی',
+                'description' => $description,
+                'canonical' => $canonical,
+                'robots' => $request->filled('page') ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+                'type' => 'website',
+                'image' => url(data_get($firstVideo, 'thumbnail_url') ?: (string) config('seo.default_image', '/logo.png')),
+                'imageAlt' => data_get($firstVideo, 'title') ?: 'ویدیوهای گیمینگ PlayNexus',
+                'structuredData' => [
+                    '@context' => 'https://schema.org',
+                    '@graph' => [
+                        [
+                            '@type' => 'CollectionPage',
+                            'name' => 'مرکز ویدیوهای گیمینگ',
+                            'url' => $canonical,
+                            'description' => $description,
+                        ],
+                        [
+                            '@type' => 'ItemList',
+                            'numberOfItems' => count($videos->items()),
+                            'itemListElement' => collect($videos->items())->values()->map(fn (array $video, int $index) => [
+                                '@type' => 'ListItem',
+                                'position' => $index + 1,
+                                'name' => $video['title'],
+                                'url' => url($video['url']),
+                            ])->all(),
+                        ],
+                        [
+                            '@type' => 'BreadcrumbList',
+                            'itemListElement' => [
+                                ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => route('home')],
+                                ['@type' => 'ListItem', 'position' => 2, 'name' => 'ویدیوها', 'item' => $canonical],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+            'videos' => $videos,
         ]);
     }
 

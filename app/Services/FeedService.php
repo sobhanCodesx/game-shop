@@ -83,6 +83,19 @@ class FeedService
         return $this->mapItems($contents, $request->user());
     }
 
+    public function latestPostsExcept(Request $request, int $exceptId, int $limit = 4): array
+    {
+        $contents = $this->feedQuery()
+            ->where('type', 'post')
+            ->whereKeyNot($exceptId)
+            ->latest('published_at')
+            ->latest('id')
+            ->limit($limit)
+            ->get();
+
+        return $this->mapItems($contents, $request->user());
+    }
+
     public function latestImportant(Request $request, int $limit = 8): array
     {
         $important = $this->feedQuery()

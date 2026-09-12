@@ -62,9 +62,11 @@ function timeAgo(value: string) {
 function FeedItemComponent({
     item,
     detail = false,
+    priority = false,
 }: {
     item: FeedItemData;
     detail?: boolean;
+    priority?: boolean;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
     const [expanded, setExpanded] = useState(detail);
@@ -157,7 +159,10 @@ function FeedItemComponent({
                         </strong>
                     )}
                     <div className="mt-1 flex items-center gap-1.5 text-[11px] text-[var(--store-muted)]">
-                        <time dateTime={item.created_at}>
+                        <time
+                            dateTime={item.created_at}
+                            suppressHydrationWarning
+                        >
                             {timeAgo(item.created_at)}
                         </time>
                         <span>·</span>
@@ -178,12 +183,14 @@ function FeedItemComponent({
                         {item.title}
                     </h1>
                 ) : (
-                    <Link
-                        className="text-lg font-black leading-7 transition hover:text-indigo-400"
-                        href={item.url}
-                    >
-                        {item.title}
-                    </Link>
+                    <h2>
+                        <Link
+                            className="text-lg font-black leading-7 transition hover:text-indigo-400"
+                            href={item.url}
+                        >
+                            {item.title}
+                        </Link>
+                    </h2>
                 )}
                 {detail && item.body_html ? (
                     <div
@@ -209,7 +216,11 @@ function FeedItemComponent({
                     </div>
                 ) : null}
             </div>
-            <FeedMediaSlider media={item.media} title={item.title} />
+            <FeedMediaSlider
+                media={item.media}
+                priority={priority}
+                title={item.title}
+            />
             {(item.related_product || item.related_video) && (
                 <div className="grid gap-2 border-b border-[var(--store-border)] p-3 sm:grid-cols-2 sm:px-5">
                     {item.related_product && (

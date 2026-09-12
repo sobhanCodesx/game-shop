@@ -1,5 +1,5 @@
 import { Button, Chip, Modal, Tooltip } from "@heroui/react";
-import { Head, Link, router, usePage } from "@inertiajs/react";
+import { Link, router, usePage } from "@inertiajs/react";
 import { MediaPlayer, MediaProvider } from "@vidstack/react";
 import {
     defaultLayoutIcons,
@@ -8,6 +8,7 @@ import {
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
 import {
+    ArrowLeft,
     CalendarDays,
     Check,
     ChevronLeft,
@@ -15,6 +16,7 @@ import {
     Gamepad2,
     HelpCircle,
     ImageIcon,
+    Newspaper,
     PackageCheck,
     Play,
     Share2,
@@ -25,12 +27,21 @@ import {
     Truck,
     X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import Price from "../../Components/Storefront/Commerce/Price";
+import ProductCard from "../../Components/Storefront/Product/ProductCard";
+import ContentCard from "../../Components/Storefront/Video/ContentCard";
+import Seo, { type SeoData } from "../../Components/Seo";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import RichText from "../../Components/Storefront/Shared/RichText";
-import type { SharedPageProps, StorefrontPricing } from "../../types";
+import type {
+    FeedItemData,
+    SharedPageProps,
+    StorefrontContent,
+    StorefrontPricing,
+    StorefrontProduct,
+} from "../../types";
 import { requestNativeShare } from "../../lib/nativeBridge";
 
 interface Media {
@@ -48,7 +59,11 @@ interface Variant {
     pricing: StorefrontPricing;
 }
 interface Props {
+    seo: SeoData;
     exchangeRequestId: number | null;
+    latestFeed: FeedItemData[];
+    latestVideos: StorefrontContent[];
+    latestProducts: StorefrontProduct[];
     product: {
         id: number;
         title: string;
@@ -243,7 +258,14 @@ function GameplayTheater({
     );
 }
 
-export default function ProductShow({ exchangeRequestId, product }: Props) {
+export default function ProductShow({
+    seo,
+    exchangeRequestId,
+    product,
+    latestFeed,
+    latestVideos,
+    latestProducts,
+}: Props) {
     const { flash } = usePage<SharedPageProps>().props;
     const primary =
         product.media.find((item) => item.is_primary) ??
@@ -338,7 +360,7 @@ export default function ProductShow({ exchangeRequestId, product }: Props) {
 
     return (
         <StorefrontLayout>
-            <Head title={product.title} />
+            <Seo seo={seo} />
             <main className="pb-32 lg:pb-20">
                 <section className="relative border-b border-[var(--store-border)]">
                     <div className="relative mx-auto max-w-7xl px-4 py-5 md:py-8 lg:py-11">
@@ -860,6 +882,36 @@ export default function ProductShow({ exchangeRequestId, product }: Props) {
                             </dl>
                         </section>
                     )}
+                    {latestFeed.length > 0 && (
+                        <RelatedSection href="/feed" title="تازه‌های فید">
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                {latestFeed.map((item) => (
+                                    <FeedLink item={item} key={item.id} />
+                                ))}
+                            </div>
+                        </RelatedSection>
+                    )}
+                    {latestVideos.length > 0 && (
+                        <RelatedSection href="/videos" title="ویدیوهای تازه">
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                {latestVideos.map((video) => (
+                                    <ContentCard
+                                        content={video}
+                                        key={video.id}
+                                    />
+                                ))}
+                            </div>
+                        </RelatedSection>
+                    )}
+                    {latestProducts.length > 0 && (
+                        <RelatedSection href="/shop" title="آخرین محصولات">
+                            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                                {latestProducts.map((item) => (
+                                    <ProductCard key={item.id} product={item} />
+                                ))}
+                            </div>
+                        </RelatedSection>
+                    )}
                 </div>
             </main>
             <div className="fixed inset-x-3 bottom-[calc(4.65rem+env(safe-area-inset-bottom))] z-30 rounded-2xl border border-[var(--store-border)] bg-[var(--store-panel)] p-2.5 shadow-2xl backdrop-blur-xl lg:hidden">
@@ -884,5 +936,64 @@ export default function ProductShow({ exchangeRequestId, product }: Props) {
                 </div>
             </div>
         </StorefrontLayout>
+    );
+}
+
+function RelatedSection({
+    children,
+    href,
+    title,
+}: {
+    children: ReactNode;
+    href: string;
+    title: string;
+}) {
+    return (
+        <section>
+            <header className="mb-5 flex items-center justify-between gap-3">
+                <h2 className="text-2xl font-black">{title}</h2>
+                <Link
+                    className="inline-flex items-center gap-1 text-xs font-black text-indigo-500"
+                    href={href}
+                >
+                    دیدن همه <ArrowLeft size={15} />
+                </Link>
+            </header>
+            {children}
+        </section>
+    );
+}
+
+function FeedLink({ item }: { item: FeedItemData }) {
+    const media = item.media[0];
+    const image = media?.type === "image" ? media.url : media?.thumbnail;
+    return (
+        <Link
+            className="group overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)]"
+            href={item.url}
+        >
+            <article>
+                {image ? (
+                    <img
+                        alt={media.alt}
+                        className="aspect-video w-full object-cover"
+                        loading="lazy"
+                        src={image}
+                    />
+                ) : (
+                    <span className="grid aspect-video place-items-center text-indigo-500">
+                        <Newspaper size={32} />
+                    </span>
+                )}
+                <div className="p-3">
+                    <small className="text-indigo-500">
+                        {item.author.name}
+                    </small>
+                    <h3 className="mt-1 line-clamp-2 text-sm font-black leading-6 group-hover:text-indigo-500">
+                        {item.title}
+                    </h3>
+                </div>
+            </article>
+        </Link>
     );
 }

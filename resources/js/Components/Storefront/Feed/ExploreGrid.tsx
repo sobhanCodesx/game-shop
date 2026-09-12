@@ -279,50 +279,55 @@ function Tile({
     const video = itemVideo(item);
     const large = index % 14 === 2 || index % 14 === 9;
     return (
-        <button
-            aria-label={`باز کردن ${item.data.title}`}
-            className={`group relative min-h-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 ${large ? "col-span-2 row-span-2" : content?.type === "short" ? "row-span-2" : ""}`}
-            onClick={onOpen}
-            type="button"
-        >
-            {video ? (
-                <VideoPreview
-                    poster={image}
-                    src={video}
-                    title={item.data.title}
-                />
-            ) : image ? (
-                <img
-                    alt={item.data.title}
-                    className="size-full object-cover transition duration-500 group-hover:scale-105"
-                    loading="lazy"
-                    src={image}
-                />
-            ) : (
-                <span className="grid size-full place-items-center bg-slate-950">
-                    <Gamepad2
-                        className="text-indigo-400"
-                        size={large ? 58 : 32}
+        <>
+            <button
+                aria-label={`باز کردن ${item.data.title}`}
+                className={`group relative min-h-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 ${large ? "col-span-2 row-span-2" : content?.type === "short" ? "row-span-2" : ""}`}
+                onClick={onOpen}
+                type="button"
+            >
+                {video ? (
+                    <VideoPreview
+                        poster={image}
+                        src={video}
+                        title={item.data.title}
                     />
-                </span>
-            )}
-            <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/10 opacity-60 md:opacity-0 md:group-hover:opacity-100" />
-            <span className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-black/50 text-white">
-                {(item.kind === "product_media" &&
-                    item.data.media_type === "video") ||
-                content?.type === "video" ||
-                content?.type === "short" ? (
-                    <Play fill="currentColor" size={13} />
-                ) : content ? (
-                    <Images size={14} />
+                ) : image ? (
+                    <img
+                        alt={item.data.title}
+                        className="size-full object-cover transition duration-500 group-hover:scale-105"
+                        loading="lazy"
+                        src={image}
+                    />
                 ) : (
-                    <ShoppingBag size={14} />
+                    <span className="grid size-full place-items-center bg-slate-950">
+                        <Gamepad2
+                            className="text-indigo-400"
+                            size={large ? 58 : 32}
+                        />
+                    </span>
                 )}
-            </span>
-            <strong className="absolute inset-x-0 bottom-0 line-clamp-2 p-2 text-[10px] text-white md:translate-y-3 md:p-4 md:text-sm md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
-                {item.data.title}
-            </strong>
-        </button>
+                <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/10 opacity-60 md:opacity-0 md:group-hover:opacity-100" />
+                <span className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-black/50 text-white">
+                    {(item.kind === "product_media" &&
+                        item.data.media_type === "video") ||
+                    content?.type === "video" ||
+                    content?.type === "short" ? (
+                        <Play fill="currentColor" size={13} />
+                    ) : content ? (
+                        <Images size={14} />
+                    ) : (
+                        <ShoppingBag size={14} />
+                    )}
+                </span>
+                <strong className="absolute inset-x-0 bottom-0 line-clamp-2 p-2 text-[10px] text-white md:translate-y-3 md:p-4 md:text-sm md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
+                    {item.data.title}
+                </strong>
+            </button>
+            <Link className="sr-only" href={item.data.url}>
+                مشاهده {item.data.title}
+            </Link>
+        </>
     );
 }
 

@@ -80,6 +80,10 @@ class StudioTest extends TestCase
             ->component('Studios/Show')
             ->where('studio.name', 'Pixel Giants')
             ->where('studio.channels_count', 19)
+            ->where('seo.canonical', route('studios.show', $studio->slug))
+            ->where('seo.robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1')
+            ->where('seo.structuredData.@graph.0.@type', 'Organization')
+            ->where('seo.structuredData.@graph.1.@type', 'BreadcrumbList')
             ->has('channels.data', 18)
             ->where('channels.last_page', 2));
 

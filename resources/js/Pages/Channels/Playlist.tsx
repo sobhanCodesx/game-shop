@@ -1,9 +1,10 @@
 import { Avatar, Button } from "@heroui/react";
-import { Head, Link, router, usePage } from "@inertiajs/react";
+import { Link, router, usePage } from "@inertiajs/react";
 import { Gamepad2, ListVideo, Play } from "lucide-react";
 
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
 import RichText from "../../Components/Storefront/Shared/RichText";
+import Seo, { type SeoData } from "../../Components/Seo";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import type { SharedPageProps, StorefrontContent } from "../../types";
 
@@ -27,16 +28,19 @@ interface PlaylistData {
 }
 
 export default function PlaylistShow({
+    seo,
     channel,
     playlist,
 }: {
+    seo: SeoData;
     channel: Channel | null;
     playlist: PlaylistData;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
     const first = playlist.videos[0];
-    const subscribe = () => channel && (
-        auth.user
+    const subscribe = () =>
+        channel &&
+        (auth.user
             ? router.post(
                   `/channels/${channel.slug}/subscription`,
                   {},
@@ -45,8 +49,31 @@ export default function PlaylistShow({
             : router.visit("/login"));
     return (
         <StorefrontLayout>
-            <Head title={channel ? `${playlist.title} - ${channel.name}` : playlist.title} />
+            <Seo seo={seo} />
             <main className="mx-auto max-w-7xl px-4 py-7 md:py-10">
+                <nav
+                    aria-label="مسیر صفحه"
+                    className="mb-5 flex items-center gap-2 text-xs text-[var(--store-muted)]"
+                >
+                    <Link className="hover:text-indigo-400" href="/">
+                        خانه
+                    </Link>
+                    <span aria-hidden="true">/</span>
+                    {channel && (
+                        <>
+                            <Link
+                                className="hover:text-indigo-400"
+                                href={`/channels/${channel.slug}`}
+                            >
+                                {channel.name}
+                            </Link>
+                            <span aria-hidden="true">/</span>
+                        </>
+                    )}
+                    <span aria-current="page" className="truncate">
+                        {playlist.title}
+                    </span>
+                </nav>
                 <div className="grid items-start gap-8 lg:grid-cols-[360px_1fr]">
                     <aside className="sticky top-28 overflow-hidden rounded-2xl bg-[var(--store-surface)]">
                         <div className="relative aspect-video bg-[var(--store-surface-strong)]">
@@ -80,35 +107,41 @@ export default function PlaylistShow({
                                     html={playlist.description_html}
                                 />
                             )}
-                            {channel && <><Link
-                                className="mt-5 flex items-center gap-3"
-                                href={`/channels/${channel.slug}`}
-                            >
-                                <Avatar size="sm">
-                                    {channel.cover_url && (
-                                        <Avatar.Image src={channel.cover_url} />
-                                    )}
-                                    <Avatar.Fallback>
-                                        <Gamepad2 size={16} />
-                                    </Avatar.Fallback>
-                                </Avatar>
-                                <span className="text-sm font-bold">
-                                    {channel.name}
-                                </span>
-                            </Link>
-                            <Button
-                                className="mt-5 w-full"
-                                onPress={subscribe}
-                                variant={
-                                    channel.is_subscribed
-                                        ? "secondary"
-                                        : "primary"
-                                }
-                            >
-                                {channel.is_subscribed
-                                    ? "مشترک هستید"
-                                    : "عضویت در کانال"}
-                            </Button></>}
+                            {channel && (
+                                <>
+                                    <Link
+                                        className="mt-5 flex items-center gap-3"
+                                        href={`/channels/${channel.slug}`}
+                                    >
+                                        <Avatar size="sm">
+                                            {channel.cover_url && (
+                                                <Avatar.Image
+                                                    src={channel.cover_url}
+                                                />
+                                            )}
+                                            <Avatar.Fallback>
+                                                <Gamepad2 size={16} />
+                                            </Avatar.Fallback>
+                                        </Avatar>
+                                        <span className="text-sm font-bold">
+                                            {channel.name}
+                                        </span>
+                                    </Link>
+                                    <Button
+                                        className="mt-5 w-full"
+                                        onPress={subscribe}
+                                        variant={
+                                            channel.is_subscribed
+                                                ? "secondary"
+                                                : "primary"
+                                        }
+                                    >
+                                        {channel.is_subscribed
+                                            ? "مشترک هستید"
+                                            : "عضویت در کانال"}
+                                    </Button>
+                                </>
+                            )}
                             {first && (
                                 <Link
                                     className="mt-3 flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--store-text)] text-sm font-black text-[var(--store-bg)]"

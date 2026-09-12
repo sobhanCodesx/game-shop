@@ -1,16 +1,23 @@
 import { Button } from "@heroui/react";
-import { Head, Link, usePage } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 import { Gamepad2, LoaderCircle, Search, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import ExploreGrid, {
     type ExploreItem,
 } from "../../Components/Storefront/Feed/ExploreGrid";
+import Seo, { type SeoData } from "../../Components/Seo";
 import EmptyState from "../../Components/Storefront/Shared/EmptyState";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import type { Paginated, SharedPageProps } from "../../types";
 
-export default function Discover({ feed }: { feed: Paginated<ExploreItem> }) {
+export default function Discover({
+    seo,
+    feed,
+}: {
+    seo: SeoData;
+    feed: Paginated<ExploreItem>;
+}) {
     const { storefront } = usePage<SharedPageProps>().props;
     const [items, setItems] = useState(feed.data);
     const [page, setPage] = useState(feed.current_page);
@@ -56,7 +63,7 @@ export default function Discover({ feed }: { feed: Paginated<ExploreItem> }) {
 
     return (
         <StorefrontLayout>
-            <Head title="اکسپلور بازی‌ها" />
+            <Seo seo={seo} />
             <main className="mx-auto max-w-[1500px] px-1 py-4 sm:px-4 md:py-8">
                 <header className="mx-auto mb-5 max-w-7xl px-2 sm:px-0">
                     <div className="flex items-center justify-between gap-4">

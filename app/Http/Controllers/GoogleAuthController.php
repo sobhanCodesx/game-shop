@@ -6,9 +6,11 @@ use App\Services\AuthenticationSessionService;
 use App\Services\GoogleAccountService;
 use App\Services\GoogleOAuthService;
 use DomainException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class GoogleAuthController extends Controller
 {
@@ -39,6 +41,13 @@ class GoogleAuthController extends Controller
             return $sessions->complete($request, $user)->with('success', 'با حساب Google وارد شدید.');
         } catch (DomainException $exception) {
             return $this->failed($request, $exception->getMessage());
+        } catch (ConnectionException $exception) {
+            // Do not log OAuth codes, access tokens or request bodies.
+            Log::warning('Google OAuth connection failed after bounded recovery.', [
+                'exception' => $exception::class,
+            ]);
+
+            return $this->failed($request, 'ارتباط سرور با Google موقتاً برقرار نشد. لطفاً دوباره روی ورود با Google بزنید.');
         } catch (\Throwable $exception) {
             report($exception);
 

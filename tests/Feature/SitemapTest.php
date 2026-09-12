@@ -43,6 +43,11 @@ class SitemapTest extends TestCase
             'slug' => 'public-video',
             'status' => 'published',
             'published_at' => now()->subMinute(),
+            'excerpt' => 'راهنمای کامل ویدیوی عمومی',
+            'thumbnail' => 'videos/thumbnails/public-video.jpg',
+            'video_path' => 'videos/public-video.mp4',
+            'duration' => 125,
+            'views' => 42,
         ]);
         $feedPost = SocialContent::query()->create([
             'type' => 'post',
@@ -90,6 +95,10 @@ class SitemapTest extends TestCase
             ->assertDontSee('inactive-category');
         $this->get('/sitemaps/content.xml')->assertOk()
             ->assertSee(route('content.show', ['videos', $video->slug]), false)
+            ->assertSee('<video:video>', false)
+            ->assertSee('<video:thumbnail_loc>http://localhost/storage/videos/thumbnails/public-video.jpg</video:thumbnail_loc>', false)
+            ->assertSee('<video:content_loc>http://localhost/storage/videos/public-video.mp4</video:content_loc>', false)
+            ->assertSee('<video:duration>125</video:duration>', false)
             ->assertDontSee('public-feed-post')
             ->assertDontSee('draft-video');
         $this->get('/sitemaps/feed.xml')->assertOk()

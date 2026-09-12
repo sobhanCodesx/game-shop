@@ -8,8 +8,11 @@ use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\Studio;
 use App\Models\VideoPlaylist;
+use App\Services\MediaStorage;
+use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
+use Illuminate\Support\Str;
 use XMLWriter;
 
 class SitemapController extends Controller
@@ -36,12 +39,19 @@ class SitemapController extends Controller
     {
         abort_unless(in_array($type, self::TYPES, true), 404);
 
-        $writer = $this->writer('urlset');
+        $writer = $this->writer('urlset', $type === 'content');
         foreach ($this->urls($type) as $entry) {
             $writer->startElement('url');
             $writer->writeElement('loc', $entry['loc']);
             if (isset($entry['lastmod'])) {
                 $writer->writeElement('lastmod', $entry['lastmod']);
+            }
+            if (isset($entry['video'])) {
+                $writer->startElement('video:video');
+                foreach ($entry['video'] as $name => $value) {
+                    $writer->writeElement("video:{$name}", (string) $value);
+                }
+                $writer->endElement();
             }
             $writer->endElement();
         }
@@ -49,7 +59,7 @@ class SitemapController extends Controller
         return $this->response($writer);
     }
 
-    /** @return iterable<array{loc: string, lastmod?: string}> */
+    /** @return iterable<array{loc: string, lastmod?: string, video?: array<string, mixed>}> */
     private function urls(string $type): iterable
     {
         if ($type === 'static') {
@@ -90,7 +100,26 @@ class SitemapController extends Controller
                 $plural = match ($content->type) {
                     'video' => 'videos', 'short' => 'shorts', default => 'posts',
                 };
-                yield $this->entry(route('content.show', [$plural, $content->slug]), $content->updated_at);
+                $entry = $this->entry(route('content.show', [$plural, $content->slug]), $content->updated_at);
+                $thumbnail = MediaStorage::url($content->thumbnail);
+                $videoUrl = MediaStorage::url($content->video_path);
+
+                if ($thumbnail && $videoUrl) {
+                    $description = RichText::plainText(
+                        $content->seo_description ?: $content->excerpt ?: $content->body,
+                    ) ?: "تماشای {$content->title} در پلی نکسوس";
+                    $entry['video'] = array_filter([
+                        'thumbnail_loc' => url($thumbnail),
+                        'title' => Str::limit($content->title, 100, '…'),
+                        'description' => Str::limit($description, 2048, '…'),
+                        'content_loc' => url($videoUrl),
+                        'duration' => $content->duration && $content->duration <= 28800 ? $content->duration : null,
+                        'publication_date' => $content->published_at?->toAtomString(),
+                        'view_count' => max(0, (int) $content->views),
+                    ], fn ($value) => $value !== null && $value !== '');
+                }
+
+                yield $entry;
             }
 
             return;
@@ -146,13 +175,16 @@ class SitemapController extends Controller
         ]);
     }
 
-    private function writer(string $root): XMLWriter
+    private function writer(string $root, bool $withVideoNamespace = false): XMLWriter
     {
         $writer = new XMLWriter;
         $writer->openMemory();
         $writer->startDocument('1.0', 'UTF-8');
         $writer->startElement($root);
         $writer->writeAttribute('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9');
+        if ($withVideoNamespace) {
+            $writer->writeAttribute('xmlns:video', 'http://www.google.com/schemas/sitemap-video/1.1');
+        }
 
         return $writer;
     }

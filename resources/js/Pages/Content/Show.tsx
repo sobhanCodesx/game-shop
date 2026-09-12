@@ -709,7 +709,7 @@ export default function Show({
         ) : (
             <Link
                 className={`${sheet ? "border-t bg-[var(--store-bg)] px-4" : "mt-2 border-y"} flex items-center justify-between border-[var(--store-border)] py-3 text-xs`}
-                href={`/login?redirect=${encodeURIComponent(window.location.href)}`}
+                href={`/login?redirect=${encodeURIComponent(seo.canonical)}`}
             >
                 <span>برای ثبت نظر یا واکنش وارد حساب شوید.</span>
                 <strong className="text-indigo-500">ورود</strong>
@@ -922,7 +922,10 @@ export default function Show({
                                     >
                                         {new Intl.DateTimeFormat(
                                             "fa-IR-u-ca-persian",
-                                            { dateStyle: "long" },
+                                            {
+                                                dateStyle: "long",
+                                                timeZone: "Asia/Tehran",
+                                            },
                                         ).format(
                                             new Date(content.published_at),
                                         )}

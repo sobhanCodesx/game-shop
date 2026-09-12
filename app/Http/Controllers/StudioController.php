@@ -75,22 +75,41 @@ class StudioController extends Controller
             ]);
         $canonical = route('studios.show', $studio->slug);
         $plainDescription = RichText::plainText($studio->description);
+        $description = Str::limit($plainDescription ?: "کانال‌ها و بازی‌های استودیو {$studio->name} در PlayNexus.", 160, '…');
+        $image = url(MediaStorage::url($studio->background ?: $studio->logo) ?: (string) config('seo.default_image', '/logo.png'));
 
         return Inertia::render('Studios/Show', [
             ...Seo::page([
                 'title' => $studio->name,
-                'description' => Str::limit($plainDescription ?: "کانال‌ها و بازی‌های استودیو {$studio->name} در PlayNexus.", 160, '…'),
+                'description' => $description,
                 'canonical' => $canonical,
-                'image' => url(MediaStorage::url($studio->background ?: $studio->logo) ?: (string) config('seo.default_image', '/logo.png')),
+                'robots' => 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+                'image' => $image,
                 'imageAlt' => "استودیو {$studio->name}",
                 'type' => 'profile',
                 'structuredData' => [
                     '@context' => 'https://schema.org',
-                    '@type' => 'Organization',
-                    'name' => $studio->name,
-                    'url' => $canonical,
-                    ...($studio->website ? ['sameAs' => [$studio->website]] : []),
-                    ...($studio->logo ? ['logo' => url(MediaStorage::url($studio->logo))] : []),
+                    '@graph' => [
+                        [
+                            '@type' => 'Organization',
+                            '@id' => $canonical.'#studio',
+                            'name' => $studio->name,
+                            'url' => $canonical,
+                            'description' => $description,
+                            'image' => $image,
+                            ...($studio->website ? ['sameAs' => [$studio->website]] : []),
+                            ...($studio->logo ? ['logo' => url(MediaStorage::url($studio->logo))] : []),
+                        ],
+                        [
+                            '@type' => 'BreadcrumbList',
+                            '@id' => $canonical.'#breadcrumb',
+                            'itemListElement' => [
+                                ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => route('home')],
+                                ['@type' => 'ListItem', 'position' => 2, 'name' => 'استودیوهای بازی‌سازی', 'item' => route('studios.index')],
+                                ['@type' => 'ListItem', 'position' => 3, 'name' => $studio->name, 'item' => $canonical],
+                            ],
+                        ],
+                    ],
                 ],
             ]),
             'studio' => [

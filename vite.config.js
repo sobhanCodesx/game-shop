@@ -1,37 +1,60 @@
-import { defineConfig } from 'vite';
-import laravel from 'laravel-vite-plugin';
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import inertia from "@inertiajs/vite";
+import laravel from "laravel-vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
 
-export default defineConfig({
-    plugins: [
-        laravel({
-            input: 'resources/js/app.tsx',
-            refresh: true,
-        }),
-        react(),
-        tailwindcss(),
-    ],
+export default defineConfig(({ isSsrBuild }) => {
+    return {
+        plugins: [
+            laravel({
+                input: "resources/js/app.tsx",
+                ssr: "resources/js/ssr.tsx",
+                refresh: true,
+            }),
+            inertia({
+                ssr: {
+                    entry: "resources/js/ssr.tsx",
+                    sourcemap: false,
+                },
+            }),
+            react(),
+            tailwindcss(),
+        ],
 
-    server: {
-        host: '0.0.0.0',
-        port: 5173,
-        strictPort: true,
+        // The SSR output is one self-contained ESM file. Production only needs
+        // Node.js and bootstrap/ssr/ssr.js; node_modules is not required.
+        ssr: isSsrBuild ? { noExternal: true } : undefined,
+        build: isSsrBuild
+            ? {
+                  sourcemap: false,
+                  ssrManifest: false,
+                  rollupOptions: {
+                      output: {
+                          entryFileNames: "ssr.js",
+                          inlineDynamicImports: true,
+                      },
+                  },
+              }
+            : undefined,
 
-        hmr: {
-            host: 'localhost',
+        server: {
+            host: "0.0.0.0",
             port: 5173,
-        },
+            strictPort: true,
 
-        cors: {
-            origin: [
-                'http://localhost:8000',
-                'http://127.0.0.1:8000',
-            ],
-        },
+            hmr: {
+                host: "localhost",
+                port: 5173,
+            },
 
-        watch: {
-            ignored: ['**/storage/framework/views/**'],
+            cors: {
+                origin: ["http://localhost:8000", "http://127.0.0.1:8000"],
+            },
+
+            watch: {
+                ignored: ["**/storage/framework/views/**"],
+            },
         },
-    },
+    };
 });

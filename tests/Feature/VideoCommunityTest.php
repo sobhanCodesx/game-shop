@@ -110,13 +110,30 @@ class VideoCommunityTest extends TestCase
         $playlist->videos()->attach($video->id, ['position' => 0]);
 
         $this->get(route('channels.show', $game->slug))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Channels/Show')->where('channel.name', $game->name)->has('videos.data', 1)->has('playlists', 1));
+            ->component('Channels/Show')
+            ->where('channel.name', $game->name)
+            ->where('seo.canonical', route('channels.show', $game->slug))
+            ->where('seo.robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1')
+            ->where('seo.structuredData.@graph.0.@type', 'VideoGame')
+            ->where('seo.structuredData.@graph.1.@type', 'BreadcrumbList')
+            ->has('videos.data', 1)->has('playlists', 1));
 
         $this->get(route('channels.playlists.show', ['game' => $game->slug, 'playlist' => $playlist->slug]))
             ->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Channels/Playlist')
             ->where('playlist.title', 'شروع بازی')
             ->where('playlist.description_html', '<h2>راهنمای شروع</h2><p>از اینجا شروع کنید.</p>')
+            ->where('seo.canonical', route('collections.show', $playlist->slug))
+            ->where('seo.structuredData.@graph.0.@type', 'CollectionPage')
+            ->where('seo.structuredData.@graph.1.@type', 'ItemList')
+            ->where('seo.structuredData.@graph.2.@type', 'BreadcrumbList')
+            ->has('playlist.videos', 1));
+
+        $this->get(route('collections.show', $playlist->slug))
+            ->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Channels/Playlist')
+            ->where('seo.canonical', route('collections.show', $playlist->slug))
+            ->where('seo.robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1')
             ->has('playlist.videos', 1));
 
         $this->get(route('content.show', ['type' => 'videos', 'content' => $video->slug, 'list' => $playlist->slug]))

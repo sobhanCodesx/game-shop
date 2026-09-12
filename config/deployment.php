@@ -16,6 +16,8 @@ return [
     'token_ttl' => (int) env('DEPLOYMENT_TOKEN_TTL', 3600),
     'retention' => (int) env('DEPLOYMENT_RETENTION', 1),
     'directory' => storage_path('app/deployments'),
+    'ssr_bundle_destination' => env('INERTIA_SSR_PASSENGER_BUNDLE_PATH'),
+    'ssr_restart_file' => env('INERTIA_SSR_PASSENGER_RESTART_FILE'),
     'allowed_roots' => ['app', 'bootstrap', 'config', 'database/migrations', 'routes', 'resources/views', 'lang', 'public', 'vendor','storage'],
-    'allowed_files' => ['composer.json', 'deployment-manifest.json', 'deployment-manifest.sig'],
+    'allowed_files' => ['composer.json', 'SSR_DEPLOYMENT.md', 'deployment-manifest.json', 'deployment-manifest.sig'],
 ];

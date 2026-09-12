@@ -10,7 +10,7 @@ use ZipArchive;
 final class PackageBuilder
 {
     private array $roots = ['app', 'bootstrap', 'config', 'database/migrations', 'routes', 'resources/views', 'lang', 'public', 'vendor'];
-    private array $files = ['composer.json'];
+    private array $files = ['composer.json', 'SSR_DEPLOYMENT.md'];
 
     public function build(?callable $progress = null): array
     {
@@ -24,6 +24,9 @@ final class PackageBuilder
         if (! is_file(public_path('build/manifest.json'))) {
             throw new RuntimeException('خروجی Vite پیدا نشد؛ ابتدا npm run build را اجرا کنید.');
         }
+        if (config('inertia.ssr.enabled') && ! is_file((string) config('inertia.ssr.bundle'))) {
+            throw new RuntimeException('خروجی SSR پیدا نشد؛ ابتدا npm run build را اجرا کنید.');
+        }
 
         $work = storage_path('app/deployments/build-'.Str::uuid());
         $stage = $work.'/stage';
@@ -34,7 +37,9 @@ final class PackageBuilder
             $this->stageStorageStructure($stage);
             $progress('copying_dependencies', 55);
             $this->copy(base_path('vendor'), $stage.'/vendor');
-            foreach (['vendor/autoload.php', 'vendor/composer/installed.php', 'public/build/manifest.json'] as $required) {
+            $requiredFiles = ['vendor/autoload.php', 'vendor/composer/installed.php', 'public/build/manifest.json'];
+            if (config('inertia.ssr.enabled')) $requiredFiles[] = 'bootstrap/ssr/ssr.js';
+            foreach ($requiredFiles as $required) {
                 if (! is_file($stage.'/'.$required)) throw new RuntimeException("خروجی ناقص است: {$required}");
             }
             $items = $this->manifestFiles($stage);
@@ -46,6 +51,7 @@ final class PackageBuilder
                 'php_extensions' => ['zip', 'pdo', 'mbstring', 'openssl', 'fileinfo'],
                 'composer_json_sha256' => hash_file('sha256', base_path('composer.json')),
                 'composer_lock_sha256' => hash_file('sha256', base_path('composer.lock')),
+                'ssr' => ['enabled' => (bool) config('inertia.ssr.enabled'), 'bundle' => 'bootstrap/ssr/ssr.js'],
                 'migrations' => array_values(array_map('basename', glob($stage.'/database/migrations/*.php') ?: [])),
                 'allowed_roots' => config('deployment.allowed_roots'), 'files' => $items,
             ];

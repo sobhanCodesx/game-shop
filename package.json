@@ -3,11 +3,18 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "dev": "vite"
+        "build": "vite build && vite build --ssr",
+        "build:client": "vite build",
+        "build:ssr": "vite build --ssr",
+        "dev": "vite",
+        "ssr:check": "php artisan inertia:check-ssr",
+        "ssr:start": "php artisan inertia:start-ssr",
+        "ssr:stop": "php artisan inertia:stop-ssr"
     },
     "devDependencies": {
+        "@inertiajs/vite": "^3.7.1",
         "@tailwindcss/vite": "^4.0.0",
+        "@types/node": "^26.4.0",
         "@types/react": "^19.2.18",
         "@types/react-dom": "^19.2.5",
         "@vitejs/plugin-react": "^5.2.0",

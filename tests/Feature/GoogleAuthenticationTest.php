@@ -3,11 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Psr7\Request as PsrRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class GoogleAuthenticationTest extends TestCase
@@ -21,6 +25,101 @@ class GoogleAuthenticationTest extends TestCase
             'client_id' => 'google-client-id',
             'client_secret' => 'google-client-secret',
         ]);
+        Http::preventStrayRequests();
+    }
+
+    #[DataProvider('transientFailures')]
+    public function test_transient_failures_recover_without_reexchanging_a_consumed_code(string $stage, int $failure): void
+    {
+        $calls = ['token' => 0, 'userinfo' => 0];
+        Http::fake(function ($request) use (&$calls, $stage, $failure) {
+            $endpoint = str_ends_with($request->url(), '/token') ? 'token' : 'userinfo';
+            $calls[$endpoint]++;
+            if ($endpoint === $stage && $calls[$endpoint] < 3) {
+                if ($failure === 0) {
+                    throw new ConnectionException('DNS timeout', 0, new ConnectException(
+                        'DNS timeout', new PsrRequest($request->method(), $request->url()), null,
+                        ['errno' => 28, 'primary_ip' => '', 'request_size' => 0],
+                    ));
+                }
+
+                return Http::response([], $failure);
+            }
+
+            return Http::response($endpoint === 'token' ? ['access_token' => 'access-token'] : [
+                'sub' => 'recovered', 'email' => 'recovered@gmail.com', 'email_verified' => true,
+            ]);
+        });
+
+        $this->withSession(['google_oauth_state' => 'state', 'google_oauth_remember' => true, 'auth.redirect' => '/shop'])
+            ->get(route('auth.google.callback', ['state' => 'state', 'code' => 'code']))
+            ->assertRedirect('/shop')->assertCookie(Auth::guard()->getRecallerName());
+
+        $this->assertAuthenticated();
+        $this->assertSame($stage === 'token' ? 3 : 1, $calls['token']);
+        $this->assertSame($stage === 'userinfo' ? 3 : 1, $calls['userinfo']);
+        $this->assertSame(1, User::where('google_id', 'recovered')->count());
+    }
+
+    public static function transientFailures(): array
+    {
+        return [['token', 0], ['userinfo', 0], ['userinfo', 429], ['userinfo', 503]];
+    }
+
+    public function test_persistent_connection_failure_stops_after_three_attempts_and_clears_oauth_session(): void
+    {
+        $attempts = 0;
+        Http::fake([
+            'oauth2.googleapis.com/token' => Http::response(['access_token' => 'access-token']),
+            'openidconnect.googleapis.com/v1/userinfo' => function () use (&$attempts) {
+                $attempts++;
+                throw new ConnectionException('DNS unavailable');
+            },
+        ]);
+
+        $this->withSession(['google_oauth_state' => 'state', 'google_oauth_remember' => true])
+            ->get(route('auth.google.callback', ['state' => 'state', 'code' => 'code']))
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('error', 'ارتباط سرور با Google موقتاً برقرار نشد. لطفاً دوباره روی ورود با Google بزنید.')
+            ->assertSessionMissing('google_oauth_state')->assertSessionMissing('google_oauth_remember');
+
+        $this->assertSame(3, $attempts);
+        $this->assertGuest();
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_ambiguous_token_timeout_is_not_retried(): void
+    {
+        $attempts = 0;
+        Http::fake(function () use (&$attempts) {
+            $attempts++;
+            throw new ConnectionException('Response timed out', 0, new ConnectException(
+                'Response timed out', new PsrRequest('POST', 'https://oauth2.googleapis.com/token'), null,
+                ['errno' => 28, 'primary_ip' => '192.0.2.1', 'request_size' => 300],
+            ));
+        });
+
+        $this->withSession(['google_oauth_state' => 'state'])
+            ->get(route('auth.google.callback', ['state' => 'state', 'code' => 'code']))
+            ->assertRedirect(route('login'))->assertSessionHas('error');
+
+        $this->assertSame(1, $attempts);
+        $this->assertGuest();
+    }
+
+    public function test_userinfo_unauthorized_response_is_not_retried(): void
+    {
+        Http::fake([
+            'oauth2.googleapis.com/token' => Http::response(['access_token' => 'access-token']),
+            'openidconnect.googleapis.com/v1/userinfo' => Http::response([], 401),
+        ]);
+
+        $this->withSession(['google_oauth_state' => 'state'])
+            ->get(route('auth.google.callback', ['state' => 'state', 'code' => 'code']))
+            ->assertRedirect(route('login'))->assertSessionHas('error');
+
+        Http::assertSentCount(2);
+        $this->assertGuest();
     }
 
     public function test_redirect_requests_only_identity_scopes_and_remembers_full_destination(): void

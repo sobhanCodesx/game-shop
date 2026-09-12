@@ -11,10 +11,18 @@ use App\Services\MediaStorage;
 use App\Services\StorefrontDataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    /**
+     * Admin is never part of the public, indexable SSR surface.
+     *
+     * @var array<int, string>
+     */
+    protected $withoutSsr = ['admin', 'admin/*'];
+
     /**
      * The root template that's loaded on the first page visit.
      *
@@ -32,6 +40,35 @@ class HandleInertiaRequests extends Middleware
     public function version(Request $request): ?string
     {
         return parent::version($request);
+    }
+
+    /**
+     * SSR is opt-in: only paths explicitly listed in config/inertia.php render
+     * on the server. An empty list keeps the infrastructure dormant.
+     */
+    public function handle(Request $request, \Closure $next)
+    {
+        Inertia::disableSsr(fn (): bool => ! $this->shouldUseSsr($request));
+
+        return parent::handle($request, $next);
+    }
+
+    protected function shouldUseSsr(Request $request): bool
+    {
+        if (
+            ! config('inertia.ssr.enabled', true)
+            || $request->is('admin', 'admin/*')
+        ) {
+            return false;
+        }
+
+        foreach (config('inertia.ssr.paths', []) as $path) {
+            if ($request->is($path)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

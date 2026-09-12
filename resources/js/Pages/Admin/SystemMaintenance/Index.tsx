@@ -106,10 +106,8 @@ export default function SystemMaintenance({
         }
 
         form.setData({ action, confirmed: true });
-        form.transform(() => ({ action, confirmed: true })).post(
-            "/admin/system-maintenance/run",
-            { preserveScroll: true },
-        );
+        form.transform(() => ({ action, confirmed: true }));
+        form.post("/admin/system-maintenance/run", { preserveScroll: true });
     };
 
     return (
@@ -173,12 +171,9 @@ export default function SystemMaintenance({
                                 <Button
                                     className="mt-5"
                                     isDisabled={form.processing}
-                                    isLoading={active}
+                                    isPending={active}
                                     onPress={() =>
                                         run(operation.action, operation.warning)
-                                    }
-                                    startContent={
-                                        active ? undefined : <Play size={17} />
                                     }
                                     variant={
                                         operation.action === "all"
@@ -186,6 +181,7 @@ export default function SystemMaintenance({
                                             : "secondary"
                                     }
                                 >
+                                    {!active && <Play size={17} />}
                                     {active ? "در حال اجرا…" : "اجرا"}
                                 </Button>
 

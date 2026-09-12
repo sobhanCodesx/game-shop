@@ -245,10 +245,12 @@ export default function DeploymentIndex({
                             ساخت و دانلود بسته هاست
                         </Button>
                         <p className="text-xs text-slate-500">
-                            ابتدا خودتان npm run build را اجرا کنید. Export کل
-                            پوشه public به‌جز public/hot و همین‌طور vendor موجود
-                            و composer.json لازم برای اجرای Laravel را بدون نصب
-                            هیچ پکیجی داخل بسته قرار می‌دهد.
+                            ابتدا خودتان npm run build را اجرا کنید. Export
+                            خروجی مرورگر، باندل standalone SSR در
+                            bootstrap/ssr/ssr.js، vendor و فایل‌های لازم Laravel
+                            را بدون نیاز به node_modules داخل بسته قرار می‌دهد.
+                            بعد از انتشار، پردازش Node مربوط به SSR را از پنل
+                            هاست Restart کنید.
                         </p>
                         {!capabilities.export && (
                             <div className="space-y-1 text-xs text-slate-500">

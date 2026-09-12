@@ -1,5 +1,5 @@
 import { Chip, Input } from "@heroui/react";
-import { Head, Link } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 import {
     Clapperboard,
     Eye,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import EmptyState from "../../Components/Storefront/Shared/EmptyState";
+import Seo, { type SeoData } from "../../Components/Seo";
 import Pagination from "../../Components/Storefront/Shared/Pagination";
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
@@ -23,8 +24,10 @@ const duration = (seconds: number | null) =>
         : "ویدیوی جدید";
 
 export default function Videos({
+    seo,
     videos,
 }: {
+    seo: SeoData;
     videos: Paginated<StorefrontContent>;
 }) {
     const [query, setQuery] = useState("");
@@ -43,7 +46,7 @@ export default function Videos({
     const totalViews = videos.data.reduce((sum, item) => sum + item.views, 0);
     return (
         <StorefrontLayout>
-            <Head title="ویدیوهای گیمینگ" />
+            <Seo seo={seo} />
             <main className="relative overflow-hidden pb-16">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-[620px] bg-[radial-gradient(circle_at_80%_0%,rgba(79,70,229,.18),transparent_42%),radial-gradient(circle_at_15%_12%,rgba(217,70,239,.1),transparent_32%)]" />
                 <div className="relative mx-auto max-w-7xl px-4 py-7 md:py-10">

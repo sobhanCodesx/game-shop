@@ -2,10 +2,13 @@ import "../css/app.css";
 import "@fontsource-variable/vazirmatn";
 
 import { createInertiaApp, router } from "@inertiajs/react";
-import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
-import type { ComponentType } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, hydrateRoot } from "react-dom/client";
 import PageTransitionLoader from "./Components/PageTransitionLoader";
+import {
+    createInertiaPageResolver,
+    inertiaTitle,
+    type InertiaPageModules,
+} from "./inertia";
 import {
     notifyNativeAuthState,
     notifyNativeNavigation,
@@ -30,10 +33,11 @@ if ("serviceWorker" in navigator) {
     }
 }
 
-const appName = "پلی نکسوس";
-type PageModule = { default: ComponentType };
-type PageSeoProps = { seo?: { absoluteTitle?: boolean } };
 type NativePageProps = { auth?: { user?: { id: number } | null } };
+
+const resolveInertiaPage = createInertiaPageResolver(
+    import.meta.glob("./Pages/**/*.tsx") as InertiaPageModules,
+);
 
 router.on("navigate", (event) => {
     const pageProps = event.detail.page.props as NativePageProps;
@@ -42,33 +46,26 @@ router.on("navigate", (event) => {
 });
 
 createInertiaApp({
-    title: (title, page) => {
-        if ((page.props as PageSeoProps).seo?.absoluteTitle) {
-            return title || appName;
-        }
-
-        return title ? `${title} - ${appName}` : appName;
-    },
+    title: inertiaTitle,
     serverHead: "head",
-    resolve: async (name) => {
-        const page = await resolvePageComponent<PageModule>(
-            `./Pages/${name}.tsx`,
-            import.meta.glob<PageModule>("./Pages/**/*.tsx"),
-        );
-
-        return page.default;
-    },
+    resolve: resolveInertiaPage,
     setup({ el, App, props }) {
         const pageProps = props.initialPage.props as NativePageProps;
         notifyNativeAuthState(pageProps.auth?.user?.id ?? null);
         notifyNativeNavigation(props.initialPage.url);
 
-        createRoot(el).render(
+        const application = (
             <>
                 <App {...props} />
                 <PageTransitionLoader />
-            </>,
+            </>
         );
+
+        if (el.hasChildNodes()) {
+            hydrateRoot(el, application);
+        } else {
+            createRoot(el).render(application);
+        }
     },
     progress: {
         color: "#4f46e5",

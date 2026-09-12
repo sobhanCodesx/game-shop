@@ -88,6 +88,16 @@ export default function Seo({ seo }: { seo: SeoData }) {
             />
 
             {seo.video && (
+                <link
+                    as="image"
+                    fetchPriority="high"
+                    head-key="video-thumbnail-preload"
+                    href={seo.image}
+                    rel="preload"
+                />
+            )}
+
+            {seo.video && (
                 <meta
                     content={seo.video.url}
                     head-key="og:video"

@@ -3,10 +3,14 @@
 namespace App\Services;
 
 use DomainException;
+use GuzzleHttp\Exception\ConnectException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Throwable;
 
 final class GoogleOAuthService
 {
@@ -64,7 +68,7 @@ final class GoogleOAuthService
             'grant_type' => 'authorization_code',
             'code' => $code,
         ]);
-        if (! $token->successful() || ! is_string($token->json('access_token'))) {
+        if (! $token->successful() || ! is_string($token->json('access_token')) || trim($token->json('access_token')) === '') {
             throw new DomainException(match ($token->json('error')) {
                 'invalid_client' => 'تنظیمات ورود Google روی سرور معتبر نیست؛ Client Secret صحیح نیست.',
                 'redirect_uri_mismatch' => 'آدرس بازگشت Google با آدرس فعلی سایت هماهنگ نیست.',
@@ -93,7 +97,31 @@ final class GoogleOAuthService
 
     private function http(): PendingRequest
     {
-        return Http::acceptJson()->connectTimeout(5)->timeout(12)->retry(1, 200);
+        return Http::acceptJson()
+            ->connectTimeout(5)
+            ->timeout(12)
+            ->withOptions(['allow_redirects' => false])
+            ->retry([200, 500], 0, function (Throwable $exception, PendingRequest $request, ?string $method): bool {
+                if ($method === 'GET') {
+                    return $exception instanceof ConnectionException
+                        || ($exception instanceof RequestException
+                            && ($exception->response->status() === 429 || $exception->response->serverError()));
+                }
+
+                // Authorization codes are single-use. Retry only failures known to
+                // occur before sending the token request, never ambiguous timeouts.
+                $previous = $exception->getPrevious();
+                if (! $exception instanceof ConnectionException || ! $previous instanceof ConnectException) {
+                    return false;
+                }
+
+                $context = $previous->getHandlerContext();
+
+                return in_array($context['errno'] ?? null, [6, 7], true)
+                    || (($context['errno'] ?? null) === 28
+                        && ($context['primary_ip'] ?? null) === ''
+                        && ($context['request_size'] ?? null) === 0);
+            }, throw: false);
     }
 
     private function redirectUri(Request $request): string

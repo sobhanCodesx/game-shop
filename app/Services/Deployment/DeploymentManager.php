@@ -109,7 +109,7 @@ final class DeploymentManager
         if (in_array(false, $checks, true)) throw new RuntimeException('Health check پس از نصب ناموفق بود.');
         return $this->states->update($state['id'], ['stage' => 'health_checked', 'progress' => 95]);
     }
-    private function completeDeployment(array $state): array { Artisan::call('up'); $state = $this->states->update($state['id'], ['status' => 'completed', 'stage' => 'completed', 'progress' => 100]); $this->states->pruneSuccessful(); return $state; }
+    private function completeDeployment(array $state): array { $this->syncSsrBundle(); Artisan::call('up'); $state = $this->states->update($state['id'], ['status' => 'completed', 'stage' => 'completed', 'progress' => 100]); $this->states->pruneSuccessful(); return $state; }
     private function artisan(string $command, array $arguments, array $state): void { $start = microtime(true); $code = Artisan::call($command, $arguments); $log = ['command' => $command, 'exit_code' => $code, 'duration_ms' => (int) ((microtime(true)-$start)*1000), 'output' => mb_substr(Artisan::output(), 0, 4000)]; $fresh = $this->states->get($state['id']); $fresh['logs'][] = $log; $this->states->save($fresh); if ($code !== 0) throw new RuntimeException("فرمان {$command} ناموفق بود."); }
     private function preflight(array $manifest, array $dangerous, string $stage): array
     {
@@ -126,6 +126,9 @@ final class DeploymentManager
         try { DB::select('SELECT 1'); $add('اتصال دیتابیس', true, DB::getDriverName()); } catch (\Throwable $e) { $add('اتصال دیتابیس', false); }
         $add('vendor کامل', is_file($stage.'/vendor/autoload.php') && is_file($stage.'/vendor/composer/installed.php'));
         $add('Vite manifest', is_file($stage.'/public/build/manifest.json'));
+        if (($manifest['ssr']['enabled'] ?? false) === true) {
+            $add('باندل standalone SSR', is_file($stage.'/bootstrap/ssr/ssr.js'));
+        }
         if ($dangerous) $checks[] = ['label' => 'migration پرریسک', 'status' => 'warning', 'detail' => implode('، ', $dangerous)];
         return $checks;
     }
@@ -145,5 +148,21 @@ final class DeploymentManager
     private function owned(string $id, int $userId): array { $state=$this->states->get($id); if ((int)$state['user_id']!==$userId) throw new RuntimeException('دسترسی به عملیات مجاز نیست.'); if (strtotime($state['expires_at']) < time() && ! in_array($state['status'], ['completed','rolled_back'], true)) throw new RuntimeException('توکن عملیات منقضی شده است.'); return $state; }
     private function currentManifest(): array { return is_file(base_path('deployment-manifest.json')) ? json_decode((string) file_get_contents(base_path('deployment-manifest.json')), true, flags: JSON_THROW_ON_ERROR) : ['files'=>[], 'migrations'=>[]]; }
     private function allowed(string $path): bool { foreach (config('deployment.allowed_roots') as $root) if ($path===$root || str_starts_with($path,$root.'/')) return true; return in_array($path, config('deployment.allowed_files'), true); }
+    private function syncSsrBundle(): void
+    {
+        $destination = trim((string) config('deployment.ssr_bundle_destination'));
+        if ($destination === '') return;
+
+        $source = (string) config('inertia.ssr.bundle');
+        if (! is_file($source)) throw new RuntimeException('باندل SSR برای انتقال به Node App پیدا نشد.');
+        if (is_file($destination) && hash_equals((string) hash_file('sha256', $source), (string) hash_file('sha256', $destination))) return;
+
+        $restartFile = trim((string) config('deployment.ssr_restart_file'));
+        if ($restartFile === '') throw new RuntimeException('مسیر restart مربوط به Passenger تنظیم نشده است.');
+
+        $this->copyFile($source, $destination);
+        File::ensureDirectoryExists(dirname($restartFile), 0750, true);
+        if (! touch($restartFile)) throw new RuntimeException('Restart کردن Node App مربوط به SSR ممکن نشد.');
+    }
     private function copyFile(string $from, string $to): void { if (! is_dir(dirname($to))) mkdir(dirname($to),0750,true); $in=fopen($from,'rb'); $out=fopen($to.'.deploying','wb'); if (!$in||!$out) throw new RuntimeException("کپی {$from} ممکن نیست."); stream_copy_to_stream($in,$out); fclose($in); fclose($out); if (!rename($to.'.deploying',$to)) throw new RuntimeException("جایگزینی {$to} ممکن نیست."); }
 }
