@@ -59,7 +59,7 @@ class VideoController extends Controller
         $token = $request->string('upload_token')->toString();
         $file = $token ? $uploads->claim($request->user()->id, $token) : $request->file('video');
         try {
-            $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null, $request->boolean('custom_thumbnail'));
+            $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null);
             $video->save();
             $video->playlists()->sync($this->playlistSync($request->validated('playlist_ids', [])));
         } catch (\Throwable $exception) {
@@ -104,7 +104,7 @@ class VideoController extends Controller
             $oldFiles = array_filter([$video->video_path, $video->thumbnail]);
             $file = $token ? $uploads->claim($request->user()->id, $token) : $request->file('video');
             try {
-                $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null, $request->boolean('custom_thumbnail'));
+                $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null);
             } finally {
                 if ($token) {
                     $uploads->forget($request->user()->id, $token);
@@ -139,18 +139,14 @@ class VideoController extends Controller
         MediaOptimizationService $optimizer,
         ?UploadedFile $browserThumbnail = null,
         ?int $browserDuration = null,
-        bool $customThumbnail = false,
     ): void {
         $stored = $optimizer->store($file, 'videos');
         $video->video_path = $stored['path'];
-        $video->video_mime = $file->getMimeType() ?: 'video/mp4';
-        // Chunk assembly already produced a local file. Read metadata from that
-        // source so remote disks are not downloaded again after the upload.
-        $metadata = $optimizer->videoMetadata($file, 'videos/thumbnails');
-        $video->thumbnail = $customThumbnail && $browserThumbnail
+        $video->video_mime = $file->getMimeType() ?: $file->getClientMimeType() ?: 'video/mp4';
+        $video->thumbnail = $browserThumbnail
             ? $optimizer->store($browserThumbnail, 'videos/thumbnails')['path']
-            : ($metadata['thumbnail'] ?? ($browserThumbnail ? $optimizer->store($browserThumbnail, 'videos/thumbnails')['path'] : null));
-        $video->duration = $metadata['duration'] ?? $browserDuration;
+            : null;
+        $video->duration = $browserDuration;
     }
 
     private function deleteFiles(SocialContent $video): void

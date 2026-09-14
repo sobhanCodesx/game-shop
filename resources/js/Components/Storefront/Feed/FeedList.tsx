@@ -134,7 +134,7 @@ export default function FeedList({
 
     return (
         <section aria-busy={loading} aria-label="فید بازی" className="min-w-0">
-            <header className="sticky top-16 z-30 border-b border-[var(--store-border)] bg-[var(--store-bg)]/90 px-3 pt-3 backdrop-blur-xl lg:top-0 lg:rounded-t-3xl lg:border lg:px-4">
+            <header className="sticky top-16 z-30 border-b border-[var(--store-border)] bg-[var(--store-bg)]/90 px-3 pt-3 backdrop-blur-xl lg:top-36 lg:rounded-3xl lg:border lg:bg-[var(--store-panel)] lg:px-5 lg:pt-4">
                 <div className="flex items-center gap-3 px-1 pb-2">
                     <span className="grid size-9 place-items-center rounded-xl bg-indigo-600 text-white">
                         <Radio size={18} />
@@ -173,6 +173,7 @@ export default function FeedList({
             <div className="space-y-3 py-3 sm:space-y-4">
                 {state.items.map((item, index) => (
                     <FeedItem
+                        expandFullContent
                         item={item}
                         key={item.id}
                         priority={index === 0}

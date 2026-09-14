@@ -136,6 +136,11 @@ class StorefrontDataService
         $plural = match ($content->type) {
             'video' => 'videos', 'short' => 'shorts', default => 'posts'
         };
+        $primaryMedia = $content->relationLoaded('media') ? $content->media->first() : null;
+        $thumbnail = $content->thumbnail
+            ?: ($primaryMedia?->type === 'image' ? $primaryMedia->path : $primaryMedia?->thumbnail);
+        $video = $content->video_path
+            ?: ($primaryMedia?->type === 'video' ? $primaryMedia->path : null);
 
         return [
             'id' => $content->id,
@@ -146,8 +151,8 @@ class StorefrontDataService
                 ? route('feed.show', $content->slug, false)
                 : route('content.show', [$plural, $content], false),
             'excerpt' => $content->excerpt,
-            'thumbnail_url' => MediaStorage::url($content->thumbnail),
-            'video_url' => MediaStorage::url($content->video_path),
+            'thumbnail_url' => MediaStorage::url($thumbnail),
+            'video_url' => MediaStorage::url($video),
             'duration' => $content->duration,
             'views' => $content->views,
             'published_at' => $content->published_at?->toISOString(),

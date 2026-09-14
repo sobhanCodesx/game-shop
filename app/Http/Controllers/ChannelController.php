@@ -133,7 +133,9 @@ class ChannelController extends Controller
         $logo = $game->cover ?: $game->playlists()->publiclyVisible()->whereNotNull('logo')->value('logo');
 
         return [
-            ...$game->only(['id', 'name', 'slug', 'description', 'developer', 'publisher']),
+            ...$game->only(['id', 'name', 'slug', 'developer', 'publisher']),
+            'description' => RichText::plainText($game->description),
+            'description_html' => RichText::sanitize($game->description),
             'cover_url' => MediaStorage::url($logo),
             'background_url' => MediaStorage::url($game->background),
             'platforms' => $game->platforms->pluck('name')->values(),

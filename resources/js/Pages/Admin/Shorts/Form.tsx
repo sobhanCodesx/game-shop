@@ -265,8 +265,8 @@ export default function ShortForm({ short }: { short: ShortData | null }) {
                                 />
                             </label>
                             <p className="mt-2 text-xs leading-6 text-slate-500">
-                                اختیاری؛ برای ویدیو استفاده می‌شود و در صورت
-                                انتخاب نکردن، مثل قبل خودکار ساخته خواهد شد.
+                                برای نمایش بهتر استوری ویدیویی، یک تصویر
+                                بندانگشتی انتخاب کنید.
                             </p>
                             {errors.thumbnail && (
                                 <small className="mt-2 block text-rose-400">

@@ -1,7 +1,10 @@
 import { Button, Card, Chip } from "@heroui/react";
 import { Head, Link, router } from "@inertiajs/react";
 import { Edit3, ImageIcon, Plus, Trash2 } from "lucide-react";
+
+import Pagination from "../../../Components/Storefront/Shared/Pagination";
 import AdminLayout from "../../../Layouts/AdminLayout";
+import type { PaginationLink } from "../../../types";
 
 interface ShortItem {
     id: number;
@@ -14,7 +17,15 @@ interface ShortItem {
     thumbnail_url: string | null;
 }
 
-export default function ShortIndex({ shorts }: { shorts: ShortItem[] }) {
+interface PaginatedShorts {
+    data: ShortItem[];
+    links: PaginationLink[];
+    current_page: number;
+    last_page: number;
+    total: number;
+}
+
+export default function ShortIndex({ shorts }: { shorts: PaginatedShorts }) {
     return (
         <AdminLayout
             title="مدیریت استوری‌ها"
@@ -28,9 +39,12 @@ export default function ShortIndex({ shorts }: { shorts: ShortItem[] }) {
             }
         >
             <Head title="مدیریت استوری‌ها" />
-            {shorts.length ? (
+            <div className="mb-5 rounded-2xl border border-slate-800 bg-slate-900/55 p-4 text-sm text-slate-400">
+                {shorts.total.toLocaleString("fa-IR")} استوری ثبت شده است.
+            </div>
+            {shorts.data.length ? (
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {shorts.map((item) => (
+                    {shorts.data.map((item) => (
                         <Card
                             className="overflow-hidden border border-slate-800 bg-slate-900/60"
                             key={item.id}
@@ -115,6 +129,7 @@ export default function ShortIndex({ shorts }: { shorts: ShortItem[] }) {
                     هنوز استوری‌ای ثبت نشده است.
                 </div>
             )}
+            <Pagination links={shorts.links} />
         </AdminLayout>
     );
 }

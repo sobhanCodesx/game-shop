@@ -8,8 +8,16 @@ import {
     TextArea,
 } from "@heroui/react";
 import { Head, Link, useForm } from "@inertiajs/react";
-import { ArrowRight, Film, ImagePlus, Save, UploadCloud } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import {
+    ArrowRight,
+    Film,
+    ImagePlus,
+    Save,
+    Search,
+    UploadCloud,
+    X,
+} from "lucide-react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import FormField from "../../../Components/Admin/Form/FormField";
 import HeroSelect from "../../../Components/Admin/Form/HeroSelect";
@@ -128,6 +136,7 @@ export default function VideoForm({ video, games, playlists }: Props) {
         video?.thumbnail_url ?? null,
     );
     const [customThumbnail, setCustomThumbnail] = useState(false);
+    const [playlistQuery, setPlaylistQuery] = useState("");
     const { data, setData, post, processing, errors, transform } =
         useForm<FormData>({
             title: video?.title ?? "",
@@ -152,6 +161,31 @@ export default function VideoForm({ video, games, playlists }: Props) {
         file: File;
         token: string;
     } | null>(null);
+    const selectedPlaylists = useMemo(
+        () =>
+            playlists.filter((playlist) =>
+                data.playlist_ids.includes(playlist.id),
+            ),
+        [data.playlist_ids, playlists],
+    );
+    const playlistResults = useMemo(() => {
+        const query = playlistQuery.trim().toLocaleLowerCase("fa-IR");
+        if (!query) return [];
+
+        return playlists
+            .filter((playlist) =>
+                playlist.title.toLocaleLowerCase("fa-IR").includes(query),
+            )
+            .slice(0, 12);
+    }, [playlistQuery, playlists]);
+    const togglePlaylist = (playlistId: number) => {
+        setData(
+            "playlist_ids",
+            data.playlist_ids.includes(playlistId)
+                ? data.playlist_ids.filter((id) => id !== playlistId)
+                : [...data.playlist_ids, playlistId],
+        );
+    };
     const uploadSpeed = uploadProgress
         ? `${(uploadProgress.bytesPerSecond / 1024 / 1024).toLocaleString("fa-IR", { maximumFractionDigits: 1 })} MB/s`
         : null;
@@ -230,7 +264,7 @@ export default function VideoForm({ video, games, playlists }: Props) {
             }
             setData("client_duration", metadata.duration);
         } catch {
-            // FFmpeg on the application server remains the primary fallback.
+            // A custom thumbnail can still be selected when the browser cannot decode the video.
         } finally {
             setPreparingThumbnail(false);
         }
@@ -370,46 +404,95 @@ export default function VideoForm({ video, games, playlists }: Props) {
                             </select>
                         </FormField>
                         {playlists.length > 0 && (
-                                <FormField
-                                    description="یک ویدیو می‌تواند در چند کالکشن قرار بگیرد."
-                                    label="کالکشن‌ها"
-                                >
-                                    <div className="grid gap-2 sm:grid-cols-2">
-                                        {playlists.map((playlist) => (
-                                                <label
-                                                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300"
-                                                    key={playlist.id}
-                                                >
-                                                    <input
-                                                        checked={data.playlist_ids.includes(
-                                                            playlist.id,
-                                                        )}
-                                                        onChange={(event) =>
-                                                            setData(
-                                                                "playlist_ids",
-                                                                event.target
-                                                                    .checked
-                                                                    ? [
-                                                                          ...data.playlist_ids,
-                                                                          playlist.id,
-                                                                      ]
-                                                                    : data.playlist_ids.filter(
-                                                                          (
-                                                                              id,
-                                                                          ) =>
-                                                                              id !==
-                                                                              playlist.id,
-                                                                      ),
+                            <FormField
+                                description="نام کالکشن را جست‌وجو کنید؛ امکان انتخاب چند مورد وجود دارد."
+                                label={`کالکشن‌ها${selectedPlaylists.length ? ` (${selectedPlaylists.length.toLocaleString("fa-IR")} انتخاب‌شده)` : ""}`}
+                            >
+                                <div className="space-y-3 rounded-2xl border border-slate-700 bg-slate-950/70 p-3">
+                                    {selectedPlaylists.length > 0 && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedPlaylists.map(
+                                                (playlist) => (
+                                                    <button
+                                                        className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-bold text-indigo-200 transition hover:bg-indigo-500/20"
+                                                        key={playlist.id}
+                                                        onClick={() =>
+                                                            togglePlaylist(
+                                                                playlist.id,
                                                             )
                                                         }
-                                                        type="checkbox"
-                                                    />
-                                                    {playlist.title}
-                                                </label>
-                                            ))}
+                                                        title="حذف از انتخاب‌ها"
+                                                        type="button"
+                                                    >
+                                                        {playlist.title}
+                                                        <X size={13} />
+                                                    </button>
+                                                ),
+                                            )}
+                                        </div>
+                                    )}
+                                    <div className="relative">
+                                        <Search
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                                            size={17}
+                                        />
+                                        <input
+                                            className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900 pr-10 pl-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500"
+                                            onChange={(event) =>
+                                                setPlaylistQuery(
+                                                    event.target.value,
+                                                )
+                                            }
+                                            placeholder="جست‌وجوی نام کالکشن…"
+                                            value={playlistQuery}
+                                        />
                                     </div>
-                                </FormField>
-                            )}
+                                    {playlistQuery.trim() && (
+                                        <div className="max-h-64 space-y-1 overflow-y-auto rounded-xl border border-slate-800 p-1">
+                                            {playlistResults.length > 0 ? (
+                                                playlistResults.map(
+                                                    (playlist) => {
+                                                        const selected =
+                                                            data.playlist_ids.includes(
+                                                                playlist.id,
+                                                            );
+                                                        return (
+                                                            <button
+                                                                className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-right text-sm transition ${selected ? "bg-indigo-500/15 text-indigo-200" : "text-slate-300 hover:bg-white/5"}`}
+                                                                key={
+                                                                    playlist.id
+                                                                }
+                                                                onClick={() =>
+                                                                    togglePlaylist(
+                                                                        playlist.id,
+                                                                    )
+                                                                }
+                                                                type="button"
+                                                            >
+                                                                <span className="truncate">
+                                                                    {
+                                                                        playlist.title
+                                                                    }
+                                                                </span>
+                                                                <span className="mr-3 shrink-0 text-xs">
+                                                                    {selected
+                                                                        ? "انتخاب شده"
+                                                                        : "انتخاب"}
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    },
+                                                )
+                                            ) : (
+                                                <p className="px-3 py-6 text-center text-xs text-slate-500">
+                                                    کالکشنی با این نام پیدا نشد.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </FormField>
+                        )}
                         <HeroSelect
                             label="وضعیت"
                             onChange={(value) => setData("status", value)}

@@ -110,10 +110,13 @@ class HandleInertiaRequests extends Middleware
             'storefront' => fn () => [
                 'categories' => app(StorefrontDataService::class)->navigation(),
                 'stories' => SocialContent::query()->published()->where('type', 'short')->whereNotNull('video_path')
+                    ->with('game:id,name,slug,cover')
                     ->orderBy('sort_order')->orderByDesc('published_at')->limit(20)->get()->map(fn (SocialContent $story) => [
                         ...$story->only(['id', 'title', 'excerpt', 'media_type', 'duration', 'link_url', 'link_label']),
                         'media_url' => MediaStorage::url($story->video_path),
                         'thumbnail_url' => MediaStorage::url($story->thumbnail),
+                        'channel_name' => $story->game?->name ?? 'PlayNexus',
+                        'channel_avatar_url' => MediaStorage::url($story->game?->cover) ?: url((string) config('seo.default_image', '/logo.png')),
                     ]),
                 'fresh_content_at' => Cache::remember('storefront.fresh_content_at', 300, function (): ?string {
                     $cutoff = now()->subDays(14);

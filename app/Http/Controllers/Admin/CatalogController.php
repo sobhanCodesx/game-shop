@@ -11,6 +11,7 @@ use App\Models\Game;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\Studio;
+use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
 use App\Services\ProductMediaService;
 use App\Services\ProductTypeRegistry;
@@ -60,9 +61,11 @@ class CatalogController extends Controller
             'items' => collect($paginator->items())->map(fn (Model $item) => [
                 'id' => $item->getKey(),
                 'cells' => $this->cells($catalog, $item),
-                'coverUrl' => $item instanceof Product && $item->coverMedia
-                    ? MediaStorage::url($item->coverMedia->path)
-                    : null,
+                'coverUrl' => match (true) {
+                    $item instanceof Product && $item->coverMedia => MediaStorage::url($item->coverMedia->path),
+                    $item instanceof Game => MediaStorage::url($item->cover),
+                    default => null,
+                },
                 'editUrl' => route('admin.catalog.edit', [$catalog, $item->getKey()]),
                 'mediaUrl' => $item instanceof Product ? route('admin.products.media.edit', $item) : null,
                 'tradeEnabled' => $item instanceof Product ? (bool) $item->trade_enabled : null,
@@ -84,10 +87,16 @@ class CatalogController extends Controller
         return $this->form($catalog, null);
     }
 
-    public function store(CatalogRequest $request, string $catalog, ProductTypeRegistry $productTypes, ProductMediaService $media): RedirectResponse
+    public function store(CatalogRequest $request, string $catalog, ProductTypeRegistry $productTypes, ProductMediaService $media, MediaOptimizationService $optimizer): RedirectResponse
     {
         $definition = $this->definition($catalog);
-        $data = $this->withSanitizedProductContent($this->withProductType($this->withCapacityTotals($request->validated()), $productTypes), $catalog);
+        $data = $this->withSanitizedContent($this->withProductType($this->withCapacityTotals($request->validated()), $productTypes), $catalog);
+        if ($catalog === 'games' && $request->hasFile('cover')) {
+            $data['cover'] = $optimizer->store($request->file('cover'), 'games/logos')['path'];
+        }
+        if ($catalog === 'games' && $request->hasFile('background')) {
+            $data['background'] = $optimizer->store($request->file('background'), 'games/backgrounds')['path'];
+        }
 
         DB::transaction(function () use ($definition, $data, $catalog, $media): void {
             $model = $definition['model']::create(Arr::except($data, ['platform_ids', 'attribute_values', 'attributes', 'variants', 'media']));
@@ -109,11 +118,20 @@ class CatalogController extends Controller
         return $this->form($catalog, $this->find($catalog, $id));
     }
 
-    public function update(CatalogRequest $request, string $catalog, int $id, ProductTypeRegistry $productTypes, ProductMediaService $media): RedirectResponse
+    public function update(CatalogRequest $request, string $catalog, int $id, ProductTypeRegistry $productTypes, ProductMediaService $media, MediaOptimizationService $optimizer): RedirectResponse
     {
         $definition = $this->definition($catalog);
         $model = $this->find($catalog, $id);
-        $data = $this->withSanitizedProductContent($this->withProductType($this->withCapacityTotals($request->validated()), $productTypes), $catalog);
+        $data = $this->withSanitizedContent($this->withProductType($this->withCapacityTotals($request->validated()), $productTypes), $catalog);
+        $obsoleteMedia = [];
+        if ($model instanceof Game && $request->hasFile('cover')) {
+            $obsoleteMedia[] = $model->cover;
+            $data['cover'] = $optimizer->store($request->file('cover'), 'games/logos')['path'];
+        }
+        if ($model instanceof Game && $request->hasFile('background')) {
+            $obsoleteMedia[] = $model->background;
+            $data['background'] = $optimizer->store($request->file('background'), 'games/backgrounds')['path'];
+        }
 
         DB::transaction(function () use ($model, $data, $catalog, $request, $media): void {
             if ($catalog === 'products' && ($model->price !== $data['price'] || $model->discount_price !== ($data['discount_price'] ?? null))) {
@@ -137,6 +155,10 @@ class CatalogController extends Controller
                 $media->sync($model, $data['media'] ?? []);
             }
         });
+
+        if ($obsoleteMedia = array_filter($obsoleteMedia)) {
+            MediaStorage::disk()->delete($obsoleteMedia);
+        }
 
         return to_route('admin.catalog.index', $catalog)
             ->with('success', "{$definition['singular']} با موفقیت ویرایش شد.");
@@ -247,6 +269,8 @@ class CatalogController extends Controller
                         'url' => MediaStorage::url($media->path),
                     ])->values()
                     : [],
+                'cover_url' => $model instanceof Game ? MediaStorage::url($model->cover) : null,
+                'background_url' => $model instanceof Game ? MediaStorage::url($model->background) : null,
             ] : null,
             'options' => [
                 'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
@@ -309,8 +333,14 @@ class CatalogController extends Controller
         return $data;
     }
 
-    private function withSanitizedProductContent(array $data, string $catalog): array
+    private function withSanitizedContent(array $data, string $catalog): array
     {
+        if ($catalog === 'games') {
+            $data['description'] = RichText::sanitize($data['description'] ?? null);
+
+            return $data;
+        }
+
         if ($catalog !== 'products') {
             return $data;
         }

@@ -17,7 +17,15 @@ class StudioController extends Controller
     public function index(): Response
     {
         $studios = Studio::query()->where('status', 'active')
-            ->withCount(['games' => fn ($query) => $query->whereIn('status', ['active', 'published'])])
+            ->withCount([
+                'games' => fn ($query) => $query->whereIn('status', ['active', 'published']),
+            ])
+            ->addSelect(['collections_count' => VideoPlaylist::query()
+                ->selectRaw('count(*)')
+                ->publiclyVisible()
+                ->where(fn ($query) => $query
+                    ->whereColumn('video_playlists.studio_id', 'studios.id')
+                    ->orWhereHas('game', fn ($gameQuery) => $gameQuery->whereColumn('games.studio_id', 'studios.id')))])
             ->orderByDesc('games_count')->latest('id')->paginate(24)->withQueryString()
             ->through(fn (Studio $studio) => $this->studioData($studio));
         $canonical = route('studios.index');
@@ -61,7 +69,11 @@ class StudioController extends Controller
                 'videos_count' => $game->videos_count,
                 'followers_count' => $game->subscribers_count,
             ]);
-        $collections = VideoPlaylist::query()->whereBelongsTo($studio)->publiclyVisible()
+        $collections = VideoPlaylist::query()
+            ->where(fn ($query) => $query
+                ->where('studio_id', $studio->id)
+                ->orWhereHas('game', fn ($gameQuery) => $gameQuery->where('studio_id', $studio->id)))
+            ->publiclyVisible()
             ->with('game:id,name,slug,cover')->withCount('videos')
             ->orderBy('sort_order')->latest('id')->paginate(12, ['*'], 'collections_page')->withQueryString()
             ->through(fn (VideoPlaylist $playlist) => [
@@ -70,7 +82,7 @@ class StudioController extends Controller
                 'description' => RichText::plainText($playlist->description),
                 'url' => route('collections.show', $playlist->slug, false),
                 'logo_url' => MediaStorage::url($playlist->logo ?: $playlist->game?->cover),
-                'channel_name' => $studio->name,
+                'channel_name' => $playlist->game?->name ?? $studio->name,
                 'videos_count' => $playlist->videos_count,
             ]);
         $canonical = route('studios.show', $studio->slug);
@@ -133,6 +145,11 @@ class StudioController extends Controller
             'background_url' => MediaStorage::url($studio->background),
             'description' => RichText::plainText($studio->description),
             'channels_count' => (int) ($studio->games_count ?? $studio->games()->whereIn('status', ['active', 'published'])->count()),
+            'collections_count' => (int) ($studio->collections_count ?? VideoPlaylist::query()
+                ->where(fn ($query) => $query
+                    ->where('studio_id', $studio->id)
+                    ->orWhereHas('game', fn ($gameQuery) => $gameQuery->where('studio_id', $studio->id)))
+                ->publiclyVisible()->count()),
         ];
     }
 }

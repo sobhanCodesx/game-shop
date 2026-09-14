@@ -15,6 +15,8 @@ export interface StorefrontStory {
     media_type: "image" | "video";
     media_url: string;
     thumbnail_url: string | null;
+    channel_name: string;
+    channel_avatar_url: string;
     duration: number | null;
     link_url: string | null;
     link_label: string | null;

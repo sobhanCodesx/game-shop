@@ -9,9 +9,25 @@ use App\Models\SocialContentReaction;
 use App\Models\User;
 use App\Notifications\SocialActivityNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Collection;
 
 class VideoCommunityService
 {
+    /** Attach the published reply tree with a fixed number of queries. */
+    public function loadCommentReplies(SocialContent $content, Collection $roots): void
+    {
+        if ($roots->isEmpty()) {
+            return;
+        }
+
+        $replies = $content->comments()->published()->whereNotNull('parent_id')
+            ->with('user:id,name,avatar')->withCount('likedBy')->oldest()->orderBy('id')->get();
+        $children = $replies->groupBy('parent_id');
+        foreach ($roots->concat($replies) as $comment) {
+            $comment->setRelation('replies', $children->get($comment->id, new Collection));
+        }
+    }
+
     public function toggleReaction(SocialContent $content, User $user, string $type): ?string
     {
         $result = DB::transaction(function () use ($content, $user, $type): ?string {
@@ -46,7 +62,7 @@ class VideoCommunityService
     {
         if ($parentId) {
             $parent = SocialComment::query()->published()->whereKey($parentId)->firstOrFail();
-            abort_unless($parent->social_content_id === $content->id && $parent->parent_id === null, 422);
+            abort_unless($parent->social_content_id === $content->id, 422);
         }
 
         $comment = $content->comments()->create([

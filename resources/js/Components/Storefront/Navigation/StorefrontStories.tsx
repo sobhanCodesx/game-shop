@@ -29,6 +29,40 @@ function loadSeenStories(): Set<number> {
     }
 }
 
+function StoryThumbnail({ story }: { story: StorefrontStory }) {
+    const video = useRef<HTMLVideoElement>(null);
+
+    if (story.thumbnail_url) {
+        return (
+            <img
+                alt=""
+                className="size-full object-cover transition duration-300 group-hover:scale-110"
+                src={story.thumbnail_url}
+            />
+        );
+    }
+
+    return (
+        <video
+            aria-hidden="true"
+            className="size-full object-cover"
+            muted
+            onLoadedMetadata={() => {
+                const element = video.current;
+                if (!element?.duration) return;
+                element.currentTime = Math.min(
+                    Math.max(1, element.duration * 0.2),
+                    Math.max(0, element.duration - 0.1),
+                );
+            }}
+            playsInline
+            preload="metadata"
+            ref={video}
+            src={story.media_url}
+        />
+    );
+}
+
 export default function StorefrontStories({
     stories,
 }: {
@@ -107,37 +141,24 @@ export default function StorefrontStories({
         <>
             <section
                 aria-label="استوری‌ها"
-                className="border-b border-[var(--store-border)] bg-[var(--store-header)]/95"
+                className="border-b border-[var(--store-border)] bg-[var(--store-header)]/95 shadow-sm shadow-black/5"
             >
-                <div className="scrollbar-none mx-auto flex max-w-7xl gap-4 overflow-x-auto px-4 py-3">
+                <div className="scrollbar-none mx-auto flex max-w-7xl gap-3 overflow-x-auto px-4 py-3.5 sm:gap-4">
                     {stories.map((item, index) => {
                         const seen = seenStories.has(item.id);
                         return (
                             <button
                                 aria-label={`${item.title}${seen ? "، دیده شده" : "، جدید"}`}
-                                className="group w-[72px] shrink-0 text-center"
+                                className="group w-[70px] shrink-0 text-center"
                                 key={item.id}
                                 onClick={() => setActive(index)}
                                 type="button"
                             >
                                 <span
-                                    className={`relative mx-auto block size-16 rounded-full bg-gradient-to-tr p-[3px] transition duration-300 group-hover:scale-105 ${seen ? "from-cyan-400/70 via-indigo-500/70 to-fuchsia-500/70 shadow-md shadow-indigo-500/10" : "from-amber-300 via-fuchsia-500 to-violet-600 shadow-lg shadow-fuchsia-500/30 ring-2 ring-fuchsia-500/15"}`}
+                                    className={`relative mx-auto block size-[66px] rounded-full bg-gradient-to-tr p-[3px] transition duration-300 group-hover:scale-105 ${seen ? "from-slate-500 via-slate-600 to-slate-500 opacity-75" : "from-amber-300 via-fuchsia-500 to-violet-600 shadow-lg shadow-fuchsia-500/25 ring-2 ring-fuchsia-500/15"}`}
                                 >
                                     <span className="block size-full overflow-hidden rounded-full border-[3px] border-[var(--store-header)] bg-slate-900">
-                                        {item.thumbnail_url ? (
-                                            <img
-                                                alt=""
-                                                className={`size-full object-cover transition duration-300 group-hover:scale-110 ${seen ? "brightness-90 saturate-75" : "brightness-105 saturate-110"}`}
-                                                src={item.thumbnail_url}
-                                            />
-                                        ) : (
-                                            <video
-                                                className="size-full object-cover"
-                                                muted
-                                                preload="metadata"
-                                                src={item.media_url}
-                                            />
-                                        )}
+                                        <StoryThumbnail story={item} />
                                     </span>
                                     {!seen && (
                                         <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border-2 border-[var(--store-header)] bg-gradient-to-r from-fuchsia-600 to-violet-600 px-1.5 py-0.5 text-[7px] font-black leading-none text-white shadow-md">
@@ -162,7 +183,7 @@ export default function StorefrontStories({
                     role="dialog"
                 >
                     <div className="relative h-[100dvh] w-full overflow-hidden bg-black sm:h-[min(92dvh,820px)] sm:max-w-[460px] sm:rounded-3xl">
-                        <div className="absolute inset-x-0 top-0 z-30 space-y-3 bg-gradient-to-b from-black/70 to-transparent p-3">
+                        <div className="absolute inset-x-0 top-0 z-30 space-y-3 bg-gradient-to-b from-black/80 via-black/35 to-transparent p-3 pb-10">
                             <div className="flex gap-1">
                                 {stories.map((_, i) => (
                                     <span
@@ -184,9 +205,19 @@ export default function StorefrontStories({
                                 ))}
                             </div>
                             <div className="flex items-center gap-2 text-white">
-                                <strong className="truncate text-sm">
-                                    {story.title}
-                                </strong>
+                                <img
+                                    alt=""
+                                    className="size-9 rounded-full border border-white/30 object-cover"
+                                    src={story.channel_avatar_url}
+                                />
+                                <div className="min-w-0">
+                                    <strong className="block truncate text-sm">
+                                        {story.channel_name}
+                                    </strong>
+                                    <span className="block max-w-52 truncate text-[10px] text-white/70">
+                                        {story.title}
+                                    </span>
+                                </div>
                                 <Button
                                     aria-label={paused ? "پخش" : "توقف"}
                                     className="mr-auto text-white"
@@ -232,7 +263,7 @@ export default function StorefrontStories({
                         {story.media_type === "video" ? (
                             <video
                                 autoPlay
-                                className="size-full object-contain"
+                                className="size-full object-cover"
                                 muted={muted}
                                 onEnded={next}
                                 onTimeUpdate={(e) =>
@@ -250,7 +281,7 @@ export default function StorefrontStories({
                         ) : (
                             <img
                                 alt={story.title}
-                                className="size-full object-contain"
+                                className="size-full object-cover"
                                 src={story.media_url}
                             />
                         )}

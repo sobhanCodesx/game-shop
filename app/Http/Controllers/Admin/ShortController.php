@@ -18,12 +18,21 @@ class ShortController extends Controller
 {
     public function index(): Response
     {
+        $shorts = SocialContent::query()->where('type', 'short')
+            ->orderBy('sort_order')->orderByDesc('id')->paginate(16)->withQueryString();
+
         return Inertia::render('Admin/Shorts/Index', [
-            'shorts' => SocialContent::query()->where('type', 'short')->orderBy('sort_order')->orderByDesc('id')->get()->map(fn (SocialContent $short) => [
-                ...$short->only(['id', 'title', 'media_type', 'duration', 'status', 'sort_order']),
-                'preview_url' => MediaStorage::url($short->video_path),
-                'thumbnail_url' => MediaStorage::url($short->thumbnail),
-            ]),
+            'shorts' => [
+                'data' => collect($shorts->items())->map(fn (SocialContent $short) => [
+                    ...$short->only(['id', 'title', 'media_type', 'duration', 'status', 'sort_order']),
+                    'preview_url' => MediaStorage::url($short->video_path),
+                    'thumbnail_url' => MediaStorage::url($short->thumbnail),
+                ]),
+                'links' => $shorts->linkCollection(),
+                'current_page' => $shorts->currentPage(),
+                'last_page' => $shorts->lastPage(),
+                'total' => $shorts->total(),
+            ],
         ]);
     }
 
@@ -104,11 +113,10 @@ class ShortController extends Controller
         $short->video_path = $stored['path'];
         $short->video_mime = $file->getMimeType();
         if ($stored['type'] === 'video') {
-            $metadata = $optimizer->videoMetadata($stored['path'], 'shorts/thumbnails');
             $short->thumbnail = $customThumbnail
                 ? $optimizer->store($customThumbnail, 'shorts/thumbnails')['path']
-                : $metadata['thumbnail'];
-            $short->duration = $metadata['duration'];
+                : null;
+            $short->duration = null;
         } else {
             $short->thumbnail = $stored['path'];
             $short->duration = 5;

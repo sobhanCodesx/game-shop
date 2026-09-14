@@ -4,6 +4,8 @@ import { ArrowRight, Check, Save } from 'lucide-react';
 import { type FormEvent } from 'react';
 
 import AdminLayout from '../../../Layouts/AdminLayout';
+import ImageUploadField from '../../../Components/Admin/Form/ImageUploadField';
+import RichTextEditor from '../../../Components/Admin/Form/RichTextEditor';
 
 interface Option {
     id: number;
@@ -39,6 +41,8 @@ interface CatalogItem {
     visibility?: string;
     featured?: boolean;
     trade_enabled?: boolean;
+    cover_url?: string | null;
+    background_url?: string | null;
 }
 
 interface FormOptions {
@@ -84,6 +88,9 @@ interface CatalogFormData {
     visibility: string;
     featured: boolean;
     trade_enabled: boolean;
+    cover?: File;
+    background?: File;
+    _method?: 'put';
 }
 
 const inputClassName =
@@ -91,7 +98,7 @@ const inputClassName =
 const textareaClassName = `${inputClassName} h-28 resize-y py-3 leading-6`;
 
 export default function CatalogForm({ resource, title, item, options }: CatalogFormProps) {
-    const { data, setData, post, put, processing, errors } = useForm<CatalogFormData>({
+    const { data, setData, post, processing, errors } = useForm<CatalogFormData>({
         name: item?.name ?? '',
         title: item?.title ?? '',
         slug: item?.slug ?? '',
@@ -119,17 +126,18 @@ export default function CatalogForm({ resource, title, item, options }: CatalogF
         visibility: item?.visibility ?? 'public',
         featured: item?.featured ?? false,
         trade_enabled: item?.trade_enabled ?? false,
+        ...(item ? { _method: 'put' as const } : {}),
     });
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
 
         if (item) {
-            put(`/admin/${resource}/${item.id}`);
+            post(`/admin/${resource}/${item.id}`, { forceFormData: true });
             return;
         }
 
-        post(`/admin/${resource}`);
+        post(`/admin/${resource}`, { forceFormData: true });
     };
 
     const field = (name: keyof CatalogFormData, label: string, element: React.ReactNode) => (
@@ -247,7 +255,9 @@ export default function CatalogForm({ resource, title, item, options }: CatalogF
                             <Card.Header className="border-b border-slate-800/80 p-5"><Card.Title className="text-base font-black text-white">توضیحات</Card.Title></Card.Header>
                             <Card.Content className="space-y-5 p-5">
                                 {resource === 'products' && field('short_description', 'توضیح کوتاه', <textarea className={textareaClassName} onChange={(event) => setData('short_description', event.target.value)} value={data.short_description} />)}
-                                {field('description', 'توضیحات کامل', <textarea className={textareaClassName} onChange={(event) => setData('description', event.target.value)} value={data.description} />)}
+                                {resource === 'games'
+                                    ? field('description', 'توضیحات کامل', <RichTextEditor enableBlocks minHeight={340} onChange={(value) => setData('description', value)} placeholder="معرفی، داستان، ویژگی‌ها و جزئیات بازی…" value={data.description} />)
+                                    : field('description', 'توضیحات کامل', <textarea className={textareaClassName} onChange={(event) => setData('description', event.target.value)} value={data.description} />)}
                             </Card.Content>
                         </Card>
                     )}
@@ -265,6 +275,31 @@ export default function CatalogForm({ resource, title, item, options }: CatalogF
                 </div>
 
                 <aside className="space-y-6">
+                    {resource === 'games' && (
+                        <Card className="border border-slate-800/80 bg-slate-900/55" variant="secondary">
+                            <Card.Header className="border-b border-slate-800/80 p-5"><Card.Title className="text-base font-black text-white">لوگوی بازی</Card.Title></Card.Header>
+                            <Card.Content className="p-5">
+                                <div className="space-y-5">
+                                    <ImageUploadField
+                                        aspect="square"
+                                        error={errors.cover}
+                                        existingUrl={item?.cover_url ?? null}
+                                        file={data.cover}
+                                        label="لوگوی بازی"
+                                        onChange={(file) => setData('cover', file)}
+                                        required={!item}
+                                    />
+                                    <ImageUploadField
+                                        error={errors.background}
+                                        existingUrl={item?.background_url ?? null}
+                                        file={data.background}
+                                        label="تصویر پس‌زمینه کانال"
+                                        onChange={(file) => setData('background', file)}
+                                    />
+                                </div>
+                            </Card.Content>
+                        </Card>
+                    )}
                     <Card className="border border-slate-800/80 bg-slate-900/55" variant="secondary">
                         <Card.Header className="border-b border-slate-800/80 p-5"><Card.Title className="text-base font-black text-white">انتشار</Card.Title></Card.Header>
                         <Card.Content className="space-y-5 p-5">

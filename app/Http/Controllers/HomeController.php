@@ -168,7 +168,7 @@ class HomeController extends Controller
                     };
                     $query = $model::query()->whereIn('status', ['active', 'published'])
                         ->when($section->query_type === 'manual', fn ($query) => $query->whereIn('id', $section->item_ids ?? []))
-                        ->when($section->query_type !== 'manual', fn ($query) => $query->latest());
+                        ->when($section->content_type === 'games' || $section->query_type !== 'manual', fn ($query) => $query->latest());
 
                     $items = $query->limit($section->items_limit)->get()->map(fn ($item) => [
                         'id' => $item->id,
@@ -244,7 +244,8 @@ class HomeController extends Controller
                     'videos' => fn ($query) => $query->published(),
                     'subscribers',
                 ])
-                ->orderByDesc('videos_count')
+                ->latest()
+                ->latest('id')
                 ->limit(16)
                 ->get(['id', 'name', 'slug', 'cover'])
                 ->map(fn (Game $game) => [

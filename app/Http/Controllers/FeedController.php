@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreVideoCommentRequest;
 use App\Models\Game;
 use App\Models\Product;
 use App\Models\SocialComment;
@@ -245,12 +246,12 @@ class FeedController extends Controller
         return response()->json(['saved' => $saved]);
     }
 
-    public function comments(Request $request, SocialContent $content): JsonResponse
+    public function comments(Request $request, SocialContent $content, VideoCommunityService $community): JsonResponse
     {
         $this->ensureVisible($content);
         abort_unless($content->allow_comments, 403);
         $query = SocialComment::query()->published()->whereBelongsTo($content, 'content')->whereNull('parent_id')
-            ->with(['user:id,name,avatar', 'replies' => fn ($query) => $query->published()->with('user:id,name,avatar')->withCount('likedBy')])
+            ->with('user:id,name,avatar')
             ->withCount('likedBy');
         $request->string('sort')->toString() === 'newest'
             ? $query->latest()
@@ -258,19 +259,18 @@ class FeedController extends Controller
         $likedIds = $request->user()
             ? $request->user()->belongsToMany(SocialComment::class, 'social_comment_likes')->pluck('social_comments.id')->all()
             : [];
-        $comments = $query->paginate(30)->through(fn (SocialComment $comment) => $this->comment($comment, $request, $likedIds));
+        $comments = $query->paginate(30);
+        $community->loadCommentReplies($content, $comments->getCollection());
+        $comments->through(fn (SocialComment $comment) => $this->comment($comment, $request, $likedIds));
 
         return response()->json($comments);
     }
 
-    public function storeComment(Request $request, SocialContent $content, VideoCommunityService $community): JsonResponse
+    public function storeComment(StoreVideoCommentRequest $request, SocialContent $content, VideoCommunityService $community): JsonResponse
     {
         $this->ensureVisible($content);
         abort_unless($content->allow_comments, 403);
-        $data = $request->validate([
-            'body' => ['required', 'string', 'max:2000'],
-            'parent_id' => ['nullable', 'integer'],
-        ]);
+        $data = $request->validated();
         $comment = $community->createComment($content, $request->user(), $data['body'], $data['parent_id'] ?? null);
 
         return response()->json(['comment_id' => $comment->id], 201);
@@ -312,6 +312,7 @@ class FeedController extends Controller
             'user' => ['name' => $row->user->name, 'avatar_url' => MediaStorage::url($row->user->avatar)],
         ];
 
-        return [...$map($comment), 'replies' => $comment->replies->map($map)->values()];
+        return [...$map($comment), 'replies' => $comment->replies
+            ->map(fn (SocialComment $reply) => $this->comment($reply, $request, $likedIds))->values()];
     }
 }

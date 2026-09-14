@@ -152,15 +152,14 @@ class FeedPostController extends Controller
         abort_if($type === 'image' && $file->getSize() > 8 * 1024 * 1024, 422, 'حجم هر تصویر باید حداکثر ۸ مگابایت باشد.');
         $dimensions = $type === 'image' ? @getimagesize($file->getRealPath()) : null;
         $stored = $optimizer->store($file, 'feed');
-        $metadata = $type === 'video' ? $optimizer->videoMetadata($file, 'feed/thumbnails') : ['thumbnail' => null, 'duration' => null];
         $post->media()->create([
             'type' => $type,
             'path' => $stored['path'],
-            'thumbnail' => $metadata['thumbnail'],
+            'thumbnail' => null,
             'mime' => $mime,
             'width' => $dimensions[0] ?? null,
             'height' => $dimensions[1] ?? null,
-            'duration' => $metadata['duration'],
+            'duration' => null,
             'alt' => trim($alt) ?: $post->title,
             'sort_order' => $sort,
         ]);

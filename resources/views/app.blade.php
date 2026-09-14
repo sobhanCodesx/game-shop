@@ -5,6 +5,25 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <meta name="theme-color" content="#09090b">
+        <script>
+            (() => {
+                let theme;
+                try {
+                    theme = localStorage.getItem('nexus-play-storefront-theme');
+                } catch {}
+                if (theme !== 'light' && theme !== 'dark') {
+                    theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+                }
+                document.documentElement.dataset.storefrontTheme = theme;
+            })();
+        </script>
+        <style>
+            html[data-storefront-theme="light"],
+            html[data-storefront-theme="light"] body {
+                background: #f6f7fb;
+                color-scheme: light;
+            }
+        </style>
         <meta name="application-name" content="{{ config('seo.site_name', 'PlayNexus') }}">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

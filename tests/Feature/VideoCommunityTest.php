@@ -65,9 +65,17 @@ class VideoCommunityTest extends TestCase
         ])->assertCreated();
         $reply = SocialComment::query()->findOrFail($replyResponse->json('comment_id'));
 
-        $this->actingAs($user)->postJson(route('videos.comments.store', $video->slug), [
+        $nestedResponse = $this->actingAs($user)->postJson(route('videos.comments.store', $video->slug), [
             'body' => 'پاسخ سطح سوم', 'parent_id' => $reply->id,
-        ])->assertStatus(422);
+        ])->assertCreated();
+        $nestedId = $nestedResponse->json('comment_id');
+        $this->assertDatabaseHas('social_comments', ['id' => $nestedId, 'parent_id' => $reply->id]);
+        $this->assertSame($nestedId, $other->notifications()->latest()->firstOrFail()->data['comment_id']);
+
+        $this->get(route('content.show', ['type' => 'videos', 'content' => $video->slug]))
+            ->assertOk()->assertInertia(fn (Assert $page) => $page
+                ->where('comments.data.0.replies.0.replies.0.id', $nestedId)
+                ->has('comments.data.0.replies.0.replies.0.replies', 0));
 
         $this->actingAs($user)->postJson(route('comments.like', $comment))->assertOk()->assertJsonPath('liked', true);
         $this->assertDatabaseHas('social_comment_likes', ['social_comment_id' => $comment->id, 'user_id' => $user->id]);

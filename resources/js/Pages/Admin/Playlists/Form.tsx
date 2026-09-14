@@ -7,6 +7,7 @@ import AdminLayout from "../../../Layouts/AdminLayout";
 
 interface Playlist {
     id: number;
+    game_id: number | null;
     studio_id: number | null;
     title: string;
     description: string | null;
@@ -15,6 +16,7 @@ interface Playlist {
     logo_url: string | null;
 }
 interface FormData {
+    game_id: string;
     studio_id: string;
     title: string;
     description: string;
@@ -28,15 +30,18 @@ interface FormData {
 export default function PlaylistForm({
     playlist,
     studios,
+    games,
 }: {
     playlist: Playlist | null;
     studios: Array<{ id: number; name: string }>;
+    games: Array<{ id: number; name: string }>;
 }) {
     const editing = Boolean(playlist);
     const [preview, setPreview] = useState<string | null>(
         playlist?.logo_url ?? null,
     );
     const { data, setData, post, processing, errors } = useForm<FormData>({
+        game_id: playlist?.game_id ? String(playlist.game_id) : "",
         studio_id: playlist?.studio_id ? String(playlist.studio_id) : "",
         title: playlist?.title ?? "",
         description: playlist?.description ?? "",
@@ -151,6 +156,21 @@ export default function PlaylistForm({
                     </Card.Header>
                     <Card.Content>
                         <div className="grid gap-5 p-5 sm:grid-cols-2">
+                            <label className="block sm:col-span-2">
+                                <span className="mb-2 block text-xs font-bold text-slate-300">
+                                    بازی مرتبط (اختیاری)
+                                </span>
+                                <select
+                                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
+                                    onChange={(e) => setData("game_id", e.target.value)}
+                                    value={data.game_id}
+                                >
+                                    <option value="">بدون بازی مرتبط</option>
+                                    {games.map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
+                                </select>
+                                <p className="mt-1.5 text-xs text-slate-500">برای کالکشن‌های عمومی می‌توانید این گزینه را خالی بگذارید.</p>
+                                {errors.game_id && <small className="mt-1 block text-rose-400">{errors.game_id}</small>}
+                            </label>
                             <label className="block sm:col-span-2">
                                 <span className="mb-2 block text-xs font-bold text-slate-300">
                                     شرکت / استودیوی بازی‌سازی

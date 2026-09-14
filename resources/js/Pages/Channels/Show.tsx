@@ -5,6 +5,7 @@ import { Gamepad2, ListVideo, Play, Radio, Users } from "lucide-react";
 import FeedItem from "../../Components/Storefront/Feed/FeedItem";
 import Seo, { type SeoData } from "../../Components/Seo";
 import Pagination from "../../Components/Storefront/Shared/Pagination";
+import RichText from "../../Components/Storefront/Shared/RichText";
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import type {
@@ -19,6 +20,7 @@ interface Channel {
     name: string;
     slug: string;
     description: string | null;
+    description_html: string | null;
     developer: string | null;
     publisher: string | null;
     cover_url: string | null;
@@ -257,10 +259,16 @@ export default function ChannelShow({
                     >
                         <h2 className="text-xl font-black">درباره کانال</h2>
                         <div className="mt-5 grid gap-8 md:grid-cols-[1fr_280px]">
-                            <p className="text-sm leading-8 text-[var(--store-muted)]">
-                                {channel.description ??
-                                    `تمام ویدیوها، کالکشن‌ها و محتوای مرتبط با ${channel.name} در این کانال جمع‌آوری می‌شود.`}
-                            </p>
+                            {channel.description_html ? (
+                                <RichText
+                                    className="text-sm leading-8 text-[var(--store-muted)]"
+                                    html={channel.description_html}
+                                />
+                            ) : (
+                                <p className="text-sm leading-8 text-[var(--store-muted)]">
+                                    {`تمام ویدیوها، کالکشن‌ها و محتوای مرتبط با ${channel.name} در این کانال جمع‌آوری می‌شود.`}
+                                </p>
+                            )}
                             <div className="space-y-3 text-sm md:border-r md:border-[var(--store-border)] md:pr-5">
                                 <span className="flex items-center gap-2">
                                     <Users size={16} />

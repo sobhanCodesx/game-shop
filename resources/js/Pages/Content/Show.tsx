@@ -73,7 +73,7 @@ interface CommentData {
     is_liked: boolean;
     can_delete: boolean;
     user: { name: string; avatar_url: string | null };
-    replies: Omit<CommentData, "replies">[];
+    replies: CommentData[];
 }
 
 interface PlaylistContext {
@@ -232,13 +232,13 @@ function CommentItem({
     contentSlug,
     signedIn,
     isReply = false,
+    parentName,
 }: {
-    comment: Omit<CommentData, "replies"> & {
-        replies?: Omit<CommentData, "replies">[];
-    };
+    comment: CommentData;
     contentSlug: string;
     signedIn: boolean;
     isReply?: boolean;
+    parentName?: string;
 }) {
     const [replying, setReplying] = useState(false);
     const [repliesOpen, setRepliesOpen] = useState(false);
@@ -272,11 +272,14 @@ function CommentItem({
             onSuccess: () => {
                 reply.reset("body");
                 setReplying(false);
+                setRepliesOpen(true);
             },
         });
     };
     return (
-        <article className={`flex gap-2.5 ${isReply ? "mt-3" : "py-3"}`}>
+        <article
+            className={`flex flex-wrap gap-x-2.5 ${isReply ? "mt-3" : "py-3"}`}
+        >
             <Avatar className={isReply ? "size-7" : "size-9"}>
                 {comment.user.avatar_url && (
                     <Avatar.Image
@@ -297,7 +300,12 @@ function CommentItem({
                         {timeAgo(comment.created_at)}
                     </span>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap text-[13px] leading-6 text-[var(--store-text)] sm:text-sm">
+                {parentName && (
+                    <p className="mt-1 text-[10px] text-indigo-400">
+                        در پاسخ به {parentName}
+                    </p>
+                )}
+                <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-6 text-[var(--store-text)] sm:text-sm">
                     {comment.body}
                 </p>
                 <div className="mt-1 flex min-h-8 items-center gap-0.5 text-[var(--store-muted)]">
@@ -317,19 +325,17 @@ function CommentItem({
                             {fullNumber.format(likes)}
                         </span>
                     )}
-                    {!isReply && (
-                        <button
-                            className="rounded-full px-3 py-1.5 text-[11px] font-black hover:bg-[var(--store-surface)]"
-                            onClick={() =>
-                                signedIn
-                                    ? setReplying((value) => !value)
-                                    : router.visit("/login")
-                            }
-                            type="button"
-                        >
-                            پاسخ
-                        </button>
-                    )}
+                    <button
+                        className="rounded-full px-3 py-1.5 text-[11px] font-black hover:bg-[var(--store-surface)]"
+                        onClick={() =>
+                            signedIn
+                                ? setReplying((value) => !value)
+                                : router.visit("/login")
+                        }
+                        type="button"
+                    >
+                        پاسخ
+                    </button>
                     {comment.can_delete && (
                         <button
                             aria-label="حذف نظر"
@@ -381,7 +387,17 @@ function CommentItem({
                         </Button>
                     </form>
                 )}
-                {!isReply && Boolean(comment.replies?.length) && (
+                {reply.errors.body && (
+                    <p role="alert" className="mt-2 text-xs text-rose-400">
+                        {reply.errors.body}
+                    </p>
+                )}
+                {reply.errors.parent_id && (
+                    <p role="alert" className="mt-2 text-xs text-rose-400">
+                        {reply.errors.parent_id}
+                    </p>
+                )}
+                {Boolean(comment.replies?.length) && (
                     <button
                         className="mt-1 flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black text-indigo-500 transition hover:bg-indigo-500/10"
                         onClick={() => setRepliesOpen((value) => !value)}
@@ -394,20 +410,23 @@ function CommentItem({
                         {fullNumber.format(comment.replies?.length ?? 0)} پاسخ
                     </button>
                 )}
-                {repliesOpen && (
-                    <div className="pr-8 sm:pr-10">
-                        {comment.replies?.map((item) => (
-                            <CommentItem
-                                comment={item}
-                                contentSlug={contentSlug}
-                                isReply
-                                key={item.id}
-                                signedIn={signedIn}
-                            />
-                        ))}
-                    </div>
-                )}
             </div>
+            {repliesOpen && (
+                <div
+                    className={`w-full ${isReply ? "" : "border-r-2 border-indigo-500/20 pr-3 sm:pr-5"}`}
+                >
+                    {comment.replies?.map((item) => (
+                        <CommentItem
+                            comment={item}
+                            contentSlug={contentSlug}
+                            isReply
+                            parentName={comment.user.name}
+                            key={item.id}
+                            signedIn={signedIn}
+                        />
+                    ))}
+                </div>
+            )}
         </article>
     );
 }

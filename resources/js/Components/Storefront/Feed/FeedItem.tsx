@@ -63,10 +63,12 @@ function FeedItemComponent({
     item,
     detail = false,
     priority = false,
+    expandFullContent = false,
 }: {
     item: FeedItemData;
     detail?: boolean;
     priority?: boolean;
+    expandFullContent?: boolean;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
     const [expanded, setExpanded] = useState(detail);
@@ -199,20 +201,33 @@ function FeedItemComponent({
                     />
                 ) : item.body ? (
                     <div className="mt-2">
-                        <p
-                            className={`${expanded ? "whitespace-pre-wrap" : "line-clamp-3"} text-sm leading-7 text-[var(--store-muted)]`}
-                        >
-                            {item.body}
-                        </p>
-                        {!detail && item.body.length > 180 && (
-                            <button
-                                className="mt-1 text-xs font-black text-indigo-400"
-                                onClick={() => setExpanded((value) => !value)}
-                                type="button"
+                        {expanded && expandFullContent && item.body_html ? (
+                            <div
+                                className="store-rich-text text-justify"
+                                dangerouslySetInnerHTML={{
+                                    __html: item.body_html,
+                                }}
+                            />
+                        ) : (
+                            <p
+                                className={`${expanded ? "whitespace-pre-wrap" : "line-clamp-3"} ${expandFullContent ? "text-justify" : ""} text-sm leading-7 text-[var(--store-muted)]`}
                             >
-                                {expanded ? "کمتر" : "…بیشتر"}
-                            </button>
+                                {item.body}
+                            </p>
                         )}
+                        {!detail &&
+                            (item.body.length > 180 ||
+                                (expandFullContent && item.body_html)) && (
+                                <button
+                                    className="mt-1 text-xs font-black text-indigo-400"
+                                    onClick={() =>
+                                        setExpanded((value) => !value)
+                                    }
+                                    type="button"
+                                >
+                                    {expanded ? "کمتر" : "…بیشتر"}
+                                </button>
+                            )}
                     </div>
                 ) : null}
             </div>

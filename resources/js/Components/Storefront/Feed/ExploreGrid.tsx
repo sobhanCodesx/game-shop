@@ -13,7 +13,7 @@ import {
     ShoppingBag,
     X,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { StorefrontContent, StorefrontProduct } from "../../../types";
@@ -52,22 +52,35 @@ function VideoPreview({
     title: string;
 }) {
     const ref = useRef<HTMLVideoElement>(null);
+    const [frameReady, setFrameReady] = useState(false);
     return (
-        <video
-            aria-label={title}
-            className="size-full object-cover"
-            muted
-            onLoadedMetadata={() => {
-                const video = ref.current;
-                if (video?.duration)
-                    video.currentTime = Math.min(0.15, video.duration / 2);
-            }}
-            playsInline
-            poster={poster ?? undefined}
-            preload="metadata"
-            ref={ref}
-            src={src}
-        />
+        <span className="relative block size-full bg-slate-950">
+            {poster && !frameReady && (
+                <img
+                    alt=""
+                    className="absolute inset-0 size-full object-cover"
+                    src={poster}
+                />
+            )}
+            <video
+                aria-label={title}
+                className="size-full object-cover"
+                muted
+                onLoadedMetadata={() => {
+                    const video = ref.current;
+                    if (!video?.duration) return;
+                    video.currentTime = Math.min(
+                        12,
+                        Math.max(1, video.duration * 0.2),
+                    );
+                }}
+                onSeeked={() => setFrameReady(true)}
+                playsInline
+                preload="metadata"
+                ref={ref}
+                src={src}
+            />
+        </span>
     );
 }
 
@@ -277,12 +290,12 @@ function Tile({
     const content = item.kind === "content" ? item.data : null;
     const image = itemImage(item);
     const video = itemVideo(item);
-    const large = index % 14 === 2 || index % 14 === 9;
+    const large = index % 10 === 2 || index % 10 === 7;
     return (
         <>
             <button
                 aria-label={`باز کردن ${item.data.title}`}
-                className={`group relative min-h-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 ${large ? "col-span-2 row-span-2" : content?.type === "short" ? "row-span-2" : ""}`}
+                className={`group relative min-h-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 ${large ? "col-span-2 row-span-2" : ""}`}
                 onClick={onOpen}
                 type="button"
             >
@@ -517,7 +530,7 @@ export default function ExploreGrid({
         <>
             <section
                 aria-label="شبکه اکسپلور"
-                className="grid auto-rows-[calc((100vw-1rem-4px)/3)] grid-cols-3 gap-0.5 overflow-hidden rounded-lg sm:auto-rows-[190px] sm:gap-1 md:auto-rows-[230px] lg:grid-cols-4 xl:grid-cols-5"
+                className="grid auto-flow-dense auto-rows-[calc((100vw-0.5rem)/3)] grid-cols-3 gap-0.5 overflow-hidden rounded-xl sm:auto-rows-[calc((min(100vw,1500px)-2.5rem)/3)] sm:gap-1"
             >
                 {items.map((item, index) => (
                     <Tile

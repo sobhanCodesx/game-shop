@@ -8,7 +8,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
-use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class VideoManagementTest extends TestCase
@@ -52,7 +51,6 @@ class VideoManagementTest extends TestCase
     public function test_admin_can_upload_a_video(): void
     {
         Storage::fake('public');
-        config(['media.video.ffmpeg_binary' => 'missing-ffmpeg']);
         $admin = User::factory()->create(['is_admin' => true]);
 
         $this->actingAs($admin)->post('/admin/videos', [
@@ -86,12 +84,7 @@ class VideoManagementTest extends TestCase
         Storage::fake('public');
         $admin = User::factory()->create(['is_admin' => true]);
         $token = fake()->uuid();
-        $source = tempnam(sys_get_temp_dir(), 'chunk-video-').'.mp4';
-        (new Process([
-            (string) config('media.video.ffmpeg_binary'), '-y', '-f', 'lavfi', '-i',
-            'testsrc=size=320x180:rate=12', '-t', '0.2', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', $source,
-        ]))->setTimeout(60)->mustRun();
-        $contents = (string) file_get_contents($source);
+        $contents = str_repeat('chunked-video-content', 64);
 
         $this->actingAs($admin)->postJson('/admin/uploads/chunk', [
             'upload_id' => $token,
@@ -117,7 +110,6 @@ class VideoManagementTest extends TestCase
         $video = SocialContent::query()->where('title', 'آپلود چندبخشی')->firstOrFail();
         Storage::disk('public')->assertExists($video->video_path);
         $this->assertFileDoesNotExist(storage_path("app/private/uploads/{$admin->id}/{$token}/assembled"));
-        @unlink($source);
     }
 
     public function test_regular_user_cannot_access_video_management(): void

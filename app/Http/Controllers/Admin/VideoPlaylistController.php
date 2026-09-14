@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\VideoPlaylistRequest;
+use App\Models\Game;
 use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use App\Services\MediaOptimizationService;
@@ -44,6 +45,7 @@ class VideoPlaylistController extends Controller
         return Inertia::render('Admin/Playlists/Form', [
             'playlist' => null,
             'studios' => $this->studios(),
+            'games' => $this->games(),
         ]);
     }
 
@@ -64,10 +66,11 @@ class VideoPlaylistController extends Controller
     {
         return Inertia::render('Admin/Playlists/Form', [
             'playlist' => [
-                ...$playlist->only(['id', 'studio_id', 'title', 'description', 'visibility', 'sort_order']),
+                ...$playlist->only(['id', 'game_id', 'studio_id', 'title', 'description', 'visibility', 'sort_order']),
                 'logo_url' => MediaStorage::url($playlist->logo),
             ],
             'studios' => $this->studios(),
+            'games' => $this->games(),
         ]);
     }
 
@@ -108,6 +111,12 @@ class VideoPlaylistController extends Controller
     {
         return Studio::query()->where('status', 'active')
             ->orderBy('name')->get(['id', 'name'])->toArray();
+    }
+
+    private function games(): array
+    {
+        return Game::query()->whereIn('status', ['active', 'published'])
+            ->latest()->get(['id', 'name'])->toArray();
     }
 
     private function uniqueSlug(string $title, ?int $ignore = null): string

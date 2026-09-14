@@ -313,6 +313,17 @@ textarea {
     max-width: 100%;
 }
 
+/* Keep the feed centered despite the shared main element's width reset. */
+.storefront-theme main.storefront-feed {
+    max-width: 1280px;
+}
+
+@media (min-width: 1024px) {
+    .storefront-feed {
+        --feed-media-max-height: min(60vh, 480px);
+    }
+}
+
 .home-slider {
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
@@ -339,7 +350,7 @@ textarea {
     }
 }
 
-.storefront-theme[data-theme="light"] {
+html[data-storefront-theme="light"] .storefront-theme {
     --store-bg: #f6f7fb;
     --store-panel: rgb(255 255 255 / 97%);
     --store-header: rgb(255 255 255 / 88%);
@@ -637,28 +648,28 @@ textarea {
 
 /* The existing home sections predate semantic theme tokens. These scoped
    mappings keep the public storefront coherent while leaving admin untouched. */
-.storefront-theme[data-theme="light"] [class~="bg-slate-950"],
-.storefront-theme[data-theme="light"] [class~="bg-slate-950/90"] {
+html[data-storefront-theme="light"] .storefront-theme [class~="bg-slate-950"],
+html[data-storefront-theme="light"] .storefront-theme [class~="bg-slate-950/90"] {
     background-color: var(--store-bg) !important;
 }
 
-.storefront-theme[data-theme="light"] [class~="bg-slate-900/70"],
-.storefront-theme[data-theme="light"] [class~="bg-slate-900/60"] {
+html[data-storefront-theme="light"] .storefront-theme [class~="bg-slate-900/70"],
+html[data-storefront-theme="light"] .storefront-theme [class~="bg-slate-900/60"] {
     background-color: var(--store-surface) !important;
 }
 
-.storefront-theme[data-theme="light"] [class~="border-slate-800"],
-.storefront-theme[data-theme="light"] [class~="border-slate-800/80"] {
+html[data-storefront-theme="light"] .storefront-theme [class~="border-slate-800"],
+html[data-storefront-theme="light"] .storefront-theme [class~="border-slate-800/80"] {
     border-color: var(--store-border) !important;
 }
 
-.storefront-theme[data-theme="light"] main [class~="text-slate-100"] {
+html[data-storefront-theme="light"] .storefront-theme main [class~="text-slate-100"] {
     color: var(--store-text) !important;
 }
 
-.storefront-theme[data-theme="light"] [class~="text-slate-300"],
-.storefront-theme[data-theme="light"] [class~="text-slate-400"],
-.storefront-theme[data-theme="light"] [class~="text-slate-500"] {
+html[data-storefront-theme="light"] .storefront-theme [class~="text-slate-300"],
+html[data-storefront-theme="light"] .storefront-theme [class~="text-slate-400"],
+html[data-storefront-theme="light"] .storefront-theme [class~="text-slate-500"] {
     color: var(--store-muted) !important;
 }
 

@@ -173,6 +173,10 @@ class StorefrontController extends Controller
             ->selectRaw("'product_media' as kind");
         $contentFeed = SocialContent::query()->published()
             ->where('type', '!=', 'short')
+            ->where(fn (Builder $query) => $query
+                ->whereNotNull('thumbnail')
+                ->orWhereNotNull('video_path')
+                ->orWhereHas('media'))
             ->select(['id', 'published_at as sort_at'])
             ->selectRaw("'content' as kind");
 
@@ -182,7 +186,7 @@ class StorefrontController extends Controller
         $rows = collect($feed->items());
         $media = ProductMedia::query()->with(['product' => fn ($query) => $query->with($this->productRelations())])
             ->whereIn('id', $rows->where('kind', 'product_media')->pluck('id'))->get()->keyBy('id');
-        $content = SocialContent::query()->with('game:id,name,slug,cover')
+        $content = SocialContent::query()->with(['game:id,name,slug,cover', 'media'])
             ->whereIn('id', $rows->where('kind', 'content')->pluck('id'))->get()->keyBy('id');
         $feed->setCollection($rows->map(function (object $row) use ($media, $content, $data, $request) {
             if ($row->kind === 'product_media' && $media->has($row->id)) {

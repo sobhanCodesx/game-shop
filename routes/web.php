@@ -183,15 +183,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('sms-test', [SmsTestController::class, 'store'])->middleware('throttle:5,1')->name('sms-test.store');
         Route::get('system-maintenance', [SystemMaintenanceController::class, 'index'])->name('system-maintenance.index');
         Route::post('system-maintenance/run', [SystemMaintenanceController::class, 'run'])->middleware('throttle:6,1')->name('system-maintenance.run');
-        Route::prefix('deployments')->name('deployments.')->middleware(['deployment.guard', 'throttle:300,1'])->group(function () {
+        Route::prefix('deployments')->name('deployments.')->middleware('deployment.guard')->group(function () {
             Route::get('/', [DeploymentController::class, 'index'])->name('index');
             Route::post('export', [DeploymentController::class, 'export'])->name('export');
             Route::post('upload/chunk', [DeploymentController::class, 'chunk'])->name('chunk');
             Route::post('upload/complete', [DeploymentController::class, 'complete'])->name('complete');
             Route::post('{deployment}/verify', [DeploymentController::class, 'verify'])->name('verify');
             Route::get('{deployment}/status', [DeploymentController::class, 'status'])->name('status');
-            Route::post('{deployment}/apply', [DeploymentController::class, 'apply'])->middleware('throttle:10,1')->name('apply');
-            Route::post('{deployment}/rollback', [DeploymentController::class, 'rollback'])->middleware('throttle:3,10')->name('rollback');
+            Route::post('{deployment}/apply', [DeploymentController::class, 'apply'])->name('apply');
+            Route::post('{deployment}/rollback', [DeploymentController::class, 'rollback'])->name('rollback');
             Route::get('{deployment}/report', [DeploymentController::class, 'report'])->name('report');
             Route::delete('cleanup/expired', [DeploymentController::class, 'cleanup'])->name('cleanup');
         });

@@ -67,7 +67,6 @@ export default function Login({ redirect }: { redirect?: string }) {
                 >
                     <Field error={code.errors.phone} label="شماره موبایل">
                         <input
-                            autoFocus
                             className={authInput}
                             dir="ltr"
                             inputMode="tel"
@@ -95,7 +94,6 @@ export default function Login({ redirect }: { redirect?: string }) {
                         label="ایمیل یا شماره موبایل"
                     >
                         <input
-                            autoFocus
                             className={authInput}
                             dir="ltr"
                             onChange={(event) =>

@@ -7,6 +7,7 @@ use App\Models\SocialContent;
 use App\Models\VideoPlaylist;
 use App\Services\MediaStorage;
 use App\Services\StorefrontDataService;
+use App\Services\VideoCommunityService;
 use App\Support\RichText;
 use App\Support\Seo;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,7 +18,7 @@ use Inertia\Response;
 
 class SocialContentController extends Controller
 {
-    public function show(Request $request, string $type, SocialContent $content, StorefrontDataService $data): Response
+    public function show(Request $request, string $type, SocialContent $content, StorefrontDataService $data, VideoCommunityService $community): Response
     {
         $expectedType = match ($type) {
             'posts' => 'post', 'videos' => 'video', 'shorts' => 'short', default => abort(404),
@@ -46,7 +47,7 @@ class SocialContentController extends Controller
         $comments = null;
         if ($content->type === 'video' && $content->allow_comments) {
             $commentQuery = SocialComment::query()->published()->whereBelongsTo($content, 'content')->whereNull('parent_id')
-                ->with(['user:id,name,avatar', 'replies' => fn ($query) => $query->published()->with('user:id,name,avatar')->withCount('likedBy')])
+                ->with('user:id,name,avatar')
                 ->withCount('likedBy');
 
             $request->string('comment_sort')->toString() === 'newest'
@@ -56,8 +57,9 @@ class SocialContentController extends Controller
             $likedCommentIds = $request->user()
                 ? $request->user()->belongsToMany(SocialComment::class, 'social_comment_likes')->pluck('social_comments.id')->all()
                 : [];
-            $comments = $commentQuery->paginate(20, ['*'], 'comments_page')->withQueryString()
-                ->through(fn (SocialComment $comment) => $this->commentData($comment, $request, $likedCommentIds));
+            $comments = $commentQuery->paginate(20, ['*'], 'comments_page')->withQueryString();
+            $community->loadCommentReplies($content, $comments->getCollection());
+            $comments->through(fn (SocialComment $comment) => $this->commentData($comment, $request, $likedCommentIds));
         }
 
         $related = SocialContent::query()->published()->where('type', $content->type)->whereKeyNot($content->id)
@@ -222,18 +224,7 @@ class SocialContentController extends Controller
                 'name' => $comment->user->name,
                 'avatar_url' => MediaStorage::url($comment->user->avatar),
             ],
-            'replies' => $comment->replies->map(fn (SocialComment $reply) => [
-                'id' => $reply->id,
-                'body' => $reply->body,
-                'created_at' => $reply->created_at->toISOString(),
-                'likes_count' => (int) $reply->liked_by_count,
-                'is_liked' => in_array($reply->id, $likedIds, true),
-                'can_delete' => (bool) ($request->user() && ($request->user()->is_admin || $request->user()->id === $reply->user_id)),
-                'user' => [
-                    'name' => $reply->user->name,
-                    'avatar_url' => MediaStorage::url($reply->user->avatar),
-                ],
-            ])->values(),
+            'replies' => $comment->replies->map(fn (SocialComment $reply) => $this->commentData($reply, $request, $likedIds))->values(),
         ];
     }
 
@@ -247,7 +238,11 @@ class SocialContentController extends Controller
         $playlist = VideoPlaylist::query()->whereIn('visibility', ['public', 'unlisted'])
             ->when($slug !== '', fn ($query) => $query->where('slug', $slug))
             ->whereHas('videos', fn ($query) => $query->whereKey($content->id))
-            ->with(['game:id,name,slug', 'videos' => fn ($query) => $query->published()->where('type', 'video')->with('game:id,name,slug,cover')])
+            ->with([
+                'game:id,name,slug',
+                'studio:id,name,slug',
+                'videos' => fn ($query) => $query->published()->where('type', 'video')->with('game:id,name,slug,cover'),
+            ])
             ->orderBy('sort_order')
             ->first();
         if (! $playlist) {
@@ -258,8 +253,10 @@ class SocialContentController extends Controller
             'id' => $playlist->id,
             'title' => $playlist->title,
             'slug' => $playlist->slug,
-            'channel_name' => $playlist->game->name,
-            'url' => route('channels.playlists.show', ['game' => $playlist->game->slug, 'playlist' => $playlist->slug], false),
+            'channel_name' => $playlist->game?->name ?? $playlist->studio?->name ?? 'PlayNexus',
+            'url' => $playlist->game
+                ? route('channels.playlists.show', ['game' => $playlist->game->slug, 'playlist' => $playlist->slug], false)
+                : route('collections.show', $playlist->slug, false),
             'items' => $playlist->videos->map(fn (SocialContent $video) => $data->content($video))->values(),
             'current_id' => $content->id,
         ];

@@ -67,6 +67,8 @@ class CatalogRequest extends FormRequest
             'games' => [
                 'name' => ['required', 'string', 'max:255'],
                 'slug' => ['required', 'string', 'max:255', Rule::unique('games')->ignore($id)],
+                'cover' => [Rule::requiredIf(! $id), 'nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'],
+                'background' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:8192'],
                 'developer' => ['nullable', 'string', 'max:255'],
                 'publisher' => ['nullable', 'string', 'max:255'],
                 'studio_id' => ['nullable', 'integer', Rule::exists('studios', 'id')->whereNull('deleted_at')],

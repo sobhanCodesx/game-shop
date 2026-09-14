@@ -116,7 +116,8 @@ function FeedMediaSliderComponent({
                             role="group"
                             style={{
                                 aspectRatio: ratio,
-                                maxHeight: "min(72vh, 680px)",
+                                maxHeight:
+                                    "var(--feed-media-max-height, min(72vh, 680px))",
                             }}
                         >
                             {!shouldRender ? (

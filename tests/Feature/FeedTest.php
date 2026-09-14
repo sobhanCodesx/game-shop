@@ -14,6 +14,50 @@ class FeedTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_feed_supports_nested_replies_and_rejects_invalid_targets(): void
+    {
+        $user = User::factory()->create();
+        $post = SocialContent::withoutEvents(fn () => SocialContent::query()->create([
+            'type' => 'post', 'title' => 'Discussion', 'slug' => 'nested-discussion',
+            'status' => 'published', 'published_at' => now()->subMinute(), 'allow_comments' => true,
+        ]));
+        $otherPost = SocialContent::withoutEvents(fn () => SocialContent::query()->create([
+            'type' => 'post', 'title' => 'Other', 'slug' => 'other-discussion',
+            'status' => 'published', 'published_at' => now()->subMinute(), 'allow_comments' => true,
+        ]));
+        $parent = null;
+        $ids = [];
+        foreach (range(1, 4) as $level) {
+            $response = $this->actingAs($user)->postJson(route('feed.comments.store', $post->slug), [
+                'body' => "Reply {$level}", 'parent_id' => $parent,
+            ])->assertCreated();
+            $ids[] = $response->json('comment_id');
+            $this->assertDatabaseHas('social_comments', ['id' => end($ids), 'parent_id' => $parent]);
+            $parent = end($ids);
+        }
+
+        $this->getJson(route('feed.comments', $post->slug))->assertOk()
+            ->assertJsonPath('data.0.replies.0.replies.0.replies.0.id', $ids[3])
+            ->assertJsonPath('data.0.replies.0.replies.0.replies.0.replies', []);
+
+        $this->postJson(route('feed.comments.store', $otherPost->slug), [
+            'body' => 'Wrong content', 'parent_id' => $parent,
+        ])->assertUnprocessable();
+        $this->assertDatabaseCount('social_comments', 4);
+
+        $this->deleteJson(route('comments.destroy', $parent))->assertOk();
+        $this->postJson(route('feed.comments.store', $post->slug), [
+            'body' => 'Deleted target', 'parent_id' => $parent,
+        ])->assertUnprocessable();
+
+        \App\Models\SocialComment::query()->whereKey($ids[2])->update(['status' => 'hidden']);
+        $this->postJson(route('feed.comments.store', $post->slug), [
+            'body' => 'Hidden target', 'parent_id' => $ids[2],
+        ])->assertNotFound();
+        $this->getJson(route('feed.comments', $post->slug))->assertOk()
+            ->assertJsonPath('data.0.replies.0.replies', []);
+    }
+
     public function test_feed_has_a_dedicated_page_and_detail_permalink(): void
     {
         $post = SocialContent::withoutEvents(fn () => SocialContent::query()->create([
