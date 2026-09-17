@@ -53,7 +53,7 @@ jobs:
         run: php artisan route:list --path=admin/system-maintenance --except-vendor
 
       - name: Install frontend dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-package-lock --no-audit --no-fund
 
       - name: Build client assets
         run: npm run build:client
