@@ -20,7 +20,15 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo(fn ($request) => $request->is('admin', 'admin/*') ? '/admin/login' : '/login');
+        $middleware->redirectGuestsTo(function ($request): string {
+            if ($request->is('admin', 'admin/*')) {
+                $destination = '/'.ltrim($request->getRequestUri(), '/');
+
+                return '/login?redirect='.rawurlencode($destination);
+            }
+
+            return '/login';
+        });
 
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
