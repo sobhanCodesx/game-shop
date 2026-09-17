@@ -14,6 +14,12 @@ from typing import Any
 ALLOWED_TOOLS = {
     "search_games",
     "search_studios",
+    "search_platforms",
+    "search_collections",
+    "create_game",
+    "create_studio",
+    "create_collection",
+    "create_story",
     "get_feed",
     "create_feed",
     "update_feed",
@@ -68,7 +74,7 @@ def rpc_request(url: str, token: str, job: dict[str, Any]) -> dict[str, Any]:
             "Authorization": f"Bearer {token}",
             "Accept": "application/json",
             "Content-Type": "application/json; charset=utf-8",
-            "User-Agent": "PlayNexus-GitHub-Publisher/1.0",
+            "User-Agent": "PlayNexus-GitHub-Publisher/1.1",
         },
     )
 
