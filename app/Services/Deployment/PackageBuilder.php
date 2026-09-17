@@ -72,36 +72,8 @@ final class PackageBuilder
         if (! config('deployment.export_enabled')) throw new RuntimeException('Export غیرفعال است.');
         if (! class_exists(ZipArchive::class)) throw new RuntimeException('افزونه ZIP فعال نیست.');
         foreach (['composer.json', 'composer.lock', 'package.json', 'package-lock.json', 'vendor/autoload.php', 'vendor/composer/installed.php'] as $file) if (! is_file(base_path($file))) throw new RuntimeException("فایل لازم وجود ندارد: {$file}");
-        $this->guardAndroidApks();
         if (! config('deployment.app_id') || strlen((string) config('deployment.signing_key')) < 32) throw new RuntimeException('تنظیمات امضای deployment کامل نیست.');
         if (disk_free_space(storage_path()) < 1024 * 1024 * 1024) throw new RuntimeException('حداقل یک گیگابایت فضای آزاد لازم است.');
-    }
-
-    private function guardAndroidApks(): void
-    {
-        $apks = glob(public_path('apk/*.apk')) ?: [];
-
-        if ($apks === []) {
-            throw new RuntimeException('فایل APK اندروید در public/apk پیدا نشد.');
-        }
-
-        foreach ($apks as $apk) {
-            $handle = @fopen($apk, 'rb');
-
-            if ($handle === false) {
-                throw new RuntimeException('خواندن فایل APK ممکن نیست: '.basename($apk));
-            }
-
-            try {
-                $prefix = fread($handle, 128);
-            } finally {
-                fclose($handle);
-            }
-
-            if (is_string($prefix) && str_starts_with($prefix, 'version https://git-lfs.github.com/spec/v1')) {
-                throw new RuntimeException('فایل APK هنوز Git LFS pointer است؛ ابتدا git lfs pull را اجرا کنید: '.basename($apk));
-            }
-        }
     }
 
     private function run(array $command, ?string $cwd = null, array $environment = [], int $timeout = 900): void
@@ -213,7 +185,7 @@ final class PackageBuilder
         foreach ($it as $file) if ($file->isFile()) { $path=str_replace('\\', '/', substr($file->getPathname(), strlen($stage) + 1)); if (!$this->excluded($path)) $zip->addFile($file->getPathname(), $path); }
         $zip->close();
     }
-    private function excluded(string $path): bool { return str_starts_with($path, 'bootstrap/cache/') || $path === 'public/hot' || str_starts_with($path, 'node_modules/'); }
+    private function excluded(string $path): bool { return str_starts_with($path, 'bootstrap/cache/') || $path === 'public/hot' || str_starts_with($path, 'public/apk/') || str_starts_with($path, 'node_modules/'); }
     private function gitCommit(): ?string { $head = base_path('.git/HEAD'); if (! is_file($head)) return null; $value = trim((string) file_get_contents($head)); if (str_starts_with($value, 'ref: ')) { $ref = base_path('.git/'.substr($value, 5)); return is_file($ref) ? trim((string) file_get_contents($ref)) : null; } return $value; }
     private function deleteDirectory(string $path): void { if (is_dir($path)) \Illuminate\Support\Facades\File::deleteDirectory($path); }
 }
