@@ -28,7 +28,9 @@ const syncKey = (userId: number, contentId: number) => `${userId}:${contentId}`;
 const csrfToken = () =>
     document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? "";
 
-function normalize(value: Partial<VideoProgressRecord> | null | undefined): VideoProgressRecord | null {
+function normalize(
+    value: Partial<VideoProgressRecord> | null | undefined,
+): VideoProgressRecord | null {
     if (!value || !Number.isFinite(Number(value.contentId))) return null;
 
     const duration = Math.max(0, Math.floor(Number(value.duration) || 0));
@@ -56,7 +58,9 @@ export function readLocalVideoProgress(
 
     try {
         return normalize(
-            JSON.parse(localStorage.getItem(storageKey(userId, contentId)) ?? "null"),
+            JSON.parse(
+                localStorage.getItem(storageKey(userId, contentId)) ?? "null",
+            ),
         );
     } catch {
         return null;
@@ -78,8 +82,16 @@ function writeLocalVideoProgress(
     emit = true,
 ) {
     if (typeof window === "undefined") return;
-    localStorage.setItem(storageKey(userId, record.contentId), JSON.stringify(record));
-    if (emit) emitProgress(userId, record);
+
+    try {
+        localStorage.setItem(
+            storageKey(userId, record.contentId),
+            JSON.stringify(record),
+        );
+        if (emit) emitProgress(userId, record);
+    } catch {
+        // Playback must never fail just because browser storage is unavailable.
+    }
 }
 
 async function loadServerProgress(userId: number) {
@@ -106,11 +118,7 @@ async function loadServerProgress(userId: number) {
             serverCache.set(userId, records);
             return records;
         })
-        .catch(() => {
-            const records = new Map<number, VideoProgressRecord>();
-            serverCache.set(userId, records);
-            return records;
-        })
+        .catch(() => new Map<number, VideoProgressRecord>())
         .finally(() => serverLoads.delete(userId));
 
     serverLoads.set(userId, request);
@@ -151,7 +159,9 @@ async function sendServerProgress(
         const serverRecord = normalize(payload.progress);
         if (!serverRecord) return;
 
-        const cache = serverCache.get(userId) ?? new Map<number, VideoProgressRecord>();
+        const cache =
+            serverCache.get(userId) ??
+            new Map<number, VideoProgressRecord>();
         cache.set(serverRecord.contentId, serverRecord);
         serverCache.set(userId, cache);
 
@@ -217,10 +227,12 @@ export function saveVideoProgress({
     const isCompleted =
         completed ||
         (safeDuration > 0 &&
-            (safePosition >= safeDuration - 5 || safePosition / safeDuration >= 0.98));
+            (safePosition >= safeDuration - 5 ||
+                safePosition / safeDuration >= 0.98));
     const record: VideoProgressRecord = {
         contentId,
-        position: isCompleted && safeDuration > 0 ? safeDuration : safePosition,
+        position:
+            isCompleted && safeDuration > 0 ? safeDuration : safePosition,
         duration: safeDuration,
         completed: isCompleted,
         updatedAt: Date.now(),
@@ -260,8 +272,21 @@ export function useVideoProgress(contentId: number) {
     useEffect(() => {
         let active = true;
         const key = storageKey(userId, contentId);
-        const local = readLocalVideoProgress(userId, contentId);
-        setProgress(local);
+        const userLocal = readLocalVideoProgress(userId, contentId);
+        const guestLocal = userId
+            ? readLocalVideoProgress(null, contentId)
+            : null;
+        const initialLocal =
+            userLocal && guestLocal
+                ? userLocal.updatedAt >= guestLocal.updatedAt
+                    ? userLocal
+                    : guestLocal
+                : userLocal ?? guestLocal;
+
+        if (userId && initialLocal && initialLocal !== userLocal) {
+            writeLocalVideoProgress(userId, initialLocal, false);
+        }
+        setProgress(initialLocal);
 
         const sync = async () => {
             if (!userId) {
@@ -272,10 +297,12 @@ export function useVideoProgress(contentId: number) {
             const records = await loadServerProgress(userId);
             if (!active) return;
 
-            const currentLocal = readLocalVideoProgress(userId, contentId);
+            const currentLocal =
+                readLocalVideoProgress(userId, contentId) ?? initialLocal;
             const remote = records.get(contentId) ?? null;
             const chosen =
-                currentLocal && (!remote || currentLocal.updatedAt > remote.updatedAt + 1500)
+                currentLocal &&
+                (!remote || currentLocal.updatedAt > remote.updatedAt + 1500)
                     ? currentLocal
                     : remote ?? currentLocal;
 
