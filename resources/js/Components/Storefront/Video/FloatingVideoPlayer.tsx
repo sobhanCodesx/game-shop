@@ -18,7 +18,6 @@ import {
     useState,
 } from "react";
 import {
-    flushVideoProgress,
     saveVideoProgress,
     useVideoProgress,
 } from "../../../lib/videoProgress";
@@ -87,16 +86,15 @@ export default function FloatingVideoPlayer({
     useEffect(() => {
         const persistBeforeLeave = () => {
             const player = playerRef.current;
-            if (player && resumeAppliedRef.current) {
-                saveVideoProgress({
-                    userId,
-                    contentId: content.id,
-                    position: Number(player.currentTime || 0),
-                    duration: Number(player.duration || content.duration || 0),
-                    immediate: true,
-                });
-            }
-            flushVideoProgress(userId, content.id);
+            if (!player || !resumeAppliedRef.current) return;
+
+            saveVideoProgress({
+                userId,
+                contentId: content.id,
+                position: Number(player.currentTime || 0),
+                duration: Number(player.duration || content.duration || 0),
+                immediate: true,
+            });
         };
         const visibility = () => {
             if (document.visibilityState === "hidden") persistBeforeLeave();
