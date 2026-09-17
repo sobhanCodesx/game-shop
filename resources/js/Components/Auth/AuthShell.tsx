@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { type ChangeEvent, type ReactNode, useState } from "react";
 
+import AndroidAppDownloadCard from "./AndroidAppDownloadCard";
+
 export const authInput =
     "h-12 w-full rounded-2xl border border-white/10 bg-white/[.055] px-4 text-sm text-white outline-none transition placeholder:text-slate-600 hover:border-white/20 focus:border-violet-400 focus:bg-white/[.08] focus:ring-4 focus:ring-violet-500/10";
 export const authButton =
@@ -88,9 +90,13 @@ export default function AuthShell({
     subtitle: string;
     eyebrow?: string;
 }) {
-    const { flash } = usePage<{
+    const page = usePage<{
         flash?: { success?: string; error?: string };
-    }>().props;
+    }>();
+    const { flash } = page.props;
+    const authPath = page.url.split("?")[0].replace(/\/$/, "") || "/";
+    const showAndroidDownload = authPath === "/login" || authPath === "/register";
+
     return (
         <main
             className="relative h-dvh overflow-hidden bg-[#050816] text-white"
@@ -209,6 +215,7 @@ export default function AuthShell({
                         <div className="rounded-[24px] border border-white/[.08] bg-[#0b1020]/85 p-4 shadow-[0_30px_80px_rgba(0,0,0,.35)] backdrop-blur-2xl sm:rounded-[28px] sm:p-6">
                             {children}
                         </div>
+                        {showAndroidDownload && <AndroidAppDownloadCard />}
                         <p className="mt-3 text-center text-[10px] leading-5 text-slate-600 sm:mt-4">
                             با ادامه، قوانین استفاده و سیاست حریم خصوصی فروشگاه
                             را می‌پذیرید.
