@@ -1,11 +1,21 @@
 import { Avatar, Button, Chip } from "@heroui/react";
 import { Link, router, usePage } from "@inertiajs/react";
-import { ChevronLeft, LogOut, Menu, Search, X } from "lucide-react";
-import { type PropsWithChildren, useState } from "react";
+import {
+    ChevronDown,
+    ChevronLeft,
+    LogOut,
+    Menu,
+    Search,
+    X,
+} from "lucide-react";
+import { type PropsWithChildren, useEffect, useState } from "react";
 
 import BrandMark from "../Components/Admin/BrandMark";
 import NotificationPopover from "../Components/Notifications/NotificationPopover";
-import { adminNavigation } from "../config/admin-navigation";
+import {
+    adminNavigation,
+    type NavigationLink,
+} from "../config/admin-navigation";
 import type { SharedPageProps } from "../types";
 
 interface AdminLayoutProps extends PropsWithChildren {
@@ -14,6 +24,8 @@ interface AdminLayoutProps extends PropsWithChildren {
     actions?: React.ReactNode;
 }
 
+const normalizePath = (value: string) => value.replace(/\/$/, "") || "/";
+
 export default function AdminLayout({
     children,
     title,
@@ -21,18 +33,118 @@ export default function AdminLayout({
     actions,
 }: AdminLayoutProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const { auth, admin } = usePage<SharedPageProps>().props;
-    const currentPath = window.location.pathname.replace(/\/$/, "") || "/";
+    const page = usePage<SharedPageProps>();
+    const { auth, admin } = page.props;
+    const [rawPath, rawQuery = ""] = page.url.split("?");
+    const currentPath = normalizePath(rawPath);
+    const currentQueryString = rawQuery.split("#")[0];
+    const currentQuery = new URLSearchParams(currentQueryString);
 
-    const isActive = (href: string) => {
-        if (href === "/admin") {
-            return currentPath === href;
+    const isActive = (item: NavigationLink) => {
+        const [targetRawPath, targetRawQuery = ""] = item.href.split("?");
+        const targetPath = normalizePath(targetRawPath);
+        const pathMatches = item.exact
+            ? currentPath === targetPath
+            : currentPath === targetPath ||
+              currentPath.startsWith(`${targetPath}/`);
+
+        if (!pathMatches) return false;
+
+        const targetQuery = new URLSearchParams(targetRawQuery);
+        for (const [key, value] of targetQuery.entries()) {
+            if (currentQuery.get(key) !== value) return false;
         }
 
-        return currentPath.startsWith(href);
+        if (item.excludeQuery) {
+            for (const [key, value] of Object.entries(item.excludeQuery)) {
+                if (currentQuery.get(key) === value) return false;
+            }
+        }
+
+        return true;
     };
 
+    const activeParentKeys = adminNavigation.flatMap((entry) =>
+        entry.type === "parent" && entry.children.some(isActive)
+            ? [entry.key]
+            : [],
+    );
+    const [openMenus, setOpenMenus] = useState<string[]>(activeParentKeys);
+
+    useEffect(() => {
+        if (!activeParentKeys.length) return;
+        setOpenMenus((current) => [
+            ...new Set([...current, ...activeParentKeys]),
+        ]);
+        // Re-open the active parent after navigating to another admin page.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page.url]);
+
     const closeSidebar = () => setIsSidebarOpen(false);
+    const toggleMenu = (key: string) =>
+        setOpenMenus((current) =>
+            current.includes(key)
+                ? current.filter((item) => item !== key)
+                : [...current, key],
+        );
+
+    const badgeFor = (item: NavigationLink): string | number | null => {
+        const path = normalizePath(item.href.split("?")[0]);
+        if (path === "/admin/orders") {
+            return admin?.pending_orders_count ?? 0;
+        }
+        if (path === "/admin/tickets" && !item.href.includes("type=exchange")) {
+            return admin?.open_tickets_count ?? 0;
+        }
+
+        return item.badge ?? null;
+    };
+
+    const navigationLink = (item: NavigationLink, nested = false) => {
+        const active = isActive(item);
+        const Icon = item.icon;
+        const badge = badgeFor(item);
+        const hasBadge =
+            typeof badge === "number" ? badge > 0 : Boolean(badge);
+
+        return (
+            <Link
+                aria-current={active ? "page" : undefined}
+                className={`group relative flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    nested ? "h-10 px-3" : "h-11 px-3"
+                } ${
+                    active
+                        ? "bg-indigo-500/15 text-indigo-200 ring-1 ring-inset ring-indigo-500/25 shadow-sm shadow-indigo-950/20"
+                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-100"
+                }`}
+                href={item.href}
+                key={item.href}
+                onClick={closeSidebar}
+            >
+                {active && (
+                    <span className="absolute inset-y-2 right-0 w-1 rounded-l-full bg-indigo-400" />
+                )}
+                <Icon
+                    aria-hidden="true"
+                    className={
+                        active
+                            ? "text-indigo-400"
+                            : "text-slate-500 transition-colors group-hover:text-slate-300"
+                    }
+                    size={nested ? 16 : 18}
+                />
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {hasBadge && (
+                    <Chip size="sm">
+                        {typeof badge === "number"
+                            ? badge.toLocaleString("fa-IR")
+                            : badge}
+                    </Chip>
+                )}
+                {active && <ChevronLeft aria-hidden="true" size={14} />}
+            </Link>
+        );
+    };
 
     return (
         <div className="admin-shell min-h-screen bg-background text-foreground">
@@ -65,80 +177,83 @@ export default function AdminLayout({
 
                 <nav
                     aria-label="ناوبری پنل مدیریت"
-                    className="flex-1 overflow-y-auto px-3 py-5"
+                    className="flex-1 overflow-y-auto px-3 py-4"
                 >
-                    {adminNavigation.map((group) => (
-                        <section className="mb-6" key={group.label}>
-                            <h2 className="mb-2 px-3 text-[11px] font-bold tracking-wider text-slate-600">
-                                {group.label}
-                            </h2>
-                            <div className="space-y-1">
-                                {group.items.map((item) => {
-                                    const active = isActive(item.href);
-                                    const Icon = item.icon;
+                    <p className="mb-2 px-3 text-[10px] font-black tracking-[.16em] text-slate-600">
+                        مدیریت PLAY NEXUS
+                    </p>
+                    <div className="space-y-1.5">
+                        {adminNavigation.map((entry) => {
+                            if (entry.type === "link") {
+                                return navigationLink(entry);
+                            }
 
-                                    return (
-                                        <Link
-                                            className={`group flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
+                            const active = entry.children.some(isActive);
+                            const open = openMenus.includes(entry.key);
+                            const Icon = entry.icon;
+
+                            return (
+                                <div
+                                    className={`overflow-hidden rounded-2xl border transition-colors ${
+                                        active
+                                            ? "border-indigo-500/20 bg-indigo-500/[.04]"
+                                            : "border-transparent"
+                                    }`}
+                                    key={entry.key}
+                                >
+                                    <button
+                                        aria-expanded={open}
+                                        className={`flex h-11 w-full items-center gap-3 rounded-xl px-3 text-right text-sm font-bold transition-colors ${
+                                            active
+                                                ? "text-indigo-200"
+                                                : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
+                                        }`}
+                                        onClick={() => toggleMenu(entry.key)}
+                                        type="button"
+                                    >
+                                        <span
+                                            className={`grid size-8 shrink-0 place-items-center rounded-lg ${
                                                 active
-                                                    ? "bg-indigo-500/15 text-indigo-300 ring-1 ring-inset ring-indigo-500/20"
-                                                    : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-100"
+                                                    ? "bg-indigo-500/15 text-indigo-400"
+                                                    : "bg-slate-900 text-slate-500"
                                             }`}
-                                            href={item.href}
-                                            key={item.href}
-                                            onClick={closeSidebar}
                                         >
-                                            <Icon
-                                                aria-hidden="true"
-                                                className={
-                                                    active
-                                                        ? "text-indigo-400"
-                                                        : "text-slate-500"
-                                                }
-                                                size={18}
-                                            />
-                                            <span className="flex-1">
-                                                {item.label}
-                                            </span>
-                                            {([
-                                                "/admin/orders",
-                                                "/admin/tickets",
-                                            ].includes(item.href)
-                                                ? (item.href === "/admin/orders"
-                                                      ? (admin?.pending_orders_count ??
-                                                        0)
-                                                      : (admin?.open_tickets_count ??
-                                                        0)) > 0
-                                                : item.badge) && (
-                                                <Chip size="sm">
-                                                    {[
-                                                        "/admin/orders",
-                                                        "/admin/tickets",
-                                                    ].includes(item.href)
-                                                        ? (item.href ===
-                                                          "/admin/orders"
-                                                              ? (admin?.pending_orders_count ??
-                                                                0)
-                                                              : (admin?.open_tickets_count ??
-                                                                0)
-                                                          ).toLocaleString(
-                                                              "fa-IR",
-                                                          )
-                                                        : item.badge}
-                                                </Chip>
-                                            )}
-                                            {active && (
-                                                <ChevronLeft
-                                                    aria-hidden="true"
-                                                    size={15}
-                                                />
-                                            )}
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    ))}
+                                            <Icon aria-hidden="true" size={17} />
+                                        </span>
+                                        <span className="min-w-0 flex-1 truncate">
+                                            {entry.label}
+                                        </span>
+                                        {active && (
+                                            <span className="size-2 rounded-full bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,.8)]" />
+                                        )}
+                                        <ChevronDown
+                                            aria-hidden="true"
+                                            className={`text-slate-500 transition-transform duration-200 ${
+                                                open ? "rotate-180" : ""
+                                            }`}
+                                            size={16}
+                                        />
+                                    </button>
+
+                                    <div
+                                        className={`grid transition-[grid-template-rows,opacity] duration-200 ${
+                                            open
+                                                ? "grid-rows-[1fr] opacity-100"
+                                                : "grid-rows-[0fr] opacity-0"
+                                        }`}
+                                    >
+                                        <div className="overflow-hidden">
+                                            <div className="mb-2 mr-4 space-y-1 border-r border-slate-800/90 pr-2">
+                                                {entry.children.map((item) =>
+                                                    navigationLink(item, true),
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </nav>
 
                 <div className="border-t border-slate-800/80 p-4">
@@ -159,7 +274,7 @@ export default function AdminLayout({
                         <Button
                             aria-label="خروج از حساب"
                             isIconOnly
-                            onPress={() => router.post("/admin/logout")}
+                            onPress={() => router.post("/logout")}
                             variant="ghost"
                         >
                             <LogOut aria-hidden="true" size={17} />
