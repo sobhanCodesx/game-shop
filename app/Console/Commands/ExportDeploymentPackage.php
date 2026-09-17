@@ -6,6 +6,7 @@ use App\Services\Deployment\PackageBuilder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
+use Throwable;
 
 class ExportDeploymentPackage extends Command
 {
@@ -16,40 +17,72 @@ class ExportDeploymentPackage extends Command
 
     public function handle(PackageBuilder $builder): int
     {
-        try {
-            $this->components->info('ساخت خروجی Deployment شروع شد...');
+        $startedAt = microtime(true);
+        $stageStartedAt = $startedAt;
 
-            $result = $builder->build(function (string $stage, int $progress): void {
+        $this->newLine();
+        $this->line('============================================================');
+        $this->line(' PLAY NEXUS - DEPLOYMENT EXPORT');
+        $this->line('============================================================');
+        $this->line(' Status : Starting');
+        $this->line(' Time   : '.now()->format('Y-m-d H:i:s'));
+        $this->line('------------------------------------------------------------');
+
+        try {
+            $result = $builder->build(function (string $stage, int $progress) use (&$stageStartedAt): void {
+                $elapsed = microtime(true) - $stageStartedAt;
+                $stageStartedAt = microtime(true);
+
                 $label = match ($stage) {
-                    'validating_frontend' => 'بررسی خروجی Frontend/SSR',
-                    'staging' => 'جمع‌آوری فایل‌های پروژه',
-                    'copying_dependencies' => 'کپی وابستگی‌ها',
-                    'compressing' => 'ساخت فایل ZIP',
-                    'completed' => 'تکمیل خروجی',
-                    default => $stage,
+                    'validating_frontend' => 'Validate frontend and SSR build',
+                    'staging' => 'Collect project files',
+                    'copying_dependencies' => 'Copy production dependencies',
+                    'compressing' => 'Create deployment archive',
+                    'completed' => 'Finalize package',
+                    default => str_replace('_', ' ', ucfirst($stage)),
                 };
 
-                $this->line(sprintf('[%3d%%] %s', $progress, $label));
+                $suffix = $progress > 5 ? sprintf('  (+%.2fs)', $elapsed) : '';
+                $this->line(sprintf(' [%3d%%] %-36s%s', $progress, $label, $suffix));
             });
 
             $destination = $this->resolveDestination((string) $this->option('output'), $result['name']);
             $directory = dirname($destination);
 
             if (! File::isDirectory($directory) && ! File::makeDirectory($directory, 0755, true)) {
-                throw new RuntimeException("ساخت پوشه خروجی ممکن نیست: {$directory}");
+                throw new RuntimeException("Unable to create output directory: {$directory}");
             }
 
             if (! File::copy($result['path'], $destination)) {
-                throw new RuntimeException("کپی فایل خروجی ممکن نیست: {$destination}");
+                throw new RuntimeException("Unable to copy deployment archive to: {$destination}");
             }
 
+            $size = is_file($destination) ? filesize($destination) : false;
+            $manifest = is_array($result['manifest'] ?? null) ? $result['manifest'] : [];
+            $elapsed = microtime(true) - $startedAt;
+
+            $this->line('------------------------------------------------------------');
+            $this->line(' RESULT');
+            $this->line('------------------------------------------------------------');
+            $this->line(' Status : SUCCESS');
+            $this->line(' File   : '.$destination);
+            $this->line(' Size   : '.($size === false ? 'Unknown' : $this->formatBytes($size)));
+            $this->line(' Version: '.($manifest['version'] ?? 'Unknown'));
+            $this->line(' Commit : '.($manifest['git_commit'] ?? 'Not available'));
+            $this->line(sprintf(' Took   : %.2f seconds', $elapsed));
+            $this->line('============================================================');
             $this->newLine();
-            $this->components->success('فایل ZIP آماده شد.');
-            $this->line($destination);
 
             return self::SUCCESS;
-        } catch (\Throwable $e) {
-            $this->components->error($e->getMessage());
+        } catch (Throwable $e) {
+            $this->line('------------------------------------------------------------');
+            $this->line(' RESULT');
+            $this->line('------------------------------------------------------------');
+            $this->line(' Status : FAILED');
+            $this->line(' Error  : '.$this->englishError($e));
+            $this->line(sprintf(' Took   : %.2f seconds', microtime(true) - $startedAt));
+            $this->line('============================================================');
+            $this->newLine();
 
             return self::FAILURE;
         }
@@ -87,5 +120,63 @@ class ExportDeploymentPackage extends Command
         }
 
         return base_path($path);
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes < 1024) {
+            return $bytes.' B';
+        }
+
+        $units = ['KB', 'MB', 'GB', 'TB'];
+        $value = $bytes / 1024;
+
+        foreach ($units as $unit) {
+            if ($value < 1024 || $unit === 'TB') {
+                return number_format($value, 2).' '.$unit;
+            }
+
+            $value /= 1024;
+        }
+
+        return number_format($value, 2).' TB';
+    }
+
+    private function englishError(Throwable $e): string
+    {
+        $message = trim($e->getMessage());
+
+        $exact = [
+            'خروجی Vite پیدا نشد؛ ابتدا npm run build را اجرا کنید.' => 'Vite build output was not found. Run "npm run build" first.',
+            'خروجی SSR پیدا نشد؛ ابتدا npm run build را اجرا کنید.' => 'SSR build output was not found. Run "npm run build" first.',
+            'Export غیرفعال است.' => 'Deployment export is disabled.',
+            'افزونه ZIP فعال نیست.' => 'The PHP ZIP extension is not enabled.',
+            'تنظیمات امضای deployment کامل نیست.' => 'Deployment signing configuration is incomplete.',
+            'حداقل یک گیگابایت فضای آزاد لازم است.' => 'At least 1 GB of free disk space is required.',
+            'ساخت ZIP ممکن نیست.' => 'Unable to create the ZIP archive.',
+        ];
+
+        if (isset($exact[$message])) {
+            return $exact[$message];
+        }
+
+        foreach ([
+            'فایل لازم وجود ندارد:' => 'Required file is missing:',
+            'خروجی ناقص است:' => 'Deployment output is incomplete:',
+            'ساخت مسیر موقت ممکن نیست:' => 'Unable to create temporary directory:',
+            'کپی vendor Production به cache ممکن نیست:' => 'Unable to cache the production vendor directory:',
+            'vendor Production ساخته شد اما خروجی cache ناقص است.' => 'Production vendor was created, but the cache output is incomplete.',
+            'ساخت مسیر لازم ممکن نیست:' => 'Unable to create required directory:',
+            'ساخت مسیر staging ممکن نیست:' => 'Unable to create staging directory:',
+            'کپی فایل به staging ممکن نیست:' => 'Unable to copy file to staging:',
+        ] as $persian => $english) {
+            if (str_starts_with($message, $persian)) {
+                return $english.trim(substr($message, strlen($persian)));
+            }
+        }
+
+        return $message !== '' && preg_match('/^[\x20-\x7E]+$/', $message)
+            ? $message
+            : 'Deployment export failed. Check the application log for the original exception.';
     }
 }
