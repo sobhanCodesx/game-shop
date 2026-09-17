@@ -729,9 +729,8 @@ function CronPanel({
     runningKey: string | null;
     copied: string | null;
     onCopy: (key: string, value: string) => Promise<void>;
-    onManage: (action: CronAction) => void;
-    onRunNow: (action: MaintenanceAction, warning?: boolean) => void;
-    maintenanceProcessing: boolean;
+    onManage: (action: CronAction) => Promise<void>;
+    onRunNow: (action: MaintenanceAction, warning?: boolean) => Promise<void>;
 }) {
     return (
         <div className="space-y-4">
@@ -782,45 +781,44 @@ function CronPanel({
 
                     <div className="mt-5 grid gap-2 sm:grid-cols-2">
                         <Button
-                            isDisabled={processing}
+                            isDisabled={busy}
                             isPending={
-                                processing &&
-                                activeAction === "install-scheduler"
+                                runningKey === "cron:install-scheduler"
                             }
-                            onPress={() => onManage("install-scheduler")}
+                            onPress={() => void onManage("install-scheduler")}
                             variant="secondary"
                         >
                             <Clock3 size={16} />
                             نصب Scheduler
                         </Button>
                         <Button
-                            isDisabled={processing}
+                            isDisabled={busy}
                             isPending={
                                 runningKey === "cron:install-queue"
                             }
-                            onPress={() => onManage("install-queue")}
+                            onPress={() => void onManage("install-queue")}
                             variant="secondary"
                         >
                             <Workflow size={16} />
                             نصب Queue Cron
                         </Button>
                         <Button
-                            isDisabled={processing}
+                            isDisabled={busy}
                             isPending={
                                 runningKey === "cron:install-all"
                             }
-                            onPress={() => onManage("install-all")}
+                            onPress={() => void onManage("install-all")}
                             variant="primary"
                         >
                             <ShieldCheck size={16} />
                             نصب هر دو Cron
                         </Button>
                         <Button
-                            isDisabled={processing}
+                            isDisabled={busy}
                             isPending={
                                 runningKey === "cron:remove-all"
                             }
-                            onPress={() => onManage("remove-all")}
+                            onPress={() => void onManage("remove-all")}
                             variant="secondary"
                         >
                             <RotateCcw size={16} />
@@ -854,16 +852,16 @@ function CronPanel({
                     </p>
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
                         <Button
-                            isDisabled={maintenanceProcessing}
-                            onPress={() => onRunNow("schedule-run")}
+                            isDisabled={busy}
+                            onPress={() => void onRunNow("schedule-run")}
                             variant="secondary"
                         >
                             <TimerReset size={16} />
                             schedule:run
                         </Button>
                         <Button
-                            isDisabled={maintenanceProcessing}
-                            onPress={() => onRunNow("queue-once")}
+                            isDisabled={busy}
+                            onPress={() => void onRunNow("queue-once")}
                             variant="secondary"
                         >
                             <Workflow size={16} />
