@@ -4,6 +4,7 @@ import "@fontsource-variable/vazirmatn";
 import { createInertiaApp, router } from "@inertiajs/react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import PageTransitionLoader from "./Components/PageTransitionLoader";
+import GlobalVideoPreview from "./Components/Storefront/Video/GlobalVideoPreview";
 import {
     createInertiaPageResolver,
     inertiaTitle,
@@ -57,6 +58,7 @@ createInertiaApp({
         const application = (
             <>
                 <App {...props} />
+                <GlobalVideoPreview />
                 <PageTransitionLoader />
             </>
         );
