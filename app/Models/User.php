@@ -114,6 +114,11 @@ class User extends Authenticatable
         return $this->hasMany(SocialComment::class);
     }
 
+    public function videoWatchProgress(): HasMany
+    {
+        return $this->hasMany(VideoWatchProgress::class);
+    }
+
     public function mobileDevices(): HasMany
     {
         return $this->hasMany(MobileDevice::class);
