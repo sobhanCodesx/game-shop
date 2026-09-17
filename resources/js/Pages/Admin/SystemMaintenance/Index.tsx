@@ -23,7 +23,7 @@ import {
     XCircle,
     Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import AdminLayout from "../../../Layouts/AdminLayout";
 
 type MaintenanceAction =
@@ -87,6 +87,23 @@ type MobileDevice = {
     failure_count: number;
     last_seen_at: string | null;
     push_token_masked: string;
+};
+
+type PushFormData = {
+    device_id: number | null;
+    title: string;
+    message: string;
+    url: string;
+};
+
+type PushFormShape = {
+    data: PushFormData;
+    errors: Partial<Record<keyof PushFormData, string>>;
+    processing: boolean;
+    setData: <K extends keyof PushFormData>(
+        key: K,
+        value: PushFormData[K],
+    ) => void;
 };
 
 type Props = {
@@ -687,14 +704,7 @@ function PushPanel({
 }: {
     status: PushStatus;
     devices: MobileDevice[];
-    form: ReturnType<
-        typeof useForm<{
-            device_id: number | null;
-            title: string;
-            message: string;
-            url: string;
-        }>
-    >;
+    form: PushFormShape;
     onSend: () => void;
 }) {
     const activeDevices = devices.filter((device) => device.push_enabled);
@@ -1216,7 +1226,7 @@ function Field({
     children,
 }: {
     label: string;
-    children: React.ReactNode;
+    children: ReactNode;
 }) {
     return (
         <label className="block">
