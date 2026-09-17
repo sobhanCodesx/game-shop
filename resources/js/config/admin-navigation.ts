@@ -120,7 +120,9 @@ export const adminNavigation: NavigationEntry[] = [
             link("پترن‌های پیامک", "/admin/sms-patterns", ListChecks),
             link("تست پیامک", "/admin/sms-test", MessageSquareText),
             link("به‌روزرسانی سیستم", "/admin/deployments", Rocket),
-            link("نگهداری سیستم", "/admin/system-maintenance", TerminalSquare),
+            link("نگهداری سیستم", "/admin/system-maintenance", TerminalSquare, {
+                superAdminOnly: true,
+            }),
             link("فایل منیجر", "/admin/file-manager", FolderCode, {
                 superAdminOnly: true,
             }),
