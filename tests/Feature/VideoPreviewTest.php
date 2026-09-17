@@ -22,11 +22,15 @@ class VideoPreviewTest extends TestCase
             'published_at' => now()->subMinute(),
         ]);
 
-        $this->getJson("/video-previews/{$video->slug}")
+        $response = $this->getJson("/video-previews/{$video->slug}")
             ->assertOk()
             ->assertJsonPath('id', $video->id)
-            ->assertJsonPath('duration', 90)
-            ->assertJsonPath('video_url', fn ($value) => is_string($value) && str_contains($value, 'preview.mp4'));
+            ->assertJsonPath('duration', 90);
+
+        $this->assertStringContainsString(
+            'preview.mp4',
+            (string) $response->json('video_url'),
+        );
     }
 
     public function test_unpublished_content_cannot_be_previewed(): void
