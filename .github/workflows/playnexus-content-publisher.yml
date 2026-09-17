@@ -3,7 +3,7 @@ name: PlayNexus Content Publisher
 on:
   push:
     branches:
-      - feature/playnexus-github-publisher
+      - chatgpt_dev
     paths:
       - '.playnexus/queue/*.json'
   workflow_dispatch:
