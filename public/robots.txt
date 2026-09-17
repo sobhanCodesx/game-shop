@@ -1,3 +1,19 @@
 User-agent: *
-Disallow:
-Sitemap: /sitemap.xml
+Disallow: /admin
+Disallow: /account
+Disallow: /login
+Disallow: /register
+Disallow: /checkout
+Disallow: /cart
+Allow: /
+
+User-agent: Google-Extended
+Disallow: /admin
+Disallow: /account
+Disallow: /login
+Disallow: /register
+Disallow: /checkout
+Disallow: /cart
+Allow: /
+
+Sitemap: https://playnexus.ir/sitemap.xml
