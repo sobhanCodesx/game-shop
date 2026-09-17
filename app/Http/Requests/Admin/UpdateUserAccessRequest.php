@@ -9,7 +9,7 @@ class UpdateUserAccessRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->is_admin;
+        return (bool) $this->user()?->hasPermission('users.manage');
     }
 
     public function rules(): array

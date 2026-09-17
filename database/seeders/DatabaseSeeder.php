@@ -13,47 +13,50 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $roles = [
-            'user' => 'کاربر عادی',
-            'super-admin' => 'مدیر کل',
-            'admin' => 'مدیر',
-            'product-manager' => 'مدیر محصول',
-            'content-moderator' => 'ناظر محتوا',
-            'support' => 'پشتیبانی',
-            'editor' => 'ویرایشگر',
-            'warehouse' => 'انباردار',
-            'finance' => 'مالی',
-        ];
+        $access = config('admin-access');
+        $now = now();
 
-        foreach ($roles as $slug => $name) {
+        foreach ($access['roles'] as $slug => $role) {
             DB::table('roles')->updateOrInsert(
                 ['slug' => $slug],
-                ['name' => $name, 'is_system' => true, 'created_at' => now(), 'updated_at' => now()],
+                [
+                    'name' => $role['name'],
+                    'description' => $role['description'] ?? null,
+                    'is_system' => true,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
             );
         }
 
-        $permissions = [
-            'dashboard.view' => ['مشاهده داشبورد', 'dashboard'],
-            'user.view' => ['مشاهده کاربران', 'user'],
-            'user.manage' => ['مدیریت کاربران', 'user'],
-            'product.view' => ['مشاهده محصولات', 'product'],
-            'product.create' => ['ایجاد محصول', 'product'],
-            'product.update' => ['ویرایش محصول', 'product'],
-            'product.delete' => ['حذف محصول', 'product'],
-            'order.view' => ['مشاهده سفارش', 'order'],
-            'order.manage' => ['مدیریت سفارش', 'order'],
-            'payment.manage' => ['مدیریت پرداخت', 'payment'],
-            'content.moderate' => ['نظارت محتوا', 'content'],
-            'trade.review' => ['بررسی معاوضه', 'trade'],
-            'support.manage' => ['مدیریت پشتیبانی', 'support'],
-            'settings.manage' => ['مدیریت تنظیمات', 'settings'],
-        ];
-
-        foreach ($permissions as $slug => [$name, $group]) {
+        foreach ($access['permissions'] as $slug => $permission) {
             DB::table('permissions')->updateOrInsert(
                 ['slug' => $slug],
-                ['name' => $name, 'group' => $group, 'created_at' => now(), 'updated_at' => now()],
+                [
+                    'name' => $permission['name'],
+                    'group' => $permission['group'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
             );
+        }
+
+        $allPermissionIds = DB::table('permissions')->pluck('id')->all();
+
+        foreach ($access['roles'] as $slug => $role) {
+            $roleId = DB::table('roles')->where('slug', $slug)->value('id');
+            $permissionIds = $role['permissions'] === '*'
+                ? $allPermissionIds
+                : DB::table('permissions')->whereIn('slug', $role['permissions'])->pluck('id')->all();
+
+            DB::table('permission_role')->where('role_id', $roleId)->delete();
+            DB::table('permission_role')->insertOrIgnore(array_map(
+                fn ($permissionId) => [
+                    'role_id' => $roleId,
+                    'permission_id' => $permissionId,
+                ],
+                $permissionIds,
+            ));
         }
 
         $admin = User::updateOrCreate(
@@ -76,13 +79,6 @@ class DatabaseSeeder extends Seeder
             'role_id' => $superAdminRoleId,
             'user_id' => $admin->id,
         ]);
-
-        DB::table('permission_role')->insertOrIgnore(
-            DB::table('permissions')->pluck('id')->map(fn (int $permissionId) => [
-                'role_id' => $superAdminRoleId,
-                'permission_id' => $permissionId,
-            ])->all(),
-        );
 
         $this->call(ProductCatalogFoundationSeeder::class);
 
