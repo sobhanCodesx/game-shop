@@ -28,9 +28,11 @@ class InertiaSsrRoutingTest extends TestCase
 
     public function test_indexable_content_routes_are_in_the_default_ssr_surface(): void
     {
+        $inertiaConfig = require base_path('config/inertia.php');
+
         config([
             'inertia.ssr.enabled' => true,
-            'inertia.ssr.paths' => require base_path('config/inertia.php')['ssr']['paths'],
+            'inertia.ssr.paths' => $inertiaConfig['ssr']['paths'],
         ]);
 
         $middleware = $this->middleware();
