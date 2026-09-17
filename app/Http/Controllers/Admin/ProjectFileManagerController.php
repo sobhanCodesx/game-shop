@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\ProjectFileManagerService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -35,6 +38,7 @@ class ProjectFileManagerController extends Controller
             'limits' => [
                 'max_edit_bytes' => ProjectFileManagerService::MAX_EDIT_BYTES,
                 'max_upload_kilobytes' => ProjectFileManagerService::MAX_UPLOAD_KILOBYTES,
+                'max_chunked_upload_bytes' => ProjectFileManagerService::MAX_CHUNKED_UPLOAD_BYTES,
             ],
         ]);
     }
@@ -103,6 +107,110 @@ class ProjectFileManagerController extends Controller
         return back()->with('success', 'فایل آپلود شد.');
     }
 
+    public function uploadChunk(Request $request, ProjectFileManagerService $files): JsonResponse
+    {
+        $data = $request->validate([
+            'upload_id' => ['required', 'uuid'],
+            'directory' => ['nullable', 'string', 'max:4096'],
+            'chunk_index' => ['required', 'integer', 'min:0', 'max:9999'],
+            'total_chunks' => ['required', 'integer', 'min:1', 'max:10000'],
+            'name' => ['required', 'string', 'max:255'],
+            'mime' => ['nullable', 'string', 'max:255'],
+            'size' => ['required', 'integer', 'min:1', 'max:'.ProjectFileManagerService::MAX_CHUNKED_UPLOAD_BYTES],
+            'overwrite' => ['nullable', 'boolean'],
+            'chunk' => ['required', 'file', 'max:5120'],
+        ]);
+
+        $directory = $files->normalize($data['directory'] ?? '');
+        $files->listDirectory($directory);
+
+        $tempDirectory = $this->projectUploadDirectory($request, $data['upload_id']);
+        File::ensureDirectoryExists($tempDirectory.'/chunks');
+
+        $metadata = [
+            'directory' => $directory,
+            'name' => basename($data['name']),
+            'mime' => $data['mime'] ?: 'application/octet-stream',
+            'size' => (int) $data['size'],
+            'total_chunks' => (int) $data['total_chunks'],
+            'overwrite' => (bool) ($data['overwrite'] ?? false),
+        ];
+
+        $metadataPath = $tempDirectory.'/upload.json';
+        if (File::isFile($metadataPath)) {
+            $existing = json_decode((string) File::get($metadataPath), true, flags: JSON_THROW_ON_ERROR);
+            abort_unless($existing === $metadata, 422, 'مشخصات قطعات آپلود با یکدیگر هم‌خوانی ندارد.');
+        } else {
+            File::put($metadataPath, json_encode($metadata, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        }
+
+        $request->file('chunk')->move($tempDirectory.'/chunks', (string) $data['chunk_index']);
+
+        return response()->json(['received' => (int) $data['chunk_index']]);
+    }
+
+    public function completeChunkedUpload(Request $request, ProjectFileManagerService $files): JsonResponse
+    {
+        $data = $request->validate([
+            'upload_id' => ['required', 'uuid'],
+        ]);
+
+        $tempDirectory = $this->projectUploadDirectory($request, $data['upload_id']);
+        $metadataPath = $tempDirectory.'/upload.json';
+        abort_unless(File::isFile($metadataPath), 422, 'اطلاعات آپلود پیدا نشد.');
+
+        $metadata = json_decode((string) File::get($metadataPath), true, flags: JSON_THROW_ON_ERROR);
+        $assembledPath = $tempDirectory.'/assembled';
+        $target = fopen($assembledPath, 'wb');
+        abort_unless($target !== false, 500, 'امکان ساخت فایل نهایی وجود ندارد.');
+
+        try {
+            for ($index = 0; $index < (int) $metadata['total_chunks']; $index++) {
+                $chunkPath = $tempDirectory.'/chunks/'.$index;
+                abort_unless(File::isFile($chunkPath), 422, "قطعه {$index} هنوز دریافت نشده است.");
+
+                $source = fopen($chunkPath, 'rb');
+                abort_unless($source !== false, 500, "خواندن قطعه {$index} ناموفق بود.");
+                try {
+                    stream_copy_to_stream($source, $target);
+                } finally {
+                    fclose($source);
+                }
+            }
+        } finally {
+            fclose($target);
+        }
+
+        abort_unless(
+            File::size($assembledPath) === (int) $metadata['size'],
+            422,
+            'اندازه فایل نهایی معتبر نیست.',
+        );
+
+        $uploadedFile = new UploadedFile(
+            $assembledPath,
+            (string) $metadata['name'],
+            (string) ($metadata['mime'] ?: 'application/octet-stream'),
+            null,
+            true,
+        );
+
+        $path = $files->upload(
+            (string) $metadata['directory'],
+            $uploadedFile,
+            (bool) $metadata['overwrite'],
+        );
+
+        File::deleteDirectory($tempDirectory);
+        $this->audit($request, 'file_uploaded_chunked', [
+            'path' => $path,
+            'bytes' => (int) $metadata['size'],
+            'overwrite' => (bool) $metadata['overwrite'],
+        ]);
+
+        return response()->json(['uploaded' => true, 'path' => $path]);
+    }
+
     public function rename(Request $request, ProjectFileManagerService $files): RedirectResponse
     {
         $data = $request->validate([
@@ -145,6 +253,11 @@ class ProjectFileManagerController extends Controller
         $this->audit($request, 'file_downloaded', ['path' => $files->normalize($data['path'])]);
 
         return response()->download($absolute, basename($absolute));
+    }
+
+    private function projectUploadDirectory(Request $request, string $uploadId): string
+    {
+        return storage_path('app/private/project-file-uploads/'.$request->user()->id.'/'.$uploadId);
     }
 
     private function audit(Request $request, string $action, array $context = []): void
