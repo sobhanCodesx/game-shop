@@ -223,7 +223,7 @@ final class CronManagerService
             return \escapeshellarg($value);
         }
 
-        return "'".str_replace("'", "'\\\\''", $value)."'";
+        return "'".str_replace("'", "'\"'\"'", $value)."'";
     }
 
     /**
