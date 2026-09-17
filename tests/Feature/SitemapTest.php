@@ -129,7 +129,8 @@ class SitemapTest extends TestCase
             ->assertSee(route('studios.show', $studio->slug), false)
             ->assertDontSee('private-studio');
         $this->get('/sitemaps/playlists.xml')->assertOk()
-            ->assertSee(route('channels.playlists.show', [$game->slug, $publicPlaylist->slug]), false)
+            ->assertSee(route('collections.show', $publicPlaylist->slug), false)
+            ->assertDontSee(route('channels.playlists.show', [$game->slug, $publicPlaylist->slug]), false)
             ->assertDontSee('unlisted-playlist');
     }
 
