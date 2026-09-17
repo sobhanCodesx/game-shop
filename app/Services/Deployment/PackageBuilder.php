@@ -72,8 +72,36 @@ final class PackageBuilder
         if (! config('deployment.export_enabled')) throw new RuntimeException('Export غیرفعال است.');
         if (! class_exists(ZipArchive::class)) throw new RuntimeException('افزونه ZIP فعال نیست.');
         foreach (['composer.json', 'composer.lock', 'package.json', 'package-lock.json', 'vendor/autoload.php', 'vendor/composer/installed.php'] as $file) if (! is_file(base_path($file))) throw new RuntimeException("فایل لازم وجود ندارد: {$file}");
+        $this->guardAndroidApks();
         if (! config('deployment.app_id') || strlen((string) config('deployment.signing_key')) < 32) throw new RuntimeException('تنظیمات امضای deployment کامل نیست.');
         if (disk_free_space(storage_path()) < 1024 * 1024 * 1024) throw new RuntimeException('حداقل یک گیگابایت فضای آزاد لازم است.');
+    }
+
+    private function guardAndroidApks(): void
+    {
+        $apks = glob(public_path('apk/*.apk')) ?: [];
+
+        if ($apks === []) {
+            throw new RuntimeException('فایل APK اندروید در public/apk پیدا نشد.');
+        }
+
+        foreach ($apks as $apk) {
+            $handle = @fopen($apk, 'rb');
+
+            if ($handle === false) {
+                throw new RuntimeException('خواندن فایل APK ممکن نیست: '.basename($apk));
+            }
+
+            try {
+                $prefix = fread($handle, 128);
+            } finally {
+                fclose($handle);
+            }
+
+            if (is_string($prefix) && str_starts_with($prefix, 'version https://git-lfs.github.com/spec/v1')) {
+                throw new RuntimeException('فایل APK هنوز Git LFS pointer است؛ ابتدا git lfs pull را اجرا کنید: '.basename($apk));
+            }
+        }
     }
 
     private function run(array $command, ?string $cwd = null, array $environment = [], int $timeout = 900): void
