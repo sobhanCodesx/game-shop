@@ -11,13 +11,19 @@ final class SystemMaintenanceService
     public function run(string $action): array
     {
         $commands = match ($action) {
-            'migrate' => [['migrate', ['--force' => true]]],
-            'clear-cache' => [['optimize:clear', []]],
-            'config-cache' => [['config:cache', []]],
+            'migrate' => [['migrate', ['--force' => true], 'php artisan migrate --force']],
+            'clear-cache' => [['optimize:clear', [], 'php artisan optimize:clear']],
+            'config-cache' => [['config:cache', [], 'php artisan config:cache']],
+            'schedule-run' => [['schedule:run', [], 'php artisan schedule:run']],
+            'queue-once' => [[
+                'queue:work',
+                ['--stop-when-empty' => true, '--tries' => 3, '--timeout' => 60],
+                'php artisan queue:work --stop-when-empty --tries=3 --timeout=60',
+            ]],
             'all' => [
-                ['optimize:clear', []],
-                ['migrate', ['--force' => true]],
-                ['config:cache', []],
+                ['optimize:clear', [], 'php artisan optimize:clear'],
+                ['migrate', ['--force' => true], 'php artisan migrate --force'],
+                ['config:cache', [], 'php artisan config:cache'],
             ],
             default => throw new \InvalidArgumentException('عملیات نگهداری معتبر نیست.'),
         };
@@ -25,7 +31,7 @@ final class SystemMaintenanceService
         $started = now();
         $results = [];
 
-        foreach ($commands as [$command, $arguments]) {
+        foreach ($commands as [$command, $arguments, $displayCommand]) {
             try {
                 $exitCode = Artisan::call($command, $arguments);
                 $output = trim(Artisan::output());
@@ -36,10 +42,14 @@ final class SystemMaintenanceService
             }
 
             $results[] = [
-                'command' => 'php artisan '.$command.($command === 'migrate' ? ' --force' : ''),
+                'command' => $displayCommand,
                 'exit_code' => $exitCode,
                 'successful' => $exitCode === 0,
-                'output' => mb_substr($output !== '' ? $output : 'دستور بدون پیام خروجی با موفقیت اجرا شد.', 0, 20000),
+                'output' => mb_substr(
+                    $output !== '' ? $output : 'دستور بدون پیام خروجی با موفقیت اجرا شد.',
+                    0,
+                    20000,
+                ),
             ];
 
             if ($exitCode !== 0) {
