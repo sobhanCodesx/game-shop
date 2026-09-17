@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\CronManagerService;
 use App\Services\ExpoPushService;
 use App\Services\SystemMaintenanceService;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,25 +21,40 @@ class SystemMaintenanceController extends Controller
 {
     public function index(Request $request, CronManagerService $cron): Response
     {
-        $devices = $request->user()->mobileDevices()
-            ->latest('last_seen_at')
+        $pushTargets = User::query()
+            ->select(['id', 'name', 'email'])
+            ->whereHas('mobileDevices', fn ($query) => $query->where('push_enabled', true))
+            ->with([
+                'mobileDevices' => fn ($query) => $query
+                    ->where('push_enabled', true)
+                    ->latest('last_seen_at'),
+            ])
+            ->orderBy('name')
             ->get()
-            ->map(fn ($device) => [
-                'id' => $device->id,
-                'installation_id' => $device->installation_id,
-                'platform' => $device->platform,
-                'device_name' => $device->device_name,
-                'app_version' => $device->app_version,
-                'push_enabled' => $device->push_enabled,
-                'failure_count' => $device->failure_count,
-                'last_seen_at' => $device->last_seen_at?->toIso8601String(),
-                'push_token_masked' => Str::mask($device->push_token, '•', 12, -8),
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'devices' => $user->mobileDevices
+                    ->map(fn ($device) => [
+                        'id' => $device->id,
+                        'installation_id' => $device->installation_id,
+                        'platform' => $device->platform,
+                        'device_name' => $device->device_name,
+                        'app_version' => $device->app_version,
+                        'push_enabled' => $device->push_enabled,
+                        'failure_count' => $device->failure_count,
+                        'last_seen_at' => $device->last_seen_at?->toIso8601String(),
+                        'push_token_masked' => Str::mask($device->push_token, '•', 12, -8),
+                    ])
+                    ->values(),
             ])
             ->values();
 
         $pendingJobs = null;
         if (config('queue.default') === 'database') {
             $table = (string) config('queue.connections.database.table', 'jobs');
+
             try {
                 if (Schema::hasTable($table)) {
                     $pendingJobs = DB::table($table)->count();
@@ -49,24 +65,25 @@ class SystemMaintenanceController extends Controller
         }
 
         return Inertia::render('Admin/SystemMaintenance/Index', [
-            'terminalResult' => $request->session()->get('terminal_result')
-                ?? $request->session()->get('maintenance_result'),
+            'terminalResult' => null,
             'environment' => app()->environment(),
             'phpVersion' => PHP_VERSION,
             'laravelVersion' => app()->version(),
             'cronStatus' => $cron->status(),
             'pushStatus' => [
                 'enabled' => (bool) config('services.expo_push.enabled'),
-                'registered_devices' => $devices->where('push_enabled', true)->count(),
+                'registered_devices' => $pushTargets
+                    ->sum(fn (array $target) => collect($target['devices'])->count()),
                 'queue_connection' => (string) config('queue.default'),
                 'pending_jobs' => $pendingJobs,
                 'endpoint' => (string) config('services.expo_push.url'),
             ],
-            'mobileDevices' => $devices,
+            'pushTargets' => $pushTargets,
+            'currentAdminId' => $request->user()->id,
         ]);
     }
 
-    public function run(Request $request, SystemMaintenanceService $maintenance): RedirectResponse
+    public function run(Request $request, SystemMaintenanceService $maintenance): JsonResponse
     {
         $data = $request->validate([
             'action' => ['required', Rule::in([
@@ -82,24 +99,20 @@ class SystemMaintenanceController extends Controller
 
         $result = $maintenance->run($data['action']);
 
-        Log::notice('Admin ran system maintenance', [
+        Log::notice('Super admin ran system maintenance', [
             'admin_id' => $request->user()->id,
             'action' => $data['action'],
             'successful' => $result['successful'],
             'exit_codes' => collect($result['commands'])->pluck('exit_code')->all(),
         ]);
 
-        return back()
-            ->with('terminal_result', $result)
-            ->with(
-                $result['successful'] ? 'success' : 'error',
-                $result['successful']
-                    ? 'عملیات با موفقیت اجرا شد؛ خروجی ترمینال را ببینید.'
-                    : 'اجرای عملیات کامل نشد؛ خروجی ترمینال را بررسی کنید.',
-            );
+        return response()->json([
+            'result' => $result,
+            'message' => $this->terminalSummary($result),
+        ]);
     }
 
-    public function manageCron(Request $request, CronManagerService $cron): RedirectResponse
+    public function manageCron(Request $request, CronManagerService $cron): JsonResponse
     {
         $data = $request->validate([
             'action' => ['required', Rule::in([
@@ -112,39 +125,38 @@ class SystemMaintenanceController extends Controller
 
         $result = $cron->manage($data['action']);
 
-        Log::notice('Admin managed server cron', [
+        Log::notice('Super admin managed server cron', [
             'admin_id' => $request->user()->id,
             'action' => $data['action'],
             'successful' => $result['successful'],
         ]);
 
-        return back()
-            ->with('terminal_result', $result)
-            ->with(
-                $result['successful'] ? 'success' : 'error',
-                $result['successful']
-                    ? 'تنظیم Cron انجام شد.'
-                    : 'تنظیم خودکار Cron ممکن نشد؛ خروجی ترمینال و خطوط آماده کپی را بررسی کنید.',
-            );
+        return response()->json([
+            'result' => $result,
+            'message' => $this->terminalSummary($result),
+            'cron_status' => $cron->status(),
+        ]);
     }
 
-    public function testPush(Request $request, ExpoPushService $push): RedirectResponse
+    public function testPush(Request $request, ExpoPushService $push): JsonResponse
     {
         $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
             'device_id' => ['nullable', 'integer'],
             'title' => ['required', 'string', 'max:100'],
             'message' => ['required', 'string', 'max:500'],
             'url' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $query = $request->user()->mobileDevices()->where('push_enabled', true);
+        $user = User::query()->findOrFail((int) $data['user_id']);
+
+        $query = $user->mobileDevices()->where('push_enabled', true);
 
         if (! empty($data['device_id'])) {
             $query->whereKey((int) $data['device_id']);
         }
 
         $devices = $query->get();
-
         $started = now();
 
         if ($devices->isEmpty()) {
@@ -158,13 +170,14 @@ class SystemMaintenanceController extends Controller
                     'command' => 'Expo Push Test',
                     'exit_code' => 1,
                     'successful' => false,
-                    'output' => 'هیچ دستگاه Push فعالی برای این اکانت پیدا نشد.',
+                    'output' => 'برای کاربر انتخاب‌شده هیچ دستگاه Push فعالی پیدا نشد.',
                 ]],
             ];
 
-            return back()
-                ->with('terminal_result', $result)
-                ->with('error', 'هیچ دستگاه فعالی برای تست Push پیدا نشد.');
+            return response()->json([
+                'result' => $result,
+                'message' => 'هیچ دستگاه فعالی برای کاربر انتخاب‌شده پیدا نشد.',
+            ], 422);
         }
 
         $send = $push->sendByIds(
@@ -174,12 +187,14 @@ class SystemMaintenanceController extends Controller
                 'message' => $data['message'],
                 'url' => filled($data['url'] ?? null) ? $data['url'] : '/',
                 'activity' => 'admin_push_test',
+                'target_user_id' => $user->id,
             ],
             false,
         );
 
         $finished = now();
         $output = [
+            'Target user: '.$user->name.' (#'.$user->id.')',
             'Expo endpoint: '.config('services.expo_push.url'),
             'Target devices: '.$send['total'],
             'Accepted by Expo: '.$send['accepted'],
@@ -190,6 +205,7 @@ class SystemMaintenanceController extends Controller
         if ($send['errors'] !== []) {
             $output[] = '';
             $output[] = 'Errors:';
+
             foreach ($send['errors'] as $error) {
                 $output[] = '- '.$error;
             }
@@ -197,7 +213,7 @@ class SystemMaintenanceController extends Controller
 
         if ($send['accepted'] > 0) {
             $output[] = '';
-            $output[] = 'Expo درخواست را پذیرفت. حالا دریافت واقعی نوتیفیکیشن را روی گوشی بررسی کنید.';
+            $output[] = 'Expo درخواست را پذیرفت. دریافت واقعی نوتیفیکیشن را روی دستگاه مقصد بررسی کنید.';
         }
 
         $successful = $send['successful'] && $send['accepted'] > 0;
@@ -216,20 +232,34 @@ class SystemMaintenanceController extends Controller
             ]],
         ];
 
-        Log::notice('Admin sent direct Expo push test', [
+        Log::notice('Super admin sent direct Expo push test', [
             'admin_id' => $request->user()->id,
+            'target_user_id' => $user->id,
             'device_ids' => $devices->pluck('id')->all(),
             'accepted' => $send['accepted'],
             'failed' => $send['failed'],
         ]);
 
-        return back()
-            ->with('terminal_result', $result)
-            ->with(
-                $successful ? 'success' : 'error',
-                $successful
-                    ? 'درخواست Push مستقیم توسط Expo پذیرفته شد؛ گوشی را بررسی کنید.'
-                    : 'تست Push کامل نشد؛ خروجی ترمینال را بررسی کنید.',
-            );
+        return response()->json([
+            'result' => $result,
+            'message' => $successful
+                ? 'درخواست Push توسط Expo پذیرفته شد.'
+                : 'ارسال Push کامل نشد؛ خروجی ترمینال را بررسی کنید.',
+        ], $successful ? 200 : 422);
+    }
+
+    /** @param array<string, mixed> $result */
+    private function terminalSummary(array $result): string
+    {
+        $commands = collect($result['commands'] ?? []);
+        $lastOutput = trim((string) ($commands->last()['output'] ?? ''));
+
+        if ($lastOutput !== '') {
+            return $lastOutput;
+        }
+
+        return ($result['successful'] ?? false)
+            ? 'دستور با موفقیت اجرا شد.'
+            : 'دستور ناموفق بود.';
     }
 }
