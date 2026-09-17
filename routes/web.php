@@ -174,6 +174,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('sms-test', [SmsTestController::class, 'store'])->middleware('throttle:5,1')->name('sms-test.store');
     Route::get('system-maintenance', [SystemMaintenanceController::class, 'index'])->name('system-maintenance.index');
     Route::post('system-maintenance/run', [SystemMaintenanceController::class, 'run'])->middleware('throttle:6,1')->name('system-maintenance.run');
+    Route::post('system-maintenance/push-test', [SystemMaintenanceController::class, 'testPush'])->middleware('throttle:3,1')->name('system-maintenance.push-test');
     Route::prefix('deployments')->name('deployments.')->middleware('deployment.guard')->group(function () {
         Route::get('/', [DeploymentController::class, 'index'])->name('index');
         Route::post('export', [DeploymentController::class, 'export'])->name('export');
