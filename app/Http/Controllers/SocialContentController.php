@@ -38,6 +38,7 @@ class SocialContentController extends Controller
             'game:id,name,slug,cover,background,developer,publisher',
             'game.playlists' => fn ($query) => $query->publiclyVisible()->whereNotNull('logo')->select(['id', 'game_id', 'logo', 'sort_order']),
             'user:id,name,avatar',
+            'media',
         ]);
         $reactionCounts = $content->reactions()->selectRaw('type, COUNT(*) as aggregate')->groupBy('type')->pluck('aggregate', 'type');
         $userReaction = $request->user()
@@ -63,7 +64,7 @@ class SocialContentController extends Controller
         }
 
         $related = SocialContent::query()->published()->where('type', $content->type)->whereKeyNot($content->id)
-            ->with('game:id,name,slug,cover')
+            ->with(['game:id,name,slug,cover', 'media'])
             ->when($content->game_id, fn (Builder $query) => $query->orderByRaw('CASE WHEN game_id = ? THEN 0 ELSE 1 END', [$content->game_id]))
             ->latest('published_at')->limit(12)->get()->map(fn (SocialContent $item) => $data->content($item));
 
@@ -76,7 +77,7 @@ class SocialContentController extends Controller
             $excerpt = $this->shortFallbackDescription($content);
         }
 
-        return Inertia::render('Content/Show', [
+        return Inertia::render($content->type === 'short' ? 'Content/ShortShow' : 'Content/Show', [
             ...$seo,
             'content' => [
                 ...$data->content($content),
@@ -114,9 +115,13 @@ class SocialContentController extends Controller
         $locale = (string) config('seo.locale', 'fa-IR');
         $canonical = route('content.show', ['type' => $routeType, 'content' => $content->slug]);
         $logo = url((string) config('seo.default_image', '/logo.png'));
-        $thumbnail = MediaStorage::url($content->thumbnail);
+        $primaryVideoMedia = $content->media->first(fn ($media) => $media->type === 'video');
+        $primaryImageMedia = $content->media->first(fn ($media) => $media->type === 'image');
+        $thumbnailPath = $content->thumbnail ?: $primaryVideoMedia?->thumbnail ?: $primaryImageMedia?->path;
+        $videoPath = $content->video_path ?: $primaryVideoMedia?->path;
+        $thumbnail = MediaStorage::url($thumbnailPath);
         $thumbnail = $thumbnail ? url($thumbnail) : null;
-        $videoUrl = MediaStorage::url($content->video_path);
+        $videoUrl = MediaStorage::url($videoPath);
         $videoUrl = $videoUrl ? url($videoUrl) : null;
         $summary = RichText::plainText($content->seo_description ?: $content->excerpt ?: $content->body);
 
