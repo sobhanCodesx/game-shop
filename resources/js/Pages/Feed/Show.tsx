@@ -166,10 +166,10 @@ export default function FeedShow({
     return (
         <StorefrontLayout>
             <Seo seo={seo} />
-            <main className="mx-auto w-full max-w-6xl pb-14 pt-3 sm:px-4 lg:pt-7">
-                <div className="mx-auto max-w-[860px] px-4 sm:px-0">
-                    <nav aria-label="مسیر صفحه" className="mb-2">
-                        <ol className="flex min-w-0 items-center gap-2 overflow-hidden text-xs text-[var(--store-muted)]">
+            <main className="mx-auto w-full max-w-6xl pb-14 pt-2 sm:px-4 sm:pt-4 lg:pt-6">
+                <div className="mx-auto max-w-[820px] px-4 sm:px-0">
+                    <nav aria-label="مسیر صفحه" className="mb-1.5">
+                        <ol className="flex min-w-0 items-center gap-2 overflow-hidden text-[11px] text-[var(--store-muted)] sm:text-xs">
                             {breadcrumbs.map((crumb, index) => (
                                 <li className="contents" key={crumb.url}>
                                     {index > 0 && (
@@ -187,7 +187,7 @@ export default function FeedShow({
                                             className="inline-flex shrink-0 items-center gap-1 transition hover:text-indigo-400"
                                             href={crumb.url}
                                         >
-                                            {index === 0 && <House size={14} />}
+                                            {index === 0 && <House size={13} />}
                                             {crumb.name}
                                         </Link>
                                     )}
@@ -197,17 +197,17 @@ export default function FeedShow({
                     </nav>
 
                     <Link
-                        className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-xs font-black text-[var(--store-muted)] transition hover:bg-[var(--store-surface)] hover:text-[var(--store-text)]"
+                        className="mb-2 inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-black text-[var(--store-muted)] transition hover:bg-[var(--store-surface)] hover:text-[var(--store-text)] sm:text-xs"
                         href="/feed"
                         preserveScroll
                     >
-                        <ArrowRight size={17} /> بازگشت به فید
+                        <ArrowRight size={15} /> بازگشت به فید
                     </Link>
                 </div>
 
-                <article className="mx-auto overflow-hidden border-y border-[var(--store-border)] bg-[var(--store-panel)] shadow-[0_28px_80px_-55px_rgba(15,23,42,.8)] sm:max-w-[860px] sm:rounded-[30px] sm:border">
-                    <header className="px-4 pb-5 pt-5 sm:px-7 sm:pb-6 sm:pt-7">
-                        <div className="flex items-center gap-3">
+                <article className="mx-auto overflow-hidden border-y border-[var(--store-border)] bg-[var(--store-panel)] shadow-[0_24px_70px_-58px_rgba(15,23,42,.9)] sm:max-w-[820px] sm:rounded-[26px] sm:border">
+                    <header className="px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
+                        <div className="flex items-center gap-2.5">
                             {item.author.url ? (
                                 <Link
                                     aria-label={`مشاهده ${item.author.name}`}
@@ -223,17 +223,17 @@ export default function FeedShow({
                             <div className="min-w-0 flex-1">
                                 {item.author.url ? (
                                     <Link
-                                        className="block truncate text-sm font-black text-[var(--store-text)] transition hover:text-indigo-400"
+                                        className="block truncate text-[13px] font-black text-[var(--store-text)] transition hover:text-indigo-400 sm:text-sm"
                                         href={item.author.url}
                                     >
                                         {item.author.name}
                                     </Link>
                                 ) : (
-                                    <strong className="block truncate text-sm font-black text-[var(--store-text)]">
+                                    <strong className="block truncate text-[13px] font-black text-[var(--store-text)] sm:text-sm">
                                         {item.author.name}
                                     </strong>
                                 )}
-                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--store-muted)]">
+                                <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-[var(--store-muted)] sm:text-[11px]">
                                     <time dateTime={item.created_at}>
                                         {publishedDate.format(
                                             new Date(item.created_at),
@@ -246,14 +246,14 @@ export default function FeedShow({
 
                             {item.badge && (
                                 <span
-                                    className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-black ring-1 ${item.badge === "breaking" ? "bg-rose-500/10 text-rose-500 ring-rose-500/20" : "bg-indigo-500/10 text-indigo-500 ring-indigo-500/20"}`}
+                                    className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black ring-1 sm:text-[10px] ${item.badge === "breaking" ? "bg-rose-500/10 text-rose-500 ring-rose-500/20" : "bg-indigo-500/10 text-indigo-500 ring-indigo-500/20"}`}
                                 >
                                     {badgeLabels[item.badge] ?? item.badge}
                                 </span>
                             )}
                         </div>
 
-                        <h1 className="mt-5 text-2xl font-black leading-[1.55] tracking-tight text-[var(--store-text)] sm:text-3xl sm:leading-[1.5] lg:text-[2.15rem]">
+                        <h1 className="mt-4 text-[1.35rem] font-black leading-[1.55] tracking-tight text-[var(--store-text)] sm:mt-4 sm:text-[1.8rem] sm:leading-[1.5] lg:text-[2rem]">
                             {item.title}
                         </h1>
                     </header>
@@ -261,7 +261,7 @@ export default function FeedShow({
                     {item.media.length > 0 && (
                         <section
                             aria-label="رسانه‌های مطلب"
-                            className="overflow-hidden border-y border-[var(--store-border)] bg-black sm:mx-7 sm:rounded-[22px] sm:border"
+                            className="mx-3 overflow-hidden rounded-2xl border border-[var(--store-border)] bg-black [--feed-media-max-height:300px] sm:mx-6 sm:[--feed-media-max-height:390px] lg:[--feed-media-max-height:430px]"
                         >
                             <FeedMediaSlider
                                 media={item.media}
@@ -274,17 +274,17 @@ export default function FeedShow({
                     {(item.body_html || item.body) && (
                         <section
                             aria-label="متن مطلب"
-                            className="px-4 py-6 sm:px-7 sm:py-8"
+                            className="px-4 py-5 sm:px-6 sm:py-6"
                         >
                             {item.body_html ? (
                                 <div
-                                    className="store-rich-text text-[15px] leading-8 sm:text-base sm:leading-9"
+                                    className="store-rich-text text-[14px] leading-7 sm:text-[15px] sm:leading-8"
                                     dangerouslySetInnerHTML={{
                                         __html: item.body_html,
                                     }}
                                 />
                             ) : (
-                                <p className="whitespace-pre-wrap text-[15px] leading-8 text-[var(--store-muted)] sm:text-base sm:leading-9">
+                                <p className="whitespace-pre-wrap text-[14px] leading-7 text-[var(--store-muted)] sm:text-[15px] sm:leading-8">
                                     {item.body}
                                 </p>
                             )}
@@ -294,26 +294,26 @@ export default function FeedShow({
                     {hasRelated && (
                         <section
                             aria-labelledby="related-context-title"
-                            className="border-t border-[var(--store-border)] px-4 py-5 sm:px-7 sm:py-6"
+                            className="border-t border-[var(--store-border)] px-4 py-4 sm:px-6 sm:py-5"
                         >
-                            <div className="mb-3 flex items-center justify-between gap-3">
+                            <div className="mb-2.5 flex items-center justify-between gap-3">
                                 <h2
-                                    className="text-sm font-black text-[var(--store-text)]"
+                                    className="text-[13px] font-black text-[var(--store-text)] sm:text-sm"
                                     id="related-context-title"
                                 >
                                     مرتبط با این مطلب
                                 </h2>
-                                <span className="text-[10px] text-[var(--store-muted)]">
+                                <span className="hidden text-[10px] text-[var(--store-muted)] sm:inline">
                                     برای ادامه کشف محتوا
                                 </span>
                             </div>
-                            <div className="grid gap-2.5 md:grid-cols-3">
+                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                 {item.author.url && (
                                     <Link
-                                        className="group flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:-translate-y-0.5 hover:border-indigo-500/40 hover:bg-[var(--store-accent-soft)]"
+                                        className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] p-2.5 transition hover:border-indigo-500/40 hover:bg-[var(--store-accent-soft)]"
                                         href={item.author.url}
                                     >
-                                        <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-indigo-500/10 text-indigo-500">
+                                        <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-indigo-500/10 text-indigo-500">
                                             {item.author.avatar_url ? (
                                                 <img
                                                     alt={item.author.name}
@@ -322,14 +322,14 @@ export default function FeedShow({
                                                     src={item.author.avatar_url}
                                                 />
                                             ) : (
-                                                <Gamepad2 size={21} />
+                                                <Gamepad2 size={19} />
                                             )}
                                         </span>
                                         <span className="min-w-0">
-                                            <small className="text-[10px] font-black text-indigo-500">
+                                            <small className="text-[9px] font-black text-indigo-500">
                                                 بازی مرتبط
                                             </small>
-                                            <strong className="mt-0.5 block truncate text-xs group-hover:text-indigo-500">
+                                            <strong className="mt-0.5 block truncate text-[11px] group-hover:text-indigo-500 sm:text-xs">
                                                 {item.author.name}
                                             </strong>
                                         </span>
@@ -338,17 +338,17 @@ export default function FeedShow({
 
                                 {item.related_video && (
                                     <Link
-                                        className="group flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:-translate-y-0.5 hover:border-rose-500/40 hover:bg-rose-500/[0.06]"
+                                        className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] p-2.5 transition hover:border-rose-500/40 hover:bg-rose-500/[0.06]"
                                         href={item.related_video.url}
                                     >
-                                        <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-500">
-                                            <PlaySquare size={22} />
+                                        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-rose-500/10 text-rose-500">
+                                            <PlaySquare size={19} />
                                         </span>
                                         <span className="min-w-0">
-                                            <small className="text-[10px] font-black text-rose-500">
+                                            <small className="text-[9px] font-black text-rose-500">
                                                 ویدیوی مرتبط
                                             </small>
-                                            <strong className="mt-0.5 block truncate text-xs group-hover:text-rose-500">
+                                            <strong className="mt-0.5 block truncate text-[11px] group-hover:text-rose-500 sm:text-xs">
                                                 {item.related_video.title}
                                             </strong>
                                         </span>
@@ -357,32 +357,29 @@ export default function FeedShow({
 
                                 {item.related_product && (
                                     <Link
-                                        className="group flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:-translate-y-0.5 hover:border-emerald-500/40 hover:bg-emerald-500/[0.06]"
+                                        className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] p-2.5 transition hover:border-emerald-500/40 hover:bg-emerald-500/[0.06]"
                                         href={item.related_product.url}
                                     >
-                                        <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-emerald-500/10 text-emerald-500">
+                                        <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-emerald-500/10 text-emerald-500">
                                             {item.related_product.image_url ? (
                                                 <img
                                                     alt={item.related_product.title}
                                                     className="size-full object-cover"
                                                     loading="lazy"
-                                                    src={
-                                                        item.related_product
-                                                            .image_url
-                                                    }
+                                                    src={item.related_product.image_url}
                                                 />
                                             ) : (
-                                                <Package size={21} />
+                                                <Package size={19} />
                                             )}
                                         </span>
                                         <span className="min-w-0 flex-1">
-                                            <small className="text-[10px] font-black text-emerald-500">
+                                            <small className="text-[9px] font-black text-emerald-500">
                                                 محصول مرتبط
                                             </small>
-                                            <strong className="mt-0.5 block truncate text-xs group-hover:text-emerald-500">
+                                            <strong className="mt-0.5 block truncate text-[11px] group-hover:text-emerald-500 sm:text-xs">
                                                 {item.related_product.title}
                                             </strong>
-                                            <span className="mt-0.5 block text-[10px] text-[var(--store-muted)]">
+                                            <span className="mt-0.5 block text-[9px] text-[var(--store-muted)]">
                                                 {money.format(
                                                     item.related_product.price,
                                                 )}{" "}
@@ -395,7 +392,7 @@ export default function FeedShow({
                         </section>
                     )}
 
-                    <footer className="relative grid grid-cols-4 border-t border-[var(--store-border)] bg-[var(--store-surface)]/60 px-2 py-2.5 sm:px-5">
+                    <footer className="relative grid grid-cols-4 border-t border-[var(--store-border)] bg-[var(--store-surface)]/55 px-2 py-1.5 sm:px-4 sm:py-2">
                         <ArticleAction
                             active={liked}
                             icon={Heart}
@@ -424,7 +421,7 @@ export default function FeedShow({
                         {feedback && (
                             <button
                                 aria-label="بستن پیام"
-                                className="absolute bottom-[calc(100%+.55rem)] left-4 rounded-full bg-slate-950 px-3 py-2 text-[10px] font-bold text-white shadow-xl"
+                                className="absolute bottom-[calc(100%+.5rem)] left-3 rounded-full bg-slate-950 px-3 py-2 text-[10px] font-bold text-white shadow-xl"
                                 onClick={() => setFeedback("")}
                                 type="button"
                             >
@@ -503,7 +500,7 @@ function AuthorAvatar({ item }: { item: FeedItemData }) {
                 />
             )}
             <Avatar.Fallback>
-                <Gamepad2 size={19} />
+                <Gamepad2 size={18} />
             </Avatar.Fallback>
         </Avatar>
     );
@@ -526,11 +523,11 @@ function ArticleAction({
         <button
             aria-label={`${label}${value !== undefined ? `، ${value}` : ""}`}
             aria-pressed={active || undefined}
-            className={`flex min-h-12 items-center justify-center gap-1.5 rounded-xl text-xs font-black transition duration-200 hover:bg-[var(--store-accent-soft)] active:scale-[.97] ${active ? "text-indigo-500" : "text-[var(--store-muted)] hover:text-[var(--store-text)]"}`}
+            className={`flex min-h-10 items-center justify-center gap-1.5 rounded-xl text-[11px] font-black transition duration-200 hover:bg-[var(--store-accent-soft)] active:scale-[.97] sm:min-h-11 sm:text-xs ${active ? "text-indigo-500" : "text-[var(--store-muted)] hover:text-[var(--store-text)]"}`}
             onClick={onClick}
             type="button"
         >
-            <Icon fill={active ? "currentColor" : "none"} size={19} />
+            <Icon fill={active ? "currentColor" : "none"} size={18} />
             <span className="hidden min-[390px]:inline">{label}</span>
             {value !== undefined && value > 0 && (
                 <span>{compact.format(value)}</span>
@@ -551,17 +548,17 @@ function RelatedSection({
     title: string;
 }) {
     return (
-        <section className="mx-3 mt-9 sm:mx-0">
-            <header className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="flex items-center gap-2 text-lg font-black">
-                    <Icon className="text-indigo-400" size={20} />
+        <section className="mx-3 mt-8 sm:mx-0 sm:mt-9">
+            <header className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
+                <h2 className="flex items-center gap-2 text-base font-black sm:text-lg">
+                    <Icon className="text-indigo-400" size={19} />
                     {title}
                 </h2>
                 <Link
-                    className="inline-flex min-h-10 items-center gap-1 rounded-full px-3 text-xs font-black text-indigo-400 transition hover:bg-indigo-500/10"
+                    className="inline-flex min-h-9 items-center gap-1 rounded-full px-2.5 text-[11px] font-black text-indigo-400 transition hover:bg-indigo-500/10 sm:min-h-10 sm:px-3 sm:text-xs"
                     href={href}
                 >
-                    دیدن همه <ArrowLeft size={15} />
+                    دیدن همه <ArrowLeft size={14} />
                 </Link>
             </header>
             {children}
@@ -586,7 +583,7 @@ function FeedPreview({ item }: { item: FeedItemData }) {
                         />
                     ) : (
                         <span className="grid size-full place-items-center text-indigo-400">
-                            <Newspaper size={34} />
+                            <Newspaper size={32} />
                         </span>
                     )}
                 </div>
