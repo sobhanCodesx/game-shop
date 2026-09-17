@@ -9,6 +9,7 @@ use App\Models\Studio;
 use App\Models\User;
 use App\Models\VideoPlaylist;
 use App\Support\RichText;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -31,7 +32,6 @@ class ContentAgentService
         $limit = (int) ($data['limit'] ?? 10);
 
         return Game::query()
-            ->whereIn('status', ['active', 'published'])
             ->where(function ($builder) use ($query): void {
                 $builder->where('name', 'like', "%{$query}%")
                     ->orWhere('developer', 'like', "%{$query}%")
@@ -65,7 +65,6 @@ class ContentAgentService
         $limit = (int) ($data['limit'] ?? 10);
 
         return Studio::query()
-            ->where('status', 'active')
             ->where('name', 'like', "%{$query}%")
             ->withCount('games')
             ->orderBy('name')
@@ -117,7 +116,6 @@ class ContentAgentService
         $limit = (int) ($data['limit'] ?? 10);
 
         return VideoPlaylist::query()
-            ->where('visibility', 'public')
             ->where('title', 'like', "%{$query}%")
             ->with(['game:id,name,slug', 'studio:id,name,slug'])
             ->orderBy('title')
@@ -387,11 +385,21 @@ class ContentAgentService
         $base = Str::slug($title) ?: $fallback;
         $slug = $base;
 
-        for ($counter = 2; $modelClass::query()->withTrashed()->where('slug', $slug)->exists(); $counter++) {
+        for ($counter = 2; $this->slugExists($modelClass, $slug); $counter++) {
             $slug = "{$base}-{$counter}";
         }
 
         return $slug;
+    }
+
+    private function slugExists(string $modelClass, string $slug): bool
+    {
+        $query = $modelClass::query();
+        if (in_array(SoftDeletes::class, class_uses_recursive($modelClass), true)) {
+            $query->withTrashed();
+        }
+
+        return $query->where('slug', $slug)->exists();
     }
 
     private function serializeGame(Game $game): array
@@ -411,7 +419,7 @@ class ContentAgentService
             'platforms' => $game->platforms->map->only(['id', 'name', 'slug'])->values()->all(),
             'status' => $game->status,
             'needs_media' => ! $game->cover,
-            'url' => $game->status === 'active' ? route('games.show', $game->slug, false) : null,
+            'url' => in_array($game->status, ['active', 'published'], true) ? route('channels.show', $game->slug, false) : null,
         ];
     }
 
