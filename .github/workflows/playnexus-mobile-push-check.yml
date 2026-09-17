@@ -5,7 +5,6 @@ on:
     paths:
       - 'app/Http/Controllers/Admin/SystemMaintenanceController.php'
       - 'app/Jobs/SendExpoPushNotification.php'
-      - 'app/Notifications/AdminPushTestNotification.php'
       - 'app/Notifications/ContentPublishedNotification.php'
       - 'app/Notifications/Channels/ExpoPushChannel.php'
       - 'app/Services/CronManagerService.php'
@@ -20,7 +19,6 @@ on:
     paths:
       - 'app/Http/Controllers/Admin/SystemMaintenanceController.php'
       - 'app/Jobs/SendExpoPushNotification.php'
-      - 'app/Notifications/AdminPushTestNotification.php'
       - 'app/Notifications/ContentPublishedNotification.php'
       - 'app/Notifications/Channels/ExpoPushChannel.php'
       - 'app/Services/CronManagerService.php'
@@ -45,7 +43,6 @@ jobs:
         run: |
           php -l app/Http/Controllers/Admin/SystemMaintenanceController.php
           php -l app/Jobs/SendExpoPushNotification.php
-          php -l app/Notifications/AdminPushTestNotification.php
           php -l app/Notifications/ContentPublishedNotification.php
           php -l app/Notifications/Channels/ExpoPushChannel.php
           php -l app/Services/CronManagerService.php
