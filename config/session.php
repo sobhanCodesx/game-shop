@@ -32,8 +32,8 @@ return [
     |
     */
 
-    // Two weeks. Production can still override this via SESSION_LIFETIME.
-    'lifetime' => (int) env('SESSION_LIFETIME', 20160),
+    // Keep authenticated storefront sessions alive for two weeks (20,160 minutes).
+    'lifetime' => 20160,
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
