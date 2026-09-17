@@ -51,7 +51,7 @@ Route::get('feed/{content:slug}', [FeedController::class, 'legacyShow'])->name('
 Route::get('feed/{content:slug}/comments', [FeedController::class, 'comments'])->name('feed.comments');
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
 Route::get('sitemaps/{type}.xml', [SitemapController::class, 'show'])
-    ->whereIn('type', ['static', 'products', 'categories', 'feed', 'content', 'channels', 'studios', 'playlists'])
+    ->whereIn('type', ['static', 'products', 'categories', 'feed', 'videos', 'content', 'channels', 'studios', 'playlists'])
     ->name('sitemap.show');
 Route::get('media/{path}', MediaStreamController::class)->where('path', '.*')->name('media.stream');
 
