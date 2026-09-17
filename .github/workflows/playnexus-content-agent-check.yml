@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 jobs:
-  syntax:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,3 +33,7 @@ jobs:
           php -l tests/Feature/ContentAgentMcpTest.php
       - name: Python syntax
         run: python3 -m py_compile scripts/playnexus_publish.py
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Run content agent feature tests
+        run: php artisan test tests/Feature/ContentAgentMcpTest.php
