@@ -13,6 +13,8 @@ Route::prefix('admin/file-manager')
         Route::post('file', 'storeFile')->name('file.store');
         Route::post('directory', 'storeDirectory')->name('directory.store');
         Route::post('upload', 'upload')->name('upload');
+        Route::post('upload/chunk', 'uploadChunk')->name('upload.chunk');
+        Route::post('upload/complete', 'completeChunkedUpload')->name('upload.complete');
         Route::patch('rename', 'rename')->name('rename');
         Route::delete('entry', 'destroy')->name('destroy');
         Route::get('download', 'download')->name('download');
