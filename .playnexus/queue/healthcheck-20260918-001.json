@@ -1,0 +1,8 @@
+{
+  "job_id": "healthcheck-20260918-001",
+  "tool": "search_games",
+  "arguments": {
+    "query": "Red Dead Redemption 2",
+    "limit": 1
+  }
+}
