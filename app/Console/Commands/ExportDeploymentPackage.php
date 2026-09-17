@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\Deployment\PackageBuilder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
@@ -19,6 +20,12 @@ class ExportDeploymentPackage extends Command
     {
         $startedAt = microtime(true);
         $stageStartedAt = $startedAt;
+        $requestedOutput = trim((string) $this->option('output'));
+
+        Log::channel('deployment_export')->info('Deployment export started.', [
+            'output' => $requestedOutput !== '' ? $requestedOutput : 'deployment-exports',
+            'environment' => app()->environment(),
+        ]);
 
         $this->newLine();
         $this->line('============================================================');
@@ -26,6 +33,7 @@ class ExportDeploymentPackage extends Command
         $this->line('============================================================');
         $this->line(' Status : Starting');
         $this->line(' Time   : '.now()->format('Y-m-d H:i:s'));
+        $this->line(' Log    : '.$this->logPath());
         $this->line('------------------------------------------------------------');
 
         try {
@@ -42,11 +50,17 @@ class ExportDeploymentPackage extends Command
                     default => str_replace('_', ' ', ucfirst($stage)),
                 };
 
+                Log::channel('deployment_export')->info('Deployment export stage.', [
+                    'stage' => $stage,
+                    'progress' => $progress,
+                    'elapsed_since_previous_stage_seconds' => round($elapsed, 3),
+                ]);
+
                 $suffix = $progress > 5 ? sprintf('  (+%.2fs)', $elapsed) : '';
                 $this->line(sprintf(' [%3d%%] %-36s%s', $progress, $label, $suffix));
             });
 
-            $destination = $this->resolveDestination((string) $this->option('output'), $result['name']);
+            $destination = $this->resolveDestination($requestedOutput, $result['name']);
             $directory = dirname($destination);
 
             if (! File::isDirectory($directory) && ! File::makeDirectory($directory, 0755, true)) {
@@ -61,6 +75,14 @@ class ExportDeploymentPackage extends Command
             $manifest = is_array($result['manifest'] ?? null) ? $result['manifest'] : [];
             $elapsed = microtime(true) - $startedAt;
 
+            Log::channel('deployment_export')->info('Deployment export completed successfully.', [
+                'destination' => $destination,
+                'size_bytes' => $size === false ? null : $size,
+                'version' => $manifest['version'] ?? null,
+                'git_commit' => $manifest['git_commit'] ?? null,
+                'elapsed_seconds' => round($elapsed, 3),
+            ]);
+
             $this->line('------------------------------------------------------------');
             $this->line(' RESULT');
             $this->line('------------------------------------------------------------');
@@ -69,18 +91,28 @@ class ExportDeploymentPackage extends Command
             $this->line(' Size   : '.($size === false ? 'Unknown' : $this->formatBytes($size)));
             $this->line(' Version: '.($manifest['version'] ?? 'Unknown'));
             $this->line(' Commit : '.($manifest['git_commit'] ?? 'Not available'));
+            $this->line(' Log    : '.$this->logPath());
             $this->line(sprintf(' Took   : %.2f seconds', $elapsed));
             $this->line('============================================================');
             $this->newLine();
 
             return self::SUCCESS;
         } catch (Throwable $e) {
+            $elapsed = microtime(true) - $startedAt;
+
+            Log::channel('deployment_export')->error('Deployment export failed.', [
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+                'elapsed_seconds' => round($elapsed, 3),
+            ]);
+
             $this->line('------------------------------------------------------------');
             $this->line(' RESULT');
             $this->line('------------------------------------------------------------');
             $this->line(' Status : FAILED');
             $this->line(' Error  : '.$this->englishError($e));
-            $this->line(sprintf(' Took   : %.2f seconds', microtime(true) - $startedAt));
+            $this->line(' Log    : '.$this->logPath());
+            $this->line(sprintf(' Took   : %.2f seconds', $elapsed));
             $this->line('============================================================');
             $this->newLine();
 
@@ -142,6 +174,11 @@ class ExportDeploymentPackage extends Command
         return number_format($value, 2).' TB';
     }
 
+    private function logPath(): string
+    {
+        return storage_path('logs/deployment-export-'.now()->format('Y-m-d').'.log');
+    }
+
     private function englishError(Throwable $e): string
     {
         $message = trim($e->getMessage());
@@ -177,6 +214,6 @@ class ExportDeploymentPackage extends Command
 
         return $message !== '' && preg_match('/^[\x20-\x7E]+$/', $message)
             ? $message
-            : 'Deployment export failed. Check the application log for the original exception.';
+            : 'Deployment export failed. See the deployment export log for the original exception.';
     }
 }
