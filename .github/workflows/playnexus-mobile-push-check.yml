@@ -1,0 +1,59 @@
+name: PlayNexus Mobile Push Check
+
+on:
+  push:
+    paths:
+      - 'app/Http/Controllers/Admin/SystemMaintenanceController.php'
+      - 'app/Notifications/AdminPushTestNotification.php'
+      - 'app/Notifications/ContentPublishedNotification.php'
+      - 'app/Notifications/Channels/ExpoPushChannel.php'
+      - 'app/Jobs/SendExpoPushNotification.php'
+      - 'resources/js/Pages/Admin/SystemMaintenance/Index.tsx'
+      - 'routes/web.php'
+      - 'tests/Unit/ContentPublishedNotificationTest.php'
+      - '.github/workflows/playnexus-mobile-push-check.yml'
+  pull_request:
+    paths:
+      - 'app/Http/Controllers/Admin/SystemMaintenanceController.php'
+      - 'app/Notifications/AdminPushTestNotification.php'
+      - 'app/Notifications/ContentPublishedNotification.php'
+      - 'app/Notifications/Channels/ExpoPushChannel.php'
+      - 'app/Jobs/SendExpoPushNotification.php'
+      - 'resources/js/Pages/Admin/SystemMaintenance/Index.tsx'
+      - 'routes/web.php'
+      - 'tests/Unit/ContentPublishedNotificationTest.php'
+      - '.github/workflows/playnexus-mobile-push-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          php -l app/Http/Controllers/Admin/SystemMaintenanceController.php
+          php -l app/Notifications/AdminPushTestNotification.php
+          php -l app/Notifications/ContentPublishedNotification.php
+          php -l app/Notifications/Channels/ExpoPushChannel.php
+          php -l app/Jobs/SendExpoPushNotification.php
+          php -l routes/web.php
+          php -l tests/Unit/ContentPublishedNotificationTest.php
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run notification unit test
+        run: php artisan test tests/Unit/ContentPublishedNotificationTest.php
+
+      - name: Verify admin push test route
+        run: php artisan route:list --path=admin/system-maintenance --except-vendor
+
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build client assets
+        run: npm run build:client
