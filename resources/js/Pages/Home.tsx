@@ -27,6 +27,7 @@ import type {
     StorefrontProduct,
 } from "../types";
 import ProductCard from "../Components/Storefront/Product/ProductCard";
+import VideoProgressBar from "../Components/Storefront/Video/VideoProgressBar";
 import Seo, { type SeoData } from "../Components/Seo";
 
 interface Pricing {
@@ -294,6 +295,9 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                     {items.map((item) => {
                         const unseen = Date.parse(item.published_at) > seenAt;
                         const video = item.type === "video";
+                        const contentId = video
+                            ? Number(item.key.replace(/^video-/, ""))
+                            : 0;
                         return (
                             <Link
                                 className={`group w-[calc((100%_-_1rem)/2)] shrink-0 snap-start overflow-hidden rounded-[22px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
@@ -377,6 +381,12 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                                             >
                                                 {durationLabel(item.duration)}
                                             </span>
+                                        )}
+                                        {video && contentId > 0 && (
+                                            <VideoProgressBar
+                                                contentId={contentId}
+                                                duration={item.duration}
+                                            />
                                         )}
                                     </div>
                                     <div className="flex min-h-28 flex-1 flex-col p-3">
@@ -510,6 +520,7 @@ function ContentRail({ section }: { section: ContentSection }) {
         });
     const isProduct = section.content_type === "products";
     const isShort = section.content_type === "shorts";
+    const isVideo = ["videos", "shorts"].includes(section.content_type);
 
     return (
         <section className="mx-auto min-w-0 max-w-7xl px-4 py-10">
@@ -612,6 +623,12 @@ function ContentRail({ section }: { section: ContentSection }) {
                                     >
                                         {item.badge}
                                     </Chip>
+                                )}
+                                {isVideo && (
+                                    <VideoProgressBar
+                                        contentId={item.id}
+                                        duration={item.duration}
+                                    />
                                 )}
                             </div>
                             <Card.Content className="space-y-2 p-4">
