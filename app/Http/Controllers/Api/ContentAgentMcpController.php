@@ -104,6 +104,12 @@ class ContentAgentMcpController extends Controller
         $result = match ($name) {
             'search_games' => $contentAgent->searchGames($arguments),
             'search_studios' => $contentAgent->searchStudios($arguments),
+            'search_platforms' => $contentAgent->searchPlatforms($arguments),
+            'search_collections' => $contentAgent->searchCollections($arguments),
+            'create_game' => $contentAgent->createGame($arguments),
+            'create_studio' => $contentAgent->createStudio($arguments),
+            'create_collection' => $contentAgent->createCollection($arguments),
+            'create_story' => $contentAgent->createStory($arguments),
             'get_feed' => $contentAgent->getFeed($arguments),
             'create_feed' => $contentAgent->createFeed($arguments),
             'update_feed' => $contentAgent->updateFeed($arguments),
@@ -154,33 +160,91 @@ class ContentAgentMcpController extends Controller
         ];
 
         return [
+            $this->searchTool('search_games', 'Search existing active PlayNexus games before linking content to a game.'),
+            $this->searchTool('search_studios', 'Search existing active PlayNexus game studios.'),
             [
-                'name' => 'search_games',
-                'description' => 'Search existing PlayNexus games before linking a feed to a game.',
+                'name' => 'search_platforms',
+                'description' => 'Search active platforms and retrieve ids for create_game.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
-                        'query' => ['type' => 'string', 'maxLength' => 120],
-                        'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 20, 'default' => 10],
+                        'query' => ['type' => ['string', 'null'], 'maxLength' => 120],
+                        'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 30, 'default' => 20],
                     ],
-                    'required' => ['query'],
                     'additionalProperties' => false,
                 ],
                 'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
+            $this->searchTool('search_collections', 'Search existing public PlayNexus collections.'),
             [
-                'name' => 'search_studios',
-                'description' => 'Search existing PlayNexus game studios.',
+                'name' => 'create_game',
+                'description' => 'Create a new PlayNexus game as INACTIVE. It is never made public by this tool and media can be added later in admin.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
-                        'query' => ['type' => 'string', 'maxLength' => 120],
-                        'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 20, 'default' => 10],
+                        'name' => ['type' => 'string', 'maxLength' => 255],
+                        'studio_id' => ['type' => ['integer', 'null']],
+                        'developer' => ['type' => ['string', 'null'], 'maxLength' => 255],
+                        'publisher' => ['type' => ['string', 'null'], 'maxLength' => 255],
+                        'release_date' => ['type' => ['string', 'null'], 'description' => 'Date such as YYYY-MM-DD.'],
+                        'age_rating' => ['type' => ['string', 'null'], 'maxLength' => 20],
+                        'description' => ['type' => ['string', 'null'], 'maxLength' => 100000],
+                        'platform_ids' => ['type' => 'array', 'items' => ['type' => 'integer'], 'maxItems' => 30, 'uniqueItems' => true],
                     ],
-                    'required' => ['query'],
+                    'required' => ['name'],
                     'additionalProperties' => false,
                 ],
-                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'create_studio',
+                'description' => 'Create a new PlayNexus studio as INACTIVE. It is never made public by this tool and logo/background can be added later in admin.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'name' => ['type' => 'string', 'maxLength' => 160],
+                        'description' => ['type' => ['string', 'null'], 'maxLength' => 100000],
+                        'website' => ['type' => ['string', 'null'], 'maxLength' => 255],
+                    ],
+                    'required' => ['name'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'create_collection',
+                'description' => 'Create a PlayNexus video collection as PRIVATE. It is never made public by this tool.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'title' => ['type' => 'string', 'maxLength' => 160],
+                        'game_id' => ['type' => ['integer', 'null']],
+                        'studio_id' => ['type' => ['integer', 'null']],
+                        'description' => ['type' => ['string', 'null'], 'maxLength' => 100000],
+                        'sort_order' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 65535, 'default' => 0],
+                    ],
+                    'required' => ['title'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'create_story',
+                'description' => 'Create PlayNexus storefront story metadata as DRAFT. Media is intentionally not accepted by this JSON tool; add image/video before publishing.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'title' => ['type' => 'string', 'maxLength' => 100],
+                        'excerpt' => ['type' => ['string', 'null'], 'maxLength' => 240],
+                        'game_id' => ['type' => ['integer', 'null']],
+                        'link_url' => ['type' => ['string', 'null'], 'maxLength' => 500],
+                        'link_label' => ['type' => ['string', 'null'], 'maxLength' => 60],
+                        'sort_order' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 9999, 'default' => 0],
+                    ],
+                    'required' => ['title'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             [
                 'name' => 'get_feed',
@@ -229,9 +293,27 @@ class ContentAgentMcpController extends Controller
         ];
     }
 
+    private function searchTool(string $name, string $description): array
+    {
+        return [
+            'name' => $name,
+            'description' => $description,
+            'inputSchema' => [
+                'type' => 'object',
+                'properties' => [
+                    'query' => ['type' => 'string', 'maxLength' => 120],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 20, 'default' => 10],
+                ],
+                'required' => ['query'],
+                'additionalProperties' => false,
+            ],
+            'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+        ];
+    }
+
     private function instructions(): string
     {
-        return 'PlayNexus content tools. Create content as a draft first. Publish only after an explicit user request and only when server-side publishing is enabled.';
+        return 'PlayNexus content tools. Create feeds and stories as drafts, games/studios as inactive, and collections as private. Publish or activate content only after an explicit user request and only through dedicated server-side gated tools.';
     }
 
     private function serverInfo(): array
@@ -239,7 +321,7 @@ class ContentAgentMcpController extends Controller
         return [
             'name' => 'playnexus-content-agent',
             'title' => 'PlayNexus Content Agent',
-            'version' => '1.0.0',
+            'version' => '1.1.0',
         ];
     }
 

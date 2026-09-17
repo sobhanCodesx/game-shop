@@ -1,0 +1,99 @@
+name: PlayNexus Content Publisher
+
+on:
+  push:
+    branches:
+      - feature/playnexus-github-publisher
+    paths:
+      - '.playnexus/queue/*.json'
+  workflow_dispatch:
+    inputs:
+      job_path:
+        description: 'Path to a queued PlayNexus JSON job'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playnexus-content-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PLAYNEXUS_MCP_URL: https://playnexus.ir/api/mcp
+      PLAYNEXUS_CONTENT_AGENT_TOKEN: ${{ secrets.PLAYNEXUS_CONTENT_AGENT_TOKEN }}
+
+    steps:
+      - name: Checkout publisher branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve queued jobs
+        id: jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/playnexus-jobs.txt
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            job_path='${{ inputs.job_path }}'
+            if [[ "$job_path" != .playnexus/queue/*.json ]]; then
+              echo "::error::job_path must match .playnexus/queue/*.json"
+              exit 1
+            fi
+            if [[ ! -f "$job_path" ]]; then
+              echo "::error::Job file not found: $job_path"
+              exit 1
+            fi
+            printf '%s\n' "$job_path" >> /tmp/playnexus-jobs.txt
+          else
+            before='${{ github.event.before }}'
+            after='${{ github.sha }}'
+
+            if [[ "$before" =~ ^0+$ ]]; then
+              git diff-tree --no-commit-id --name-only -r "$after" -- '.playnexus/queue/*.json' > /tmp/playnexus-jobs.txt
+            else
+              git diff --name-only "$before" "$after" -- '.playnexus/queue/*.json' > /tmp/playnexus-jobs.txt
+            fi
+
+            # Ignore deleted queue files and anything outside the expected path.
+            tmp_file="$(mktemp)"
+            while IFS= read -r path; do
+              [[ "$path" == .playnexus/queue/*.json ]] || continue
+              [[ -f "$path" ]] || continue
+              printf '%s\n' "$path" >> "$tmp_file"
+            done < /tmp/playnexus-jobs.txt
+            mv "$tmp_file" /tmp/playnexus-jobs.txt
+          fi
+
+          if [[ ! -s /tmp/playnexus-jobs.txt ]]; then
+            echo "::error::No PlayNexus queue jobs were found in this run."
+            exit 1
+          fi
+
+          echo 'Jobs to process:'
+          cat /tmp/playnexus-jobs.txt
+
+      - name: Verify publisher secret exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${PLAYNEXUS_CONTENT_AGENT_TOKEN:-}" ]]; then
+            echo "::error::Repository secret PLAYNEXUS_CONTENT_AGENT_TOKEN is missing."
+            exit 1
+          fi
+
+      - name: Send jobs to PlayNexus
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r job; do
+            echo "Processing $job"
+            python3 scripts/playnexus_publish.py "$job"
+          done < /tmp/playnexus-jobs.txt
