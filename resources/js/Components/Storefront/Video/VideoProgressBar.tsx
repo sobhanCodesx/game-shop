@@ -20,10 +20,11 @@ export default function VideoProgressBar({
     return (
         <span
             aria-hidden="true"
-            className={`pointer-events-none absolute inset-x-0 bottom-0 z-30 h-1 bg-black/35 ${className}`}
+            className={`pointer-events-none absolute inset-x-0 bottom-0 z-30 h-1 overflow-hidden bg-black/35 ${className}`}
+            dir="ltr"
         >
             <span
-                className="block h-full bg-red-600 transition-[width] duration-200"
+                className="absolute bottom-0 left-0 top-0 bg-red-600 transition-[width] duration-200"
                 style={{ width: `${percent}%` }}
             />
         </span>
