@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import {
     type ChangeEvent,
+    type DragEvent,
     lazy,
     Suspense,
     useCallback,
@@ -28,6 +29,10 @@ import type {
     ProjectEntry,
 } from "../../../Components/Admin/ProjectFileBrowser";
 import AdminLayout from "../../../Layouts/AdminLayout";
+import {
+    uploadProjectFile,
+    type ProjectFileUploadProgress,
+} from "../../../services/projectFileUpload";
 
 const ProjectFileBrowser = lazy(
     () => import("../../../Components/Admin/ProjectFileBrowser"),
@@ -61,6 +66,7 @@ type Props = {
     limits: {
         max_edit_bytes: number;
         max_upload_kilobytes: number;
+        max_chunked_upload_bytes: number;
     };
 };
 
@@ -88,6 +94,10 @@ export default function FileManager({
     );
     const [content, setContent] = useState(selectedFile?.content ?? "");
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [dragActive, setDragActive] = useState(false);
+    const [uploadProgress, setUploadProgress] =
+        useState<ProjectFileUploadProgress | null>(null);
     const uploadRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => setMounted(true), []);
@@ -200,33 +210,72 @@ export default function FileManager({
         });
     };
 
+    const uploadFile = useCallback(
+        async (file: File) => {
+            if (uploading) return;
+
+            if (file.size > limits.max_chunked_upload_bytes) {
+                window.alert(
+                    `حجم «${file.name}» بیشتر از سقف ${formatBytes(limits.max_chunked_upload_bytes)} است.`,
+                );
+                return;
+            }
+
+            const duplicate = entries.some((entry) => entry.name === file.name);
+            const overwrite = duplicate
+                ? window.confirm(
+                      `«${file.name}» وجود دارد. نسخه فعلی جایگزین شود؟`,
+                  )
+                : false;
+
+            if (duplicate && !overwrite) return;
+
+            setUploading(true);
+            setUploadProgress({
+                percentage: 0,
+                uploadedBytes: 0,
+                totalBytes: file.size,
+            });
+
+            try {
+                await uploadProjectFile(
+                    file,
+                    currentPath,
+                    overwrite,
+                    setUploadProgress,
+                );
+                router.reload({ preserveScroll: true });
+            } catch (error) {
+                window.alert(
+                    error instanceof Error
+                        ? error.message
+                        : "آپلود فایل ناموفق بود.",
+                );
+            } finally {
+                setUploading(false);
+                setDragActive(false);
+                if (uploadRef.current) uploadRef.current.value = "";
+            }
+        },
+        [
+            currentPath,
+            entries,
+            limits.max_chunked_upload_bytes,
+            uploading,
+        ],
+    );
+
     const upload = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
+        void uploadFile(file);
+    };
 
-        const duplicate = entries.some((entry) => entry.name === file.name);
-        const overwrite = duplicate
-            ? window.confirm(
-                  `«${file.name}» وجود دارد. نسخه فعلی جایگزین شود؟`,
-              )
-            : false;
-
-        if (duplicate && !overwrite) {
-            event.target.value = "";
-            return;
-        }
-
-        router.post(
-            "/admin/file-manager/upload",
-            { directory: currentPath, file, overwrite },
-            {
-                forceFormData: true,
-                preserveScroll: true,
-                onFinish: () => {
-                    if (uploadRef.current) uploadRef.current.value = "";
-                },
-            },
-        );
+    const dropFile = (event: DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        setDragActive(false);
+        const file = event.dataTransfer.files?.[0];
+        if (file) void uploadFile(file);
     };
 
     const actions = (
@@ -246,12 +295,16 @@ export default function FileManager({
                 فایل جدید
             </Button>
             <Button
+                isDisabled={uploading}
+                isPending={uploading}
                 onPress={() => uploadRef.current?.click()}
                 size="sm"
                 variant="primary"
             >
-                <Upload size={16} />
-                آپلود
+                {!uploading && <Upload size={16} />}
+                {uploading
+                    ? `آپلود ${uploadProgress?.percentage ?? 0}٪`
+                    : "آپلود"}
             </Button>
         </>
     );
@@ -321,6 +374,55 @@ export default function FileManager({
                 >
                     <RefreshCw size={15} />
                 </Button>
+            </div>
+
+            <div
+                className={`mb-4 flex min-h-24 items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center transition ${
+                    dragActive
+                        ? "border-indigo-400 bg-indigo-500/10"
+                        : "border-slate-700 bg-slate-900/40"
+                }`}
+                onDragEnter={(event) => {
+                    event.preventDefault();
+                    setDragActive(true);
+                }}
+                onDragLeave={(event) => {
+                    event.preventDefault();
+                    setDragActive(false);
+                }}
+                onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "copy";
+                    setDragActive(true);
+                }}
+                onDrop={dropFile}
+            >
+                <div>
+                    <Upload
+                        className="mx-auto text-indigo-300"
+                        size={24}
+                    />
+                    <p className="mt-2 text-sm font-black text-slate-200">
+                        {uploading
+                            ? `در حال آپلود… ${uploadProgress?.percentage ?? 0}٪`
+                            : "فایل را اینجا رها کن"}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-5 text-slate-500">
+                        ZIP، APK و فایل‌های باینری پشتیبانی می‌شوند؛ حداکثر{" "}
+                        {formatBytes(limits.max_chunked_upload_bytes)} و به‌صورت
+                        Chunked.
+                    </p>
+                    {uploadProgress && (
+                        <div className="mx-auto mt-3 h-1.5 w-64 max-w-full overflow-hidden rounded-full bg-slate-800">
+                            <div
+                                className="h-full rounded-full bg-indigo-400 transition-[width]"
+                                style={{
+                                    width: `${uploadProgress.percentage}%`,
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="grid gap-5 2xl:grid-cols-[minmax(520px,1fr)_minmax(620px,1.15fr)]">
