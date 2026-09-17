@@ -1,21 +1,31 @@
-import { Link } from "@inertiajs/react";
+import { Avatar } from "@heroui/react";
+import { Link, router, usePage } from "@inertiajs/react";
 import {
     ArrowLeft,
     ArrowRight,
+    Bookmark,
+    Gamepad2,
+    Heart,
     House,
+    MessageCircle,
     Newspaper,
+    Package,
+    PlaySquare,
+    Share2,
     ShoppingBag,
     Video,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
-import FeedItem from "../../Components/Storefront/Feed/FeedItem";
+import FeedCommentsSheet from "../../Components/Storefront/Feed/FeedCommentsSheet";
+import FeedMediaSlider from "../../Components/Storefront/Feed/FeedMediaSlider";
 import ProductCard from "../../Components/Storefront/Product/ProductCard";
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
 import Seo, { type SeoData } from "../../Components/Seo";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import type {
     FeedItemData,
+    SharedPageProps,
     StorefrontContent,
     StorefrontProduct,
 } from "../../types";
@@ -25,6 +35,42 @@ interface BreadcrumbItem {
     url: string;
     current: boolean;
 }
+
+const compact = new Intl.NumberFormat("fa-IR", { notation: "compact" });
+const money = new Intl.NumberFormat("fa-IR");
+const publishedDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Tehran",
+});
+
+const badgeLabels: Record<string, string> = {
+    breaking: "فوری",
+    news: "خبر",
+    trailer: "تریلر",
+    gameplay: "گیم‌پلی",
+    update: "آپدیت",
+    rumor: "شایعه",
+    review: "نقد",
+    patch_notes: "Patch Notes",
+};
+
+const typeLabels: Record<FeedItemData["type"], string> = {
+    post: "پست",
+    news: "خبر",
+    article: "مقاله",
+    video: "ویدیو",
+    clip: "کلیپ",
+    trailer: "تریلر",
+    game_update: "آپدیت بازی",
+    review: "نقد و بررسی",
+    image: "تصویر",
+};
+
+const csrf = () =>
+    document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+        ?.content ?? "";
 
 export default function FeedShow({
     seo,
@@ -41,48 +87,362 @@ export default function FeedShow({
     latestProducts: StorefrontProduct[];
     breadcrumbs: BreadcrumbItem[];
 }) {
+    const { auth } = usePage<SharedPageProps>().props;
+    const [liked, setLiked] = useState(item.is_liked);
+    const [likes, setLikes] = useState(item.likes_count);
+    const [saved, setSaved] = useState(item.is_saved);
+    const [comments, setComments] = useState(item.comments_count);
+    const [commentsOpen, setCommentsOpen] = useState(false);
+    const [feedback, setFeedback] = useState("");
+
+    const requireAuth = () => {
+        if (auth.user) return true;
+        router.visit(
+            `/login?redirect=${encodeURIComponent(window.location.href)}`,
+        );
+        return false;
+    };
+
+    const post = async (path: string) => {
+        const response = await fetch(path, {
+            method: "POST",
+            headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": csrf(),
+            },
+            body: JSON.stringify({ type: "like" }),
+        });
+        if (!response.ok) throw new Error();
+    };
+
+    const toggleLike = async () => {
+        if (!requireAuth()) return;
+        const before = liked;
+        setLiked(!before);
+        setLikes((value) => Math.max(0, value + (before ? -1 : 1)));
+        try {
+            await post(`/feed/${item.feed_slug}/reaction`);
+        } catch {
+            setLiked(before);
+            setLikes((value) => Math.max(0, value + (before ? 1 : -1)));
+            setFeedback("ثبت پسند انجام نشد");
+        }
+    };
+
+    const toggleSave = async () => {
+        if (!requireAuth()) return;
+        const before = saved;
+        setSaved(!before);
+        try {
+            await post(`/feed/${item.feed_slug}/save`);
+            setFeedback(before ? "از ذخیره‌ها حذف شد" : "برای بعد ذخیره شد");
+        } catch {
+            setSaved(before);
+            setFeedback("ذخیره انجام نشد");
+        }
+    };
+
+    const share = async () => {
+        const url = new URL(item.url, window.location.origin).toString();
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: item.title, url });
+            } else {
+                await navigator.clipboard.writeText(url);
+                setFeedback("لینک مطلب کپی شد");
+            }
+        } catch (error) {
+            if ((error as DOMException).name !== "AbortError") {
+                setFeedback("اشتراک‌گذاری انجام نشد");
+            }
+        }
+    };
+
+    const hasRelated = Boolean(
+        item.author.url || item.related_video || item.related_product,
+    );
+
     return (
         <StorefrontLayout>
             <Seo seo={seo} />
-            <main className="mx-auto w-full max-w-6xl pb-12 pt-3 sm:px-4 lg:pt-7">
-                <nav
-                    aria-label="مسیر صفحه"
-                    className="mx-4 mb-2 max-w-[720px] sm:mx-auto"
-                >
-                    <ol className="flex min-w-0 items-center gap-2 text-xs text-[var(--store-muted)]">
-                        {breadcrumbs.map((crumb, index) => (
-                            <li className="contents" key={crumb.url}>
-                                {index > 0 && <span aria-hidden="true">/</span>}
-                                {crumb.current ? (
-                                    <span
-                                        aria-current="page"
-                                        className="truncate"
-                                    >
-                                        {crumb.name}
-                                    </span>
-                                ) : (
-                                    <Link
-                                        className="inline-flex items-center gap-1 hover:text-indigo-400"
-                                        href={crumb.url}
-                                    >
-                                        {index === 0 && <House size={14} />}
-                                        {crumb.name}
-                                    </Link>
-                                )}
-                            </li>
-                        ))}
-                    </ol>
-                </nav>
-                <div className="mx-auto max-w-[720px]">
+            <main className="mx-auto w-full max-w-6xl pb-14 pt-3 sm:px-4 lg:pt-7">
+                <div className="mx-auto max-w-[860px] px-4 sm:px-0">
+                    <nav aria-label="مسیر صفحه" className="mb-2">
+                        <ol className="flex min-w-0 items-center gap-2 overflow-hidden text-xs text-[var(--store-muted)]">
+                            {breadcrumbs.map((crumb, index) => (
+                                <li className="contents" key={crumb.url}>
+                                    {index > 0 && (
+                                        <span aria-hidden="true">/</span>
+                                    )}
+                                    {crumb.current ? (
+                                        <span
+                                            aria-current="page"
+                                            className="truncate"
+                                        >
+                                            {crumb.name}
+                                        </span>
+                                    ) : (
+                                        <Link
+                                            className="inline-flex shrink-0 items-center gap-1 transition hover:text-indigo-400"
+                                            href={crumb.url}
+                                        >
+                                            {index === 0 && <House size={14} />}
+                                            {crumb.name}
+                                        </Link>
+                                    )}
+                                </li>
+                            ))}
+                        </ol>
+                    </nav>
+
                     <Link
-                        className="mx-4 mb-3 inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-xs font-black text-[var(--store-muted)] transition hover:bg-[var(--store-surface)] hover:text-[var(--store-text)] sm:mx-0"
+                        className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-xs font-black text-[var(--store-muted)] transition hover:bg-[var(--store-surface)] hover:text-[var(--store-text)]"
                         href="/feed"
                         preserveScroll
                     >
                         <ArrowRight size={17} /> بازگشت به فید
                     </Link>
-                    <FeedItem detail item={item} priority />
                 </div>
+
+                <article className="mx-auto overflow-hidden border-y border-[var(--store-border)] bg-[var(--store-panel)] shadow-[0_28px_80px_-55px_rgba(15,23,42,.8)] sm:max-w-[860px] sm:rounded-[30px] sm:border">
+                    <header className="px-4 pb-5 pt-5 sm:px-7 sm:pb-6 sm:pt-7">
+                        <div className="flex items-center gap-3">
+                            {item.author.url ? (
+                                <Link
+                                    aria-label={`مشاهده ${item.author.name}`}
+                                    className="shrink-0"
+                                    href={item.author.url}
+                                >
+                                    <AuthorAvatar item={item} />
+                                </Link>
+                            ) : (
+                                <AuthorAvatar item={item} />
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                                {item.author.url ? (
+                                    <Link
+                                        className="block truncate text-sm font-black text-[var(--store-text)] transition hover:text-indigo-400"
+                                        href={item.author.url}
+                                    >
+                                        {item.author.name}
+                                    </Link>
+                                ) : (
+                                    <strong className="block truncate text-sm font-black text-[var(--store-text)]">
+                                        {item.author.name}
+                                    </strong>
+                                )}
+                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--store-muted)]">
+                                    <time dateTime={item.created_at}>
+                                        {publishedDate.format(
+                                            new Date(item.created_at),
+                                        )}
+                                    </time>
+                                    <span aria-hidden="true">•</span>
+                                    <span>{typeLabels[item.type]}</span>
+                                </div>
+                            </div>
+
+                            {item.badge && (
+                                <span
+                                    className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-black ring-1 ${item.badge === "breaking" ? "bg-rose-500/10 text-rose-500 ring-rose-500/20" : "bg-indigo-500/10 text-indigo-500 ring-indigo-500/20"}`}
+                                >
+                                    {badgeLabels[item.badge] ?? item.badge}
+                                </span>
+                            )}
+                        </div>
+
+                        <h1 className="mt-5 text-2xl font-black leading-[1.55] tracking-tight text-[var(--store-text)] sm:text-3xl sm:leading-[1.5] lg:text-[2.15rem]">
+                            {item.title}
+                        </h1>
+                    </header>
+
+                    {item.media.length > 0 && (
+                        <section
+                            aria-label="رسانه‌های مطلب"
+                            className="overflow-hidden border-y border-[var(--store-border)] bg-black sm:mx-7 sm:rounded-[22px] sm:border"
+                        >
+                            <FeedMediaSlider
+                                media={item.media}
+                                priority
+                                title={item.title}
+                            />
+                        </section>
+                    )}
+
+                    {(item.body_html || item.body) && (
+                        <section
+                            aria-label="متن مطلب"
+                            className="px-4 py-6 sm:px-7 sm:py-8"
+                        >
+                            {item.body_html ? (
+                                <div
+                                    className="store-rich-text text-[15px] leading-8 sm:text-base sm:leading-9"
+                                    dangerouslySetInnerHTML={{
+                                        __html: item.body_html,
+                                    }}
+                                />
+                            ) : (
+                                <p className="whitespace-pre-wrap text-[15px] leading-8 text-[var(--store-muted)] sm:text-base sm:leading-9">
+                                    {item.body}
+                                </p>
+                            )}
+                        </section>
+                    )}
+
+                    {hasRelated && (
+                        <section
+                            aria-labelledby="related-context-title"
+                            className="border-t border-[var(--store-border)] px-4 py-5 sm:px-7 sm:py-6"
+                        >
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <h2
+                                    className="text-sm font-black text-[var(--store-text)]"
+                                    id="related-context-title"
+                                >
+                                    مرتبط با این مطلب
+                                </h2>
+                                <span className="text-[10px] text-[var(--store-muted)]">
+                                    برای ادامه کشف محتوا
+                                </span>
+                            </div>
+                            <div className="grid gap-2.5 md:grid-cols-3">
+                                {item.author.url && (
+                                    <Link
+                                        className="group flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:-translate-y-0.5 hover:border-indigo-500/40 hover:bg-[var(--store-accent-soft)]"
+                                        href={item.author.url}
+                                    >
+                                        <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-indigo-500/10 text-indigo-500">
+                                            {item.author.avatar_url ? (
+                                                <img
+                                                    alt={item.author.name}
+                                                    className="size-full object-cover"
+                                                    loading="lazy"
+                                                    src={item.author.avatar_url}
+                                                />
+                                            ) : (
+                                                <Gamepad2 size={21} />
+                                            )}
+                                        </span>
+                                        <span className="min-w-0">
+                                            <small className="text-[10px] font-black text-indigo-500">
+                                                بازی مرتبط
+                                            </small>
+                                            <strong className="mt-0.5 block truncate text-xs group-hover:text-indigo-500">
+                                                {item.author.name}
+                                            </strong>
+                                        </span>
+                                    </Link>
+                                )}
+
+                                {item.related_video && (
+                                    <Link
+                                        className="group flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:-translate-y-0.5 hover:border-rose-500/40 hover:bg-rose-500/[0.06]"
+                                        href={item.related_video.url}
+                                    >
+                                        <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-500">
+                                            <PlaySquare size={22} />
+                                        </span>
+                                        <span className="min-w-0">
+                                            <small className="text-[10px] font-black text-rose-500">
+                                                ویدیوی مرتبط
+                                            </small>
+                                            <strong className="mt-0.5 block truncate text-xs group-hover:text-rose-500">
+                                                {item.related_video.title}
+                                            </strong>
+                                        </span>
+                                    </Link>
+                                )}
+
+                                {item.related_product && (
+                                    <Link
+                                        className="group flex min-w-0 items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:-translate-y-0.5 hover:border-emerald-500/40 hover:bg-emerald-500/[0.06]"
+                                        href={item.related_product.url}
+                                    >
+                                        <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-emerald-500/10 text-emerald-500">
+                                            {item.related_product.image_url ? (
+                                                <img
+                                                    alt={item.related_product.title}
+                                                    className="size-full object-cover"
+                                                    loading="lazy"
+                                                    src={
+                                                        item.related_product
+                                                            .image_url
+                                                    }
+                                                />
+                                            ) : (
+                                                <Package size={21} />
+                                            )}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <small className="text-[10px] font-black text-emerald-500">
+                                                محصول مرتبط
+                                            </small>
+                                            <strong className="mt-0.5 block truncate text-xs group-hover:text-emerald-500">
+                                                {item.related_product.title}
+                                            </strong>
+                                            <span className="mt-0.5 block text-[10px] text-[var(--store-muted)]">
+                                                {money.format(
+                                                    item.related_product.price,
+                                                )}{" "}
+                                                تومان
+                                            </span>
+                                        </span>
+                                    </Link>
+                                )}
+                            </div>
+                        </section>
+                    )}
+
+                    <footer className="relative grid grid-cols-4 border-t border-[var(--store-border)] bg-[var(--store-surface)]/60 px-2 py-2.5 sm:px-5">
+                        <ArticleAction
+                            active={liked}
+                            icon={Heart}
+                            label="پسند"
+                            onClick={() => void toggleLike()}
+                            value={likes}
+                        />
+                        <ArticleAction
+                            icon={MessageCircle}
+                            label="نظر"
+                            onClick={() => setCommentsOpen(true)}
+                            value={comments}
+                        />
+                        <ArticleAction
+                            active={saved}
+                            icon={Bookmark}
+                            label="ذخیره"
+                            onClick={() => void toggleSave()}
+                        />
+                        <ArticleAction
+                            icon={Share2}
+                            label="اشتراک"
+                            onClick={() => void share()}
+                        />
+
+                        {feedback && (
+                            <button
+                                aria-label="بستن پیام"
+                                className="absolute bottom-[calc(100%+.55rem)] left-4 rounded-full bg-slate-950 px-3 py-2 text-[10px] font-bold text-white shadow-xl"
+                                onClick={() => setFeedback("")}
+                                type="button"
+                            >
+                                {feedback}
+                            </button>
+                        )}
+                    </footer>
+                </article>
+
+                <FeedCommentsSheet
+                    allowComments={item.allow_comments}
+                    onClose={() => setCommentsOpen(false)}
+                    onCountChange={(offset) =>
+                        setComments((value) => Math.max(0, value + offset))
+                    }
+                    open={commentsOpen}
+                    slug={item.feed_slug}
+                />
 
                 {latestFeed.length > 0 && (
                     <RelatedSection
@@ -130,6 +490,52 @@ export default function FeedShow({
                 )}
             </main>
         </StorefrontLayout>
+    );
+}
+
+function AuthorAvatar({ item }: { item: FeedItemData }) {
+    return (
+        <Avatar className="ring-2 ring-indigo-500/20" size="md">
+            {item.author.avatar_url && (
+                <Avatar.Image
+                    alt={item.author.name}
+                    src={item.author.avatar_url}
+                />
+            )}
+            <Avatar.Fallback>
+                <Gamepad2 size={19} />
+            </Avatar.Fallback>
+        </Avatar>
+    );
+}
+
+function ArticleAction({
+    icon: Icon,
+    label,
+    value,
+    active = false,
+    onClick,
+}: {
+    icon: typeof Heart;
+    label: string;
+    value?: number;
+    active?: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            aria-label={`${label}${value !== undefined ? `، ${value}` : ""}`}
+            aria-pressed={active || undefined}
+            className={`flex min-h-12 items-center justify-center gap-1.5 rounded-xl text-xs font-black transition duration-200 hover:bg-[var(--store-accent-soft)] active:scale-[.97] ${active ? "text-indigo-500" : "text-[var(--store-muted)] hover:text-[var(--store-text)]"}`}
+            onClick={onClick}
+            type="button"
+        >
+            <Icon fill={active ? "currentColor" : "none"} size={19} />
+            <span className="hidden min-[390px]:inline">{label}</span>
+            {value !== undefined && value > 0 && (
+                <span>{compact.format(value)}</span>
+            )}
+        </button>
     );
 }
 
