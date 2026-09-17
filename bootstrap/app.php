@@ -3,6 +3,7 @@
 use App\Http\Middleware\AuthenticateContentAgent;
 use App\Http\Middleware\DispatchSmsOutbox;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsSuperAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RejectImpersonatedDeployment;
 use Illuminate\Foundation\Application;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function (): void {
             Route::middleware('web')->group(base_path('routes/video-progress.php'));
             Route::middleware('web')->group(base_path('routes/video-preview.php'));
+            Route::middleware('web')->group(base_path('routes/admin-file-manager.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -34,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
+            'super-admin' => EnsureUserIsSuperAdmin::class,
             'deployment.guard' => RejectImpersonatedDeployment::class,
             'content.agent' => AuthenticateContentAgent::class,
         ]);

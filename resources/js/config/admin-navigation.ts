@@ -4,6 +4,7 @@ import {
     Building2,
     ClipboardList,
     Factory,
+    FolderCode,
     Gamepad2,
     Gauge,
     Home,
@@ -34,6 +35,7 @@ export interface NavigationLink {
     badge?: string;
     exact?: boolean;
     excludeQuery?: Record<string, string>;
+    superAdminOnly?: boolean;
 }
 
 export interface NavigationParent {
@@ -119,6 +121,9 @@ export const adminNavigation: NavigationEntry[] = [
             link("تست پیامک", "/admin/sms-test", MessageSquareText),
             link("به‌روزرسانی سیستم", "/admin/deployments", Rocket),
             link("نگهداری سیستم", "/admin/system-maintenance", TerminalSquare),
+            link("فایل منیجر", "/admin/file-manager", FolderCode, {
+                superAdminOnly: true,
+            }),
         ],
     },
 ];

@@ -14,6 +14,7 @@ import BrandMark from "../Components/Admin/BrandMark";
 import NotificationPopover from "../Components/Notifications/NotificationPopover";
 import {
     adminNavigation,
+    type NavigationEntry,
     type NavigationLink,
 } from "../config/admin-navigation";
 import type { SharedPageProps } from "../types";
@@ -39,6 +40,25 @@ export default function AdminLayout({
     const currentPath = normalizePath(rawPath);
     const currentQueryString = rawQuery.split("#")[0];
     const currentQuery = new URLSearchParams(currentQueryString);
+    const isSuperAdmin = auth.user?.role === "super-admin";
+    const roleLabel = isSuperAdmin ? "مدیر کل سیستم" : "مدیر پنل";
+
+    const visibleNavigation = adminNavigation.reduce<NavigationEntry[]>(
+        (items, entry) => {
+            if (entry.type === "link") {
+                if (entry.superAdminOnly && !isSuperAdmin) return items;
+                items.push(entry);
+                return items;
+            }
+
+            const children = entry.children.filter(
+                (item) => !item.superAdminOnly || isSuperAdmin,
+            );
+            if (children.length) items.push({ ...entry, children });
+            return items;
+        },
+        [],
+    );
 
     const isActive = (item: NavigationLink) => {
         const [targetRawPath, targetRawQuery = ""] = item.href.split("?");
@@ -64,7 +84,7 @@ export default function AdminLayout({
         return true;
     };
 
-    const activeParentKeys = adminNavigation.flatMap((entry) =>
+    const activeParentKeys = visibleNavigation.flatMap((entry) =>
         entry.type === "parent" && entry.children.some(isActive)
             ? [entry.key]
             : [],
@@ -183,7 +203,7 @@ export default function AdminLayout({
                         مدیریت PLAY NEXUS
                     </p>
                     <div className="space-y-1.5">
-                        {adminNavigation.map((entry) => {
+                        {visibleNavigation.map((entry) => {
                             if (entry.type === "link") {
                                 return navigationLink(entry);
                             }
@@ -268,7 +288,7 @@ export default function AdminLayout({
                                 {auth.user?.name}
                             </p>
                             <p className="truncate text-xs text-slate-500">
-                                مدیر کل سیستم
+                                {roleLabel}
                             </p>
                         </div>
                         <Button

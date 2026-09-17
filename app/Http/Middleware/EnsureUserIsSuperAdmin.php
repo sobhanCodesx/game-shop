@@ -6,14 +6,14 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class RejectImpersonatedDeployment
+class EnsureUserIsSuperAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        abort_if(
-            $request->session()->has('impersonator_id'),
+        abort_unless(
+            $request->user()?->isSuperAdmin(),
             Response::HTTP_FORBIDDEN,
-            'در حالت ورود آزمایشی امکان اجرای عملیات زیرساختی وجود ندارد.',
+            'این بخش فقط برای مدیر کل قابل دسترسی است.',
         );
 
         return $next($request);

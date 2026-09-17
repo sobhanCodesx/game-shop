@@ -144,6 +144,7 @@ return [
         'admin.sms-test.*' => 'sms.manage',
         'admin.system-maintenance.*' => 'system.maintenance',
         'admin.deployments.*' => 'system.deployments',
+        'admin.file-manager.*' => 'system.files.manage',
         'admin.product-types.*' => 'catalog.manage',
         'admin.attributes.*' => 'catalog.manage',
         'admin.products.media.*' => 'catalog.manage',
