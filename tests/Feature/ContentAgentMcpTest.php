@@ -30,6 +30,14 @@ class ContentAgentMcpTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('jsonrpc', '2.0')
             ->assertJsonPath('id', 1)
+            ->assertJsonFragment(['name' => 'search_games'])
+            ->assertJsonFragment(['name' => 'search_studios'])
+            ->assertJsonFragment(['name' => 'search_platforms'])
+            ->assertJsonFragment(['name' => 'search_collections'])
+            ->assertJsonFragment(['name' => 'create_game'])
+            ->assertJsonFragment(['name' => 'create_studio'])
+            ->assertJsonFragment(['name' => 'create_collection'])
+            ->assertJsonFragment(['name' => 'create_story'])
             ->assertJsonFragment(['name' => 'create_feed'])
             ->assertJsonFragment(['name' => 'publish_feed']);
     }
