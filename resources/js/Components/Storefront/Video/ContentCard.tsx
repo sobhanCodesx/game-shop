@@ -2,6 +2,7 @@ import { Link } from "@inertiajs/react";
 import { Eye, Gamepad2, Play } from "lucide-react";
 
 import type { StorefrontContent } from "../../../types";
+import VideoProgressBar from "./VideoProgressBar";
 
 const number = new Intl.NumberFormat("fa-IR");
 const duration = (seconds: number | null) =>
@@ -44,6 +45,12 @@ export default function ContentCard({
                         >
                             {duration(content.duration)}
                         </span>
+                    )}
+                    {content.type !== "post" && (
+                        <VideoProgressBar
+                            contentId={content.id}
+                            duration={content.duration}
+                        />
                     )}
                 </div>
                 <div className="space-y-2 px-1 pt-4">
