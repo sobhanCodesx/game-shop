@@ -128,8 +128,8 @@ class SitemapController extends Controller
         foreach (VideoPlaylist::query()->where('visibility', 'public')
             ->whereHas('game', fn (Builder $query) => $query->whereIn('status', ['active', 'published']))
             ->whereHas('videos', fn (Builder $query) => $query->published()->where('type', 'video'))
-            ->with('game:id,slug')->orderBy('id')->cursor() as $playlist) {
-            yield $this->entry(route('channels.playlists.show', [$playlist->game->slug, $playlist->slug]), $playlist->updated_at);
+            ->orderBy('id')->cursor() as $playlist) {
+            yield $this->entry(route('collections.show', $playlist->slug), $playlist->updated_at);
         }
     }
 
