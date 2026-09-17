@@ -68,11 +68,27 @@ final class CronManagerService
             );
         }
 
-        $existing = preg_split('/\R/', (string) ($read['contents'] ?? '')) ?: [];
+        if (! in_array($action, ['install-scheduler', 'install-queue', 'install-all', 'remove-all'], true)) {
+            throw new \InvalidArgumentException('عملیات Cron معتبر نیست.');
+        }
+
+        $existing = preg_split('/\\R/', (string) ($read['contents'] ?? '')) ?: [];
+        $removeScheduler = in_array($action, ['install-scheduler', 'install-all', 'remove-all'], true);
+        $removeQueue = in_array($action, ['install-queue', 'install-all', 'remove-all'], true);
+
         $lines = array_values(array_filter(
             $existing,
-            fn (string $line): bool => ! str_contains($line, self::SCHEDULER_MARKER)
-                && ! str_contains($line, self::QUEUE_MARKER),
+            function (string $line) use ($removeScheduler, $removeQueue): bool {
+                if ($removeScheduler && str_contains($line, self::SCHEDULER_MARKER)) {
+                    return false;
+                }
+
+                if ($removeQueue && str_contains($line, self::QUEUE_MARKER)) {
+                    return false;
+                }
+
+                return true;
+            },
         ));
 
         if (in_array($action, ['install-scheduler', 'install-all'], true)) {
@@ -81,10 +97,6 @@ final class CronManagerService
 
         if (in_array($action, ['install-queue', 'install-all'], true)) {
             $lines[] = $this->queueLine($phpBinary);
-        }
-
-        if (! in_array($action, ['install-scheduler', 'install-queue', 'install-all', 'remove-all'], true)) {
-            throw new \InvalidArgumentException('عملیات Cron معتبر نیست.');
         }
 
         $contents = trim(implode(PHP_EOL, array_filter($lines, fn (string $line): bool => trim($line) !== '')));
