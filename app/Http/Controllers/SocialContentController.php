@@ -70,12 +70,17 @@ class SocialContentController extends Controller
         $playlist = $this->playlistContext($request, $content, $data);
         $breadcrumbs = $this->breadcrumbs($content, $type, $playlist);
         $seo = $this->seo($content, $type, $breadcrumbs);
+        $excerpt = RichText::plainText($content->excerpt);
+
+        if (! $excerpt && $content->type === 'short') {
+            $excerpt = $this->shortFallbackDescription($content);
+        }
 
         return Inertia::render('Content/Show', [
             ...$seo,
             'content' => [
                 ...$data->content($content),
-                'excerpt' => RichText::plainText($content->excerpt),
+                'excerpt' => $excerpt,
                 'body' => RichText::sanitize($content->body),
                 'video_mime' => $content->video_mime,
                 'allow_comments' => $content->allow_comments,
@@ -113,7 +118,12 @@ class SocialContentController extends Controller
         $thumbnail = $thumbnail ? url($thumbnail) : null;
         $videoUrl = MediaStorage::url($content->video_path);
         $videoUrl = $videoUrl ? url($videoUrl) : null;
-        $summary = RichText::plainText($content->seo_description ?: $content->excerpt);
+        $summary = RichText::plainText($content->seo_description ?: $content->excerpt ?: $content->body);
+
+        if (! $summary && $content->type === 'short') {
+            $summary = $this->shortFallbackDescription($content);
+        }
+
         $description = $summary
             ? Str::limit($summary, 160, '…')
             : Str::limit("تماشای {$content->title}، ویدیوها و محتوای تازه دنیای گیمینگ در {$siteName}.", 160, '…');
@@ -194,6 +204,24 @@ class SocialContentController extends Controller
                 ],
             ],
         ]);
+    }
+
+    private function shortFallbackDescription(SocialContent $content): string
+    {
+        $siteName = (string) config('seo.site_name', 'PlayNexus');
+        $parts = ["«{$content->title}» یک ویدیوی کوتاه گیمینگ در {$siteName} است."];
+
+        if ($content->game) {
+            $parts[] = "این شورت به بازی {$content->game->name} مرتبط است و می‌توانید محتوای بیشتر این بازی را در کانال آن دنبال کنید.";
+        } else {
+            $parts[] = "این شورت بخشی از محتوای کوتاه پلی نکسوس برای دنبال‌کردن لحظه‌ها، بازی‌ها و موضوعات دنیای گیمینگ است.";
+        }
+
+        if ($content->duration && $content->duration > 0) {
+            $parts[] = "مدت این ویدیو {$content->duration} ثانیه است.";
+        }
+
+        return implode(' ', $parts);
     }
 
     private function isoDuration(int $seconds): string
