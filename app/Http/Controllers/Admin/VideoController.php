@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\VideoRequest;
 use App\Models\Game;
 use App\Models\SocialContent;
+use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
 use App\Services\TemporaryUploadService;
 use App\Support\RichText;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -19,21 +21,96 @@ use Inertia\Response;
 
 class VideoController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $videos = SocialContent::query()->where('type', 'video')->with('game:id,name')->latest('id')->paginate(12)->withQueryString();
+        $collectionType = $request->string('collection_type')->toString();
+        $status = $request->string('status')->toString();
+        $filters = [
+            'search' => trim($request->string('search')->toString()),
+            'collection_type' => in_array($collectionType, ['game', 'studio', 'general', 'none'], true) ? $collectionType : '',
+            'playlist' => $request->integer('playlist') ?: null,
+            'game' => $request->integer('game') ?: null,
+            'studio' => $request->integer('studio') ?: null,
+            'status' => in_array($status, ['draft', 'published'], true) ? $status : '',
+        ];
+
+        $query = SocialContent::query()
+            ->where('type', 'video')
+            ->with([
+                'game:id,name,studio_id',
+                'game.studio:id,name',
+                'playlists:id,game_id,studio_id,title',
+                'playlists.game:id,name',
+                'playlists.studio:id,name',
+            ])
+            ->when($filters['search'], fn ($query, string $search) => $query->where('title', 'like', '%'.$search.'%'))
+            ->when($filters['status'], fn ($query, string $videoStatus) => $query->where('status', $videoStatus))
+            ->when($filters['playlist'], fn ($query, int $playlistId) => $query->whereHas('playlists', fn ($playlist) => $playlist->whereKey($playlistId)))
+            ->when($filters['game'], function ($query, int $gameId) {
+                $query->where(function ($scope) use ($gameId) {
+                    $scope->where('game_id', $gameId)
+                        ->orWhereHas('playlists', fn ($playlist) => $playlist->where('game_id', $gameId));
+                });
+            })
+            ->when($filters['studio'], function ($query, int $studioId) {
+                $query->where(function ($scope) use ($studioId) {
+                    $scope->whereHas('game', fn ($game) => $game->where('studio_id', $studioId))
+                        ->orWhereHas('playlists', function ($playlist) use ($studioId) {
+                            $playlist->where('studio_id', $studioId)
+                                ->orWhereHas('game', fn ($game) => $game->where('studio_id', $studioId));
+                        });
+                });
+            })
+            ->when($filters['collection_type'], function ($query, string $type) {
+                match ($type) {
+                    'game' => $query->whereHas('playlists', fn ($playlist) => $playlist->whereNotNull('game_id')),
+                    'studio' => $query->whereHas('playlists', fn ($playlist) => $playlist->whereNull('game_id')->whereNotNull('studio_id')),
+                    'general' => $query->whereHas('playlists', fn ($playlist) => $playlist->whereNull('game_id')->whereNull('studio_id')),
+                    'none' => $query->whereDoesntHave('playlists'),
+                    default => null,
+                };
+            });
+
+        $videos = $query->latest('id')->paginate(12)->withQueryString();
+        $allVideosCount = SocialContent::query()->where('type', 'video')->count();
+
+        $playlists = VideoPlaylist::query()
+            ->with(['game:id,name', 'studio:id,name'])
+            ->orderBy('title')
+            ->get(['id', 'game_id', 'studio_id', 'title'])
+            ->map(fn (VideoPlaylist $playlist) => [
+                'id' => $playlist->id,
+                'title' => $playlist->title,
+                'type' => $playlist->game_id ? 'game' : ($playlist->studio_id ? 'studio' : 'general'),
+                'owner' => $playlist->game?->name ?? $playlist->studio?->name,
+            ]);
 
         return Inertia::render('Admin/Videos/Index', [
             'videos' => [
                 'data' => collect($videos->items())->map(fn (SocialContent $video) => [
                     ...$video->only(['id', 'title', 'excerpt', 'duration', 'views', 'status', 'featured']),
-                    'channel' => $video->game?->name,
+                    'channel' => $video->game?->name ?? $video->playlists->first()?->game?->name,
+                    'studio' => $video->game?->studio?->name ?? $video->playlists->first(fn (VideoPlaylist $playlist) => $playlist->studio)?->studio?->name,
+                    'collections' => $video->playlists->map(fn (VideoPlaylist $playlist) => [
+                        'id' => $playlist->id,
+                        'title' => $playlist->title,
+                        'type' => $playlist->game_id ? 'game' : ($playlist->studio_id ? 'studio' : 'general'),
+                    ])->values(),
                     'thumbnail_url' => MediaStorage::url($video->thumbnail),
                     'edit_url' => route('admin.videos.edit', $video),
                 ]),
                 'current_page' => $videos->currentPage(),
                 'last_page' => $videos->lastPage(),
+                'from' => $videos->firstItem(),
+                'to' => $videos->lastItem(),
                 'total' => $videos->total(),
+                'all_total' => $allVideosCount,
+            ],
+            'filters' => $filters,
+            'filterOptions' => [
+                'games' => Game::query()->orderBy('name')->get(['id', 'name']),
+                'studios' => Studio::query()->orderBy('name')->get(['id', 'name']),
+                'playlists' => $playlists,
             ],
         ]);
     }
