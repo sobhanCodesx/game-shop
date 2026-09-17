@@ -1,5 +1,5 @@
 import { Button, Card, Chip } from "@heroui/react";
-import { Head, useForm } from "@inertiajs/react";
+import { Head } from "@inertiajs/react";
 import {
     BellRing,
     Check,
@@ -89,21 +89,18 @@ type MobileDevice = {
     push_token_masked: string;
 };
 
-type PushFormData = {
-    device_id: number | null;
-    title: string;
-    message: string;
-    url: string;
+type PushTarget = {
+    id: number;
+    name: string;
+    email: string | null;
+    devices: MobileDevice[];
 };
 
-type PushFormShape = {
-    data: PushFormData;
-    errors: Partial<Record<keyof PushFormData, string>>;
-    processing: boolean;
-    setData: <K extends keyof PushFormData>(
-        key: K,
-        value: PushFormData[K],
-    ) => void;
+type JsonConsoleResponse = {
+    result?: TerminalResult;
+    message?: string;
+    cron_status?: CronStatus;
+    errors?: Record<string, string[]>;
 };
 
 type Props = {
@@ -113,8 +110,73 @@ type Props = {
     laravelVersion: string;
     cronStatus: CronStatus;
     pushStatus: PushStatus;
-    mobileDevices: MobileDevice[];
+    pushTargets: PushTarget[];
+    currentAdminId: number;
 };
+
+const csrfToken = (): string =>
+    document
+        .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+        ?.getAttribute("content") ?? "";
+
+async function postConsole(
+    url: string,
+    payload: Record<string, unknown>,
+): Promise<JsonConsoleResponse> {
+    const response = await fetch(url, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken(),
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify(payload),
+    });
+
+    let data: JsonConsoleResponse = {};
+    try {
+        data = (await response.json()) as JsonConsoleResponse;
+    } catch {
+        throw new Error("HTTP " + response.status + ": پاسخ JSON معتبر دریافت نشد.");
+    }
+
+    if (!response.ok && !data.result) {
+        const validationMessage = data.errors
+            ? Object.values(data.errors).flat().join("\n")
+            : data.message;
+
+        throw new Error(
+            validationMessage ||
+                "HTTP " + response.status + ": اجرای درخواست ناموفق بود.",
+        );
+    }
+
+    return data;
+}
+
+function clientErrorResult(command: string, error: unknown): TerminalResult {
+    const now = new Date().toISOString();
+    return {
+        action: "client:error",
+        successful: false,
+        started_at: now,
+        finished_at: now,
+        duration_ms: 0,
+        commands: [
+            {
+                command,
+                exit_code: 1,
+                successful: false,
+                output:
+                    error instanceof Error
+                        ? error.message
+                        : "خطای ناشناخته هنگام اجرا.",
+            },
+        ],
+    };
+}
 
 const operations: Array<{
     action: MaintenanceAction;
@@ -189,40 +251,144 @@ export default function SystemMaintenance({
     environment,
     phpVersion,
     laravelVersion,
-    cronStatus,
+    cronStatus: initialCronStatus,
     pushStatus,
-    mobileDevices,
+    pushTargets,
+    currentAdminId,
 }: Props) {
     const [panel, setPanel] = useState<Panel>("maintenance");
     const [copied, setCopied] = useState<string | null>(null);
+    const [result, setResult] = useState<TerminalResult | null>(terminalResult);
+    const [runningCommand, setRunningCommand] = useState<string | null>(null);
+    const [runningKey, setRunningKey] = useState<string | null>(null);
+    const [cronStatus, setCronStatus] = useState(initialCronStatus);
 
-    const maintenanceForm = useForm<{
-        action: MaintenanceAction;
-        confirmed: boolean;
-    }>({
-        action: "clear-cache",
-        confirmed: true,
-    });
+    const initialTarget =
+        pushTargets.find((target) => target.id === currentAdminId) ??
+        pushTargets[0] ??
+        null;
 
-    const cronForm = useForm<{ action: CronAction }>({
-        action: "install-all",
-    });
+    const [pushUserId, setPushUserId] = useState<number | null>(
+        initialTarget?.id ?? null,
+    );
+    const [pushDeviceId, setPushDeviceId] = useState<number | null>(null);
+    const [pushTitle, setPushTitle] = useState("تست نوتیفیکیشن PlayNexus");
+    const [pushMessage, setPushMessage] = useState(
+        "اگر این پیام را می‌بینی، Push اپ PlayNexus سالم است 🎮",
+    );
+    const [pushUrl, setPushUrl] = useState("/");
 
-    const pushForm = useForm<{
-        device_id: number | null;
-        title: string;
-        message: string;
-        url: string;
-    }>({
-        device_id: null,
-        title: "تست نوتیفیکیشن PlayNexus",
-        message: "اگر این پیام را می‌بینی، Push اپ PlayNexus سالم است 🎮",
-        url: "/",
-    });
+    const selectedTarget = useMemo(
+        () => pushTargets.find((target) => target.id === pushUserId) ?? null,
+        [pushTargets, pushUserId],
+    );
 
-    const activeCommand = useMemo(() => {
-        if (maintenanceForm.processing) {
-            return (
+    const busy = runningKey !== null;
+
+    const execute = async (
+        key: string,
+        command: string,
+        url: string,
+        payload: Record<string, unknown>,
+    ): Promise<JsonConsoleResponse | null> => {
+        setRunningKey(key);
+        setRunningCommand(command);
+
+        try {
+            const data = await postConsole(url, payload);
+            if (data.result) {
+                setResult(data.result);
+            }
+            return data;
+        } catch (error) {
+            setResult(clientErrorResult(command, error));
+            return null;
+        } finally {
+            setRunningKey(null);
+            setRunningCommand(null);
+        }
+    };
+
+    const runMaintenance = async (
+        action: MaintenanceAction,
+        warning = false,
+    ): Promise<void> => {
+        if (
+            warning &&
+            !window.confirm(
+                action === "all"
+                    ? "پاک‌سازی Cache، اجرای Migration و بازسازی Config Cache انجام شود؟"
+                    : "Migrationهای اجرا‌نشده روی دیتابیس اعمال شوند؟",
+            )
+        ) {
+            return;
+        }
+
+        const operation = operations.find((item) => item.action === action);
+        await execute(
+            "maintenance:" + action,
+            operation?.command ?? "php artisan " + action,
+            "/admin/system-maintenance/run",
+            { action, confirmed: true },
+        );
+    };
+
+    const manageCron = async (action: CronAction): Promise<void> => {
+        if (
+            action === "remove-all" &&
+            !window.confirm(
+                "Cronهای Scheduler و Queue که توسط PlayNexus مدیریت می‌شوند حذف شوند؟",
+            )
+        ) {
+            return;
+        }
+
+        const data = await execute(
+            "cron:" + action,
+            action === "remove-all"
+                ? "crontab -  # remove PlayNexus managed jobs"
+                : "crontab -  # install/update PlayNexus managed jobs",
+            "/admin/system-maintenance/cron",
+            { action },
+        );
+
+        if (data?.cron_status) {
+            setCronStatus(data.cron_status);
+        }
+    };
+
+    const sendPushTest = async (): Promise<void> => {
+        if (!pushUserId) {
+            setResult(
+                clientErrorResult(
+                    "Expo Push Test",
+                    new Error("ابتدا کاربر مقصد را انتخاب کن."),
+                ),
+            );
+            return;
+        }
+
+        await execute(
+            "push:test",
+            "POST " + pushStatus.endpoint,
+            "/admin/system-maintenance/push-test",
+            {
+                user_id: pushUserId,
+                device_id: pushDeviceId,
+                title: pushTitle,
+                message: pushMessage,
+                url: pushUrl,
+            },
+        );
+    };
+
+    const copyText = async (key: string, value: string): Promise<void> => {
+        await navigator.clipboard.writeText(value);
+        setCopied(key);
+        window.setTimeout(() => setCopied(null), 1800);
+    };
+
+    return (
                 operations.find(
                     (operation) =>
                         operation.action === maintenanceForm.data.action,
@@ -420,8 +586,8 @@ export default function SystemMaintenance({
 
                     {panel === "maintenance" && (
                         <MaintenancePanel
-                            formProcessing={maintenanceForm.processing}
-                            activeAction={maintenanceForm.data.action}
+                            busy={busy}
+                            runningKey={runningKey}
                             onRun={runMaintenance}
                         />
                     )}
@@ -429,23 +595,35 @@ export default function SystemMaintenance({
                     {panel === "cron" && (
                         <CronPanel
                             status={cronStatus}
-                            processing={cronForm.processing}
-                            activeAction={cronForm.data.action}
+                            busy={busy}
+                            runningKey={runningKey}
                             copied={copied}
                             onCopy={copyText}
                             onManage={manageCron}
                             onRunNow={runMaintenance}
-                            maintenanceProcessing={
-                                maintenanceForm.processing
-                            }
                         />
                     )}
 
                     {panel === "push" && (
                         <PushPanel
                             status={pushStatus}
-                            devices={mobileDevices}
-                            form={pushForm}
+                            targets={pushTargets}
+                            selectedTarget={selectedTarget}
+                            userId={pushUserId}
+                            deviceId={pushDeviceId}
+                            title={pushTitle}
+                            message={pushMessage}
+                            url={pushUrl}
+                            busy={busy}
+                            running={runningKey === "push:test"}
+                            onUserChange={(id) => {
+                                setPushUserId(id);
+                                setPushDeviceId(null);
+                            }}
+                            onDeviceChange={setPushDeviceId}
+                            onTitleChange={setPushTitle}
+                            onMessageChange={setPushMessage}
+                            onUrlChange={setPushUrl}
                             onSend={sendPushTest}
                         />
                     )}
@@ -453,8 +631,8 @@ export default function SystemMaintenance({
 
                 <div className="min-w-0 xl:sticky xl:top-4 xl:self-start">
                     <TerminalConsole
-                        result={terminalResult}
-                        activeCommand={activeCommand}
+                        result={result}
+                        activeCommand={runningCommand}
                         copied={copied}
                         onCopy={copyText}
                     />
@@ -465,20 +643,20 @@ export default function SystemMaintenance({
 }
 
 function MaintenancePanel({
-    formProcessing,
-    activeAction,
+    busy,
+    runningKey,
     onRun,
 }: {
-    formProcessing: boolean;
-    activeAction: MaintenanceAction;
-    onRun: (action: MaintenanceAction, warning?: boolean) => void;
+    busy: boolean;
+    runningKey: string | null;
+    onRun: (action: MaintenanceAction, warning?: boolean) => Promise<void>;
 }) {
     return (
         <div className="grid gap-3 md:grid-cols-2">
             {operations.map((operation) => {
                 const Icon = operation.icon;
                 const active =
-                    formProcessing && activeAction === operation.action;
+                    runningKey === "maintenance:" + operation.action;
 
                 return (
                     <Card
@@ -488,7 +666,10 @@ function MaintenancePanel({
                         <Card.Content className="flex h-full flex-col p-5">
                             <div className="flex items-start gap-3">
                                 <span
-                                    className={`grid size-11 shrink-0 place-items-center rounded-xl border ${operation.tone}`}
+                                    className={
+                                        "grid size-11 shrink-0 place-items-center rounded-xl border " +
+                                        operation.tone
+                                    }
                                 >
                                     <Icon size={20} />
                                 </span>
@@ -509,10 +690,10 @@ function MaintenancePanel({
                             </p>
                             <Button
                                 className="mt-4"
-                                isDisabled={formProcessing}
+                                isDisabled={busy}
                                 isPending={active}
                                 onPress={() =>
-                                    onRun(
+                                    void onRun(
                                         operation.action,
                                         operation.warning,
                                     )
@@ -536,17 +717,16 @@ function MaintenancePanel({
 
 function CronPanel({
     status,
-    processing,
-    activeAction,
+    busy,
+    runningKey,
     copied,
     onCopy,
     onManage,
     onRunNow,
-    maintenanceProcessing,
 }: {
     status: CronStatus;
-    processing: boolean;
-    activeAction: CronAction;
+    busy: boolean;
+    runningKey: string | null;
     copied: string | null;
     onCopy: (key: string, value: string) => Promise<void>;
     onManage: (action: CronAction) => void;
@@ -616,7 +796,7 @@ function CronPanel({
                         <Button
                             isDisabled={processing}
                             isPending={
-                                processing && activeAction === "install-queue"
+                                runningKey === "cron:install-queue"
                             }
                             onPress={() => onManage("install-queue")}
                             variant="secondary"
@@ -627,7 +807,7 @@ function CronPanel({
                         <Button
                             isDisabled={processing}
                             isPending={
-                                processing && activeAction === "install-all"
+                                runningKey === "cron:install-all"
                             }
                             onPress={() => onManage("install-all")}
                             variant="primary"
@@ -638,7 +818,7 @@ function CronPanel({
                         <Button
                             isDisabled={processing}
                             isPending={
-                                processing && activeAction === "remove-all"
+                                runningKey === "cron:remove-all"
                             }
                             onPress={() => onManage("remove-all")}
                             variant="secondary"
@@ -698,16 +878,40 @@ function CronPanel({
 
 function PushPanel({
     status,
-    devices,
-    form,
+    targets,
+    selectedTarget,
+    userId,
+    deviceId,
+    title,
+    message,
+    url,
+    busy,
+    running,
+    onUserChange,
+    onDeviceChange,
+    onTitleChange,
+    onMessageChange,
+    onUrlChange,
     onSend,
 }: {
     status: PushStatus;
-    devices: MobileDevice[];
-    form: PushFormShape;
-    onSend: () => void;
+    targets: PushTarget[];
+    selectedTarget: PushTarget | null;
+    userId: number | null;
+    deviceId: number | null;
+    title: string;
+    message: string;
+    url: string;
+    busy: boolean;
+    running: boolean;
+    onUserChange: (id: number | null) => void;
+    onDeviceChange: (id: number | null) => void;
+    onTitleChange: (value: string) => void;
+    onMessageChange: (value: string) => void;
+    onUrlChange: (value: string) => void;
+    onSend: () => Promise<void>;
 }) {
-    const activeDevices = devices.filter((device) => device.push_enabled);
+    const devices = selectedTarget?.devices ?? [];
 
     return (
         <div className="space-y-4">
@@ -716,18 +920,15 @@ function PushPanel({
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                         <div>
                             <div className="flex items-center gap-2">
-                                <BellRing
-                                    className="text-indigo-300"
-                                    size={20}
-                                />
+                                <BellRing className="text-indigo-300" size={20} />
                                 <h2 className="font-black text-slate-100">
-                                    Push Lab
+                                    Push Lab — ارسال به هر کاربر
                                 </h2>
                             </div>
                             <p className="mt-2 max-w-2xl text-xs leading-6 text-slate-400">
-                                این تست مستقیم به Expo ارسال می‌شود و از Queue
-                                عبور نمی‌کند؛ برای تشخیص سالم‌بودن Token و دریافت
-                                واقعی روی گوشی مناسب است.
+                                کاربر و دستگاه مقصد را انتخاب کن. درخواست مستقیم به
+                                Expo می‌رود و نتیجه همان لحظه داخل ترمینال نمایش داده
+                                می‌شود.
                             </p>
                         </div>
                         <Chip
@@ -740,27 +941,45 @@ function PushPanel({
                     </div>
 
                     <div className="mt-5 grid gap-4">
-                        <Field label="دستگاه مقصد">
+                        <Field label="کاربر مقصد">
                             <select
                                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-500"
-                                value={form.data.device_id ?? ""}
+                                value={userId ?? ""}
                                 onChange={(event) =>
-                                    form.setData(
-                                        "device_id",
-                                        event.target.value === ""
-                                            ? null
-                                            : Number(event.target.value),
+                                    onUserChange(
+                                        event.target.value
+                                            ? Number(event.target.value)
+                                            : null,
                                     )
                                 }
                             >
-                                <option value="">
-                                    همه دستگاه‌های فعال خودم
-                                </option>
-                                {activeDevices.map((device) => (
-                                    <option
-                                        key={device.id}
-                                        value={device.id}
-                                    >
+                                <option value="">انتخاب کاربر</option>
+                                {targets.map((target) => (
+                                    <option key={target.id} value={target.id}>
+                                        {target.name}
+                                        {target.email ? " — " + target.email : ""}
+                                        {" (" + target.devices.length + " دستگاه)"}
+                                    </option>
+                                ))}
+                            </select>
+                        </Field>
+
+                        <Field label="دستگاه مقصد">
+                            <select
+                                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-500"
+                                disabled={!selectedTarget}
+                                value={deviceId ?? ""}
+                                onChange={(event) =>
+                                    onDeviceChange(
+                                        event.target.value
+                                            ? Number(event.target.value)
+                                            : null,
+                                    )
+                                }
+                            >
+                                <option value="">همه دستگاه‌های فعال این کاربر</option>
+                                {devices.map((device) => (
+                                    <option key={device.id} value={device.id}>
                                         {device.device_name ||
                                             device.platform.toUpperCase()}{" "}
                                         #{device.id}
@@ -773,9 +992,9 @@ function PushPanel({
                             <input
                                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-500"
                                 maxLength={100}
-                                value={form.data.title}
+                                value={title}
                                 onChange={(event) =>
-                                    form.setData("title", event.target.value)
+                                    onTitleChange(event.target.value)
                                 }
                             />
                         </Field>
@@ -784,9 +1003,9 @@ function PushPanel({
                             <textarea
                                 className="min-h-28 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm leading-6 text-slate-100 outline-none transition focus:border-indigo-500"
                                 maxLength={500}
-                                value={form.data.message}
+                                value={message}
                                 onChange={(event) =>
-                                    form.setData("message", event.target.value)
+                                    onMessageChange(event.target.value)
                                 }
                             />
                         </Field>
@@ -796,41 +1015,32 @@ function PushPanel({
                                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-500"
                                 dir="ltr"
                                 maxLength={500}
-                                value={form.data.url}
+                                value={url}
                                 onChange={(event) =>
-                                    form.setData("url", event.target.value)
+                                    onUrlChange(event.target.value)
                                 }
                             />
                         </Field>
                     </div>
 
-                    {(form.errors.device_id ||
-                        form.errors.title ||
-                        form.errors.message ||
-                        form.errors.url) && (
-                        <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-200">
-                            {form.errors.device_id ||
-                                form.errors.title ||
-                                form.errors.message ||
-                                form.errors.url}
-                        </div>
-                    )}
-
                     <Button
                         className="mt-5 w-full"
                         isDisabled={
+                            busy ||
                             !status.enabled ||
-                            activeDevices.length === 0 ||
-                            form.processing
+                            !selectedTarget ||
+                            devices.length === 0 ||
+                            title.trim() === "" ||
+                            message.trim() === ""
                         }
-                        isPending={form.processing}
-                        onPress={onSend}
+                        isPending={running}
+                        onPress={() => void onSend()}
                         variant="primary"
                     >
-                        {!form.processing && <BellRing size={17} />}
-                        {form.processing
+                        {!running && <BellRing size={17} />}
+                        {running
                             ? "در حال تماس مستقیم با Expo…"
-                            : "ارسال Push واقعی برای تست"}
+                            : "ارسال Push تستی به کاربر"}
                     </Button>
 
                     {!status.enabled && (
@@ -840,30 +1050,28 @@ function PushPanel({
                             بده و Config Cache را بازسازی کن.
                         </p>
                     )}
-
-                    {status.enabled && activeDevices.length === 0 && (
-                        <p className="mt-3 text-xs leading-6 text-amber-300">
-                            هیچ Expo Push Token فعالی برای اکانت تو ثبت نشده.
-                            ابتدا با اپ و همین اکانت وارد شو.
-                        </p>
-                    )}
                 </Card.Content>
             </Card>
 
             <div>
                 <div className="mb-3 flex items-center justify-between">
                     <h3 className="font-black text-slate-100">
-                        دستگاه‌های ثبت‌شده من
+                        دستگاه‌های کاربر انتخاب‌شده
                     </h3>
                     <span className="text-xs text-slate-500">
                         {devices.length.toLocaleString("fa-IR")} دستگاه
                     </span>
                 </div>
 
-                {devices.length === 0 ? (
+                {!selectedTarget ? (
                     <EmptyState
                         icon={Smartphone}
-                        text="هنوز هیچ دستگاه موبایلی برای این اکانت ثبت نشده."
+                        text="یک کاربر دارای Push Token را انتخاب کن."
+                    />
+                ) : devices.length === 0 ? (
+                    <EmptyState
+                        icon={Smartphone}
+                        text="این کاربر دستگاه Push فعال ندارد."
                     />
                 ) : (
                     <div className="space-y-2">
