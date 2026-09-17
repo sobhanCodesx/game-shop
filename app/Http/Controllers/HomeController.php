@@ -186,7 +186,10 @@ class HomeController extends Controller
                         'image_url' => MediaStorage::url($item->{$imageField}),
                     ]);
                 } else {
-                    $query = SocialContent::query()->published()->where('type', rtrim($section->content_type, 's'))
+                    $query = SocialContent::query()
+                        ->published()
+                        ->where('type', rtrim($section->content_type, 's'))
+                        ->with(['media', 'relatedContent:id,thumbnail', 'relatedProduct:id', 'relatedProduct.coverMedia'])
                         ->when($section->query_type === 'featured', fn ($query) => $query->where('featured', true))
                         ->when($section->query_type === 'popular', fn ($query) => $query->orderByDesc('views'))
                         ->when($section->query_type === 'manual', fn ($query) => $query->whereIn('id', $section->item_ids ?? []));
@@ -195,25 +198,76 @@ class HomeController extends Controller
                         $query->latest('published_at');
                     }
 
-                    $items = $query->limit($section->items_limit)->get()->map(fn (SocialContent $content) => [
-                        'id' => $content->id,
-                        'title' => $content->title,
-                        'url' => "/{$section->content_type}/{$content->slug}",
-                        'eyebrow' => match ($content->type) {
-                            'video' => 'ویدیو', 'short' => 'ویدیوی کوتاه', default => 'پست'
-                        },
-                        'excerpt' => $content->excerpt,
-                        'image_url' => MediaStorage::url($content->thumbnail),
-                        'duration' => $content->duration,
-                        'views' => $content->views,
-                    ]);
+                    $items = $query->limit($section->items_limit)->get()->map(function (SocialContent $content) use ($section) {
+                        $imagePath = $content->thumbnail;
+
+                        if (! $imagePath) {
+                            $imageMedia = $content->media->first(fn ($media) => $media->type === 'image' && filled($media->path));
+                            $videoMedia = $content->media->first(fn ($media) => $media->type === 'video' && filled($media->thumbnail));
+                            $imagePath = $imageMedia?->path
+                                ?: $videoMedia?->thumbnail
+                                ?: $content->relatedContent?->thumbnail
+                                ?: $content->relatedProduct?->coverMedia?->path;
+                        }
+
+                        return [
+                            'id' => $content->id,
+                            'title' => $content->title,
+                            'url' => "/{$section->content_type}/{$content->slug}",
+                            'eyebrow' => match ($content->type) {
+                                'video' => 'ویدیو', 'short' => 'ویدیوی کوتاه', default => 'پست'
+                            },
+                            'excerpt' => $content->excerpt,
+                            'image_url' => MediaStorage::url($imagePath),
+                            'duration' => $content->duration,
+                            'views' => $content->views,
+                        ];
+                    });
                 }
 
                 return [
                     ...$section->only(['id', 'title', 'subtitle', 'content_type', 'layout']),
                     'items' => $items,
                 ];
-            })->filter(fn (array $section) => $section['items']->isNotEmpty())->values(),
+            })->filter(fn (array $section) => $section['items']->isNotEmpty())->values()->pipe(function ($sections) {
+                $feedIndex = $sections->search(fn (array $section) =>
+                    $section['content_type'] === 'posts'
+                    || str_contains($section['title'], 'دنیای گیمینگ')
+                );
+                $discoverIndex = $sections->search(fn (array $section) =>
+                    str_contains($section['title'], 'دنیای بازی را کشف کن')
+                );
+
+                if ($discoverIndex === false) {
+                    $discoverIndex = $sections->search(fn (array $section) => $section['content_type'] === 'games');
+                }
+
+                if ($feedIndex === false || $discoverIndex === false || $feedIndex === $discoverIndex - 1) {
+                    return $sections;
+                }
+
+                $feedSection = $sections->get($feedIndex);
+                $remaining = $sections
+                    ->reject(fn (array $_, int $index) => $index === $feedIndex)
+                    ->values();
+                $discoverIndex = $remaining->search(fn (array $section) =>
+                    str_contains($section['title'], 'دنیای بازی را کشف کن')
+                );
+
+                if ($discoverIndex === false) {
+                    $discoverIndex = $remaining->search(fn (array $section) => $section['content_type'] === 'games');
+                }
+
+                if ($discoverIndex === false) {
+                    return $remaining->push($feedSection);
+                }
+
+                return $remaining
+                    ->take($discoverIndex)
+                    ->concat([$feedSection])
+                    ->concat($remaining->slice($discoverIndex))
+                    ->values();
+            }),
             'freshContent' => Product::query()
                 ->with(['category:id,name', 'coverMedia'])
                 ->publiclyVisible()
