@@ -23,12 +23,12 @@ class SystemMaintenanceController extends Controller
     {
         $pushTargets = User::query()
             ->select(['id', 'name', 'email'])
-            ->whereHas('mobileDevices', fn ($query) => $query->where('push_enabled', true))
             ->with([
                 'mobileDevices' => fn ($query) => $query
                     ->where('push_enabled', true)
                     ->latest('last_seen_at'),
             ])
+            ->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$request->user()->id])
             ->orderBy('name')
             ->get()
             ->map(fn (User $user) => [
