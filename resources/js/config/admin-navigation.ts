@@ -3,149 +3,122 @@ import {
     Boxes,
     Building2,
     ClipboardList,
+    Factory,
     Gamepad2,
     Gauge,
-    Images,
     Home,
+    Images,
     LayoutGrid,
     LifeBuoy,
+    ListChecks,
+    ListVideo,
+    MessageSquareText,
+    Newspaper,
     PanelsTopLeft,
+    RefreshCw,
+    Rocket,
     Settings,
     ShoppingBag,
     Tags,
+    TerminalSquare,
     Users,
     Video,
-    RefreshCw,
-    Rocket,
-    MessageSquareText,
-    Newspaper,
-    Factory,
-    ListVideo,
-    ListChecks,
-    TerminalSquare,
     type LucideIcon,
 } from "lucide-react";
 
-export interface NavigationItem {
+export interface NavigationLink {
+    type: "link";
     label: string;
     href: string;
     icon: LucideIcon;
     badge?: string;
+    exact?: boolean;
+    excludeQuery?: Record<string, string>;
 }
 
-export interface NavigationGroup {
+export interface NavigationParent {
+    type: "parent";
+    key: string;
     label: string;
-    items: NavigationItem[];
+    icon: LucideIcon;
+    children: NavigationLink[];
 }
 
-export const adminNavigation: NavigationGroup[] = [
+export type NavigationEntry = NavigationLink | NavigationParent;
+
+const link = (
+    label: string,
+    href: string,
+    icon: LucideIcon,
+    options: Omit<NavigationLink, "type" | "label" | "href" | "icon"> = {},
+): NavigationLink => ({ type: "link", label, href, icon, ...options });
+
+export const adminNavigation: NavigationEntry[] = [
+    link("داشبورد", "/admin", Gauge, { exact: true }),
+    link("مشاهده سایت", "/", Home, { exact: true }),
     {
-        label: "نمای کلی",
-        items: [{ label: "داشبورد", href: "/admin", icon: Gauge }],
-    },
-    {
-        label: "فروشگاه",
-        items: [
-            { label: "صفحه اصلی", href: "/admin/home", icon: Home },
-            { label: "محصولات", href: "/admin/products", icon: ShoppingBag },
-            { label: "انواع محصول", href: "/admin/product-types", icon: Boxes },
-            { label: "ویژگی‌های محصول", href: "/admin/attributes", icon: Tags },
-            {
-                label: "دسته‌بندی‌ها",
-                href: "/admin/categories",
-                icon: LayoutGrid,
-            },
-            { label: "برندها", href: "/admin/brands", icon: Building2 },
-            { label: "بازی‌ها", href: "/admin/games", icon: Gamepad2 },
-            {
-                label: "پلتفرم‌ها",
-                href: "/admin/platforms",
-                icon: PanelsTopLeft,
-            },
-            // { label: "انبار", href: "/admin/inventory", icon: Warehouse },
+        type: "parent",
+        key: "storefront",
+        label: "فروشگاه و کاتالوگ",
+        icon: ShoppingBag,
+        children: [
+            link("صفحه اصلی فروشگاه", "/admin/home", Home),
+            link("محصولات", "/admin/products", ShoppingBag),
+            link("انواع محصول", "/admin/product-types", Boxes),
+            link("ویژگی‌های محصول", "/admin/attributes", Tags),
+            link("دسته‌بندی‌ها", "/admin/categories", LayoutGrid),
+            link("برندها", "/admin/brands", Building2),
+            link("بازی‌ها", "/admin/games", Gamepad2),
+            link("پلتفرم‌ها", "/admin/platforms", PanelsTopLeft),
         ],
     },
     {
-        label: "تجارت",
-        items: [
-            { label: "سفارش‌ها", href: "/admin/orders", icon: ClipboardList },
-            {
-                label: "درخواست‌های معاوضه",
-                href: "/admin/tickets?type=exchange",
-                icon: RefreshCw,
-            },
-            // { label: "پرداخت‌ها", href: "/admin/payments", icon: CircleDollarSign },
-            {
-                label: "کدهای تخفیف",
-                href: "/admin/coupons",
-                icon: BadgePercent,
-            },
-            // { label: "نقد و بررسی", href: "/admin/reviews", icon: Star },
-            // { label: "معاوضه", href: "/admin/trades", icon: Boxes },
+        type: "parent",
+        key: "commerce",
+        label: "سفارش و تجارت",
+        icon: ClipboardList,
+        children: [
+            link("سفارش‌ها", "/admin/orders", ClipboardList),
+            link("درخواست‌های معاوضه", "/admin/tickets?type=exchange", RefreshCw),
+            link("کدهای تخفیف", "/admin/coupons", BadgePercent),
         ],
     },
     {
-        label: "اجتماعی و محتوا",
-        items: [
-            { label: "فید", href: "/admin/feed", icon: Newspaper },
-            {
-                label: "استودیوهای بازی‌سازی",
-                href: "/admin/studios",
-                icon: Factory,
-            },
-            // { label: "کریتورها", href: "/admin/creators", icon: BriefcaseBusiness },
-            // { label: "پست‌ها", href: "/admin/posts", icon: FileText },
-            { label: "ویدیوها", href: "/admin/videos", icon: Video },
-            {
-                label: "کالکشن‌های ویدیو",
-                href: "/admin/video-playlists",
-                icon: ListVideo,
-            },
-            { label: "ویدیوهای کوتاه", href: "/admin/shorts", icon: Images },
-            // { label: "نظرات", href: "/admin/comments", icon: MessageSquareText },
+        type: "parent",
+        key: "content",
+        label: "محتوا و رسانه",
+        icon: Newspaper,
+        children: [
+            link("فید", "/admin/feed", Newspaper),
+            link("استودیوهای بازی‌سازی", "/admin/studios", Factory),
+            link("ویدیوها", "/admin/videos", Video),
+            link("کالکشن‌های ویدیو", "/admin/video-playlists", ListVideo),
+            link("ویدیوهای کوتاه", "/admin/shorts", Images),
         ],
     },
     {
-        label: "مدیریت و نظارت",
-        items: [
-            { label: "کاربران", href: "/admin/users", icon: Users },
-            // { label: "گزارش‌ها", href: "/admin/reports", icon: ReceiptText },
-            // { label: "نظارت محتوا", href: "/admin/moderation", icon: ShieldCheck },
-            // { label: "اعلان‌ها", href: "/admin/notifications", icon: Activity },
-            {
-                label: "تیکت‌های پشتیبانی",
-                href: "/admin/tickets",
-                icon: LifeBuoy,
-            },
+        type: "parent",
+        key: "people",
+        label: "کاربران و پشتیبانی",
+        icon: Users,
+        children: [
+            link("کاربران", "/admin/users", Users),
+            link("تیکت‌های پشتیبانی", "/admin/tickets", LifeBuoy, {
+                excludeQuery: { type: "exchange" },
+            }),
         ],
     },
     {
-        label: "سیستم",
-        items: [
-            // { label: "بنرها", href: "/admin/banners", icon: PackageSearch },
-            // { label: "صفحات", href: "/admin/pages", icon: Tags },
-            { label: "تنظیمات", href: "/admin/settings", icon: Settings },
-            {
-                label: "پترن‌های پیامک",
-                href: "/admin/sms-patterns",
-                icon: ListChecks,
-            },
-            {
-                label: "تست پیامک",
-                href: "/admin/sms-test",
-                icon: MessageSquareText,
-            },
-            {
-                label: "به‌روزرسانی سیستم",
-                href: "/admin/deployments",
-                icon: Rocket,
-            },
-            {
-                label: "نگهداری سیستم",
-                href: "/admin/system-maintenance",
-                icon: TerminalSquare,
-            },
-            // { label: "گزارش مدیران", href: "/admin/audit-logs", icon: WalletCards },
+        type: "parent",
+        key: "system",
+        label: "سیستم و تنظیمات",
+        icon: Settings,
+        children: [
+            link("تنظیمات", "/admin/settings", Settings),
+            link("پترن‌های پیامک", "/admin/sms-patterns", ListChecks),
+            link("تست پیامک", "/admin/sms-test", MessageSquareText),
+            link("به‌روزرسانی سیستم", "/admin/deployments", Rocket),
+            link("نگهداری سیستم", "/admin/system-maintenance", TerminalSquare),
         ],
     },
 ];
