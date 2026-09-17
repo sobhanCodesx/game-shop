@@ -13,6 +13,8 @@ class ProjectFileManagerService
 
     public const MAX_UPLOAD_KILOBYTES = 50 * 1024;
 
+    public const MAX_CHUNKED_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
+
     private string $root;
 
     public function __construct()
