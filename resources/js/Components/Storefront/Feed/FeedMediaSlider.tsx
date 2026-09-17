@@ -140,6 +140,7 @@ function FeedMediaSliderComponent({
                                         alt={item.alt}
                                         className="size-full bg-black object-contain"
                                         decoding="async"
+                                        height={item.height ?? undefined}
                                         fetchPriority={
                                             priority && index === 0
                                                 ? "high"
@@ -157,6 +158,7 @@ function FeedMediaSliderComponent({
                                             ])
                                         }
                                         src={item.url}
+                                        width={item.width ?? undefined}
                                     />
                                     <span className="absolute left-3 top-3 grid size-8 place-items-center rounded-full bg-black/55 text-white opacity-0 backdrop-blur transition group-hover/media:opacity-100">
                                         <Maximize2 size={15} />

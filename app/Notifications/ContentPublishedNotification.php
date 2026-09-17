@@ -108,7 +108,7 @@ class ContentPublishedNotification extends Notification
         }
 
         if ($this->content->type === 'post') {
-            return route('feed.show', $this->content->slug, false);
+            return route('posts.show', $this->content->slug, false);
         }
 
         $type = match ($this->content->type) {

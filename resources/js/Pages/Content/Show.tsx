@@ -1,22 +1,9 @@
 import { Avatar, Button } from "@heroui/react";
-import { Link, router, useForm, usePage } from "@inertiajs/react";
-import {
-    MediaPlayer,
-    type MediaPlayerInstance,
-    MediaProvider,
-    Poster,
-} from "@vidstack/react";
-import {
-    defaultLayoutIcons,
-    DefaultVideoLayout,
-} from "@vidstack/react/player/layouts/default";
-import "@vidstack/react/player/styles/default/theme.css";
-import "@vidstack/react/player/styles/default/layouts/video.css";
+import { Head, Link, router, useForm, usePage } from "@inertiajs/react";
 import {
     ChevronDown,
     Eye,
     Gamepad2,
-    GripHorizontal,
     ListVideo,
     MessageCircle,
     MoreHorizontal,
@@ -29,8 +16,8 @@ import {
 } from "lucide-react";
 import { requestNativeShare } from "../../lib/nativeBridge";
 import {
+    type ComponentType,
     type FormEvent,
-    type PointerEvent as ReactPointerEvent,
     useEffect,
     useRef,
     useState,
@@ -53,6 +40,7 @@ interface WatchContent extends StorefrontContent {
     dislikes_count: number;
     user_reaction: "like" | "dislike" | null;
     comments_count: number;
+    video_mime: string | null;
 }
 
 interface Channel {
@@ -82,8 +70,15 @@ interface PlaylistContext {
     slug: string;
     channel_name: string;
     url: string;
+    is_public: boolean;
     current_id: number;
     items: StorefrontContent[];
+}
+
+interface BreadcrumbItem {
+    name: string;
+    url: string;
+    current: boolean;
 }
 
 const number = new Intl.NumberFormat("fa-IR", { notation: "compact" });
@@ -99,129 +94,50 @@ function timeAgo(value: string) {
     return relative.format(Math.round(days / 30), "month");
 }
 
-function FloatingVideoPlayer({ content }: { content: WatchContent }) {
-    const anchorRef = useRef<HTMLDivElement>(null);
-    const playerRef = useRef<MediaPlayerInstance>(null);
-    const dragRef = useRef({ pointerX: 0, pointerY: 0, x: 0, y: 0 });
-    const [hasStarted, setHasStarted] = useState(false);
-    const [isFloating, setIsFloating] = useState(false);
-    const [isClosed, setIsClosed] = useState(false);
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
+function VideoPlayer({ content }: { content: WatchContent }) {
+    const [EnhancedPlayer, setEnhancedPlayer] = useState<ComponentType<{
+        content: WatchContent;
+    }> | null>(null);
 
     useEffect(() => {
-        const anchor = anchorRef.current;
-        if (!anchor || !hasStarted) return;
-
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                const leftAboveViewport = entry.boundingClientRect.top < 0;
-                setIsFloating(
-                    !entry.isIntersecting && leftAboveViewport && !isClosed,
-                );
-                if (entry.isIntersecting) setOffset({ x: 0, y: 0 });
+        let active = true;
+        void import("../../Components/Storefront/Video/FloatingVideoPlayer").then(
+            ({ default: Player }) => {
+                if (active) setEnhancedPlayer(() => Player);
             },
-            { threshold: 0.35 },
         );
-        observer.observe(anchor);
-        return () => observer.disconnect();
-    }, [hasStarted, isClosed]);
 
-    const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
-        event.currentTarget.setPointerCapture(event.pointerId);
-        dragRef.current = {
-            pointerX: event.clientX,
-            pointerY: event.clientY,
-            ...offset,
+        return () => {
+            active = false;
         };
-    };
+    }, []);
 
-    const drag = (event: ReactPointerEvent<HTMLButtonElement>) => {
-        if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-        const container = event.currentTarget.parentElement;
-        if (!container) return;
-
-        const start = dragRef.current;
-        const rect = container.getBoundingClientRect();
-        const nextX = start.x + event.clientX - start.pointerX;
-        const nextY = start.y + event.clientY - start.pointerY;
-        const deltaX = nextX - offset.x;
-        const deltaY = nextY - offset.y;
-        setOffset({
-            x:
-                nextX -
-                Math.max(0, rect.right + deltaX - window.innerWidth) +
-                Math.max(0, -(rect.left + deltaX)),
-            y:
-                nextY -
-                Math.max(0, rect.bottom + deltaY - window.innerHeight) +
-                Math.max(0, -(rect.top + deltaY)),
-        });
-    };
+    if (EnhancedPlayer) return <EnhancedPlayer content={content} />;
 
     return (
-        <div className="size-full" ref={anchorRef}>
-            <div
-                className={
-                    isFloating
-                        ? "fixed bottom-20 right-3 z-[60] aspect-video w-[min(88vw,390px)] overflow-hidden rounded-2xl bg-black shadow-2xl shadow-black/50 ring-1 ring-white/20 sm:bottom-5 sm:right-5"
-                        : "absolute inset-0"
-                }
-                style={
-                    isFloating
-                        ? {
-                              transform: `translate(${offset.x}px, ${offset.y}px)`,
-                          }
-                        : undefined
-                }
-            >
-                <MediaPlayer
-                    className="size-full"
-                    onPlay={() => {
-                        setHasStarted(true);
-                        setIsClosed(false);
-                    }}
+        <div
+            className="playnexus-player-shell size-full"
+            data-ambient-fallback="true"
+        >
+            <div aria-hidden="true" className="playnexus-player-ambient">
+                <span className="playnexus-player-ambient__primary" />
+                <span className="playnexus-player-ambient__secondary" />
+                <span className="playnexus-player-ambient__highlight" />
+            </div>
+            <div className="playnexus-player-frame absolute inset-0">
+                <video
+                    className="playnexus-player-native"
+                    controls
                     playsInline
                     poster={content.thumbnail_url ?? undefined}
-                    ref={playerRef}
-                    src={content.video_url ?? undefined}
+                    preload="metadata"
                     title={content.title}
                 >
-                    <MediaProvider>
-                        {content.thumbnail_url && (
-                            <Poster
-                                alt={`تصویر بندانگشتی ${content.title}`}
-                                className="absolute inset-0 size-full object-cover opacity-0 transition-opacity data-[visible]:opacity-100"
-                                src={content.thumbnail_url}
-                            />
-                        )}
-                    </MediaProvider>
-                    <DefaultVideoLayout icons={defaultLayoutIcons} />
-                </MediaPlayer>
-                {isFloating && (
-                    <>
-                        <button
-                            aria-label="جابه‌جایی پخش‌کننده کوچک"
-                            className="absolute left-2 top-2 z-50 grid size-9 touch-none cursor-grab place-items-center rounded-full bg-black/75 text-white shadow-lg backdrop-blur active:cursor-grabbing"
-                            onPointerDown={startDrag}
-                            onPointerMove={drag}
-                            type="button"
-                        >
-                            <GripHorizontal size={19} />
-                        </button>
-                        <button
-                            aria-label="بستن پخش‌کننده کوچک"
-                            className="absolute right-2 top-2 z-50 grid size-9 place-items-center rounded-full bg-black/75 text-white shadow-lg backdrop-blur transition hover:bg-rose-600"
-                            onClick={() => {
-                                playerRef.current?.pause();
-                                setIsClosed(true);
-                                setIsFloating(false);
-                            }}
-                            type="button"
-                        >
-                            <X size={19} />
-                        </button>
-                    </>
-                )}
+                    <source
+                        src={content.video_url ?? undefined}
+                        type={content.video_mime ?? undefined}
+                    />
+                </video>
             </div>
         </div>
     );
@@ -440,18 +356,22 @@ function PlaylistPanel({ playlist }: { playlist: PlaylistContext }) {
 
     return (
         <section className="overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm">
-            <button
-                aria-expanded={open}
-                className="flex w-full items-center gap-3 p-2.5 text-right transition hover:bg-[var(--store-accent-soft)] sm:p-3"
-                onClick={() => setOpen((value) => !value)}
-                type="button"
-            >
-                <span className="relative grid aspect-video w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-black text-white sm:w-24">
+            <div className="flex w-full items-center gap-3 p-2.5 text-right transition hover:bg-[var(--store-accent-soft)] sm:p-3">
+                <button
+                    aria-expanded={open}
+                    aria-label="نمایش ویدیوهای کالکشن"
+                    className="relative grid aspect-video w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-black text-white sm:w-24"
+                    onClick={() => setOpen((value) => !value)}
+                    type="button"
+                >
                     {current?.thumbnail_url ? (
                         <img
                             alt=""
                             className="size-full object-cover opacity-70"
+                            height={54}
+                            loading="lazy"
                             src={current.thumbnail_url}
+                            width={96}
                         />
                     ) : (
                         <ListVideo size={26} />
@@ -459,14 +379,17 @@ function PlaylistPanel({ playlist }: { playlist: PlaylistContext }) {
                     <span className="absolute inset-0 grid place-items-center bg-black/20">
                         <ListVideo size={24} />
                     </span>
-                </span>
+                </button>
                 <div className="min-w-0 flex-1">
                     <span className="block text-[10px] font-black text-indigo-500">
                         در حال پخش از کالکشن
                     </span>
-                    <span className="mt-1 block truncate text-sm font-black">
+                    <Link
+                        className="mt-1 block truncate text-sm font-black hover:text-indigo-500"
+                        href={playlist.url}
+                    >
                         {playlist.title}
-                    </span>
+                    </Link>
                     <p className="mt-1 truncate text-[11px] text-[var(--store-muted)]">
                         {playlist.channel_name}
                         <span className="mx-1">•</span>
@@ -474,11 +397,19 @@ function PlaylistPanel({ playlist }: { playlist: PlaylistContext }) {
                         {fullNumber.format(playlist.items.length)}
                     </p>
                 </div>
-                <ChevronDown
-                    className={`shrink-0 transition duration-200 ${open ? "rotate-180" : ""}`}
-                    size={20}
-                />
-            </button>
+                <button
+                    aria-expanded={open}
+                    aria-label="نمایش ویدیوهای کالکشن"
+                    className="grid size-10 shrink-0 place-items-center"
+                    onClick={() => setOpen((value) => !value)}
+                    type="button"
+                >
+                    <ChevronDown
+                        className={`transition duration-200 ${open ? "rotate-180" : ""}`}
+                        size={20}
+                    />
+                </button>
+            </div>
             {open && (
                 <div className="max-h-[420px] overflow-y-auto border-t border-[var(--store-border)] py-2">
                     {playlist.items.map((item, index) => (
@@ -500,7 +431,10 @@ function PlaylistPanel({ playlist }: { playlist: PlaylistContext }) {
                                     <img
                                         alt=""
                                         className="size-full object-cover"
+                                        height={63}
+                                        loading="lazy"
                                         src={item.thumbnail_url}
+                                        width={112}
                                     />
                                 )}
                             </div>
@@ -527,6 +461,7 @@ export default function Show({
     comments,
     related,
     playlist,
+    breadcrumbs,
 }: {
     seo: SeoData;
     content: WatchContent;
@@ -534,6 +469,7 @@ export default function Show({
     comments: Paginated<CommentData> | null;
     related: StorefrontContent[];
     playlist: PlaylistContext | null;
+    breadcrumbs: BreadcrumbItem[];
 }) {
     const { auth } = usePage<SharedPageProps>().props;
     const [reaction, setReaction] = useState(content.user_reaction);
@@ -769,45 +705,57 @@ export default function Show({
     return (
         <StorefrontLayout>
             <Seo seo={seo} />
-            <main className="mx-auto max-w-[1480px] px-3 py-5 sm:px-5 lg:py-7">
+            {content.type === "video" && content.thumbnail_url && (
+                <Head>
+                    <link
+                        as="image"
+                        fetchPriority="high"
+                        href={content.thumbnail_url}
+                        rel="preload"
+                    />
+                </Head>
+            )}
+            <main className="playnexus-watch-page mx-auto max-w-[1480px] px-3 py-5 sm:px-5 lg:py-7">
                 <nav
                     aria-label="مسیر صفحه"
                     className="mb-4 flex min-w-0 items-center gap-2 overflow-hidden text-xs text-[var(--store-muted)]"
                 >
-                    <Link className="shrink-0 hover:text-indigo-500" href="/">
-                        صفحه اصلی
-                    </Link>
-                    <span aria-hidden="true">/</span>
-                    {content.type === "video" && (
-                        <>
-                            <Link
-                                className="shrink-0 hover:text-indigo-500"
-                                href="/videos"
-                            >
-                                ویدیوها
-                            </Link>
-                            <span aria-hidden="true">/</span>
-                        </>
-                    )}
-                    <span
-                        aria-current="page"
-                        className="truncate text-[var(--store-text)]"
-                    >
-                        {content.title}
-                    </span>
+                    {breadcrumbs.map((item, index) => (
+                        <span className="contents" key={`${item.url}-${index}`}>
+                            {index > 0 && <span aria-hidden="true">/</span>}
+                            {item.current ? (
+                                <span
+                                    aria-current="page"
+                                    className="truncate text-[var(--store-text)]"
+                                >
+                                    {item.name}
+                                </span>
+                            ) : (
+                                <Link
+                                    className="shrink-0 hover:text-indigo-500"
+                                    href={item.url}
+                                >
+                                    {item.name}
+                                </Link>
+                            )}
+                        </span>
+                    ))}
                 </nav>
                 <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
                     <div className="flex min-w-0 flex-col">
                         <div
-                            className={`relative overflow-hidden bg-black ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-xl" : "aspect-video w-full rounded-xl"}`}
+                            className={`relative bg-black ${content.video_url ? "overflow-visible" : "overflow-hidden"} ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-xl" : "aspect-video w-full rounded-xl"}`}
                         >
                             {content.video_url ? (
-                                <FloatingVideoPlayer content={content} />
+                                <VideoPlayer content={content} />
                             ) : content.thumbnail_url ? (
                                 <img
                                     alt={content.title}
                                     className="size-full object-contain"
+                                    fetchPriority="high"
+                                    height={720}
                                     src={content.thumbnail_url}
+                                    width={1280}
                                 />
                             ) : (
                                 <div className="grid size-full place-items-center">

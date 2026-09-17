@@ -20,18 +20,26 @@ import type {
     StorefrontProduct,
 } from "../../types";
 
+interface BreadcrumbItem {
+    name: string;
+    url: string;
+    current: boolean;
+}
+
 export default function FeedShow({
     seo,
     item,
     latestFeed,
     latestVideos,
     latestProducts,
+    breadcrumbs,
 }: {
     seo: SeoData;
     item: FeedItemData;
     latestFeed: FeedItemData[];
     latestVideos: StorefrontContent[];
     latestProducts: StorefrontProduct[];
+    breadcrumbs: BreadcrumbItem[];
 }) {
     return (
         <StorefrontLayout>
@@ -42,28 +50,27 @@ export default function FeedShow({
                     className="mx-4 mb-2 max-w-[720px] sm:mx-auto"
                 >
                     <ol className="flex min-w-0 items-center gap-2 text-xs text-[var(--store-muted)]">
-                        <li>
-                            <Link
-                                className="inline-flex items-center gap-1 hover:text-indigo-400"
-                                href="/"
-                            >
-                                <House size={14} />
-                                خانه
-                            </Link>
-                        </li>
-                        <li aria-hidden="true">/</li>
-                        <li>
-                            <Link
-                                className="hover:text-indigo-400"
-                                href="/feed"
-                            >
-                                فید گیمینگ
-                            </Link>
-                        </li>
-                        <li aria-hidden="true">/</li>
-                        <li aria-current="page" className="truncate">
-                            {item.title}
-                        </li>
+                        {breadcrumbs.map((crumb, index) => (
+                            <li className="contents" key={crumb.url}>
+                                {index > 0 && <span aria-hidden="true">/</span>}
+                                {crumb.current ? (
+                                    <span
+                                        aria-current="page"
+                                        className="truncate"
+                                    >
+                                        {crumb.name}
+                                    </span>
+                                ) : (
+                                    <Link
+                                        className="inline-flex items-center gap-1 hover:text-indigo-400"
+                                        href={crumb.url}
+                                    >
+                                        {index === 0 && <House size={14} />}
+                                        {crumb.name}
+                                    </Link>
+                                )}
+                            </li>
+                        ))}
                     </ol>
                 </nav>
                 <div className="mx-auto max-w-[720px]">

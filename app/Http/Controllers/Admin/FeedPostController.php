@@ -32,7 +32,7 @@ class FeedPostController extends Controller
                 'media_count' => $post->media->count(),
                 'cover_url' => MediaStorage::url($post->media->first()?->thumbnail ?: $post->media->first()?->path ?: $post->thumbnail),
                 'edit_url' => route('admin.feed.edit', $post),
-                'url' => $post->status === 'published' ? route('feed.show', $post->slug, false) : null,
+                'url' => $post->status === 'published' ? route('posts.show', $post->slug, false) : null,
             ]),
             'current_page' => $posts->currentPage(),
             'last_page' => $posts->lastPage(),

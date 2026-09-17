@@ -1,6 +1,7 @@
 import { Avatar, Button, Card, Chip } from "@heroui/react";
 import { Head, Link, router } from "@inertiajs/react";
 import {
+    ArrowRight,
     ChevronLeft,
     ChevronRight,
     Edit3,
@@ -11,18 +12,31 @@ import {
 } from "lucide-react";
 import AdminLayout from "../../../Layouts/AdminLayout";
 
+interface Game {
+    id: number;
+    name: string;
+    slug: string;
+    status: string;
+    image_url: string | null;
+    cover_url: string | null;
+    playlists_count: number;
+}
+interface SelectedGame {
+    id: number;
+    name: string;
+    slug: string;
+    cover_url: string | null;
+}
 interface Playlist {
     id: number;
-    game: string | null;
     title: string;
     visibility: "public" | "unlisted" | "private";
     sort_order: number;
     videos_count: number;
     logo_url: string | null;
-    channel_image_url: string | null;
 }
-interface Page {
-    data: Playlist[];
+interface Page<T> {
+    data: T[];
     current_page: number;
     last_page: number;
     from: number | null;
@@ -31,46 +45,159 @@ interface Page {
 }
 const fa = new Intl.NumberFormat("fa-IR");
 
-export default function PlaylistIndex({ playlists }: { playlists: Page }) {
-    const go = (page: number) =>
-        router.get(
-            "/admin/video-playlists",
-            { page },
-            { preserveScroll: true, preserveState: true },
-        );
+export default function PlaylistIndex({
+    games,
+    selectedGame,
+    playlists,
+}: {
+    games: Page<Game>;
+    selectedGame: SelectedGame | null;
+    playlists: Page<Playlist> | null;
+}) {
     return (
         <AdminLayout
-            description="کالکشن‌های ویدیویی کانال‌ها را مدیریت کنید."
+            description={
+                selectedGame
+                    ? `مدیریت کالکشن‌های کانال ${selectedGame.name}`
+                    : "یک بازی را انتخاب کنید تا کالکشن‌های ویدیویی آن نمایش داده شود."
+            }
             title="کالکشن‌های ویدیو"
         >
             <Head title="کالکشن‌های ویدیو" />
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-400">
-                    {fa.format(playlists.total)} کالکشن در کانال‌ها ثبت شده است.
-                </p>
+                {selectedGame ? (
+                    <button
+                        className="inline-flex items-center gap-2 self-start text-sm font-bold text-slate-400 transition hover:text-white"
+                        onClick={() => router.get("/admin/video-playlists")}
+                        type="button"
+                    >
+                        <ArrowRight size={17} /> بازگشت به بازی‌ها
+                    </button>
+                ) : (
+                    <p className="text-sm text-slate-400">
+                        {fa.format(games.total)} بازی ثبت شده است.
+                    </p>
+                )}
                 <Link
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white transition hover:bg-indigo-500"
                     href="/admin/video-playlists/create"
                 >
-                    <Plus size={17} />
-                    افزودن کالکشن
+                    <Plus size={17} /> افزودن کالکشن
                 </Link>
             </div>
-            {playlists.data.length ? (
+            {selectedGame && playlists ? (
+                <PlaylistList game={selectedGame} page={playlists} />
+            ) : (
+                <GameList games={games} />
+            )}
+        </AdminLayout>
+    );
+}
+
+function GameList({ games }: { games: Page<Game> }) {
+    return (
+        <>
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {games.data.map((game) => (
+                    <button
+                        className="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 text-right transition hover:-translate-y-1 hover:border-indigo-500/60"
+                        key={game.id}
+                        onClick={() =>
+                            router.get(
+                                "/admin/video-playlists",
+                                { game: game.id },
+                                { preserveState: true },
+                            )
+                        }
+                        type="button"
+                    >
+                        <div className="relative aspect-[16/7] overflow-hidden bg-slate-950">
+                            {game.image_url ? (
+                                <img
+                                    alt=""
+                                    className="size-full object-cover transition duration-300 group-hover:scale-105"
+                                    src={game.image_url}
+                                />
+                            ) : (
+                                <span className="grid size-full place-items-center bg-gradient-to-br from-indigo-500/15 to-slate-950 text-indigo-400">
+                                    <Gamepad2 size={42} />
+                                </span>
+                            )}
+                            <span className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+                        </div>
+                        <div className="flex items-center gap-3 p-4">
+                            <Avatar size="sm">
+                                {game.cover_url && (
+                                    <Avatar.Image
+                                        alt={game.name}
+                                        src={game.cover_url}
+                                    />
+                                )}
+                                <Avatar.Fallback>
+                                    <Gamepad2 size={16} />
+                                </Avatar.Fallback>
+                            </Avatar>
+                            <span className="min-w-0 flex-1">
+                                <strong className="block truncate text-sm text-white">
+                                    {game.name}
+                                </strong>
+                                <small className="mt-1 block text-slate-500">
+                                    {fa.format(game.playlists_count)} کالکشن
+                                </small>
+                            </span>
+                            <ChevronLeft
+                                className="text-slate-600 transition group-hover:text-indigo-400"
+                                size={19}
+                            />
+                        </div>
+                    </button>
+                ))}
+            </div>
+            <Pagination page={games} pageKey="games_page" />
+        </>
+    );
+}
+
+function PlaylistList({
+    game,
+    page,
+}: {
+    game: SelectedGame;
+    page: Page<Playlist>;
+}) {
+    return (
+        <>
+            <div className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+                <Avatar>
+                    {game.cover_url && (
+                        <Avatar.Image alt={game.name} src={game.cover_url} />
+                    )}
+                    <Avatar.Fallback>
+                        <Gamepad2 />
+                    </Avatar.Fallback>
+                </Avatar>
+                <div>
+                    <h2 className="font-black text-white">{game.name}</h2>
+                    <p className="text-xs text-slate-500">
+                        {fa.format(page.total)} کالکشن
+                    </p>
+                </div>
+            </div>
+            {page.data.length ? (
                 <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                    {playlists.data.map((p) => (
+                    {page.data.map((playlist) => (
                         <Card
                             className="group overflow-hidden border border-slate-800 bg-slate-900/60"
-                            key={p.id}
+                            key={playlist.id}
                             variant="secondary"
                         >
                             <Card.Content className="p-0">
                                 <div className="relative aspect-video overflow-hidden bg-slate-950">
-                                    {p.logo_url ? (
+                                    {playlist.logo_url ? (
                                         <img
-                                            alt={p.title}
+                                            alt={playlist.title}
                                             className="size-full object-cover transition duration-300 group-hover:scale-105"
-                                            src={p.logo_url}
+                                            src={playlist.logo_url}
                                         />
                                     ) : (
                                         <span className="grid size-full place-items-center bg-gradient-to-br from-indigo-500/15 to-slate-950 text-indigo-400">
@@ -80,49 +207,35 @@ export default function PlaylistIndex({ playlists }: { playlists: Page }) {
                                     <Chip
                                         className="absolute left-3 top-3"
                                         color={
-                                            p.visibility === "public"
+                                            playlist.visibility === "public"
                                                 ? "success"
-                                                : p.visibility === "private"
+                                                : playlist.visibility ===
+                                                    "private"
                                                   ? "danger"
                                                   : "warning"
                                         }
                                         size="sm"
                                         variant="soft"
                                     >
-                                        {p.visibility === "public"
+                                        {playlist.visibility === "public"
                                             ? "عمومی"
-                                            : p.visibility === "unlisted"
+                                            : playlist.visibility === "unlisted"
                                               ? "با لینک"
                                               : "خصوصی"}
                                     </Chip>
                                 </div>
                                 <div className="p-5">
-                                    <div className="flex items-center gap-3">
-                                        <Avatar size="sm">
-                                            {p.channel_image_url && (
-                                                <Avatar.Image
-                                                    src={p.channel_image_url}
-                                                />
-                                            )}
-                                            <Avatar.Fallback>
-                                                <Gamepad2 size={16} />
-                                            </Avatar.Fallback>
-                                        </Avatar>
-                                        <div className="min-w-0">
-                                            <h2 className="truncate font-black text-white">
-                                                {p.title}
-                                            </h2>
-                                            <p className="truncate text-xs text-slate-500">
-                                                کانال {p.game ?? "نامشخص"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-5 flex justify-between text-xs text-slate-400">
+                                    <h3 className="truncate font-black text-white">
+                                        {playlist.title}
+                                    </h3>
+                                    <div className="mt-4 flex justify-between text-xs text-slate-400">
                                         <span>
-                                            {fa.format(p.videos_count)} ویدیو
+                                            {fa.format(playlist.videos_count)}{" "}
+                                            ویدیو
                                         </span>
                                         <span>
-                                            ترتیب {fa.format(p.sort_order)}
+                                            ترتیب{" "}
+                                            {fa.format(playlist.sort_order)}
                                         </span>
                                     </div>
                                 </div>
@@ -130,10 +243,9 @@ export default function PlaylistIndex({ playlists }: { playlists: Page }) {
                             <Card.Footer className="flex justify-end gap-2 border-t border-slate-800 px-4 py-3">
                                 <Link
                                     className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-bold text-slate-300 transition hover:bg-white/5 hover:text-white"
-                                    href={`/admin/video-playlists/${p.id}/edit`}
+                                    href={`/admin/video-playlists/${playlist.id}/edit`}
                                 >
-                                    <Edit3 size={15} />
-                                    ویرایش
+                                    <Edit3 size={15} /> ویرایش
                                 </Link>
                                 <Button
                                     onPress={() =>
@@ -141,15 +253,14 @@ export default function PlaylistIndex({ playlists }: { playlists: Page }) {
                                             "این کالکشن و لوگوی آن حذف شود؟",
                                         ) &&
                                         router.delete(
-                                            `/admin/video-playlists/${p.id}`,
+                                            `/admin/video-playlists/${playlist.id}`,
                                             { preserveScroll: true },
                                         )
                                     }
                                     size="sm"
                                     variant="danger-soft"
                                 >
-                                    <Trash2 size={15} />
-                                    حذف
+                                    <Trash2 size={15} /> حذف
                                 </Button>
                             </Card.Footer>
                         </Card>
@@ -159,54 +270,71 @@ export default function PlaylistIndex({ playlists }: { playlists: Page }) {
                 <div className="rounded-3xl border border-dashed border-slate-700 p-14 text-center">
                     <ListVideo className="mx-auto text-slate-600" size={48} />
                     <h2 className="mt-4 font-black text-white">
-                        هنوز کالکشنی ساخته نشده است
+                        برای این بازی هنوز کالکشنی ساخته نشده است
                     </h2>
-                    <Link
-                        className="mt-5 inline-flex h-10 items-center justify-center rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white"
-                        href="/admin/video-playlists/create"
-                    >
-                        ساخت اولین کالکشن
-                    </Link>
                 </div>
             )}
-            {playlists.last_page > 1 && (
-                <nav
-                    aria-label="صفحه‌بندی کالکشن‌ها"
-                    className="mt-6 flex flex-col items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:flex-row"
+            <Pagination
+                page={page}
+                pageKey="playlists_page"
+                selectedGameId={game.id}
+            />
+        </>
+    );
+}
+
+function Pagination<T>({
+    page,
+    pageKey,
+    selectedGameId,
+}: {
+    page: Page<T>;
+    pageKey: "games_page" | "playlists_page";
+    selectedGameId?: number;
+}) {
+    if (page.last_page <= 1) return null;
+    const go = (target: number) =>
+        router.get(
+            "/admin/video-playlists",
+            {
+                ...(selectedGameId ? { game: selectedGameId } : {}),
+                [pageKey]: target,
+            },
+            { preserveScroll: true, preserveState: true },
+        );
+    return (
+        <nav
+            aria-label="صفحه‌بندی"
+            className="mt-6 flex flex-col items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:flex-row"
+        >
+            <p className="text-xs text-slate-500">
+                نمایش {fa.format(page.from ?? 0)} تا {fa.format(page.to ?? 0)}{" "}
+                از {fa.format(page.total)}
+            </p>
+            <div className="flex items-center gap-2">
+                <Button
+                    isDisabled={page.current_page === 1}
+                    isIconOnly
+                    onPress={() => go(page.current_page - 1)}
+                    size="sm"
+                    variant="ghost"
                 >
-                    <p className="text-xs text-slate-500">
-                        نمایش {fa.format(playlists.from ?? 0)} تا{" "}
-                        {fa.format(playlists.to ?? 0)} از{" "}
-                        {fa.format(playlists.total)}
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            isDisabled={playlists.current_page === 1}
-                            isIconOnly
-                            onPress={() => go(playlists.current_page - 1)}
-                            size="sm"
-                            variant="ghost"
-                        >
-                            <ChevronRight size={18} />
-                        </Button>
-                        <span className="px-2 text-xs">
-                            صفحه {fa.format(playlists.current_page)} از{" "}
-                            {fa.format(playlists.last_page)}
-                        </span>
-                        <Button
-                            isDisabled={
-                                playlists.current_page === playlists.last_page
-                            }
-                            isIconOnly
-                            onPress={() => go(playlists.current_page + 1)}
-                            size="sm"
-                            variant="ghost"
-                        >
-                            <ChevronLeft size={18} />
-                        </Button>
-                    </div>
-                </nav>
-            )}
-        </AdminLayout>
+                    <ChevronRight size={18} />
+                </Button>
+                <span className="px-2 text-xs">
+                    صفحه {fa.format(page.current_page)} از{" "}
+                    {fa.format(page.last_page)}
+                </span>
+                <Button
+                    isDisabled={page.current_page === page.last_page}
+                    isIconOnly
+                    onPress={() => go(page.current_page + 1)}
+                    size="sm"
+                    variant="ghost"
+                >
+                    <ChevronLeft size={18} />
+                </Button>
+            </div>
+        </nav>
     );
 }

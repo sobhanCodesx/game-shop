@@ -1,0 +1,209 @@
+import {
+    MediaPlayer,
+    type MediaPlayerInstance,
+    MediaProvider,
+    Poster,
+} from "@vidstack/react";
+import {
+    defaultLayoutIcons,
+    DefaultVideoLayout,
+} from "@vidstack/react/player/layouts/default";
+import "@vidstack/react/player/styles/default/theme.css";
+import "@vidstack/react/player/styles/default/layouts/video.css";
+import { AlertTriangle, GripHorizontal, RotateCcw, X } from "lucide-react";
+import {
+    type PointerEvent as ReactPointerEvent,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
+import { useVideoAmbientColors } from "./useVideoAmbientColors";
+
+interface VideoSource {
+    title: string;
+    thumbnail_url: string | null;
+    video_url: string | null;
+}
+
+export default function FloatingVideoPlayer({
+    content,
+}: {
+    content: VideoSource;
+}) {
+    const anchorRef = useRef<HTMLDivElement>(null);
+    const shellRef = useRef<HTMLDivElement>(null);
+    const ambientCanvasRef = useRef<HTMLCanvasElement>(null);
+    const playerRef = useRef<MediaPlayerInstance>(null);
+    const dragRef = useRef({ pointerX: 0, pointerY: 0, x: 0, y: 0 });
+    const [hasStarted, setHasStarted] = useState(false);
+    const [isFloating, setIsFloating] = useState(false);
+    const [isClosed, setIsClosed] = useState(false);
+    const [playbackError, setPlaybackError] = useState(false);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+    useVideoAmbientColors(shellRef, ambientCanvasRef, content.video_url);
+
+    useEffect(() => {
+        const anchor = anchorRef.current;
+        if (!anchor || !hasStarted) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                const leftAboveViewport = entry.boundingClientRect.top < 0;
+                setIsFloating(
+                    !entry.isIntersecting && leftAboveViewport && !isClosed,
+                );
+                if (entry.isIntersecting) setOffset({ x: 0, y: 0 });
+            },
+            { threshold: 0.35 },
+        );
+        observer.observe(anchor);
+        return () => observer.disconnect();
+    }, [hasStarted, isClosed]);
+
+    const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        dragRef.current = {
+            pointerX: event.clientX,
+            pointerY: event.clientY,
+            ...offset,
+        };
+    };
+
+    const drag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+        const container = event.currentTarget.parentElement;
+        if (!container) return;
+
+        const start = dragRef.current;
+        const rect = container.getBoundingClientRect();
+        const nextX = start.x + event.clientX - start.pointerX;
+        const nextY = start.y + event.clientY - start.pointerY;
+        const deltaX = nextX - offset.x;
+        const deltaY = nextY - offset.y;
+        setOffset({
+            x:
+                nextX -
+                Math.max(0, rect.right + deltaX - window.innerWidth) +
+                Math.max(0, -(rect.left + deltaX)),
+            y:
+                nextY -
+                Math.max(0, rect.bottom + deltaY - window.innerHeight) +
+                Math.max(0, -(rect.top + deltaY)),
+        });
+    };
+
+    const retry = () => {
+        setPlaybackError(false);
+        playerRef.current?.startLoading();
+        void playerRef.current?.play().catch(() => setPlaybackError(true));
+    };
+
+    return (
+        <div className="playnexus-player-shell size-full" ref={shellRef}>
+            <div aria-hidden="true" className="playnexus-player-ambient">
+                <canvas
+                    className="playnexus-player-ambient__canvas"
+                    ref={ambientCanvasRef}
+                />
+            </div>
+            <div className="size-full" ref={anchorRef}>
+                <div
+                    className={
+                        isFloating
+                            ? "playnexus-player-frame fixed bottom-20 right-3 z-[60] aspect-video w-[min(88vw,390px)] overflow-hidden rounded-2xl bg-black shadow-2xl shadow-black/50 ring-1 ring-white/20 sm:bottom-5 sm:right-5"
+                            : "playnexus-player-frame absolute inset-0"
+                    }
+                    style={
+                        isFloating
+                            ? {
+                                  transform: `translate(${offset.x}px, ${offset.y}px)`,
+                              }
+                            : undefined
+                    }
+                >
+                    <MediaPlayer
+                        key={content.video_url}
+                        className="playnexus-player size-full"
+                        onCanPlay={() => setPlaybackError(false)}
+                        onError={() => setPlaybackError(true)}
+                        onPlay={() => {
+                            setHasStarted(true);
+                            setIsClosed(false);
+                        }}
+                        playsInline
+                        poster={content.thumbnail_url ?? undefined}
+                        preload="metadata"
+                        ref={playerRef}
+                        src={content.video_url ?? undefined}
+                        title={content.title}
+                    >
+                        <MediaProvider>
+                            {content.thumbnail_url && (
+                                <Poster
+                                    alt={`تصویر بندانگشتی ${content.title}`}
+                                    className="absolute inset-0 size-full object-cover opacity-0 transition-opacity data-[visible]:opacity-100"
+                                    src={content.thumbnail_url}
+                                />
+                            )}
+                        </MediaProvider>
+                        <div
+                            aria-hidden="true"
+                            className="playnexus-player-vignette"
+                        />
+                        <div className="playnexus-player-identity">
+                            <span className="playnexus-player-mark">PN</span>
+                            <span className="playnexus-player-title">
+                                {content.title}
+                            </span>
+                        </div>
+                        <DefaultVideoLayout icons={defaultLayoutIcons} />
+                        {playbackError && (
+                            <div
+                                className="playnexus-player-error"
+                                role="alert"
+                            >
+                                <span className="playnexus-player-error__icon">
+                                    <AlertTriangle size={24} />
+                                </span>
+                                <strong>پخش ویدیو متوقف شد</strong>
+                                <span>
+                                    اتصال را بررسی کنید و دوباره تلاش کنید.
+                                </span>
+                                <button onClick={retry} type="button">
+                                    <RotateCcw size={16} />
+                                    تلاش مجدد
+                                </button>
+                            </div>
+                        )}
+                    </MediaPlayer>
+                    {isFloating && (
+                        <>
+                            <button
+                                aria-label="جابه‌جایی پخش‌کننده کوچک"
+                                className="absolute left-2 top-2 z-50 grid size-9 touch-none cursor-grab place-items-center rounded-full bg-black/75 text-white shadow-lg backdrop-blur active:cursor-grabbing"
+                                onPointerDown={startDrag}
+                                onPointerMove={drag}
+                                type="button"
+                            >
+                                <GripHorizontal size={19} />
+                            </button>
+                            <button
+                                aria-label="بستن پخش‌کننده کوچک"
+                                className="absolute right-2 top-2 z-50 grid size-9 place-items-center rounded-full bg-black/75 text-white shadow-lg backdrop-blur transition hover:bg-rose-600"
+                                onClick={() => {
+                                    playerRef.current?.pause();
+                                    setIsClosed(true);
+                                    setIsFloating(false);
+                                }}
+                                type="button"
+                            >
+                                <X size={19} />
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}

@@ -67,7 +67,9 @@ class SocialContentController extends Controller
             ->when($content->game_id, fn (Builder $query) => $query->orderByRaw('CASE WHEN game_id = ? THEN 0 ELSE 1 END', [$content->game_id]))
             ->latest('published_at')->limit(12)->get()->map(fn (SocialContent $item) => $data->content($item));
 
-        $seo = $this->seo($content, $type);
+        $playlist = $this->playlistContext($request, $content, $data);
+        $breadcrumbs = $this->breadcrumbs($content, $type, $playlist);
+        $seo = $this->seo($content, $type, $breadcrumbs);
 
         return Inertia::render('Content/Show', [
             ...$seo,
@@ -75,6 +77,7 @@ class SocialContentController extends Controller
                 ...$data->content($content),
                 'excerpt' => RichText::plainText($content->excerpt),
                 'body' => RichText::sanitize($content->body),
+                'video_mime' => $content->video_mime,
                 'allow_comments' => $content->allow_comments,
                 'likes_count' => (int) ($reactionCounts['like'] ?? 0),
                 'dislikes_count' => (int) ($reactionCounts['dislike'] ?? 0),
@@ -94,11 +97,13 @@ class SocialContentController extends Controller
             ] : null,
             'comments' => $comments,
             'related' => $related,
-            'playlist' => $this->playlistContext($request, $content, $data),
+            'playlist' => $playlist,
+            'breadcrumbs' => $breadcrumbs,
         ]);
     }
 
-    private function seo(SocialContent $content, string $routeType): array
+    /** @param array<int, array{name: string, url: string, current: bool}> $breadcrumbs */
+    private function seo(SocialContent $content, string $routeType, array $breadcrumbs): array
     {
         $siteName = (string) config('seo.site_name', 'PlayNexus');
         $locale = (string) config('seo.locale', 'fa-IR');
@@ -133,7 +138,7 @@ class SocialContentController extends Controller
                     'interactionType' => ['@type' => 'WatchAction'],
                     'userInteractionCount' => (int) $content->views,
                 ],
-                ...($thumbnail ? ['thumbnailUrl' => [$thumbnail]] : []),
+                ...($thumbnail ? ['thumbnailUrl' => [$thumbnail]] : ($content->type === 'video' ? ['thumbnailUrl' => [$logo]] : [])),
                 ...($videoUrl ? ['contentUrl' => $videoUrl] : []),
                 ...($content->duration ? ['duration' => $this->isoDuration((int) $content->duration)] : []),
                 ...($content->game ? ['about' => ['@type' => 'VideoGame', 'name' => $content->game->name]] : []),
@@ -149,22 +154,6 @@ class SocialContentController extends Controller
                 'publisher' => ['@id' => $organizationId],
                 ...($thumbnail ? ['image' => [$thumbnail]] : []),
             ];
-
-        $breadcrumbs = [
-            ['@type' => 'ListItem', 'position' => 1, 'name' => 'صفحه اصلی', 'item' => route('home')],
-            ...($content->type === 'video' ? [[
-                '@type' => 'ListItem',
-                'position' => 2,
-                'name' => 'ویدیوها',
-                'item' => route('videos.index'),
-            ]] : []),
-            [
-                '@type' => 'ListItem',
-                'position' => $content->type === 'video' ? 3 : 2,
-                'name' => $content->title,
-                'item' => $canonical,
-            ],
-        ];
 
         return Seo::page([
             'title' => $title,
@@ -195,7 +184,12 @@ class SocialContentController extends Controller
                     [
                         '@type' => 'BreadcrumbList',
                         '@id' => $canonical.'#breadcrumb',
-                        'itemListElement' => $breadcrumbs,
+                        'itemListElement' => collect($breadcrumbs)->map(fn (array $crumb, int $index) => [
+                            '@type' => 'ListItem',
+                            'position' => $index + 1,
+                            'name' => $crumb['name'],
+                            'item' => url($crumb['url']),
+                        ])->all(),
                     ],
                 ],
             ],
@@ -235,8 +229,12 @@ class SocialContentController extends Controller
             return null;
         }
 
-        $playlist = VideoPlaylist::query()->whereIn('visibility', ['public', 'unlisted'])
-            ->when($slug !== '', fn ($query) => $query->where('slug', $slug))
+        $playlist = VideoPlaylist::query()
+            ->when(
+                $slug !== '',
+                fn ($query) => $query->where('slug', $slug)->whereIn('visibility', ['public', 'unlisted']),
+                fn ($query) => $query->publiclyVisible(),
+            )
             ->whereHas('videos', fn ($query) => $query->whereKey($content->id))
             ->with([
                 'game:id,name,slug',
@@ -257,8 +255,43 @@ class SocialContentController extends Controller
             'url' => $playlist->game
                 ? route('channels.playlists.show', ['game' => $playlist->game->slug, 'playlist' => $playlist->slug], false)
                 : route('collections.show', $playlist->slug, false),
+            'is_public' => $playlist->visibility === 'public',
             'items' => $playlist->videos->map(fn (SocialContent $video) => $data->content($video))->values(),
             'current_id' => $content->id,
         ];
+    }
+
+    /** @return array<int, array{name: string, url: string, current: bool}> */
+    private function breadcrumbs(SocialContent $content, string $routeType, ?array $playlist): array
+    {
+        $items = [[
+            'name' => 'صفحه اصلی',
+            'url' => route('home', absolute: false),
+            'current' => false,
+        ]];
+
+        if ($content->type === 'video' && $content->game) {
+            $items[] = [
+                'name' => $content->game->name,
+                'url' => route('channels.show', $content->game->slug, false),
+                'current' => false,
+            ];
+        }
+
+        if ($content->type === 'video' && ($playlist['is_public'] ?? false)) {
+            $items[] = [
+                'name' => $playlist['title'],
+                'url' => $playlist['url'],
+                'current' => false,
+            ];
+        }
+
+        $items[] = [
+            'name' => $content->title,
+            'url' => route('content.show', ['type' => $routeType, 'content' => $content->slug], false),
+            'current' => true,
+        ];
+
+        return $items;
     }
 }

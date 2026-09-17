@@ -89,7 +89,7 @@ class SitemapController extends Controller
         if ($type === 'feed') {
             yield ['loc' => route('feed.index')];
             foreach (SocialContent::query()->published()->where('type', 'post')->orderBy('id')->cursor() as $content) {
-                yield $this->entry(route('feed.show', $content->slug), $content->updated_at);
+                yield $this->entry(route('posts.show', $content->slug), $content->updated_at);
             }
 
             return;
@@ -104,12 +104,14 @@ class SitemapController extends Controller
                 $thumbnail = MediaStorage::url($content->thumbnail);
                 $videoUrl = MediaStorage::url($content->video_path);
 
-                if ($thumbnail && $videoUrl) {
+                if ($videoUrl && ($thumbnail || $content->type === 'video')) {
                     $description = RichText::plainText(
                         $content->seo_description ?: $content->excerpt ?: $content->body,
                     ) ?: "تماشای {$content->title} در پلی نکسوس";
                     $entry['video'] = array_filter([
-                        'thumbnail_loc' => url($thumbnail),
+                        'thumbnail_loc' => $thumbnail
+                            ? url($thumbnail)
+                            : url((string) config('seo.default_image', '/logo.png')),
                         'title' => Str::limit($content->title, 100, '…'),
                         'description' => Str::limit($description, 2048, '…'),
                         'content_loc' => url($videoUrl),

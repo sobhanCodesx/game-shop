@@ -46,7 +46,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', HomeController::class)->name('home');
 Route::get('feed', [FeedController::class, 'index'])->name('feed.index');
 Route::get('feed/trending', [FeedController::class, 'trending'])->name('feed.trending');
-Route::get('feed/{content:slug}', [FeedController::class, 'show'])->name('feed.show');
+Route::get('posts/{content:slug}', [FeedController::class, 'show'])->name('posts.show');
+Route::get('feed/{content:slug}', [FeedController::class, 'legacyShow'])->name('feed.legacy.show');
 Route::get('feed/{content:slug}/comments', [FeedController::class, 'comments'])->name('feed.comments');
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
 Route::get('sitemaps/{type}.xml', [SitemapController::class, 'show'])
@@ -145,7 +146,7 @@ Route::redirect('support', '/account/tickets');
 
 Route::get('products/{product:slug}', [ProductController::class, 'show'])->name('products.show');
 Route::get('{type}/{content:slug}', [SocialContentController::class, 'show'])
-    ->whereIn('type', ['posts', 'videos', 'shorts'])
+    ->whereIn('type', ['videos', 'shorts'])
     ->name('content.show');
 
 Route::prefix('admin')->name('admin.')->group(function () {

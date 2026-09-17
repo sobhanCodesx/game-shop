@@ -41,7 +41,7 @@ class SocialActivityNotification extends Notification
         };
 
         $url = ($this->content->type === 'post'
-            ? route('feed.show', $this->content->slug, false)
+            ? route('posts.show', $this->content->slug, false)
             : route('content.show', ['type' => $type, 'content' => $this->content->slug], false))
             .($this->commentId ? '#comments' : '');
 

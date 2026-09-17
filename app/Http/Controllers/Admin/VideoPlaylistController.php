@@ -11,24 +11,49 @@ use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
 use App\Support\RichText;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class VideoPlaylistController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $playlists = VideoPlaylist::query()->with('game:id,name,cover')->withCount('videos')
-            ->orderBy('sort_order')->latest('id')->paginate(12)->withQueryString();
+        $games = Game::query()->withCount('playlists')->latest('id')
+            ->paginate(12, ['id', 'name', 'slug', 'cover', 'background', 'status'], 'games_page')
+            ->withQueryString();
+        $selectedGame = $request->integer('game')
+            ? Game::query()->findOrFail($request->integer('game'))
+            : null;
+        $playlists = $selectedGame
+            ? VideoPlaylist::query()->whereBelongsTo($selectedGame)->withCount('videos')
+                ->orderBy('sort_order')->latest('id')
+                ->paginate(12, ['*'], 'playlists_page')->withQueryString()
+            : null;
 
         return Inertia::render('Admin/Playlists/Index', [
-            'playlists' => [
+            'games' => [
+                'data' => collect($games->items())->map(fn (Game $game) => [
+                    ...$game->only(['id', 'name', 'slug', 'status']),
+                    'image_url' => MediaStorage::url($game->background ?: $game->cover),
+                    'cover_url' => MediaStorage::url($game->cover),
+                    'playlists_count' => $game->playlists_count,
+                ]),
+                'current_page' => $games->currentPage(),
+                'last_page' => $games->lastPage(),
+                'from' => $games->firstItem(),
+                'to' => $games->lastItem(),
+                'total' => $games->total(),
+            ],
+            'selectedGame' => $selectedGame ? [
+                ...$selectedGame->only(['id', 'name', 'slug']),
+                'cover_url' => MediaStorage::url($selectedGame->cover),
+            ] : null,
+            'playlists' => $playlists ? [
                 'data' => collect($playlists->items())->map(fn (VideoPlaylist $playlist) => [
                     ...$playlist->only(['id', 'game_id', 'title', 'description', 'visibility', 'sort_order']),
-                    'game' => $playlist->game?->name,
                     'logo_url' => MediaStorage::url($playlist->logo),
-                    'channel_image_url' => MediaStorage::url($playlist->game?->cover),
                     'videos_count' => $playlist->videos_count,
                 ]),
                 'current_page' => $playlists->currentPage(),
@@ -36,7 +61,7 @@ class VideoPlaylistController extends Controller
                 'from' => $playlists->firstItem(),
                 'to' => $playlists->lastItem(),
                 'total' => $playlists->total(),
-            ],
+            ] : null,
         ]);
     }
 

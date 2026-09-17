@@ -69,7 +69,7 @@ class SmartSearchService
                 'subtitle' => $content->game?->name ?? 'PLAY NEXUS',
                 'image_url' => MediaStorage::url($content->thumbnail ?: $content->game?->cover),
                 'url' => $content->type === 'post'
-                    ? route('feed.show', $content->slug, false)
+                    ? route('posts.show', $content->slug, false)
                     : route('content.show', [$plural, $content->slug], false),
                 'score' => $this->score($needle, $content->title, collect([$content->excerpt, $content->game?->name])->filter()->join(' ')),
             ];

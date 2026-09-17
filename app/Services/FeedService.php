@@ -189,7 +189,7 @@ class FeedService
             'badge' => $content->feed_badge,
             'url' => $isVideo
                 ? route('content.show', ['type' => 'videos', 'content' => $content->slug], false)
-                : route('feed.show', $content->slug, false),
+                : route('posts.show', $content->slug, false),
             'feed_slug' => $content->slug,
             'created_at' => $content->published_at?->toISOString(),
             'media' => $media,
