@@ -1,6 +1,7 @@
 import { Button, Card, Chip } from "@heroui/react";
 import { Head, useForm } from "@inertiajs/react";
 import {
+    BellRing,
     CheckCircle2,
     DatabaseZap,
     Eraser,
@@ -8,6 +9,7 @@ import {
     RefreshCw,
     ServerCog,
     Settings2,
+    Smartphone,
     TerminalSquare,
     TriangleAlert,
 } from "lucide-react";
@@ -82,16 +84,29 @@ export default function SystemMaintenance({
     environment,
     phpVersion,
     laravelVersion,
+    pushStatus,
 }: {
     result: MaintenanceResult | null;
     environment: string;
     phpVersion: string;
     laravelVersion: string;
+    pushStatus: {
+        enabled: boolean;
+        registered_devices: number;
+        queue_connection: string;
+    };
 }) {
     const form = useForm<{ action: Action; confirmed: boolean }>({
         action: "clear-cache",
         confirmed: true,
     });
+    const pushForm = useForm({});
+
+    const sendPushTest = () => {
+        pushForm.post("/admin/system-maintenance/push-test", {
+            preserveScroll: true,
+        });
+    };
 
     const run = (action: Action, warning = false) => {
         if (
@@ -122,6 +137,68 @@ export default function SystemMaintenance({
                 <Info label="نسخه PHP" value={phpVersion} />
                 <Info label="نسخه Laravel" value={laravelVersion} />
             </div>
+
+            <Card className="mt-5 border border-indigo-500/20 bg-indigo-500/5">
+                <Card.Content className="p-5">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-300">
+                                <BellRing size={21} />
+                            </span>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 className="font-black text-slate-100">
+                                        تست Push اپ موبایل
+                                    </h2>
+                                    <Chip
+                                        color={pushStatus.enabled ? "success" : "danger"}
+                                        size="sm"
+                                        variant="soft"
+                                    >
+                                        {pushStatus.enabled ? "Expo فعال" : "Expo غیرفعال"}
+                                    </Chip>
+                                </div>
+                                <p className="mt-2 text-xs leading-6 text-slate-400">
+                                    فقط به دستگاه‌های فعال متصل به همین اکانت ادمین ارسال می‌شود.
+                                    ارسال نهایی توسط Queue و Expo انجام می‌شود.
+                                </p>
+                                <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-slate-500">
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Smartphone size={14} />
+                                        {pushStatus.registered_devices} دستگاه فعال
+                                    </span>
+                                    <span dir="ltr">
+                                        Queue: {pushStatus.queue_connection}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <Button
+                            isDisabled={
+                                !pushStatus.enabled ||
+                                pushStatus.registered_devices < 1 ||
+                                pushForm.processing
+                            }
+                            isPending={pushForm.processing}
+                            onPress={sendPushTest}
+                            variant="secondary"
+                        >
+                            {!pushForm.processing && <BellRing size={17} />}
+                            {pushForm.processing ? "در حال ثبت در صف…" : "ارسال Push تست"}
+                        </Button>
+                    </div>
+                    {!pushStatus.enabled && (
+                        <p className="mt-3 text-xs text-amber-300">
+                            برای تست، EXPO_PUSH_ENABLED=true باید روی سرور تنظیم شده باشد.
+                        </p>
+                    )}
+                    {pushStatus.enabled && pushStatus.registered_devices < 1 && (
+                        <p className="mt-3 text-xs text-amber-300">
+                            ابتدا با اپ موبایل و همین حساب وارد شوید تا Expo Push Token ثبت شود.
+                        </p>
+                    )}
+                </Card.Content>
+            </Card>
 
             <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs leading-6 text-amber-200">
                 <TriangleAlert className="mt-0.5 shrink-0" size={19} />
