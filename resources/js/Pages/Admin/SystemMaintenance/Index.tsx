@@ -2,28 +2,55 @@ import { Button, Card, Chip } from "@heroui/react";
 import { Head, useForm } from "@inertiajs/react";
 import {
     BellRing,
+    Check,
     CheckCircle2,
+    Clock3,
+    Copy,
     DatabaseZap,
     Eraser,
+    HardDrive,
     Play,
     RefreshCw,
+    RotateCcw,
     ServerCog,
     Settings2,
+    ShieldCheck,
     Smartphone,
     TerminalSquare,
+    TimerReset,
     TriangleAlert,
+    Workflow,
+    XCircle,
+    Zap,
 } from "lucide-react";
+import { useMemo, useState } from "react";
 import AdminLayout from "../../../Layouts/AdminLayout";
 
-type Action = "migrate" | "clear-cache" | "config-cache" | "all";
+type MaintenanceAction =
+    | "migrate"
+    | "clear-cache"
+    | "config-cache"
+    | "schedule-run"
+    | "queue-once"
+    | "all";
+
+type CronAction =
+    | "install-scheduler"
+    | "install-queue"
+    | "install-all"
+    | "remove-all";
+
+type Panel = "maintenance" | "cron" | "push";
+
 type CommandResult = {
     command: string;
     exit_code: number;
     successful: boolean;
     output: string;
 };
-type MaintenanceResult = {
-    action: Action;
+
+type TerminalResult = {
+    action: string;
     successful: boolean;
     started_at: string;
     finished_at: string;
@@ -31,8 +58,49 @@ type MaintenanceResult = {
     commands: CommandResult[];
 };
 
+type CronStatus = {
+    supported: boolean;
+    crontab_binary: string | null;
+    php_binary: string;
+    scheduler_installed: boolean;
+    queue_installed: boolean;
+    scheduler_line: string;
+    queue_line: string;
+    message: string | null;
+};
+
+type PushStatus = {
+    enabled: boolean;
+    registered_devices: number;
+    queue_connection: string;
+    pending_jobs: number | null;
+    endpoint: string;
+};
+
+type MobileDevice = {
+    id: number;
+    installation_id: string;
+    platform: "android" | "ios";
+    device_name: string | null;
+    app_version: string | null;
+    push_enabled: boolean;
+    failure_count: number;
+    last_seen_at: string | null;
+    push_token_masked: string;
+};
+
+type Props = {
+    terminalResult: TerminalResult | null;
+    environment: string;
+    phpVersion: string;
+    laravelVersion: string;
+    cronStatus: CronStatus;
+    pushStatus: PushStatus;
+    mobileDevices: MobileDevice[];
+};
+
 const operations: Array<{
-    action: Action;
+    action: MaintenanceAction;
     title: string;
     command: string;
     description: string;
@@ -45,309 +113,1134 @@ const operations: Array<{
         title: "اجرای Migrationها",
         command: "php artisan migrate --force",
         description:
-            "تمام Migrationهای اجرا‌نشده را روی دیتابیس production اعمال می‌کند.",
+            "Migrationهای اجرا‌نشده را روی دیتابیس اعمال می‌کند و خروجی واقعی Artisan را در ترمینال نشان می‌دهد.",
         icon: DatabaseZap,
-        tone: "text-amber-300 bg-amber-500/10 border-amber-500/20",
+        tone: "border-amber-500/20 bg-amber-500/10 text-amber-300",
         warning: true,
     },
     {
         action: "clear-cache",
-        title: "پاک‌سازی Cache",
+        title: "پاک‌سازی کامل Cache",
         command: "php artisan optimize:clear",
         description:
-            "کش تنظیمات، مسیرها، Viewها و فایل‌های بهینه‌سازی‌شده را پاک می‌کند.",
+            "Route، Config، View و cacheهای بهینه‌سازی Laravel را پاک می‌کند.",
         icon: Eraser,
-        tone: "text-sky-300 bg-sky-500/10 border-sky-500/20",
+        tone: "border-sky-500/20 bg-sky-500/10 text-sky-300",
     },
     {
         action: "config-cache",
-        title: "ساخت Config Cache",
+        title: "بازسازی Config Cache",
         command: "php artisan config:cache",
-        description: "تنظیمات فعلی .env را در کش بهینه و آماده استفاده می‌کند.",
+        description:
+            "تنظیمات فعلی سرور و .env را دوباره در cache تنظیمات Laravel می‌سازد.",
         icon: Settings2,
-        tone: "text-violet-300 bg-violet-500/10 border-violet-500/20",
+        tone: "border-violet-500/20 bg-violet-500/10 text-violet-300",
+    },
+    {
+        action: "schedule-run",
+        title: "اجرای Scheduler همین الان",
+        command: "php artisan schedule:run",
+        description:
+            "برای تست، تمام Taskهایی که در همین دقیقه Due هستند را همان لحظه اجرا می‌کند.",
+        icon: TimerReset,
+        tone: "border-cyan-500/20 bg-cyan-500/10 text-cyan-300",
+    },
+    {
+        action: "queue-once",
+        title: "خالی‌کردن Queue",
+        command:
+            "php artisan queue:work --stop-when-empty --tries=3 --timeout=60",
+        description:
+            "Jobهای منتظر از جمله Pushهای Expo را پردازش می‌کند و بعد از خالی‌شدن صف خارج می‌شود.",
+        icon: Workflow,
+        tone: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-300",
     },
     {
         action: "all",
-        title: "اجرای کامل و پیشنهادی",
+        title: "نگهداری کامل پیشنهادی",
         command: "optimize:clear → migrate --force → config:cache",
         description:
-            "ابتدا کش را پاک، سپس دیتابیس را به‌روزرسانی و در پایان Config Cache را بازسازی می‌کند.",
+            "کش را پاک می‌کند، Migrationها را اجرا می‌کند و در پایان Config Cache را دوباره می‌سازد.",
         icon: RefreshCw,
-        tone: "text-emerald-300 bg-emerald-500/10 border-emerald-500/20",
+        tone: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
         warning: true,
     },
 ];
 
 export default function SystemMaintenance({
-    result,
+    terminalResult,
     environment,
     phpVersion,
     laravelVersion,
+    cronStatus,
     pushStatus,
-}: {
-    result: MaintenanceResult | null;
-    environment: string;
-    phpVersion: string;
-    laravelVersion: string;
-    pushStatus: {
-        enabled: boolean;
-        registered_devices: number;
-        queue_connection: string;
-    };
-}) {
-    const form = useForm<{ action: Action; confirmed: boolean }>({
+    mobileDevices,
+}: Props) {
+    const [panel, setPanel] = useState<Panel>("maintenance");
+    const [copied, setCopied] = useState<string | null>(null);
+
+    const maintenanceForm = useForm<{
+        action: MaintenanceAction;
+        confirmed: boolean;
+    }>({
         action: "clear-cache",
         confirmed: true,
     });
-    const pushForm = useForm({});
 
-    const sendPushTest = () => {
-        pushForm.post("/admin/system-maintenance/push-test", {
-            preserveScroll: true,
-        });
-    };
+    const cronForm = useForm<{ action: CronAction }>({
+        action: "install-all",
+    });
 
-    const run = (action: Action, warning = false) => {
+    const pushForm = useForm<{
+        device_id: number | null;
+        title: string;
+        message: string;
+        url: string;
+    }>({
+        device_id: null,
+        title: "تست نوتیفیکیشن PlayNexus",
+        message: "اگر این پیام را می‌بینی، Push اپ PlayNexus سالم است 🎮",
+        url: "/",
+    });
+
+    const activeCommand = useMemo(() => {
+        if (maintenanceForm.processing) {
+            return (
+                operations.find(
+                    (operation) =>
+                        operation.action === maintenanceForm.data.action,
+                )?.command ?? "php artisan ..."
+            );
+        }
+
+        if (cronForm.processing) {
+            return cronForm.data.action === "remove-all"
+                ? "crontab -  # remove PlayNexus managed jobs"
+                : "crontab -  # install PlayNexus jobs";
+        }
+
+        if (pushForm.processing) {
+            return `POST ${pushStatus.endpoint}`;
+        }
+
+        return null;
+    }, [
+        maintenanceForm.processing,
+        maintenanceForm.data.action,
+        cronForm.processing,
+        cronForm.data.action,
+        pushForm.processing,
+        pushStatus.endpoint,
+    ]);
+
+    const runMaintenance = (
+        action: MaintenanceAction,
+        warning = false,
+    ): void => {
         if (
             warning &&
             !window.confirm(
                 action === "all"
-                    ? "پاک‌سازی کش، Migration و بازسازی Config Cache اجرا شود؟"
+                    ? "پاک‌سازی Cache، اجرای Migration و بازسازی Config Cache انجام شود؟"
                     : "Migrationهای اجرا‌نشده روی دیتابیس اعمال شوند؟",
             )
         ) {
             return;
         }
 
-        form.setData({ action, confirmed: true });
-        form.transform(() => ({ action, confirmed: true }));
-        form.post("/admin/system-maintenance/run", { preserveScroll: true });
+        maintenanceForm.setData({ action, confirmed: true });
+        maintenanceForm.transform(() => ({
+            action,
+            confirmed: true,
+        }));
+        maintenanceForm.post("/admin/system-maintenance/run", {
+            preserveScroll: true,
+        });
+    };
+
+    const manageCron = (action: CronAction): void => {
+        if (
+            action === "remove-all" &&
+            !window.confirm(
+                "Cronهای Scheduler و Queue که توسط PlayNexus مدیریت می‌شوند حذف شوند؟",
+            )
+        ) {
+            return;
+        }
+
+        cronForm.setData("action", action);
+        cronForm.transform(() => ({ action }));
+        cronForm.post("/admin/system-maintenance/cron", {
+            preserveScroll: true,
+        });
+    };
+
+    const sendPushTest = (): void => {
+        pushForm.post("/admin/system-maintenance/push-test", {
+            preserveScroll: true,
+        });
+    };
+
+    const copyText = async (key: string, value: string): Promise<void> => {
+        await navigator.clipboard.writeText(value);
+        setCopied(key);
+        window.setTimeout(() => setCopied(null), 1800);
     };
 
     return (
         <AdminLayout
-            description="اجرای امن دستورات ضروری Laravel بدون نیاز به Terminal هاست"
-            title="نگهداری سیستم"
+            description="کنترل نگهداری Laravel، Cron، Queue و Push موبایل از یک پنل"
+            title="کنسول سیستم"
         >
-            <Head title="نگهداری سیستم" />
+            <Head title="کنسول سیستم" />
 
-            <div className="grid gap-3 sm:grid-cols-3">
-                <Info label="محیط" value={environment} />
-                <Info label="نسخه PHP" value={phpVersion} />
-                <Info label="نسخه Laravel" value={laravelVersion} />
+            <div className="overflow-hidden rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,0.15),transparent_34%),linear-gradient(135deg,#0b1020,#080b12)] p-5 shadow-2xl shadow-black/20 md:p-7">
+                <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                    <div>
+                        <div className="mb-2 flex items-center gap-2 text-xs font-bold text-indigo-300">
+                            <TerminalSquare size={16} />
+                            PLAYNEXUS SYSTEM CONSOLE
+                        </div>
+                        <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">
+                            کنترل کامل Laravel بدون Terminal هاست
+                        </h1>
+                        <p className="mt-2 max-w-3xl text-xs leading-6 text-slate-400 md:text-sm">
+                            هر عملیاتی که اجرا کنی، command، exit code و خروجی
+                            کاملش در ترمینال همین صفحه نمایش داده می‌شود.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        <StatusPill
+                            active={pushStatus.enabled}
+                            label={
+                                pushStatus.enabled
+                                    ? "Expo Push فعال"
+                                    : "Expo Push خاموش"
+                            }
+                        />
+                        <StatusPill
+                            active={cronStatus.scheduler_installed}
+                            label={
+                                cronStatus.scheduler_installed
+                                    ? "Scheduler نصب است"
+                                    : "Scheduler نصب نیست"
+                            }
+                        />
+                        <StatusPill
+                            active={cronStatus.queue_installed}
+                            label={
+                                cronStatus.queue_installed
+                                    ? "Queue Cron نصب است"
+                                    : "Queue Cron نصب نیست"
+                            }
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                    <Metric
+                        icon={HardDrive}
+                        label="Environment"
+                        value={environment}
+                    />
+                    <Metric
+                        icon={Zap}
+                        label="PHP"
+                        value={phpVersion}
+                    />
+                    <Metric
+                        icon={ServerCog}
+                        label="Laravel"
+                        value={laravelVersion}
+                    />
+                    <Metric
+                        icon={Workflow}
+                        label="Queue"
+                        value={pushStatus.queue_connection}
+                    />
+                    <Metric
+                        icon={Clock3}
+                        label="Jobs منتظر"
+                        value={
+                            pushStatus.pending_jobs === null
+                                ? "—"
+                                : pushStatus.pending_jobs.toLocaleString("fa-IR")
+                        }
+                    />
+                    <Metric
+                        icon={Smartphone}
+                        label="Push Device"
+                        value={pushStatus.registered_devices.toLocaleString(
+                            "fa-IR",
+                        )}
+                    />
+                </div>
             </div>
 
-            <Card className="mt-5 border border-indigo-500/20 bg-indigo-500/5">
-                <Card.Content className="p-5">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                        <div className="flex min-w-0 flex-1 items-start gap-3">
-                            <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-300">
-                                <BellRing size={21} />
-                            </span>
-                            <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
+            <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(380px,.85fr)]">
+                <div className="min-w-0">
+                    <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl border border-slate-800 bg-slate-950/50 p-1.5">
+                        <PanelButton
+                            active={panel === "maintenance"}
+                            icon={ServerCog}
+                            label="نگهداری"
+                            onClick={() => setPanel("maintenance")}
+                        />
+                        <PanelButton
+                            active={panel === "cron"}
+                            icon={Clock3}
+                            label="Cron / Queue"
+                            onClick={() => setPanel("cron")}
+                        />
+                        <PanelButton
+                            active={panel === "push"}
+                            icon={BellRing}
+                            label="Push Lab"
+                            onClick={() => setPanel("push")}
+                        />
+                    </div>
+
+                    {panel === "maintenance" && (
+                        <MaintenancePanel
+                            formProcessing={maintenanceForm.processing}
+                            activeAction={maintenanceForm.data.action}
+                            onRun={runMaintenance}
+                        />
+                    )}
+
+                    {panel === "cron" && (
+                        <CronPanel
+                            status={cronStatus}
+                            processing={cronForm.processing}
+                            activeAction={cronForm.data.action}
+                            copied={copied}
+                            onCopy={copyText}
+                            onManage={manageCron}
+                            onRunNow={runMaintenance}
+                            maintenanceProcessing={
+                                maintenanceForm.processing
+                            }
+                        />
+                    )}
+
+                    {panel === "push" && (
+                        <PushPanel
+                            status={pushStatus}
+                            devices={mobileDevices}
+                            form={pushForm}
+                            onSend={sendPushTest}
+                        />
+                    )}
+                </div>
+
+                <div className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+                    <TerminalConsole
+                        result={terminalResult}
+                        activeCommand={activeCommand}
+                        copied={copied}
+                        onCopy={copyText}
+                    />
+                </div>
+            </div>
+        </AdminLayout>
+    );
+}
+
+function MaintenancePanel({
+    formProcessing,
+    activeAction,
+    onRun,
+}: {
+    formProcessing: boolean;
+    activeAction: MaintenanceAction;
+    onRun: (action: MaintenanceAction, warning?: boolean) => void;
+}) {
+    return (
+        <div className="grid gap-3 md:grid-cols-2">
+            {operations.map((operation) => {
+                const Icon = operation.icon;
+                const active =
+                    formProcessing && activeAction === operation.action;
+
+                return (
+                    <Card
+                        className="group border border-slate-800 bg-slate-900/55 transition hover:border-slate-700"
+                        key={operation.action}
+                    >
+                        <Card.Content className="flex h-full flex-col p-5">
+                            <div className="flex items-start gap-3">
+                                <span
+                                    className={`grid size-11 shrink-0 place-items-center rounded-xl border ${operation.tone}`}
+                                >
+                                    <Icon size={20} />
+                                </span>
+                                <div className="min-w-0">
                                     <h2 className="font-black text-slate-100">
-                                        تست Push اپ موبایل
+                                        {operation.title}
                                     </h2>
-                                    <Chip
-                                        color={pushStatus.enabled ? "success" : "danger"}
-                                        size="sm"
-                                        variant="soft"
+                                    <code
+                                        className="mt-1 block break-all text-[10px] leading-5 text-slate-500"
+                                        dir="ltr"
                                     >
-                                        {pushStatus.enabled ? "Expo فعال" : "Expo غیرفعال"}
-                                    </Chip>
-                                </div>
-                                <p className="mt-2 text-xs leading-6 text-slate-400">
-                                    فقط به دستگاه‌های فعال متصل به همین اکانت ادمین ارسال می‌شود.
-                                    ارسال نهایی توسط Queue و Expo انجام می‌شود.
-                                </p>
-                                <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-slate-500">
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <Smartphone size={14} />
-                                        {pushStatus.registered_devices} دستگاه فعال
-                                    </span>
-                                    <span dir="ltr">
-                                        Queue: {pushStatus.queue_connection}
-                                    </span>
+                                        {operation.command}
+                                    </code>
                                 </div>
                             </div>
+                            <p className="mt-4 flex-1 text-xs leading-6 text-slate-400">
+                                {operation.description}
+                            </p>
+                            <Button
+                                className="mt-4"
+                                isDisabled={formProcessing}
+                                isPending={active}
+                                onPress={() =>
+                                    onRun(
+                                        operation.action,
+                                        operation.warning,
+                                    )
+                                }
+                                variant={
+                                    operation.action === "all"
+                                        ? "primary"
+                                        : "secondary"
+                                }
+                            >
+                                {!active && <Play size={16} />}
+                                {active ? "در حال اجرا…" : "اجرا و نمایش خروجی"}
+                            </Button>
+                        </Card.Content>
+                    </Card>
+                );
+            })}
+        </div>
+    );
+}
+
+function CronPanel({
+    status,
+    processing,
+    activeAction,
+    copied,
+    onCopy,
+    onManage,
+    onRunNow,
+    maintenanceProcessing,
+}: {
+    status: CronStatus;
+    processing: boolean;
+    activeAction: CronAction;
+    copied: string | null;
+    onCopy: (key: string, value: string) => Promise<void>;
+    onManage: (action: CronAction) => void;
+    onRunNow: (action: MaintenanceAction, warning?: boolean) => void;
+    maintenanceProcessing: boolean;
+}) {
+    return (
+        <div className="space-y-4">
+            <Card className="border border-slate-800 bg-slate-900/55">
+                <Card.Content className="p-5">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Clock3 className="text-indigo-300" size={20} />
+                                <h2 className="font-black text-slate-100">
+                                    Laravel Scheduler + Queue Cron
+                                </h2>
+                            </div>
+                            <p className="mt-2 max-w-2xl text-xs leading-6 text-slate-400">
+                                برای هاست اشتراکی، Scheduler هر دقیقه اجرا می‌شود
+                                و Queue worker هم هر دقیقه با{" "}
+                                <code dir="ltr">--stop-when-empty</code> صف را
+                                خالی می‌کند و خارج می‌شود.
+                            </p>
                         </div>
+                        <Chip
+                            color={status.supported ? "success" : "warning"}
+                            size="sm"
+                            variant="soft"
+                        >
+                            {status.supported
+                                ? "نصب خودکار در دسترس"
+                                : "حالت کپی دستی"}
+                        </Chip>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                        <CronState
+                            label="Laravel Scheduler"
+                            installed={status.scheduler_installed}
+                        />
+                        <CronState
+                            label="Queue Worker"
+                            installed={status.queue_installed}
+                        />
+                    </div>
+
+                    {status.message && (
+                        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-6 text-amber-200">
+                            {status.message}
+                        </div>
+                    )}
+
+                    <div className="mt-5 grid gap-2 sm:grid-cols-2">
                         <Button
-                            isDisabled={
-                                !pushStatus.enabled ||
-                                pushStatus.registered_devices < 1 ||
-                                pushForm.processing
+                            isDisabled={processing}
+                            isPending={
+                                processing &&
+                                activeAction === "install-scheduler"
                             }
-                            isPending={pushForm.processing}
-                            onPress={sendPushTest}
+                            onPress={() => onManage("install-scheduler")}
                             variant="secondary"
                         >
-                            {!pushForm.processing && <BellRing size={17} />}
-                            {pushForm.processing ? "در حال ثبت در صف…" : "ارسال Push تست"}
+                            <Clock3 size={16} />
+                            نصب Scheduler
+                        </Button>
+                        <Button
+                            isDisabled={processing}
+                            isPending={
+                                processing && activeAction === "install-queue"
+                            }
+                            onPress={() => onManage("install-queue")}
+                            variant="secondary"
+                        >
+                            <Workflow size={16} />
+                            نصب Queue Cron
+                        </Button>
+                        <Button
+                            isDisabled={processing}
+                            isPending={
+                                processing && activeAction === "install-all"
+                            }
+                            onPress={() => onManage("install-all")}
+                            variant="primary"
+                        >
+                            <ShieldCheck size={16} />
+                            نصب هر دو Cron
+                        </Button>
+                        <Button
+                            isDisabled={processing}
+                            isPending={
+                                processing && activeAction === "remove-all"
+                            }
+                            onPress={() => onManage("remove-all")}
+                            variant="secondary"
+                        >
+                            <RotateCcw size={16} />
+                            حذف Cronهای PlayNexus
                         </Button>
                     </div>
-                    {!pushStatus.enabled && (
-                        <p className="mt-3 text-xs text-amber-300">
-                            برای تست، EXPO_PUSH_ENABLED=true باید روی سرور تنظیم شده باشد.
+                </Card.Content>
+            </Card>
+
+            <CronLine
+                title="خط Scheduler"
+                value={status.scheduler_line}
+                copied={copied === "scheduler"}
+                onCopy={() => onCopy("scheduler", status.scheduler_line)}
+            />
+            <CronLine
+                title="خط Queue Worker"
+                value={status.queue_line}
+                copied={copied === "queue"}
+                onCopy={() => onCopy("queue", status.queue_line)}
+            />
+
+            <Card className="border border-cyan-500/20 bg-cyan-500/5">
+                <Card.Content className="p-5">
+                    <h3 className="font-black text-slate-100">
+                        تست دستی قبل از Cron
+                    </h3>
+                    <p className="mt-2 text-xs leading-6 text-slate-400">
+                        بدون صبر کردن تا دقیقه بعد، Scheduler یا Queue را همین
+                        الان اجرا کن و خروجی را در ترمینال ببین.
+                    </p>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        <Button
+                            isDisabled={maintenanceProcessing}
+                            onPress={() => onRunNow("schedule-run")}
+                            variant="secondary"
+                        >
+                            <TimerReset size={16} />
+                            schedule:run
+                        </Button>
+                        <Button
+                            isDisabled={maintenanceProcessing}
+                            onPress={() => onRunNow("queue-once")}
+                            variant="secondary"
+                        >
+                            <Workflow size={16} />
+                            Queue را خالی کن
+                        </Button>
+                    </div>
+                </Card.Content>
+            </Card>
+        </div>
+    );
+}
+
+function PushPanel({
+    status,
+    devices,
+    form,
+    onSend,
+}: {
+    status: PushStatus;
+    devices: MobileDevice[];
+    form: ReturnType<
+        typeof useForm<{
+            device_id: number | null;
+            title: string;
+            message: string;
+            url: string;
+        }>
+    >;
+    onSend: () => void;
+}) {
+    const activeDevices = devices.filter((device) => device.push_enabled);
+
+    return (
+        <div className="space-y-4">
+            <Card className="border border-indigo-500/20 bg-indigo-500/5">
+                <Card.Content className="p-5">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <BellRing
+                                    className="text-indigo-300"
+                                    size={20}
+                                />
+                                <h2 className="font-black text-slate-100">
+                                    Push Lab
+                                </h2>
+                            </div>
+                            <p className="mt-2 max-w-2xl text-xs leading-6 text-slate-400">
+                                این تست مستقیم به Expo ارسال می‌شود و از Queue
+                                عبور نمی‌کند؛ برای تشخیص سالم‌بودن Token و دریافت
+                                واقعی روی گوشی مناسب است.
+                            </p>
+                        </div>
+                        <Chip
+                            color={status.enabled ? "success" : "danger"}
+                            size="sm"
+                            variant="soft"
+                        >
+                            {status.enabled ? "Expo فعال" : "Expo غیرفعال"}
+                        </Chip>
+                    </div>
+
+                    <div className="mt-5 grid gap-4">
+                        <Field label="دستگاه مقصد">
+                            <select
+                                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-500"
+                                value={form.data.device_id ?? ""}
+                                onChange={(event) =>
+                                    form.setData(
+                                        "device_id",
+                                        event.target.value === ""
+                                            ? null
+                                            : Number(event.target.value),
+                                    )
+                                }
+                            >
+                                <option value="">
+                                    همه دستگاه‌های فعال خودم
+                                </option>
+                                {activeDevices.map((device) => (
+                                    <option
+                                        key={device.id}
+                                        value={device.id}
+                                    >
+                                        {device.device_name ||
+                                            device.platform.toUpperCase()}{" "}
+                                        #{device.id}
+                                    </option>
+                                ))}
+                            </select>
+                        </Field>
+
+                        <Field label="عنوان نوتیفیکیشن">
+                            <input
+                                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-500"
+                                maxLength={100}
+                                value={form.data.title}
+                                onChange={(event) =>
+                                    form.setData("title", event.target.value)
+                                }
+                            />
+                        </Field>
+
+                        <Field label="متن">
+                            <textarea
+                                className="min-h-28 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm leading-6 text-slate-100 outline-none transition focus:border-indigo-500"
+                                maxLength={500}
+                                value={form.data.message}
+                                onChange={(event) =>
+                                    form.setData("message", event.target.value)
+                                }
+                            />
+                        </Field>
+
+                        <Field label="URL هنگام لمس نوتیفیکیشن">
+                            <input
+                                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-indigo-500"
+                                dir="ltr"
+                                maxLength={500}
+                                value={form.data.url}
+                                onChange={(event) =>
+                                    form.setData("url", event.target.value)
+                                }
+                            />
+                        </Field>
+                    </div>
+
+                    {(form.errors.device_id ||
+                        form.errors.title ||
+                        form.errors.message ||
+                        form.errors.url) && (
+                        <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-200">
+                            {form.errors.device_id ||
+                                form.errors.title ||
+                                form.errors.message ||
+                                form.errors.url}
+                        </div>
+                    )}
+
+                    <Button
+                        className="mt-5 w-full"
+                        isDisabled={
+                            !status.enabled ||
+                            activeDevices.length === 0 ||
+                            form.processing
+                        }
+                        isPending={form.processing}
+                        onPress={onSend}
+                        variant="primary"
+                    >
+                        {!form.processing && <BellRing size={17} />}
+                        {form.processing
+                            ? "در حال تماس مستقیم با Expo…"
+                            : "ارسال Push واقعی برای تست"}
+                    </Button>
+
+                    {!status.enabled && (
+                        <p className="mt-3 text-xs leading-6 text-amber-300">
+                            ابتدا روی سرور{" "}
+                            <code dir="ltr">EXPO_PUSH_ENABLED=true</code> قرار
+                            بده و Config Cache را بازسازی کن.
                         </p>
                     )}
-                    {pushStatus.enabled && pushStatus.registered_devices < 1 && (
-                        <p className="mt-3 text-xs text-amber-300">
-                            ابتدا با اپ موبایل و همین حساب وارد شوید تا Expo Push Token ثبت شود.
+
+                    {status.enabled && activeDevices.length === 0 && (
+                        <p className="mt-3 text-xs leading-6 text-amber-300">
+                            هیچ Expo Push Token فعالی برای اکانت تو ثبت نشده.
+                            ابتدا با اپ و همین اکانت وارد شو.
                         </p>
                     )}
                 </Card.Content>
             </Card>
 
-            <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs leading-6 text-amber-200">
-                <TriangleAlert className="mt-0.5 shrink-0" size={19} />
-                <div>
-                    <strong className="block font-black">
-                        ابزار مدیریتی حساس
-                    </strong>
-                    این صفحه فقط برای مدیر قابل دسترسی است. هنگام اجرای عملیات،
-                    صفحه را نبندید و هر دکمه را فقط یک‌بار فشار دهید.
+            <div>
+                <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-black text-slate-100">
+                        دستگاه‌های ثبت‌شده من
+                    </h3>
+                    <span className="text-xs text-slate-500">
+                        {devices.length.toLocaleString("fa-IR")} دستگاه
+                    </span>
                 </div>
+
+                {devices.length === 0 ? (
+                    <EmptyState
+                        icon={Smartphone}
+                        text="هنوز هیچ دستگاه موبایلی برای این اکانت ثبت نشده."
+                    />
+                ) : (
+                    <div className="space-y-2">
+                        {devices.map((device) => (
+                            <DeviceRow key={device.id} device={device} />
+                        ))}
+                    </div>
+                )}
             </div>
-
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {operations.map((operation) => {
-                    const Icon = operation.icon;
-                    const active =
-                        form.processing &&
-                        form.data.action === operation.action;
-
-                    return (
-                        <Card
-                            className="border border-slate-800 bg-slate-900/60"
-                            key={operation.action}
-                        >
-                            <Card.Content className="flex h-full flex-col p-5">
-                                <div className="flex items-start gap-3">
-                                    <span
-                                        className={`grid size-11 shrink-0 place-items-center rounded-xl border ${operation.tone}`}
-                                    >
-                                        <Icon size={21} />
-                                    </span>
-                                    <div className="min-w-0">
-                                        <h2 className="font-black text-slate-100">
-                                            {operation.title}
-                                        </h2>
-                                        <code
-                                            className="mt-1 block break-all text-[11px] text-slate-500"
-                                            dir="ltr"
-                                        >
-                                            {operation.command}
-                                        </code>
-                                    </div>
-                                </div>
-                                <p className="mt-4 flex-1 text-xs leading-6 text-slate-400">
-                                    {operation.description}
-                                </p>
-                                <Button
-                                    className="mt-5"
-                                    isDisabled={form.processing}
-                                    isPending={active}
-                                    onPress={() =>
-                                        run(operation.action, operation.warning)
-                                    }
-                                    variant={
-                                        operation.action === "all"
-                                            ? "primary"
-                                            : "secondary"
-                                    }
-                                >
-                                    {!active && <Play size={17} />}
-                                    {active ? "در حال اجرا…" : "اجرا"}
-                                </Button>
-
-                                {result?.action === operation.action && (
-                                    <MaintenanceOutput result={result} />
-                                )}
-                            </Card.Content>
-                        </Card>
-                    );
-                })}
-            </div>
-
-            {form.errors.action && (
-                <p className="mt-4 rounded-xl bg-red-500/10 p-3 text-xs text-red-300">
-                    {form.errors.action}
-                </p>
-            )}
-        </AdminLayout>
+        </div>
     );
 }
 
-function MaintenanceOutput({ result }: { result: MaintenanceResult }) {
+function TerminalConsole({
+    result,
+    activeCommand,
+    copied,
+    onCopy,
+}: {
+    result: TerminalResult | null;
+    activeCommand: string | null;
+    copied: string | null;
+    onCopy: (key: string, value: string) => Promise<void>;
+}) {
+    const outputText = result
+        ? result.commands
+              .map(
+                  (command) =>
+                      `$ ${command.command}\n${command.output}\n[exit ${command.exit_code}]`,
+              )
+              .join("\n\n")
+        : "";
+
     return (
-        <section
-            aria-live="polite"
-            className="mt-4 overflow-hidden rounded-xl border border-slate-800 bg-[#080b12]"
-        >
-            <header className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-3">
-                {result.successful ? (
-                    <CheckCircle2 className="text-emerald-400" size={18} />
-                ) : (
-                    <TriangleAlert className="text-red-400" size={18} />
-                )}
-                <strong className="text-xs text-slate-100">نتیجه اجرا</strong>
-                <Chip
-                    className="mr-auto"
-                    color={result.successful ? "success" : "danger"}
-                    size="sm"
-                    variant="soft"
+        <section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#05070b] shadow-2xl shadow-black/30">
+            <header className="flex items-center gap-2 border-b border-slate-800 bg-slate-950/90 px-4 py-3">
+                <div className="flex gap-1.5">
+                    <span className="size-2.5 rounded-full bg-red-400/80" />
+                    <span className="size-2.5 rounded-full bg-amber-400/80" />
+                    <span className="size-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <TerminalSquare
+                    className="mr-2 text-slate-500"
+                    size={15}
+                />
+                <span
+                    className="text-[11px] font-bold text-slate-400"
+                    dir="ltr"
                 >
-                    {result.successful ? "موفق" : "ناموفق"}
-                </Chip>
-                <span className="text-[10px] text-slate-500">
-                    {(result.duration_ms / 1000).toLocaleString("fa-IR", {
-                        maximumFractionDigits: 2,
-                    })}{" "}
-                    ثانیه
+                    playnexus@system:~
                 </span>
+                {result && (
+                    <button
+                        className="mr-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] text-slate-500 transition hover:bg-slate-800 hover:text-slate-300"
+                        onClick={() => onCopy("terminal", outputText)}
+                        type="button"
+                    >
+                        {copied === "terminal" ? (
+                            <Check size={13} />
+                        ) : (
+                            <Copy size={13} />
+                        )}
+                        {copied === "terminal" ? "کپی شد" : "کپی خروجی"}
+                    </button>
+                )}
             </header>
-            <div className="space-y-3 p-3">
-                {result.commands.map((command) => (
-                    <article key={command.command}>
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <TerminalSquare
-                                size={15}
-                                className="text-indigo-400"
-                            />
-                            <code
-                                className="break-all text-[11px] font-bold text-indigo-300"
-                                dir="ltr"
-                            >
-                                {command.command}
-                            </code>
+
+            <div
+                className="min-h-[420px] max-h-[72vh] overflow-auto p-4 font-mono text-[11px] leading-6"
+                dir="ltr"
+            >
+                <div className="text-slate-600">
+                    PlayNexus System Console
+                </div>
+                <div className="text-slate-600">
+                    ----------------------------------------
+                </div>
+
+                {activeCommand && (
+                    <div className="mt-4">
+                        <div className="text-emerald-400">
+                            $ {activeCommand}
+                        </div>
+                        <div className="mt-1 animate-pulse text-amber-300">
+                            running...
+                        </div>
+                    </div>
+                )}
+
+                {!activeCommand && !result && (
+                    <div className="mt-5 text-slate-500">
+                        <div>$ waiting for command...</div>
+                        <div className="mt-2">
+                            یکی از عملیات‌ها را اجرا کن؛ خروجی اینجا نمایش داده
+                            می‌شود.
+                        </div>
+                    </div>
+                )}
+
+                {!activeCommand && result && (
+                    <div className="mt-4 space-y-5">
+                        <div className="flex flex-wrap items-center gap-3 font-sans">
+                            {result.successful ? (
+                                <CheckCircle2
+                                    className="text-emerald-400"
+                                    size={16}
+                                />
+                            ) : (
+                                <XCircle
+                                    className="text-red-400"
+                                    size={16}
+                                />
+                            )}
                             <span
-                                className={`mr-auto text-[10px] font-bold ${command.successful ? "text-emerald-400" : "text-red-400"}`}
+                                className={
+                                    result.successful
+                                        ? "font-bold text-emerald-300"
+                                        : "font-bold text-red-300"
+                                }
                             >
-                                Exit code: {command.exit_code}
+                                {result.successful ? "SUCCESS" : "FAILED"}
+                            </span>
+                            <span className="text-slate-600">
+                                {result.action}
+                            </span>
+                            <span className="text-slate-600">
+                                {(result.duration_ms / 1000).toFixed(2)}s
                             </span>
                         </div>
-                        <pre
-                            className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black/40 p-3 text-left text-[11px] leading-5 text-slate-300"
-                            dir="ltr"
-                        >
-                            {command.output}
-                        </pre>
-                    </article>
-                ))}
+
+                        {result.commands.map((command, index) => (
+                            <div key={`${command.command}-${index}`}>
+                                <div className="text-emerald-400">
+                                    $ {command.command}
+                                </div>
+                                <pre
+                                    className="mt-2 whitespace-pre-wrap break-words font-mono text-[11px] leading-6 text-slate-300"
+                                    dir="auto"
+                                >
+                                    {command.output}
+                                </pre>
+                                <div
+                                    className={
+                                        command.successful
+                                            ? "mt-2 text-emerald-500/70"
+                                            : "mt-2 text-red-400"
+                                    }
+                                >
+                                    [exit {command.exit_code}]
+                                </div>
+                            </div>
+                        ))}
+
+                        <div className="text-slate-600">
+                            $ <span className="animate-pulse">▋</span>
+                        </div>
+                    </div>
+                )}
             </div>
         </section>
     );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function PanelButton({
+    active,
+    icon: Icon,
+    label,
+    onClick,
+}: {
+    active: boolean;
+    icon: typeof ServerCog;
+    label: string;
+    onClick: () => void;
+}) {
     return (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <span className="text-[11px] text-slate-500">{label}</span>
-            <strong className="mt-1 block text-sm text-slate-200" dir="ltr">
+        <button
+            className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black transition ${
+                active
+                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-950/40"
+                    : "text-slate-500 hover:bg-slate-900 hover:text-slate-300"
+            }`}
+            onClick={onClick}
+            type="button"
+        >
+            <Icon size={16} />
+            {label}
+        </button>
+    );
+}
+
+function Metric({
+    icon: Icon,
+    label,
+    value,
+}: {
+    icon: typeof ServerCog;
+    label: string;
+    value: string;
+}) {
+    return (
+        <div className="rounded-2xl border border-white/5 bg-white/[0.025] p-3">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                <Icon size={13} />
+                {label}
+            </div>
+            <div
+                className="mt-2 truncate text-sm font-black text-slate-200"
+                title={value}
+            >
                 {value}
-            </strong>
+            </div>
+        </div>
+    );
+}
+
+function StatusPill({
+    active,
+    label,
+}: {
+    active: boolean;
+    label: string;
+}) {
+    return (
+        <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black ${
+                active
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                    : "border-slate-700 bg-slate-900/70 text-slate-400"
+            }`}
+        >
+            <span
+                className={`size-1.5 rounded-full ${
+                    active ? "bg-emerald-400" : "bg-slate-600"
+                }`}
+            />
+            {label}
+        </span>
+    );
+}
+
+function CronState({
+    label,
+    installed,
+}: {
+    label: string;
+    installed: boolean;
+}) {
+    return (
+        <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+            <span className="text-xs font-bold text-slate-300">{label}</span>
+            <span
+                className={`inline-flex items-center gap-1 text-[10px] font-bold ${
+                    installed ? "text-emerald-300" : "text-slate-500"
+                }`}
+            >
+                {installed ? (
+                    <CheckCircle2 size={14} />
+                ) : (
+                    <TriangleAlert size={14} />
+                )}
+                {installed ? "نصب شده" : "نصب نشده"}
+            </span>
+        </div>
+    );
+}
+
+function CronLine({
+    title,
+    value,
+    copied,
+    onCopy,
+}: {
+    title: string;
+    value: string;
+    copied: boolean;
+    onCopy: () => void;
+}) {
+    return (
+        <Card className="border border-slate-800 bg-slate-950/70">
+            <Card.Content className="p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="text-xs font-black text-slate-300">
+                        {title}
+                    </span>
+                    <button
+                        className="inline-flex items-center gap-1 text-[10px] text-slate-500 transition hover:text-slate-300"
+                        onClick={onCopy}
+                        type="button"
+                    >
+                        {copied ? <Check size={13} /> : <Copy size={13} />}
+                        {copied ? "کپی شد" : "کپی"}
+                    </button>
+                </div>
+                <code
+                    className="block overflow-x-auto whitespace-nowrap rounded-xl bg-black/30 p-3 text-[10px] leading-5 text-emerald-300"
+                    dir="ltr"
+                >
+                    {value}
+                </code>
+            </Card.Content>
+        </Card>
+    );
+}
+
+function DeviceRow({ device }: { device: MobileDevice }) {
+    const lastSeen = device.last_seen_at
+        ? new Date(device.last_seen_at).toLocaleString("fa-IR")
+        : "نامشخص";
+
+    return (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+            <div className="flex items-start gap-3">
+                <span
+                    className={`grid size-10 shrink-0 place-items-center rounded-xl border ${
+                        device.push_enabled
+                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                            : "border-slate-700 bg-slate-800 text-slate-500"
+                    }`}
+                >
+                    <Smartphone size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <strong className="text-xs text-slate-100">
+                            {device.device_name ||
+                                device.platform.toUpperCase()}
+                        </strong>
+                        <Chip
+                            color={
+                                device.push_enabled ? "success" : "default"
+                            }
+                            size="sm"
+                            variant="soft"
+                        >
+                            {device.push_enabled ? "فعال" : "غیرفعال"}
+                        </Chip>
+                    </div>
+                    <div
+                        className="mt-2 truncate text-[10px] text-slate-600"
+                        dir="ltr"
+                    >
+                        {device.push_token_masked}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
+                        <span>{device.platform}</span>
+                        <span>App {device.app_version || "—"}</span>
+                        <span>آخرین اتصال: {lastSeen}</span>
+                        <span>
+                            خطا: {device.failure_count.toLocaleString("fa-IR")}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function Field({
+    label,
+    children,
+}: {
+    label: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <label className="block">
+            <span className="mb-2 block text-xs font-bold text-slate-300">
+                {label}
+            </span>
+            {children}
+        </label>
+    );
+}
+
+function EmptyState({
+    icon: Icon,
+    text,
+}: {
+    icon: typeof Smartphone;
+    text: string;
+}) {
+    return (
+        <div className="grid min-h-40 place-items-center rounded-2xl border border-dashed border-slate-800 bg-slate-950/30 p-6 text-center">
+            <div>
+                <Icon className="mx-auto text-slate-700" size={28} />
+                <p className="mt-3 text-xs text-slate-500">{text}</p>
+            </div>
         </div>
     );
 }
