@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function (): void {
             Route::middleware('web')->group(base_path('routes/video-progress.php'));
+            Route::middleware('web')->group(base_path('routes/video-preview.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
