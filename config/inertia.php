@@ -21,6 +21,7 @@ return [
          */
         'paths' => [
             '/',
+            'categories/*',
             'channels/*',
             'collections/*',
             'discover',
@@ -28,8 +29,11 @@ return [
             'feed',
             'feed/*',
             'offers',
+            'posts/*',
             'products/*',
             'shop',
+            'shorts/*',
+            'studios',
             'studios/*',
             'videos',
             'videos/*',
