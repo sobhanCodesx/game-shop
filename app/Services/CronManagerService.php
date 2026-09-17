@@ -205,16 +205,25 @@ final class CronManagerService
 
     private function schedulerLine(string $phpBinary): string
     {
-        return '* * * * * cd '.escapeshellarg(base_path())
-            .' && '.escapeshellarg($phpBinary)
+        return '* * * * * cd '.$this->shellArgument(base_path())
+            .' && '.$this->shellArgument($phpBinary)
             .' artisan schedule:run >> /dev/null 2>&1 '.self::SCHEDULER_MARKER;
     }
 
     private function queueLine(string $phpBinary): string
     {
-        return '* * * * * cd '.escapeshellarg(base_path())
-            .' && '.escapeshellarg($phpBinary)
+        return '* * * * * cd '.$this->shellArgument(base_path())
+            .' && '.$this->shellArgument($phpBinary)
             .' artisan queue:work --stop-when-empty --tries=3 --timeout=60 >> /dev/null 2>&1 '.self::QUEUE_MARKER;
+    }
+
+    private function shellArgument(string $value): string
+    {
+        if (\function_exists('escapeshellarg')) {
+            return \escapeshellarg($value);
+        }
+
+        return "'".str_replace("'", "'\\\\''", $value)."'";
     }
 
     /**
