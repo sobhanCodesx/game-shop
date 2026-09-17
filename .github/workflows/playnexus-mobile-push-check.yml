@@ -1,13 +1,17 @@
-name: PlayNexus Mobile Push Check
+name: PlayNexus System Console Check
 
 on:
   push:
     paths:
       - 'app/Http/Controllers/Admin/SystemMaintenanceController.php'
+      - 'app/Jobs/SendExpoPushNotification.php'
       - 'app/Notifications/AdminPushTestNotification.php'
       - 'app/Notifications/ContentPublishedNotification.php'
       - 'app/Notifications/Channels/ExpoPushChannel.php'
-      - 'app/Jobs/SendExpoPushNotification.php'
+      - 'app/Services/CronManagerService.php'
+      - 'app/Services/ExpoPushService.php'
+      - 'app/Services/SystemMaintenanceService.php'
+      - 'config/system_maintenance.php'
       - 'resources/js/Pages/Admin/SystemMaintenance/Index.tsx'
       - 'routes/web.php'
       - 'tests/Unit/ContentPublishedNotificationTest.php'
@@ -15,10 +19,14 @@ on:
   pull_request:
     paths:
       - 'app/Http/Controllers/Admin/SystemMaintenanceController.php'
+      - 'app/Jobs/SendExpoPushNotification.php'
       - 'app/Notifications/AdminPushTestNotification.php'
       - 'app/Notifications/ContentPublishedNotification.php'
       - 'app/Notifications/Channels/ExpoPushChannel.php'
-      - 'app/Jobs/SendExpoPushNotification.php'
+      - 'app/Services/CronManagerService.php'
+      - 'app/Services/ExpoPushService.php'
+      - 'app/Services/SystemMaintenanceService.php'
+      - 'config/system_maintenance.php'
       - 'resources/js/Pages/Admin/SystemMaintenance/Index.tsx'
       - 'routes/web.php'
       - 'tests/Unit/ContentPublishedNotificationTest.php'
@@ -36,10 +44,14 @@ jobs:
       - name: PHP syntax
         run: |
           php -l app/Http/Controllers/Admin/SystemMaintenanceController.php
+          php -l app/Jobs/SendExpoPushNotification.php
           php -l app/Notifications/AdminPushTestNotification.php
           php -l app/Notifications/ContentPublishedNotification.php
           php -l app/Notifications/Channels/ExpoPushChannel.php
-          php -l app/Jobs/SendExpoPushNotification.php
+          php -l app/Services/CronManagerService.php
+          php -l app/Services/ExpoPushService.php
+          php -l app/Services/SystemMaintenanceService.php
+          php -l config/system_maintenance.php
           php -l routes/web.php
           php -l tests/Unit/ContentPublishedNotificationTest.php
 
@@ -49,7 +61,7 @@ jobs:
       - name: Run notification unit test
         run: php artisan test tests/Unit/ContentPublishedNotificationTest.php
 
-      - name: Verify admin push test route
+      - name: Verify system console routes
         run: php artisan route:list --path=admin/system-maintenance --except-vendor
 
       - name: Install frontend dependencies
