@@ -191,6 +191,7 @@ class ExportDeploymentPackage extends Command
             'تنظیمات امضای deployment کامل نیست.' => 'Deployment signing configuration is incomplete.',
             'حداقل یک گیگابایت فضای آزاد لازم است.' => 'At least 1 GB of free disk space is required.',
             'ساخت ZIP ممکن نیست.' => 'Unable to create the ZIP archive.',
+            'فایل APK اندروید در public/apk پیدا نشد.' => 'Android APK was not found in public/apk.',
         ];
 
         if (isset($exact[$message])) {
@@ -206,6 +207,8 @@ class ExportDeploymentPackage extends Command
             'ساخت مسیر لازم ممکن نیست:' => 'Unable to create required directory:',
             'ساخت مسیر staging ممکن نیست:' => 'Unable to create staging directory:',
             'کپی فایل به staging ممکن نیست:' => 'Unable to copy file to staging:',
+            'فایل APK هنوز Git LFS pointer است؛ ابتدا git lfs pull را اجرا کنید:' => 'Android APK is still a Git LFS pointer. Run "git lfs pull" first:',
+            'خواندن فایل APK ممکن نیست:' => 'Unable to read Android APK:',
         ] as $persian => $english) {
             if (str_starts_with($message, $persian)) {
                 return $english.trim(substr($message, strlen($persian)));
