@@ -1,0 +1,7 @@
+{
+  "job_id": "20260918-cleanup-selftest",
+  "tool": "search_studios",
+  "arguments": {
+    "query": "FromSoftware"
+  }
+}
