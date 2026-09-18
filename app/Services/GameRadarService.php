@@ -37,6 +37,42 @@ class GameRadarService
             return $stored;
         }
 
+        try {
+            $snapshot = Cache::lock(self::CACHE_KEY.':warmup', 120)->block(3, function (): array {
+                $cached = Cache::get(self::CACHE_KEY);
+                if (is_array($cached)) {
+                    return $cached;
+                }
+
+                $stored = $this->readStoredSnapshot();
+                if ($stored !== null) {
+                    Cache::put(self::CACHE_KEY, $stored, now()->addHours(self::CACHE_HOURS));
+
+                    return $stored;
+                }
+
+                return $this->refresh();
+            });
+
+            if (is_array($snapshot)) {
+                return $snapshot;
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $cached = Cache::get(self::CACHE_KEY);
+            if (is_array($cached)) {
+                return $cached;
+            }
+
+            $stored = $this->readStoredSnapshot();
+            if ($stored !== null) {
+                $stored['stale'] = true;
+
+                return $stored;
+            }
+        }
+
         return [
             'generated_at' => null,
             'stale' => false,
