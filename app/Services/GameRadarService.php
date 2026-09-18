@@ -81,7 +81,9 @@ class GameRadarService
                 return $snapshot;
             }
         } catch (Throwable $exception) {
-            report($exception);
+            Log::warning('Game Radar cold-start refresh unavailable', [
+                'message' => $exception->getMessage(),
+            ]);
 
             $cached = Cache::get(self::CACHE_KEY);
             if (is_array($cached)) {
