@@ -63,6 +63,73 @@ function itemImage(item: ExploreItem): string | null {
     return item.data.thumbnail_url;
 }
 
+
+function LargeTileVideoPreview({
+    src,
+    poster,
+}: {
+    src: string;
+    poster: string | null;
+}) {
+    const ref = useRef<HTMLVideoElement>(null);
+    const [visible, setVisible] = useState(false);
+    const [ready, setReady] = useState(false);
+
+    useEffect(() => {
+        const video = ref.current;
+        if (!video) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) =>
+                setVisible(
+                    entry.isIntersecting && entry.intersectionRatio >= 0.6,
+                ),
+            { threshold: [0, 0.6, 1] },
+        );
+
+        observer.observe(video);
+        return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        const video = ref.current;
+        if (!video) return;
+
+        if (visible) {
+            void video.play().catch(() => undefined);
+        } else {
+            video.pause();
+        }
+    }, [visible]);
+
+    return (
+        <span className="relative block size-full bg-black">
+            {poster && (
+                <img
+                    alt=""
+                    aria-hidden="true"
+                    className={`absolute inset-0 size-full object-cover transition-opacity duration-300 ${ready ? "opacity-0" : "opacity-100"}`}
+                    decoding="async"
+                    loading="lazy"
+                    src={poster}
+                />
+            )}
+            <video
+                aria-hidden="true"
+                className={`pointer-events-none size-full object-cover transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}
+                loop
+                muted
+                onCanPlay={() => setReady(true)}
+                playsInline
+                poster={poster ?? undefined}
+                preload="metadata"
+                ref={ref}
+                src={src}
+            />
+        </span>
+    );
+}
+
 function ReelVideo({
     active,
     poster,
@@ -386,10 +453,12 @@ function MobileReels({
 function Tile({
     item,
     index,
+    large,
     onOpen,
 }: {
     item: ExploreItem;
     index: number;
+    large: boolean;
     onOpen: () => void;
 }) {
     const content = item.kind === "content" ? item.data : null;
@@ -400,11 +469,13 @@ function Tile({
         <>
             <button
                 aria-label={`باز کردن ${item.data.title}`}
-                className="group relative aspect-square min-w-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-[-2px]"
+                className={`group relative min-w-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-[-2px] ${large ? "col-span-2 row-span-2 aspect-square" : "aspect-square"}`}
                 onClick={onOpen}
                 type="button"
             >
-                {image ? (
+                {large && video ? (
+                    <LargeTileVideoPreview poster={image} src={video} />
+                ) : image ? (
                     <img
                         alt={item.data.title}
                         className="size-full object-cover transition-transform duration-300 ease-out md:group-hover:scale-[1.025]"
@@ -415,7 +486,10 @@ function Tile({
                     />
                 ) : (
                     <span className="grid size-full place-items-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
-                        <Gamepad2 className="text-indigo-400" size={34} />
+                        <Gamepad2
+                            className="text-indigo-400"
+                            size={large ? 46 : 34}
+                        />
                     </span>
                 )}
 
@@ -852,16 +926,28 @@ export default function ExploreGrid({
         <>
             <section
                 aria-label="شبکه اکسپلور"
-                className="mx-auto grid w-full max-w-[1080px] grid-cols-3 gap-[2px] overflow-hidden bg-[var(--store-bg)] sm:gap-1"
+                className="mx-auto grid w-full max-w-[1080px] auto-flow-dense grid-cols-3 gap-[2px] overflow-hidden bg-[var(--store-bg)] sm:gap-1"
             >
-                {items.map((item, index) => (
-                    <Tile
-                        index={index}
-                        item={item}
-                        key={item.key}
-                        onOpen={() => onOpen(index)}
-                    />
-                ))}
+                {(() => {
+                    let videoRank = 0;
+
+                    return items.map((item, index) => {
+                        const isVideo = Boolean(itemVideo(item));
+                        const currentVideoRank = isVideo ? videoRank++ : -1;
+                        const large =
+                            isVideo && currentVideoRank % 6 === 0;
+
+                        return (
+                            <Tile
+                                index={index}
+                                item={item}
+                                key={item.key}
+                                large={large}
+                                onOpen={() => onOpen(index)}
+                            />
+                        );
+                    });
+                })()}
             </section>
             {selected !== null &&
                 (desktop ? (
