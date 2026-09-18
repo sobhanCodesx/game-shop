@@ -76,6 +76,10 @@ export interface StorefrontContent {
     video_url: string | null;
     duration: number | null;
     views: number;
+    likes_count: number;
+    comments_count: number;
+    is_liked: boolean;
+    allow_comments: boolean;
     published_at: string | null;
     channel: {
         id: number;
