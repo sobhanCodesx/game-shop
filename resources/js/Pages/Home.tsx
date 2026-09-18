@@ -14,7 +14,6 @@ import {
     Radio,
     Radar,
     CalendarDays,
-    CheckCircle2,
     ShieldCheck,
     Sparkles,
     Truck,
@@ -120,12 +119,6 @@ interface GameRadarItem {
     publisher: string | null;
     xbox: RadarStorePresence;
     psn: RadarStorePresence;
-}
-
-interface GameRadarSnapshot {
-    generated_at: string | null;
-    stale: boolean;
-    items: GameRadarItem[];
 }
 
 interface FreshItem {
