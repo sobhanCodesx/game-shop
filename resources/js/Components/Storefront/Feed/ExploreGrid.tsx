@@ -566,7 +566,7 @@ function Modal({
             <div className="relative flex h-full w-full flex-col overflow-hidden bg-[var(--store-panel)] shadow-2xl md:h-[min(86vh,860px)] md:max-w-[1180px] md:flex-row md:rounded-xl md:border md:border-[var(--store-border)]">
                 <button
                     aria-label="بستن"
-                    className="absolute -left-14 top-0 z-30 grid size-10 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition hover:bg-black/70"
+                    className="absolute left-3 top-3 z-30 grid size-10 place-items-center rounded-full bg-black/45 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/70 active:scale-95"
                     onClick={onClose}
                     type="button"
                 >
@@ -592,7 +592,7 @@ function Modal({
                     {index > 0 && (
                         <button
                             aria-label="قبلی"
-                            className="absolute right-3 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-black/80"
+                            className="absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/70 active:scale-95"
                             onClick={() => onIndex(index - 1)}
                             type="button"
                         >
@@ -602,7 +602,7 @@ function Modal({
                     {(index < items.length - 1 || hasMore) && (
                         <button
                             aria-label="بعدی"
-                            className="absolute left-3 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition hover:bg-black/80 disabled:opacity-40"
+                            className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/70 active:scale-95 disabled:opacity-40"
                             disabled={loading}
                             onClick={next}
                             type="button"
@@ -616,11 +616,11 @@ function Modal({
                         {content?.channel?.avatar_url ? (
                             <img
                                 alt={content.channel.name}
-                                className="size-11 rounded-full object-cover ring-2 ring-indigo-500/25"
+                                className="size-10 rounded-full object-cover"
                                 src={content.channel.avatar_url}
                             />
                         ) : (
-                            <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-violet-600 via-indigo-500 to-cyan-500 text-white shadow-lg shadow-indigo-500/20">
+                            <span className="grid size-10 place-items-center rounded-full bg-indigo-600 text-white">
                                 <Gamepad2 size={20} />
                             </span>
                         )}
@@ -634,14 +634,14 @@ function Modal({
                         </div>
                     </div>
                     <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-                        <span className="text-xs font-black text-indigo-500">
+                        <span className="text-[11px] font-bold text-[var(--store-muted)]">
                             {product
                                 ? "محصول فروشگاه"
                                 : content?.type === "video"
                                   ? "ویدیو"
                                   : "پست"}
                         </span>
-                        <h2 className="mt-2 text-xl font-black leading-8 md:text-2xl">
+                        <h2 className="mt-2 text-lg font-black leading-8 md:text-xl">
                             {item.data.title}
                         </h2>
                         {product ? (
