@@ -10,6 +10,7 @@ import {
     FolderTree,
     Home,
     Radio,
+    Radar,
     Repeat2,
     ShoppingBag,
     Tags,
@@ -38,6 +39,13 @@ const mobileMenuLinks = [
         label: "اکسپلور",
         hint: "کشف محتوای تازه",
         icon: Compass,
+    },
+    {
+        href: "/game-radar",
+        matches: ["/game-radar"],
+        label: "رادار بازی‌ها",
+        hint: "تازه‌ها و بازی‌های در راه",
+        icon: Radar,
     },
     {
         href: "/shop",
