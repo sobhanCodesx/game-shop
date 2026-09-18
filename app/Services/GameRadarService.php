@@ -19,11 +19,6 @@ class GameRadarService
     private const MAX_ITEMS = 18;
 
     /**
-     * Return the last successful snapshot without making external requests.
-     *
-     * @return array{generated_at:?string, stale:bool, items:array<int, array<string, mixed>>}
-     */
-    /**
      * Return cache/storage only. This never performs an external request and
      * is safe for the first render of Home/Game Hub.
      *
