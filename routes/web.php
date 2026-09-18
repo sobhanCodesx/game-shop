@@ -108,7 +108,7 @@ Route::get('exchange-products', [StorefrontController::class, 'exchangeProducts'
 Route::get('products', [StorefrontController::class, 'shop'])->name('products.index');
 Route::get('discover', [StorefrontController::class, 'discover'])->name('discover');
 Route::get('game-radar', [GameRadarController::class, 'index'])->name('game-radar.index');
-Route::get('game-radar/data', [GameRadarController::class, 'data'])->middleware('throttle:12,1')->name('game-radar.data');
+Route::get('game-radar/data', [GameRadarController::class, 'data'])->middleware('throttle:40,1')->name('game-radar.data');
 Route::post('discover/content/{content:slug}/view', [StorefrontController::class, 'recordDiscoverView'])
     ->middleware('throttle:90,1')
     ->name('discover.views.store');
