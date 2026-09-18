@@ -6,6 +6,10 @@ on:
       - 'app/Http/Controllers/Api/ContentAgentMcpController.php'
       - 'app/Http/Middleware/AuthenticateContentAgent.php'
       - 'app/Services/ContentAgentService.php'
+      - 'app/Services/ContentAgentMediaService.php'
+      - 'app/Models/ContentAsset.php'
+      - 'database/migrations/2026_09_18_090000_create_content_assets_table.php'
+      - 'config/content_agent.php'
       - 'scripts/playnexus_publish.py'
       - 'tests/Feature/ContentAgentMcpTest.php'
       - '.github/workflows/playnexus-content-agent-check.yml'
@@ -14,6 +18,10 @@ on:
       - 'app/Http/Controllers/Api/ContentAgentMcpController.php'
       - 'app/Http/Middleware/AuthenticateContentAgent.php'
       - 'app/Services/ContentAgentService.php'
+      - 'app/Services/ContentAgentMediaService.php'
+      - 'app/Models/ContentAsset.php'
+      - 'database/migrations/2026_09_18_090000_create_content_assets_table.php'
+      - 'config/content_agent.php'
       - 'scripts/playnexus_publish.py'
       - 'tests/Feature/ContentAgentMcpTest.php'
 
@@ -30,6 +38,10 @@ jobs:
           php -l app/Http/Controllers/Api/ContentAgentMcpController.php
           php -l app/Http/Middleware/AuthenticateContentAgent.php
           php -l app/Services/ContentAgentService.php
+          php -l app/Services/ContentAgentMediaService.php
+          php -l app/Models/ContentAsset.php
+          php -l database/migrations/2026_09_18_090000_create_content_assets_table.php
+          php -l config/content_agent.php
           php -l tests/Feature/ContentAgentMcpTest.php
       - name: Python syntax
         run: python3 -m py_compile scripts/playnexus_publish.py

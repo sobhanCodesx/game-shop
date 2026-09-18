@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ContentAsset;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\Product;
@@ -561,8 +562,13 @@ class ContentAgentService
 
         if ($resource === 'collection') {
             $model = VideoPlaylist::query()->findOrFail($id);
+            $logo = $model->logo;
+            $this->deleteContentAttachments($resource, $id);
             $model->videos()->detach();
             $model->delete();
+            if ($logo) {
+                MediaStorage::disk()->delete($logo);
+            }
 
             return ['resource' => $resource, 'id' => $id, 'deleted' => true, 'soft_deleted' => false];
         }
@@ -573,6 +579,7 @@ class ContentAgentService
             'video' => 'video',
         };
         $model = $this->findSocialContent($id, $type);
+        $this->deleteContentAttachments($resource, $id);
         $this->deleteSocialContentFiles($model);
         $model->playlists()->detach();
         $model->delete();
@@ -953,6 +960,24 @@ class ContentAgentService
     {
         if (! (bool) config('content_agent.allow_destructive')) {
             throw new RuntimeException('Destructive operations are disabled. Set PLAYNEXUS_CONTENT_AGENT_ALLOW_DESTRUCTIVE=true on the server to enable delete/restore tools.');
+        }
+    }
+
+    private function deleteContentAttachments(string $resource, int $id): void
+    {
+        $assets = ContentAsset::query()
+            ->where('resource', $resource)
+            ->where('resource_id', $id)
+            ->get();
+
+        $paths = $assets->pluck('path')->filter()->values()->all();
+        ContentAsset::query()
+            ->where('resource', $resource)
+            ->where('resource_id', $id)
+            ->delete();
+
+        if ($paths !== []) {
+            MediaStorage::disk()->delete($paths);
         }
     }
 

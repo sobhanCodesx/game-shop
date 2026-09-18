@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Services\ContentAgentMediaService;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ContentAgentMcpTest extends TestCase
@@ -17,7 +20,7 @@ class ContentAgentMcpTest extends TestCase
         ])->assertUnauthorized();
     }
 
-    public function test_mcp_endpoint_lists_advanced_content_admin_tools_with_valid_token(): void
+    public function test_mcp_endpoint_lists_advanced_content_admin_and_asset_tools_with_valid_token(): void
     {
         config()->set('content_agent.token', 'test-secret');
 
@@ -49,7 +52,13 @@ class ContentAgentMcpTest extends TestCase
             ->assertJsonFragment(['name' => 'unpublish_feed'])
             ->assertJsonFragment(['name' => 'delete_content'])
             ->assertJsonFragment(['name' => 'restore_content'])
-            ->assertJsonFragment(['version' => '2.0.0']);
+            ->assertJsonFragment(['name' => 'start_asset_upload'])
+            ->assertJsonFragment(['name' => 'upload_asset_chunk'])
+            ->assertJsonFragment(['name' => 'complete_asset_upload'])
+            ->assertJsonFragment(['name' => 'abort_asset_upload'])
+            ->assertJsonFragment(['name' => 'list_content_assets'])
+            ->assertJsonFragment(['name' => 'remove_content_asset'])
+            ->assertJsonFragment(['version' => '2.1.0']);
     }
 
     public function test_mcp_endpoint_supports_modern_discovery(): void
@@ -68,6 +77,44 @@ class ContentAgentMcpTest extends TestCase
             ],
         ])->assertOk()
             ->assertJsonPath('result.supportedVersions.0', '2026-07-28')
-            ->assertJsonFragment(['version' => '2.0.0']);
+            ->assertJsonFragment(['version' => '2.1.0']);
+    }
+
+    public function test_media_service_accepts_only_manifest_sized_base64_chunks(): void
+    {
+        config()->set('content_agent.allow_uploads', true);
+        config()->set('content_agent.uploads.max_chunk_size', 16);
+
+        $uploadId = (string) Str::uuid();
+        $directory = storage_path('app/private/content-agent-uploads/'.$uploadId);
+        File::ensureDirectoryExists($directory.'/chunks');
+        File::put($directory.'/metadata.json', json_encode([
+            'upload_id' => $uploadId,
+            'resource' => 'game',
+            'id' => 1,
+            'slot' => 'attachment',
+            'name' => 'hello.txt',
+            'mime' => 'text/plain',
+            'size' => 5,
+            'chunk_size' => 5,
+            'total_chunks' => 1,
+            'sha256' => hash('sha256', 'hello'),
+        ], JSON_THROW_ON_ERROR));
+
+        try {
+            $result = app(ContentAgentMediaService::class)->uploadChunk([
+                'upload_id' => $uploadId,
+                'chunk_index' => 0,
+                'data_base64' => base64_encode('hello'),
+            ]);
+
+            $this->assertSame(5, $result['received_bytes']);
+            $this->assertSame('hello', File::get($directory.'/chunks/0'));
+
+            app(ContentAgentMediaService::class)->abortUpload(['upload_id' => $uploadId]);
+            $this->assertDirectoryDoesNotExist($directory);
+        } finally {
+            File::deleteDirectory($directory);
+        }
     }
 }

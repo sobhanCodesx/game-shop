@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ContentAgentMediaService;
 use App\Services\ContentAgentService;
 use App\Services\FeedService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -17,7 +18,7 @@ class ContentAgentMcpController extends Controller
     private const MODERN_PROTOCOL = '2026-07-28';
     private const LEGACY_PROTOCOL = '2025-11-25';
 
-    public function __invoke(Request $request, ContentAgentService $contentAgent): Response
+    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia): Response
     {
         $payload = $request->json()->all();
 
@@ -42,7 +43,7 @@ class ContentAgentMcpController extends Controller
                 'initialize' => $this->rpcResult($id, $this->initializeResult($params)),
                 'server/discover' => $this->rpcResult($id, $this->discoverResult()),
                 'tools/list' => $this->rpcResult($id, $this->toolsListResult()),
-                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent)),
+                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia)),
                 'ping' => $this->rpcResult($id, new \stdClass()),
                 default => $this->rpcError($id, -32601, 'Method not found.'),
             };
@@ -96,7 +97,7 @@ class ContentAgentMcpController extends Controller
         ];
     }
 
-    private function callTool(array $params, ContentAgentService $contentAgent): array
+    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia): array
     {
         $name = (string) ($params['name'] ?? '');
         $arguments = is_array($params['arguments'] ?? null) ? $params['arguments'] : [];
@@ -123,6 +124,12 @@ class ContentAgentMcpController extends Controller
             'unpublish_feed' => $contentAgent->unpublishFeed($arguments),
             'delete_content' => $contentAgent->deleteContent($arguments),
             'restore_content' => $contentAgent->restoreContent($arguments),
+            'start_asset_upload' => $contentMedia->startUpload($arguments),
+            'upload_asset_chunk' => $contentMedia->uploadChunk($arguments),
+            'complete_asset_upload' => $contentMedia->completeUpload($arguments),
+            'abort_asset_upload' => $contentMedia->abortUpload($arguments),
+            'list_content_assets' => $contentMedia->listContentAssets($arguments),
+            'remove_content_asset' => $contentMedia->removeContentAsset($arguments),
             default => throw new RuntimeException("Unknown PlayNexus tool: {$name}"),
         };
 
@@ -156,6 +163,10 @@ class ContentAgentMcpController extends Controller
     {
         $resourceEnum = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product'];
         $mutableResourceEnum = ['game', 'studio', 'collection', 'feed', 'story', 'video'];
+        $mediaResourceEnum = ['game', 'studio', 'collection', 'feed', 'story', 'video'];
+        $mediaSlotEnum = ['cover', 'background', 'logo', 'media', 'video', 'thumbnail', 'attachment'];
+        $maxUploadSize = max(1, (int) config('content_agent.uploads.max_size', 104857600));
+        $maxChunkSize = max(1, (int) config('content_agent.uploads.max_chunk_size', 2097152));
 
         $feedProperties = [
             'title' => ['type' => 'string', 'maxLength' => 160, 'description' => 'Persian SEO-friendly feed title.'],
@@ -364,6 +375,240 @@ class ContentAgentMcpController extends Controller
                     'additionalProperties' => false,
                 ],
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'start_asset_upload',
+                'description' => 'Start a secure chunked binary upload for a PlayNexus record. This tool accepts metadata only; it never fetches a remote URL. Valid slots: game cover/background/attachment; studio logo/background/attachment; collection logo/attachment; feed media/attachment; story media/thumbnail/attachment; video video/thumbnail/attachment.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'slot' => ['type' => 'string', 'enum' => $mediaSlotEnum],
+                        'name' => ['type' => 'string', 'maxLength' => 255],
+                        'mime' => ['type' => 'string', 'maxLength' => 120, 'description' => 'Client-declared MIME. The server independently detects the real MIME before attaching the file.'],
+                        'size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxUploadSize],
+                        'chunk_size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxChunkSize],
+                        'total_chunks' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 1000],
+                        'sha256' => ['type' => ['string', 'null'], 'pattern' => '^[A-Fa-f0-9]{64}
+                'description' => 'Replace the ordered videos in a collection. video_ids order becomes playlist position.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'collection_id' => ['type' => 'integer', 'minimum' => 1],
+                        'video_ids' => ['type' => 'array', 'items' => ['type' => 'integer', 'minimum' => 1], 'maxItems' => 500, 'uniqueItems' => true],
+                    ],
+                    'required' => ['collection_id', 'video_ids'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'set_content_state',
+                'description' => 'Explicitly change public/private or active/draft state for games, studios, collections, stories and videos. Feed publishing is intentionally excluded; use publish_feed. Public/active/published transitions require server-side publishing permission.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => ['game', 'studio', 'collection', 'feed', 'story', 'video']],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'state' => ['type' => 'string', 'maxLength' => 30, 'description' => 'game/studio: active|inactive; collection: public|private; story/video: published|draft; feed: draft only'],
+                    ],
+                    'required' => ['resource', 'id', 'state'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'publish_feed',
+                'description' => 'Publish an existing PlayNexus feed. Use only after an explicit user request. Server-side publishing must be enabled.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'unpublish_feed',
+                'description' => 'Return a published PlayNexus feed to draft and clear published_at.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'delete_content',
+                'description' => 'Delete a mutable content record. Games/studios use soft delete; collections/feeds/stories/videos are removed and their owned media is cleaned up. Requires destructive operations to be enabled server-side.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mutableResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'restore_content',
+                'description' => 'Restore a soft-deleted game or studio. Requires destructive operations to be enabled server-side.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => ['game', 'studio']],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+        ];
+    }
+
+    private function searchTool(string $name, string $description): array
+    {
+        return [
+            'name' => $name,
+            'description' => $description,
+            'inputSchema' => [
+                'type' => 'object',
+                'properties' => [
+                    'query' => ['type' => 'string', 'maxLength' => 120],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 20, 'default' => 10],
+                ],
+                'required' => ['query'],
+                'additionalProperties' => false,
+            ],
+            'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+        ];
+    }
+
+    private function instructions(): string
+    {
+        return 'PlayNexus Content Admin MCP v2.1. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary media/files use the dedicated chunked asset tools; the MCP never fetches arbitrary remote URLs. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+    }
+
+    private function serverInfo(): array
+    {
+        return [
+            'name' => 'playnexus-content-agent',
+            'title' => 'PlayNexus Content Admin Agent',
+            'version' => '2.1.0',
+        ];
+    }
+
+    private function resultMeta(): array
+    {
+        return ['io.modelcontextprotocol/serverInfo' => $this->serverInfo()];
+    }
+
+    private function rpcResult(mixed $id, array|\stdClass $result): Response
+    {
+        return response()->json([
+            'jsonrpc' => '2.0',
+            'id' => $id,
+            'result' => $result,
+        ]);
+    }
+
+    private function rpcError(mixed $id, int $code, string $message, int $status = 200): Response
+    {
+        return response()->json([
+            'jsonrpc' => '2.0',
+            'id' => $id,
+            'error' => [
+                'code' => $code,
+                'message' => $message,
+            ],
+        ], $status);
+    }
+}
+],
+                        'alt' => ['type' => ['string', 'null'], 'maxLength' => 255],
+                        'sort_order' => ['type' => ['integer', 'null'], 'minimum' => 0],
+                        'duration' => ['type' => ['integer', 'null'], 'minimum' => 0],
+                    ],
+                    'required' => ['resource', 'id', 'slot', 'name', 'mime', 'size', 'chunk_size', 'total_chunks'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'upload_asset_chunk',
+                'description' => 'Upload one Base64-encoded chunk into an existing PlayNexus binary upload session. Only bytes are accepted; URLs are not supported.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                        'chunk_index' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 999],
+                        'data_base64' => ['type' => 'string', 'description' => 'Raw Base64 for this chunk, without a data-URL prefix.'],
+                    ],
+                    'required' => ['upload_id', 'chunk_index', 'data_base64'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'complete_asset_upload',
+                'description' => 'Verify size/SHA-256/real MIME, assemble all chunks and atomically attach the stored media/file to its PlayNexus record.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'abort_asset_upload',
+                'description' => 'Discard an incomplete temporary upload session.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'list_content_assets',
+                'description' => 'List current media slots and general file attachments for one PlayNexus content record.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'remove_content_asset',
+                'description' => 'Remove an attached media slot, feed-media item or general attachment. asset_id is required for feed media and general attachments. Server-side destructive permission is required.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'slot' => ['type' => 'string', 'enum' => $mediaSlotEnum],
+                        'asset_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id', 'slot'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
             ],
             [
                 'name' => 'sync_collection_videos',
