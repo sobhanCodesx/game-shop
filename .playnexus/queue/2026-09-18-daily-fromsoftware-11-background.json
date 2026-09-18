@@ -1,0 +1,13 @@
+{
+  "job_id": "20260918-daily-fromsoftware-11-background",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "studio",
+    "id": 11,
+    "slot": "background",
+    "source_url": "https://media.fromsoftware.jp/fromsoftware/jp/static/img/top/sp/banner/eldenring.jpg",
+    "name": "fromsoftware-elden-ring-background.jpg",
+    "alt": "تصویر رسمی Elden Ring از استودیو FromSoftware",
+    "sort_order": 0
+  }
+}

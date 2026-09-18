@@ -14,7 +14,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: playnexus-content-publisher
@@ -75,14 +75,17 @@ jobs:
           fi
 
           if [[ ! -s /tmp/playnexus-jobs.txt ]]; then
-            echo "::error::No PlayNexus queue jobs were found in this run."
-            exit 1
+            echo "No PlayNexus queue jobs need processing in this run."
+            echo "has_jobs=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
+          echo "has_jobs=true" >> "$GITHUB_OUTPUT"
           echo 'Jobs to process:'
           cat /tmp/playnexus-jobs.txt
 
       - name: Verify publisher secret exists
+        if: ${{ steps.jobs.outputs.has_jobs == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -92,10 +95,83 @@ jobs:
           fi
 
       - name: Send jobs to PlayNexus
+        if: ${{ steps.jobs.outputs.has_jobs == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
+          : > /tmp/playnexus-processed.txt
+
           while IFS= read -r job; do
             echo "Processing $job"
             python3 scripts/playnexus_publish.py "$job"
+
+            # Record the exact blob that was successfully processed. Cleanup will
+            # only remove the job if that exact blob is still on chatgpt_dev.
+            blob_sha="$(git rev-parse "HEAD:$job")"
+            printf '%s\t%s\n' "$job" "$blob_sha" >> /tmp/playnexus-processed.txt
           done < /tmp/playnexus-jobs.txt
+
+      - name: Cleanup successfully processed queue jobs
+        if: ${{ always() && steps.jobs.outputs.has_jobs == 'true' }}
+        shell: bash
+        run: |
+          set -u
+
+          if [[ ! -s /tmp/playnexus-processed.txt ]]; then
+            echo "No successfully processed queue jobs to clean up."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          apply_cleanup() {
+            git fetch origin chatgpt_dev
+            git checkout -B chatgpt_dev origin/chatgpt_dev
+
+            while IFS=$'\t' read -r job processed_sha; do
+              [[ -n "$job" && -n "$processed_sha" ]] || continue
+
+              if [[ ! -f "$job" ]]; then
+                echo "Already cleaned: $job"
+                continue
+              fi
+
+              current_sha="$(git rev-parse "HEAD:$job" 2>/dev/null || true)"
+              if [[ "$current_sha" != "$processed_sha" ]]; then
+                echo "::warning::Skipping cleanup for changed job: $job"
+                continue
+              fi
+
+              git rm -- "$job"
+            done < /tmp/playnexus-processed.txt
+          }
+
+          apply_cleanup
+
+          if git diff --cached --quiet; then
+            echo "No queue files are eligible for cleanup."
+            exit 0
+          fi
+
+          git commit -m "chore(playnexus): cleanup processed queue jobs"
+
+          if git push origin HEAD:chatgpt_dev; then
+            echo "Processed PlayNexus queue jobs cleaned successfully."
+            exit 0
+          fi
+
+          echo "::warning::Cleanup push raced with a newer commit; retrying once."
+          git reset --hard HEAD~1
+          apply_cleanup
+
+          if git diff --cached --quiet; then
+            echo "Nothing left to clean after refresh."
+            exit 0
+          fi
+
+          git commit -m "chore(playnexus): cleanup processed queue jobs"
+
+          if ! git push origin HEAD:chatgpt_dev; then
+            echo "::warning::Published content succeeded, but queue cleanup could not be pushed. The JSON jobs were left in Git for a later cleanup."
+          fi

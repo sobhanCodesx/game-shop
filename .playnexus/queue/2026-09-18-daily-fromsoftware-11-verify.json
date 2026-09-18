@@ -1,0 +1,7 @@
+{
+  "job_id": "20260918-daily-fromsoftware-11-verify",
+  "tool": "search_studios",
+  "arguments": {
+    "query": "FromSoftware"
+  }
+}
