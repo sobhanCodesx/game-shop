@@ -2,8 +2,6 @@ import { Link } from "@inertiajs/react";
 import {
     CalendarDays,
     CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
     ExternalLink,
     Gamepad2,
     Play,
@@ -11,7 +9,7 @@ import {
     Sparkles,
     Store,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import Seo, { type SeoData } from "../../Components/Seo";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
@@ -48,355 +46,428 @@ interface GameRadarSnapshot {
 }
 
 type StatusFilter = "all" | "new" | "coming";
+type Platform = "ps5" | "xbox";
 
-const dateLabel = (value: string | null) => {
-    if (!value) return "تاریخ انتشار نامشخص";
+const dateLabel = (value: string | null, compact = false) => {
+    if (!value) return "تاریخ نامشخص";
 
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "تاریخ انتشار نامشخص";
+    if (Number.isNaN(date.getTime())) return "تاریخ نامشخص";
 
     return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+        ...(compact
+            ? { month: "short", day: "numeric" }
+            : { year: "numeric", month: "long", day: "numeric" }),
         timeZone: "Asia/Tehran",
     }).format(date);
 };
 
-const compactDateLabel = (value: string | null) => {
-    if (!value) return "نامشخص";
+const storeFor = (item: GameRadarItem, platform: Platform) =>
+    platform === "ps5" ? item.psn : item.xbox;
 
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "نامشخص";
+const platformMeta = (platform: Platform) =>
+    platform === "ps5"
+        ? {
+              title: "PlayStation 5",
+              kicker: "PLAYSTATION STORE",
+              accent: "sky",
+              description:
+                  "بازی‌های تازه، پیش‌خریدها و عناوین در راه PS5 از کاتالوگ PlayStation Store",
+          }
+        : {
+              title: "Xbox Series X|S",
+              kicker: "XBOX STORE",
+              accent: "emerald",
+              description:
+                  "جدیدترین بازی‌ها و عناوین در راه Xbox Series X|S از کاتالوگ Xbox",
+          };
 
-    return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-        month: "short",
-        day: "numeric",
-        timeZone: "Asia/Tehran",
-    }).format(date);
-};
-
-function StorePill({
-    label,
-    presence,
-    tone,
+function PlatformBadge({
+    platform,
+    small = false,
 }: {
-    label: string;
-    presence: StorePresence;
-    tone: "xbox" | "psn";
+    platform: Platform;
+    small?: boolean;
 }) {
-    if (!presence.available) return null;
+    const isPs5 = platform === "ps5";
 
     return (
         <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black shadow-lg ${
-                tone === "xbox"
-                    ? "bg-emerald-400 text-slate-950"
-                    : "bg-sky-400 text-slate-950"
+            className={`inline-flex items-center gap-1.5 rounded-full font-black ${
+                small ? "px-2 py-1 text-[8px]" : "px-3 py-1.5 text-[10px]"
+            } ${
+                isPs5
+                    ? "bg-sky-400/15 text-sky-200 ring-1 ring-sky-300/15"
+                    : "bg-emerald-400/15 text-emerald-200 ring-1 ring-emerald-300/15"
             }`}
         >
-            <CheckCircle2 size={12} />
-            {label}
+            {isPs5 ? (
+                <Play size={small ? 9 : 12} fill="currentColor" />
+            ) : (
+                <Gamepad2 size={small ? 10 : 13} />
+            )}
+            {isPs5 ? "PS5" : "Xbox Series X|S"}
         </span>
     );
 }
 
-function GameHubSkeleton() {
-    return (
-        <main
-            aria-busy="true"
-            aria-label="Game Radar در انتظار داده کش‌شده"
-            className="min-h-screen bg-slate-950 text-white"
-        >
-            <section className="relative min-h-[64dvh] overflow-hidden border-b border-white/10 lg:min-h-[620px]">
-                <span className="absolute inset-0 bg-[radial-gradient(circle_at_72%_28%,rgba(79,70,229,.28),transparent_34%),linear-gradient(135deg,#0f172a,#020617_68%)]" />
-                <span className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/10" />
-                <div className="relative mx-auto flex min-h-[64dvh] max-w-[1500px] items-end px-4 pb-8 pt-28 sm:px-6 lg:min-h-[620px] lg:items-center lg:px-10">
-                    <div className="max-w-3xl">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black text-white/60">
-                            <Radar size={13} />
-                            NEXUS GAME RADAR
-                        </span>
-                        <h1 className="mt-5 text-3xl font-black sm:text-4xl">
-                            بازی‌های جدید PS5 و Xbox
-                        </h1>
-                        <p className="mt-3 text-sm text-white/45">
-                            داده‌ها فقط از کش PlayNexus خوانده می‌شوند و Job سرور هر ۶ ساعت آن‌ها را بروزرسانی می‌کند.
-                        </p>
-
-                        <div className="mt-8 h-12 w-2/3 max-w-lg animate-pulse rounded-2xl bg-white/10" />
-                        <div className="mt-4 h-3 w-1/2 animate-pulse rounded-full bg-white/[0.06]" />
-                        <div className="mt-2 h-3 w-1/3 animate-pulse rounded-full bg-white/[0.05]" />
-                    </div>
-                </div>
-            </section>
-
-            <div className="mx-auto max-w-[1500px] space-y-10 px-3 py-9 sm:px-5 lg:px-8">
-                {[
-                    ["PlayStation 5", "bg-sky-400/10"],
-                    ["Xbox Series X|S", "bg-emerald-400/10"],
-                ].map(([title, tone]) => (
-                    <section key={title}>
-                        <div className="mb-4">
-                            <div className={`h-7 w-44 animate-pulse rounded-lg ${tone}`} />
-                            <div className="mt-2 h-2.5 w-64 animate-pulse rounded-full bg-white/[0.05]" />
-                        </div>
-                        <div className="flex gap-3 overflow-hidden">
-                            {Array.from({ length: 6 }).map((_, index) => (
-                                <div
-                                    className="aspect-[3/4] w-[46vw] max-w-[220px] shrink-0 animate-pulse rounded-[22px] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.025] sm:w-[210px]"
-                                    key={index}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                ))}
-            </div>
-        </main>
-    );
-}
-
-function GameCard({
+function StoreAction({
     item,
-    active,
-    onSelect,
     platform,
+    compact = false,
 }: {
     item: GameRadarItem;
-    active: boolean;
-    onSelect: () => void;
-    platform: "ps5" | "xbox";
+    platform: Platform;
+    compact?: boolean;
 }) {
+    const store = storeFor(item, platform);
+    if (!store.url) return null;
+
     const isPs5 = platform === "ps5";
-    const store = isPs5 ? item.psn : item.xbox;
-    const alsoAvailable = isPs5 ? item.xbox.available : item.psn.available;
 
     return (
-        <article
-            className={`group relative aspect-[3/4] w-[46vw] max-w-[220px] shrink-0 snap-start overflow-hidden rounded-[22px] border bg-slate-900 text-right shadow-lg transition duration-300 sm:w-[210px] lg:w-[220px] ${
-                active
-                    ? isPs5
-                        ? "border-sky-300/70 ring-2 ring-sky-400/15"
-                        : "border-emerald-300/70 ring-2 ring-emerald-400/15"
-                    : "border-white/10 hover:-translate-y-1 hover:border-white/35"
-            }`}
+        <a
+            className={`relative z-20 inline-flex items-center justify-center gap-1.5 rounded-xl font-black text-slate-950 shadow-lg transition hover:scale-[1.02] ${
+                compact ? "px-2.5 py-2 text-[9px]" : "min-h-11 px-4 text-[11px]"
+            } ${isPs5 ? "bg-sky-400 hover:bg-sky-300" : "bg-emerald-400 hover:bg-emerald-300"}`}
+            href={store.url}
+            rel="noreferrer"
+            target="_blank"
         >
-            <button
-                aria-label={`نمایش جزئیات ${item.title}`}
-                className="absolute inset-0 z-10"
-                onClick={onSelect}
-                type="button"
-            />
-
-            {item.cover_url || item.banner_url ? (
-                <img
-                    alt={item.title}
-                    className="absolute inset-0 size-full object-cover transition duration-700 ease-out group-hover:scale-[1.05]"
-                    decoding="async"
-                    loading="lazy"
-                    src={item.cover_url ?? item.banner_url ?? undefined}
-                />
-            ) : (
-                <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_72%)]">
-                    <Gamepad2
-                        className={isPs5 ? "text-sky-300" : "text-emerald-300"}
-                        size={42}
-                    />
-                </span>
-            )}
-
-            <span className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-
-            <span
-                className={`pointer-events-none absolute right-2.5 top-2.5 z-20 rounded-full border px-2 py-1 text-[8px] font-black backdrop-blur-md ${
-                    item.status === "coming"
-                        ? "border-amber-300/25 bg-amber-400/15 text-amber-200"
-                        : isPs5
-                          ? "border-sky-300/20 bg-sky-400/15 text-sky-100"
-                          : "border-emerald-300/20 bg-emerald-400/15 text-emerald-100"
-                }`}
-            >
-                {item.status === "coming" ? "COMING SOON" : "NEW"}
-            </span>
-
+            {isPs5 ? <Play size={13} fill="currentColor" /> : <Store size={13} />}
+            {isPs5 ? "PS Store" : "Xbox Store"}
             {store.price && (
-                <span className="pointer-events-none absolute left-2.5 top-2.5 z-20 rounded-full border border-white/15 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white backdrop-blur-md">
+                <span className="rounded-md bg-black/10 px-1.5 py-0.5">
                     {store.price}
                 </span>
             )}
+            <ExternalLink size={11} />
+        </a>
+    );
+}
 
-            <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 text-white">
-                <div className="mb-2 flex flex-wrap items-center gap-1.5">
+function InternalAction({
+    item,
+    compact = false,
+}: {
+    item: GameRadarItem;
+    compact?: boolean;
+}) {
+    if (!item.playnexus_url) return null;
+
+    return (
+        <Link
+            className={`relative z-20 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white font-black text-slate-950 shadow-lg transition hover:scale-[1.02] ${
+                compact ? "px-2.5 py-2 text-[9px]" : "min-h-11 px-4 text-[11px]"
+            }`}
+            href={item.playnexus_url}
+        >
+            <Gamepad2 size={13} />
+            PlayNexus
+        </Link>
+    );
+}
+
+function StorePoster({
+    item,
+    platform,
+}: {
+    item: GameRadarItem;
+    platform: Platform;
+}) {
+    const store = storeFor(item, platform);
+    const image = item.cover_url ?? item.banner_url ?? store.image_url ?? null;
+
+    return (
+        <article className="group relative min-w-0 overflow-hidden rounded-[22px] border border-white/10 bg-slate-900 shadow-lg transition duration-300 hover:-translate-y-1 hover:border-white/25">
+            <div className="relative aspect-[3/4] overflow-hidden">
+                {image ? (
+                    <img
+                        alt={item.title}
+                        className="size-full object-cover transition duration-700 group-hover:scale-[1.04]"
+                        loading="lazy"
+                        src={image}
+                    />
+                ) : (
+                    <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)]">
+                        <Gamepad2 className="text-white/45" size={42} />
+                    </div>
+                )}
+
+                <span className="absolute inset-0 bg-gradient-to-t from-black via-black/5 to-transparent" />
+
+                <div className="absolute inset-x-2.5 top-2.5 flex items-start justify-between gap-2">
                     <span
-                        className={`rounded-full px-2 py-1 text-[8px] font-black ${
-                            isPs5
-                                ? "bg-sky-400/15 text-sky-200"
-                                : "bg-emerald-400/15 text-emerald-200"
+                        className={`rounded-full border px-2 py-1 text-[8px] font-black backdrop-blur-md ${
+                            item.status === "coming"
+                                ? "border-amber-300/25 bg-amber-400/15 text-amber-200"
+                                : "border-white/15 bg-black/35 text-white/80"
                         }`}
                     >
-                        {isPs5 ? "PS5" : "Xbox Series X|S"}
+                        {item.status === "coming" ? "COMING SOON" : "NEW"}
                     </span>
-                    {alsoAvailable && (
-                        <span className="rounded-full bg-white/10 px-2 py-1 text-[8px] font-bold text-white/65 backdrop-blur-md">
-                            روی هر دو Store
+                    {store.price && (
+                        <span className="rounded-full border border-white/10 bg-black/55 px-2 py-1 text-[8px] font-black text-white backdrop-blur-md">
+                            {store.price}
                         </span>
                     )}
                 </div>
 
-                <strong className="line-clamp-2 block text-sm font-black leading-5">
-                    {item.title}
-                </strong>
-
-                {(item.publisher || item.developer) && (
-                    <span className="mt-1 block truncate text-[9px] font-bold text-white/45">
-                        {item.developer ?? item.publisher}
-                    </span>
-                )}
-
-                <div className="mt-1.5 flex items-center gap-1 text-[9px] text-white/60">
-                    <CalendarDays size={10} />
-                    {compactDateLabel(item.release_date)}
+                <div className="absolute inset-x-3 bottom-3">
+                    <PlatformBadge platform={platform} small />
+                    <h3 className="mt-2 line-clamp-2 text-sm font-black leading-5 text-white">
+                        {item.title}
+                    </h3>
+                    <div className="mt-1.5 flex items-center gap-1 text-[9px] text-white/55">
+                        <CalendarDays size={10} />
+                        {dateLabel(item.release_date, true)}
+                    </div>
                 </div>
-
-                <div className="mt-2.5 min-h-7" />
             </div>
 
-            {item.playnexus_url && (
-                <Link
-                    aria-label={`مشاهده صفحه ${item.title} در PlayNexus`}
-                    className="absolute bottom-2.5 right-2.5 z-30 inline-flex items-center rounded-lg bg-white/90 px-2.5 py-1.5 text-[9px] font-black text-slate-950 shadow-lg backdrop-blur-md transition hover:scale-[1.03]"
-                    href={item.playnexus_url}
-                >
-                    PlayNexus
-                </Link>
-            )}
-
-            {store.url && (
-                <a
-                    aria-label={`باز کردن ${item.title} در ${isPs5 ? "PlayStation Store" : "Xbox Store"}`}
-                    className={`absolute bottom-2.5 left-2.5 z-30 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[9px] font-black shadow-lg backdrop-blur-md transition hover:scale-[1.03] ${
-                        isPs5
-                            ? "bg-sky-400 text-slate-950"
-                            : "bg-emerald-400 text-slate-950"
-                    }`}
-                    href={store.url}
-                    rel="noreferrer"
-                    target="_blank"
-                >
-                    {isPs5 ? "PS Store" : "Xbox Store"}
-                    <ExternalLink size={10} />
-                </a>
-            )}
+            <div className="flex items-center gap-2 border-t border-white/8 bg-slate-950/75 p-2.5">
+                <InternalAction compact item={item} />
+                <StoreAction compact item={item} platform={platform} />
+            </div>
         </article>
     );
 }
 
-function GameShelf({
+function SpotlightCard({
+    item,
+    platform,
+    large = false,
+}: {
+    item: GameRadarItem;
+    platform: Platform;
+    large?: boolean;
+}) {
+    const store = storeFor(item, platform);
+    const image = item.banner_url ?? item.cover_url ?? store.image_url ?? null;
+
+    return (
+        <article
+            className={`group relative isolate overflow-hidden rounded-[26px] border border-white/10 bg-slate-900 ${
+                large ? "min-h-[430px] lg:min-h-[520px]" : "min-h-[205px]"
+            }`}
+        >
+            {image ? (
+                <img
+                    alt={item.title}
+                    className="absolute inset-0 -z-20 size-full object-cover transition duration-700 group-hover:scale-[1.035]"
+                    src={image}
+                />
+            ) : (
+                <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)]" />
+            )}
+
+            <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/35 to-black/5" />
+
+            <div className="flex h-full min-h-inherit flex-col justify-end p-4 sm:p-5">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <PlatformBadge platform={platform} />
+                    <span className="rounded-full bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/70 backdrop-blur-md">
+                        {item.status === "coming" ? "COMING SOON" : "NEW RELEASE"}
+                    </span>
+                </div>
+
+                <h3
+                    className={`max-w-2xl font-black leading-tight text-white drop-shadow-xl ${
+                        large ? "text-3xl sm:text-4xl" : "text-xl"
+                    }`}
+                >
+                    {item.title}
+                </h3>
+
+                {large && item.description && (
+                    <p className="mt-3 line-clamp-2 max-w-2xl text-xs leading-6 text-white/60 sm:text-sm">
+                        {item.description}
+                    </p>
+                )}
+
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] text-white/55">
+                    <span className="inline-flex items-center gap-1">
+                        <CalendarDays size={11} />
+                        {dateLabel(item.release_date, true)}
+                    </span>
+                    {(item.developer || item.publisher) && (
+                        <span>{item.developer ?? item.publisher}</span>
+                    )}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                    <InternalAction item={item} />
+                    <StoreAction item={item} platform={platform} />
+                </div>
+            </div>
+        </article>
+    );
+}
+
+function GameRow({
     title,
     subtitle,
     items,
-    selectedId,
-    onSelect,
     platform,
 }: {
     title: string;
     subtitle: string;
     items: GameRadarItem[];
-    selectedId: string | null;
-    onSelect: (item: GameRadarItem) => void;
-    platform: "ps5" | "xbox";
+    platform: Platform;
 }) {
-    const railRef = useRef<HTMLDivElement>(null);
-    const isPs5 = platform === "ps5";
+    if (!items.length) return null;
 
     return (
-        <section
-            className={`mt-8 border-y py-6 ${
-                isPs5
-                    ? "border-sky-400/10 bg-[linear-gradient(180deg,rgba(14,165,233,.055),transparent)]"
-                    : "border-emerald-400/10 bg-[linear-gradient(180deg,rgba(16,185,129,.045),transparent)]"
-            }`}
-        >
-            <header className="mb-4 flex items-end justify-between gap-4 px-3 sm:px-5 lg:px-8">
+        <section>
+            <header className="mb-4 flex items-end justify-between gap-3">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span
-                            className={`grid size-9 place-items-center rounded-xl ${
-                                isPs5
-                                    ? "bg-sky-400/15 text-sky-300"
-                                    : "bg-emerald-400/15 text-emerald-300"
-                            }`}
-                        >
-                            {isPs5 ? (
-                                <Play size={16} fill="currentColor" />
-                            ) : (
-                                <Gamepad2 size={17} />
-                            )}
-                        </span>
-                        <h2 className="text-xl font-black text-white sm:text-2xl">
-                            {title}
-                        </h2>
-                    </div>
-                    <p className="mt-1.5 text-[11px] text-white/45 sm:text-xs">
+                    <h3 className="text-lg font-black text-white sm:text-xl">
+                        {title}
+                    </h3>
+                    <p className="mt-1 text-[10px] text-white/40 sm:text-xs">
                         {subtitle}
                     </p>
                 </div>
-
-                {items.length > 3 && (
-                    <div className="hidden gap-2 sm:flex">
-                        <button
-                            aria-label={`${title} قبلی`}
-                            className="grid size-9 place-items-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
-                            onClick={() =>
-                                railRef.current?.scrollBy({
-                                    left: 460,
-                                    behavior: "smooth",
-                                })
-                            }
-                            type="button"
-                        >
-                            <ChevronRight size={17} />
-                        </button>
-                        <button
-                            aria-label={`${title} بعدی`}
-                            className="grid size-9 place-items-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
-                            onClick={() =>
-                                railRef.current?.scrollBy({
-                                    left: -460,
-                                    behavior: "smooth",
-                                })
-                            }
-                            type="button"
-                        >
-                            <ChevronLeft size={17} />
-                        </button>
-                    </div>
-                )}
+                <span className="text-[10px] font-bold text-white/30">
+                    {items.length.toLocaleString("fa-IR")} بازی
+                </span>
             </header>
 
-            {items.length ? (
-                <div
-                    className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-3 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-5 lg:px-8"
-                    ref={railRef}
-                >
-                    {items.map((item) => (
-                        <GameCard
-                            active={selectedId === item.id}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+                {items.map((item) => (
+                    <StorePoster item={item} key={item.id} platform={platform} />
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function PlatformHub({
+    platform,
+    items,
+}: {
+    platform: Platform;
+    items: GameRadarItem[];
+}) {
+    if (!items.length) return null;
+
+    const meta = platformMeta(platform);
+    const isPs5 = platform === "ps5";
+
+    const featured = items[0];
+    const promos = items.slice(1, 3);
+    const newItems = items.filter((item) => item.status === "new").slice(0, 10);
+    const comingItems = items
+        .filter((item) => item.status === "coming")
+        .slice(0, 10);
+    const catalogItems = items.slice(3);
+
+    return (
+        <section
+            className={`relative overflow-hidden rounded-[34px] border p-3 sm:p-5 lg:p-7 ${
+                isPs5
+                    ? "border-sky-400/15 bg-[radial-gradient(circle_at_90%_0%,rgba(14,165,233,.18),transparent_30%),linear-gradient(180deg,#05111f,#020617_50%)]"
+                    : "border-emerald-400/15 bg-[radial-gradient(circle_at_90%_0%,rgba(16,185,129,.16),transparent_30%),linear-gradient(180deg,#041510,#020617_50%)]"
+            }`}
+        >
+            <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <div
+                        className={`mb-2 text-[10px] font-black tracking-[.18em] ${
+                            isPs5 ? "text-sky-300" : "text-emerald-300"
+                        }`}
+                    >
+                        {meta.kicker}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span
+                            className={`grid size-11 place-items-center rounded-2xl ${
+                                isPs5
+                                    ? "bg-sky-400 text-slate-950"
+                                    : "bg-emerald-400 text-slate-950"
+                            }`}
+                        >
+                            {isPs5 ? (
+                                <Play size={19} fill="currentColor" />
+                            ) : (
+                                <Gamepad2 size={20} />
+                            )}
+                        </span>
+                        <div>
+                            <h2 className="text-2xl font-black text-white sm:text-3xl">
+                                {meta.title}
+                            </h2>
+                            <p className="mt-1 max-w-2xl text-[11px] leading-5 text-white/45 sm:text-xs">
+                                {meta.description}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left">
+                    <div className="text-[9px] font-bold text-white/35">
+                        موجود در snapshot
+                    </div>
+                    <div className="mt-1 text-xl font-black text-white">
+                        {items.length.toLocaleString("fa-IR")}
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(300px,.75fr)]">
+                <SpotlightCard item={featured} large platform={platform} />
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                    {promos.map((item) => (
+                        <SpotlightCard
                             item={item}
                             key={item.id}
-                            onSelect={() => onSelect(item)}
                             platform={platform}
                         />
                     ))}
                 </div>
-            ) : (
-                <div className="px-3 sm:px-5 lg:px-8">
-                    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.025] px-5 py-8 text-center text-xs text-white/40">
-                        هنوز داده‌ای برای این پلتفرم داخل snapshot فعلی نیست.
-                    </div>
-                </div>
-            )}
+            </div>
+
+            <div className="mt-8 space-y-10">
+                <GameRow
+                    items={newItems}
+                    platform={platform}
+                    subtitle="عنوان‌هایی که تازه به فروشگاه اضافه شده‌اند"
+                    title="تازه منتشر شده"
+                />
+                <GameRow
+                    items={comingItems}
+                    platform={platform}
+                    subtitle="بازی‌هایی که باید از الان زیر نظر داشته باشی"
+                    title="به‌زودی"
+                />
+                {catalogItems.length > 0 && (
+                    <GameRow
+                        items={catalogItems}
+                        platform={platform}
+                        subtitle="ادامه بازی‌های موجود در snapshot فعلی PlayNexus"
+                        title="کاتالوگ بیشتر"
+                    />
+                )}
+            </div>
         </section>
+    );
+}
+
+function EmptyRadar() {
+    return (
+        <main className="min-h-screen bg-slate-950 px-4 py-16 text-white">
+            <div className="mx-auto max-w-5xl overflow-hidden rounded-[34px] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,.18),transparent_35%),#020617] p-8 text-center sm:p-12">
+                <Radar className="mx-auto text-indigo-300" size={50} />
+                <h1 className="mt-5 text-3xl font-black">
+                    بازی‌های جدید PS5 و Xbox
+                </h1>
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-white/45">
+                    snapshot فعلی خالی است. Game Radar هنگام بازدید هیچ API
+                    خارجی صدا نمی‌زند؛ داده‌ها با Scheduler یا دستور Super Admin
+                    بروزرسانی می‌شوند.
+                </p>
+            </div>
+        </main>
     );
 }
 
@@ -426,15 +497,10 @@ export default function GameRadarIndex({
         [filtered],
     );
 
-    const firstPs5 = radar.items.find((item) => item.psn.available);
-    const [selectedId, setSelectedId] = useState<string | null>(
-        firstPs5?.id ?? radar.items[0]?.id ?? null,
-    );
-
     const hero =
-        [...psItems, ...xboxItems].find((item) => item.id === selectedId) ??
         psItems[0] ??
         xboxItems[0] ??
+        radar.items.find((item) => item.psn.available) ??
         radar.items[0] ??
         null;
 
@@ -442,19 +508,13 @@ export default function GameRadarIndex({
         return (
             <StorefrontLayout>
                 <Seo seo={seo} />
-                <GameHubSkeleton />
+                <EmptyRadar />
             </StorefrontLayout>
         );
     }
 
-    const selectGame = (item: GameRadarItem) => {
-        setSelectedId(item.id);
-        window.requestAnimationFrame(() =>
-            document
-                .getElementById("radar-hero")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-        );
-    };
+    const heroPlatform: Platform = hero?.psn.available ? "ps5" : "xbox";
+    const heroStore = hero ? storeFor(hero, heroPlatform) : null;
 
     return (
         <StorefrontLayout>
@@ -462,10 +522,7 @@ export default function GameRadarIndex({
 
             <main className="min-h-screen bg-slate-950 text-white">
                 {hero && (
-                    <section
-                        className="relative isolate min-h-[68dvh] overflow-hidden border-b border-white/10 lg:min-h-[650px]"
-                        id="radar-hero"
-                    >
+                    <section className="relative isolate min-h-[620px] overflow-hidden border-b border-white/10">
                         {hero.banner_url || hero.cover_url ? (
                             <img
                                 alt=""
@@ -482,131 +539,77 @@ export default function GameRadarIndex({
                             <span className="absolute inset-0 -z-30 bg-[radial-gradient(circle_at_top,#312e81,#020617_75%)]" />
                         )}
 
-                        <span className="absolute inset-0 -z-20 bg-gradient-to-l from-slate-950 via-slate-950/78 to-slate-950/20" />
-                        <span className="absolute inset-0 -z-10 bg-gradient-to-t from-slate-950 via-transparent to-black/15" />
+                        <span className="absolute inset-0 -z-20 bg-gradient-to-l from-slate-950 via-slate-950/82 to-slate-950/35" />
+                        <span className="absolute inset-0 -z-10 bg-gradient-to-t from-slate-950 via-transparent to-black/20" />
 
-                        <div className="mx-auto flex min-h-[68dvh] max-w-[1500px] items-end px-4 pb-8 pt-28 sm:px-6 lg:min-h-[650px] lg:items-center lg:px-10 lg:pb-12 lg:pt-24">
-                            <div className="grid w-full items-end gap-8 lg:grid-cols-[minmax(0,1fr)_290px]">
+                        <div className="mx-auto flex min-h-[620px] max-w-[1500px] items-end px-4 pb-10 pt-28 sm:px-6 lg:items-center lg:px-10 lg:pb-14">
+                            <div className="grid w-full items-end gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
                                 <div className="max-w-3xl">
                                     <div className="mb-4 flex flex-wrap items-center gap-2">
-                                        <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[10px] font-black tracking-[.12em] text-white/70 backdrop-blur-xl">
+                                        <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/35 px-3 py-1.5 text-[10px] font-black tracking-[.12em] text-white/70 backdrop-blur-xl">
                                             <Radar size={13} />
                                             NEXUS GAME HUB
                                         </span>
-                                        {hero.psn.available && (
-                                            <span className="rounded-full bg-sky-400/15 px-3 py-1.5 text-[10px] font-black text-sky-200 backdrop-blur-xl">
-                                                PS5
-                                            </span>
-                                        )}
-                                        {hero.xbox.available && (
-                                            <span className="rounded-full bg-emerald-400/15 px-3 py-1.5 text-[10px] font-black text-emerald-200 backdrop-blur-xl">
-                                                XBOX
-                                            </span>
-                                        )}
+                                        <PlatformBadge platform={heroPlatform} />
+                                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black text-white/55 backdrop-blur-xl">
+                                            {hero.status === "coming"
+                                                ? "COMING SOON"
+                                                : "FEATURED"}
+                                        </span>
                                     </div>
 
-                                    <h1 className="text-lg font-black leading-tight text-white/90 sm:text-xl">
+                                    <h1 className="text-lg font-black text-white/80 sm:text-xl">
                                         بازی‌های جدید PS5 و Xbox
                                     </h1>
-                                    <p className="mt-1 text-[11px] font-bold text-white/45 sm:text-xs">
-                                        اطلاعات کش‌شده PlayNexus؛ بروزرسانی خودکار هر ۶ ساعت
-                                    </p>
-
-                                    <h2 className="mt-4 max-w-3xl text-4xl font-black leading-[1.1] drop-shadow-2xl sm:text-5xl lg:text-6xl">
+                                    <h2 className="mt-4 text-4xl font-black leading-[1.05] drop-shadow-2xl sm:text-5xl lg:text-6xl">
                                         {hero.title}
                                     </h2>
 
-                                    {(hero.developer || hero.publisher) && (
-                                        <p className="mt-3 text-xs font-black uppercase tracking-[.12em] text-white/50 sm:text-sm">
-                                            {hero.developer ??
-                                                hero.publisher ??
-                                                "PlayNexus"}
-                                        </p>
-                                    )}
-
                                     {hero.description && (
-                                        <p className="mt-4 line-clamp-3 max-w-2xl text-sm leading-7 text-white/65 sm:text-base sm:leading-8">
+                                        <p className="mt-4 line-clamp-3 max-w-2xl text-sm leading-7 text-white/62 sm:text-base">
                                             {hero.description}
                                         </p>
                                     )}
 
-                                    <div className="mt-5 flex flex-wrap items-center gap-2">
-                                        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-[11px] font-bold text-white/70 backdrop-blur-md">
-                                            <CalendarDays size={14} />
+                                    <div className="mt-5 flex flex-wrap gap-2 text-[10px]">
+                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-white/65">
+                                            <CalendarDays size={12} />
                                             {dateLabel(hero.release_date)}
                                         </span>
-                                        <StorePill
-                                            label="PlayStation 5"
-                                            presence={hero.psn}
-                                            tone="psn"
-                                        />
-                                        <StorePill
-                                            label="Xbox Series X|S"
-                                            presence={hero.xbox}
-                                            tone="xbox"
-                                        />
+                                        {heroStore?.price && (
+                                            <span className="rounded-full bg-white/10 px-3 py-2 font-black text-white">
+                                                {heroStore.price}
+                                            </span>
+                                        )}
+                                        {(hero.developer || hero.publisher) && (
+                                            <span className="rounded-full bg-white/10 px-3 py-2 text-white/60">
+                                                {hero.developer ??
+                                                    hero.publisher}
+                                            </span>
+                                        )}
                                     </div>
 
-                                    <div className="mt-6 flex flex-wrap gap-3">
-                                        {hero.playnexus_url && (
-                                            <Link
-                                                className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-indigo-500 px-5 text-xs font-black text-white shadow-xl shadow-indigo-500/15 transition hover:scale-[1.02] hover:bg-indigo-400"
-                                                href={hero.playnexus_url}
-                                            >
-                                                <Gamepad2 size={17} />
-                                                مشاهده صفحه بازی در PlayNexus
-                                            </Link>
-                                        )}
-                                        {hero.psn.url && (
-                                            <a
-                                                className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-sky-400 px-5 text-xs font-black text-slate-950 shadow-xl transition hover:scale-[1.02] hover:bg-sky-300"
-                                                href={hero.psn.url}
-                                                rel="noreferrer"
-                                                target="_blank"
-                                            >
-                                                <Play size={16} fill="currentColor" />
-                                                PlayStation Store
-                                                {hero.psn.price && (
-                                                    <span className="rounded-lg bg-black/10 px-2 py-1 text-[10px]">
-                                                        {hero.psn.price}
-                                                    </span>
-                                                )}
-                                                <ExternalLink size={14} />
-                                            </a>
-                                        )}
-                                        {hero.xbox.url && (
-                                            <a
-                                                className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-emerald-400 px-5 text-xs font-black text-slate-950 shadow-xl shadow-emerald-500/10 transition hover:scale-[1.02] hover:bg-emerald-300"
-                                                href={hero.xbox.url}
-                                                rel="noreferrer"
-                                                target="_blank"
-                                            >
-                                                <Store size={17} />
-                                                Xbox Store
-                                                {hero.xbox.price && (
-                                                    <span className="rounded-lg bg-black/10 px-2 py-1 text-[10px]">
-                                                        {hero.xbox.price}
-                                                    </span>
-                                                )}
-                                                <ExternalLink size={14} />
-                                            </a>
-                                        )}
+                                    <div className="mt-6 flex flex-wrap gap-2">
+                                        <InternalAction item={hero} />
+                                        <StoreAction
+                                            item={hero}
+                                            platform={heroPlatform}
+                                        />
                                     </div>
                                 </div>
 
-                                {(hero.cover_url || hero.psn.image_url) && (
+                                {(hero.cover_url || heroStore?.image_url) && (
                                     <div className="hidden justify-self-end lg:block">
-                                        <div className="relative aspect-[3/4] w-[260px] overflow-hidden rounded-[28px] border border-white/15 bg-black/30 shadow-2xl shadow-black/50">
+                                        <div className="aspect-[3/4] w-[250px] overflow-hidden rounded-[28px] border border-white/15 bg-black/30 shadow-2xl">
                                             <img
                                                 alt={hero.title}
                                                 className="size-full object-cover"
                                                 src={
                                                     hero.cover_url ??
-                                                    hero.psn.image_url ??
+                                                    heroStore?.image_url ??
                                                     undefined
                                                 }
                                             />
-                                            <span className="absolute inset-0 ring-1 ring-inset ring-white/10" />
                                         </div>
                                     </div>
                                 )}
@@ -616,7 +619,7 @@ export default function GameRadarIndex({
                 )}
 
                 <section className="sticky top-16 z-30 border-b border-white/10 bg-slate-950/90 backdrop-blur-2xl lg:top-[124px]">
-                    <div className="mx-auto flex max-w-[1500px] items-center gap-2 overflow-x-auto px-3 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-5 lg:px-8">
+                    <div className="mx-auto flex max-w-[1500px] items-center gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-6 lg:px-10">
                         {[
                             ["all", "همه"],
                             ["new", "تازه‌ها"],
@@ -635,40 +638,28 @@ export default function GameRadarIndex({
                                 {label}
                             </button>
                         ))}
-                        <span className="mr-auto hidden text-[10px] font-bold text-white/35 sm:block">
-                            بدون درخواست API از مرورگر
+
+                        <span className="mr-auto hidden items-center gap-1.5 text-[10px] font-bold text-white/30 sm:inline-flex">
+                            <CheckCircle2 size={12} />
+                            فقط از Cache / Snapshot
                         </span>
                     </div>
                 </section>
 
                 {radar.stale && (
-                    <div className="mx-auto mt-5 max-w-[1500px] px-3 sm:px-5 lg:px-8">
+                    <div className="mx-auto mt-5 max-w-[1500px] px-4 sm:px-6 lg:px-10">
                         <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs text-amber-200">
-                            آخرین همگام‌سازی کامل نشده؛ آخرین snapshot موفق نمایش داده می‌شود.
+                            آخرین همگام‌سازی کامل نشده؛ آخرین snapshot موفق نمایش
+                            داده می‌شود.
                         </div>
                     </div>
                 )}
 
-                <div className="mx-auto max-w-[1500px] pb-12 pt-2">
-                    <GameShelf
-                        items={psItems}
-                        onSelect={selectGame}
-                        platform="ps5"
-                        selectedId={hero?.id ?? null}
-                        subtitle="بازی‌های PS5 از کاتالوگ PlayStation Store"
-                        title="PlayStation 5"
-                    />
+                <div className="mx-auto max-w-[1500px] space-y-8 px-3 py-7 sm:px-5 lg:px-8 lg:py-10">
+                    <PlatformHub items={psItems} platform="ps5" />
+                    <PlatformHub items={xboxItems} platform="xbox" />
 
-                    <GameShelf
-                        items={xboxItems}
-                        onSelect={selectGame}
-                        platform="xbox"
-                        selectedId={hero?.id ?? null}
-                        subtitle="بازی‌های تازه و در راه Xbox Series X|S"
-                        title="Xbox Series X|S"
-                    />
-
-                    <footer className="mx-3 mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-[10px] text-white/35 sm:mx-5 lg:mx-8">
+                    <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-2 pt-5 text-[10px] text-white/35">
                         <span>
                             آخرین بروزرسانی سرور:{" "}
                             {radar.generated_at
