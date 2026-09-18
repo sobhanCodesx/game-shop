@@ -142,8 +142,8 @@ class GameRadarService
     }
 
     /**
-     * Refresh the snapshot from the public Xbox catalog and enrich each title
-     * with a best-effort PlayStation Store lookup. No API key is required.
+     * Refresh the snapshot from independent public Xbox and PlayStation
+     * catalog sources. No API key is required.
      *
      * @return array{generated_at:string, stale:bool, items:array<int, array<string, mixed>>}
      */
