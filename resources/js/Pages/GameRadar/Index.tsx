@@ -37,6 +37,8 @@ interface GameRadarItem {
     publisher: string | null;
     xbox: StorePresence;
     psn: StorePresence;
+    playnexus_game_id?: number | null;
+    playnexus_url?: string | null;
 }
 
 interface GameRadarSnapshot {
@@ -258,6 +260,16 @@ function GameCard({
 
                 <div className="mt-2.5 min-h-7" />
             </div>
+
+            {item.playnexus_url && (
+                <Link
+                    aria-label={`مشاهده صفحه ${item.title} در PlayNexus`}
+                    className="absolute bottom-2.5 right-2.5 z-30 inline-flex items-center rounded-lg bg-white/90 px-2.5 py-1.5 text-[9px] font-black text-slate-950 shadow-lg backdrop-blur-md transition hover:scale-[1.03]"
+                    href={item.playnexus_url}
+                >
+                    PlayNexus
+                </Link>
+            )}
 
             {store.url && (
                 <a
@@ -536,6 +548,15 @@ export default function GameRadarIndex({
                                     </div>
 
                                     <div className="mt-6 flex flex-wrap gap-3">
+                                        {hero.playnexus_url && (
+                                            <Link
+                                                className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-indigo-500 px-5 text-xs font-black text-white shadow-xl shadow-indigo-500/15 transition hover:scale-[1.02] hover:bg-indigo-400"
+                                                href={hero.playnexus_url}
+                                            >
+                                                <Gamepad2 size={17} />
+                                                مشاهده صفحه بازی در PlayNexus
+                                            </Link>
+                                        )}
                                         {hero.psn.url && (
                                             <a
                                                 className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-sky-400 px-5 text-xs font-black text-slate-950 shadow-xl transition hover:scale-[1.02] hover:bg-sky-300"
