@@ -1126,63 +1126,137 @@ export default function Home({
                 {settings.featured_categories_enabled &&
                     categories.length > 0 && (
                         <section
-                            className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10"
+                            className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10 sm:py-12"
                             id="categories"
                         >
-                            <div className="mb-6 flex items-end justify-between gap-4">
-                                <div className="min-w-0">
-                                    <p className="text-sm font-bold text-indigo-400">
-                                        انتخاب سریع
-                                    </p>
-                                    <h2 className="mt-2 text-2xl font-black md:text-3xl">
-                                        {settings.featured_categories_title}
-                                    </h2>
-                                </div>
-                                {categories.length > 1 && (
-                                    <RailButtons
-                                        onNext={() =>
-                                            categoryRailRef.current?.scrollBy({
-                                                left: -220,
-                                                behavior: "smooth",
-                                            })
-                                        }
-                                        onPrevious={() =>
-                                            categoryRailRef.current?.scrollBy({
-                                                left: 220,
-                                                behavior: "smooth",
-                                            })
-                                        }
-                                        prefix="دسته‌بندی"
-                                    />
-                                )}
-                            </div>
-                            <div
-                                className="home-slider flex max-w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                                ref={categoryRailRef}
-                            >
-                                {categories.map((category) => (
-                                    <Link
-                                        className="w-[calc((100%_-_1rem)/2)] shrink-0 snap-start rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-center transition hover:border-indigo-500 hover:bg-indigo-500/10 sm:w-[180px]"
-                                        href={`/categories/${category.slug}`}
-                                        key={category.id}
-                                    >
-                                        <div className="mx-auto mb-3 grid aspect-square place-items-center rounded-xl bg-slate-950">
-                                            <Gamepad2
-                                                className="text-indigo-400"
-                                                size={32}
+                            <div className="relative overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:p-6 lg:p-7">
+                                <span
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-indigo-500/10 blur-3xl"
+                                />
+                                <span
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute -bottom-32 left-12 size-72 rounded-full bg-fuchsia-500/10 blur-3xl"
+                                />
+
+                                <div className="relative mb-5 flex items-end justify-between gap-4 sm:mb-6">
+                                    <div className="min-w-0">
+                                        <div className="mb-2 flex items-center gap-2">
+                                            <span className="grid size-8 place-items-center rounded-xl bg-indigo-500/10 text-indigo-400">
+                                                <Sparkles size={16} />
+                                            </span>
+                                            <p className="text-[11px] font-black tracking-[.12em] text-indigo-400 sm:text-xs">
+                                                EXPLORE
+                                            </p>
+                                        </div>
+                                        <h2 className="text-2xl font-black leading-tight sm:text-3xl">
+                                            {settings.featured_categories_title}
+                                        </h2>
+                                        <p className="mt-2 max-w-2xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm sm:leading-7">
+                                            از کنسول موردعلاقه‌ات شروع کن و سریع وارد دنیای بازی‌ها و محصولات مرتبط شو.
+                                        </p>
+                                    </div>
+
+                                    {categories.length > 1 && (
+                                        <div className="lg:hidden">
+                                            <RailButtons
+                                                onNext={() =>
+                                                    categoryRailRef.current?.scrollBy({
+                                                        left: -320,
+                                                        behavior: "smooth",
+                                                    })
+                                                }
+                                                onPrevious={() =>
+                                                    categoryRailRef.current?.scrollBy({
+                                                        left: 320,
+                                                        behavior: "smooth",
+                                                    })
+                                                }
+                                                prefix="دسته‌بندی"
                                             />
                                         </div>
-                                        <strong className="text-sm">
-                                            {category.name}
-                                        </strong>
-                                        <p className="mt-1 text-xs text-slate-500">
-                                            {money.format(
-                                                category.products_count,
-                                            )}{" "}
-                                            محصول
-                                        </p>
-                                    </Link>
-                                ))}
+                                    )}
+                                </div>
+
+                                <div
+                                    className="home-slider relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-[repeat(auto-fit,minmax(240px,1fr))] lg:gap-4 lg:overflow-visible lg:px-0"
+                                    ref={categoryRailRef}
+                                >
+                                    {categories.map((category, index) => {
+                                        const fallbackTone = [
+                                            "from-indigo-950 via-violet-950 to-slate-950",
+                                            "from-sky-950 via-cyan-950 to-slate-950",
+                                            "from-fuchsia-950 via-purple-950 to-slate-950",
+                                            "from-emerald-950 via-teal-950 to-slate-950",
+                                        ][index % 4];
+
+                                        return (
+                                            <Link
+                                                aria-label={`مشاهده دسته‌بندی ${category.name}`}
+                                                className="group relative aspect-[4/5] w-[78vw] max-w-[360px] shrink-0 snap-center overflow-hidden rounded-[24px] bg-slate-950 shadow-lg ring-1 ring-black/5 transition duration-300 active:scale-[.985] sm:aspect-[16/10] sm:w-[430px] sm:max-w-none lg:aspect-[16/11] lg:w-auto lg:snap-none lg:hover:-translate-y-1 lg:hover:shadow-2xl lg:hover:shadow-indigo-500/10"
+                                                href={`/categories/${category.slug}`}
+                                                key={category.id}
+                                            >
+                                                {category.image_url ? (
+                                                    <img
+                                                        alt={category.name}
+                                                        className="absolute inset-0 size-full object-cover transition duration-700 ease-out group-hover:scale-[1.045]"
+                                                        decoding="async"
+                                                        loading="lazy"
+                                                        src={category.image_url}
+                                                    />
+                                                ) : (
+                                                    <span
+                                                        className={`absolute inset-0 bg-gradient-to-br ${fallbackTone}`}
+                                                    >
+                                                        <span className="absolute -left-8 -top-8 size-36 rounded-full bg-white/5 blur-2xl" />
+                                                        <span className="absolute -bottom-12 -right-8 size-44 rounded-full bg-indigo-400/10 blur-3xl" />
+                                                        <Gamepad2
+                                                            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/15 transition duration-500 group-hover:scale-110 group-hover:text-white/20"
+                                                            size={96}
+                                                        />
+                                                    </span>
+                                                )}
+
+                                                <span className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-black/5" />
+                                                <span className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5">
+                                                    <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-black text-white/75 backdrop-blur-md">
+                                                        <Gamepad2 size={12} />
+                                                        {money.format(
+                                                            category.products_count,
+                                                        )}{" "}
+                                                        محصول
+                                                    </span>
+
+                                                    <span className="flex items-end justify-between gap-3">
+                                                        <span className="min-w-0">
+                                                            <strong className="block truncate text-xl font-black sm:text-2xl">
+                                                                {category.name}
+                                                            </strong>
+                                                            <small className="mt-1 block text-[11px] text-white/65 sm:text-xs">
+                                                                وارد این دنیا شو
+                                                            </small>
+                                                        </span>
+                                                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-slate-950 shadow-lg transition duration-300 group-hover:-translate-x-1 group-hover:scale-105">
+                                                            <ArrowUpLeft size={18} />
+                                                        </span>
+                                                    </span>
+                                                </span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+
+                                {categories.length > 1 && (
+                                    <div className="mt-4 flex justify-center gap-1.5 lg:hidden">
+                                        {categories.slice(0, 6).map((category) => (
+                                            <span
+                                                className="size-1.5 rounded-full bg-[var(--store-muted)]/30"
+                                                key={category.id}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </section>
                     )}
