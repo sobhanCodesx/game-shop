@@ -4,16 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Services\GameRadarService;
 use App\Support\Seo;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class GameRadarController extends Controller
 {
-    public function __invoke(GameRadarService $radar): Response
+    public function index(GameRadarService $radar): Response
     {
         $siteName = (string) config('seo.site_name', 'PlayNexus');
         $canonical = route('game-radar.index');
-        $snapshot = $radar->snapshot();
 
         return Inertia::render('GameRadar/Index', [
             'seo' => Seo::page([
@@ -25,7 +25,12 @@ class GameRadarController extends Controller
                 'siteName' => $siteName,
                 'locale' => (string) config('seo.locale', 'fa-IR'),
             ]),
-            'radar' => $snapshot,
+            'radar' => $radar->cachedSnapshot(),
         ]);
+    }
+
+    public function data(GameRadarService $radar): JsonResponse
+    {
+        return response()->json($radar->snapshot());
     }
 }
