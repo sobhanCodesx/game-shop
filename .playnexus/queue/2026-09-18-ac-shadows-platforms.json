@@ -1,0 +1,11 @@
+{
+  "job_id": "20260918-ac-shadows-platforms",
+  "tool": "select_content",
+  "arguments": {
+    "resource": "platform",
+    "limit": 50,
+    "offset": 0,
+    "order_by": "id",
+    "order_dir": "asc"
+  }
+}
