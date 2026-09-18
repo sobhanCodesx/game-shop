@@ -13,7 +13,7 @@ import {
     Sparkles,
     Store,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import Seo, { type SeoData } from "../../Components/Seo";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
@@ -100,6 +100,101 @@ function StorePill({
             <CheckCircle2 size={12} />
             {label}
         </span>
+    );
+}
+
+function GameHubSkeleton({
+    failed,
+    onRetry,
+}: {
+    failed: boolean;
+    onRetry: () => void;
+}) {
+    return (
+        <main
+            aria-busy={!failed}
+            aria-label="در حال آماده‌سازی Game Hub"
+            className="min-h-screen bg-slate-950 text-white"
+        >
+            <section className="relative min-h-[72dvh] overflow-hidden border-b border-white/10 lg:min-h-[680px]">
+                <span className="absolute inset-0 bg-[radial-gradient(circle_at_72%_28%,rgba(79,70,229,.28),transparent_34%),linear-gradient(135deg,#0f172a,#020617_68%)]" />
+                <span className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/10" />
+                <div className="relative mx-auto flex min-h-[72dvh] max-w-[1500px] items-end px-4 pb-8 pt-28 sm:px-6 lg:min-h-[680px] lg:items-center lg:px-10">
+                    <div className="grid w-full items-end gap-8 lg:grid-cols-[minmax(0,1fr)_290px]">
+                        <div className="max-w-3xl">
+                            <div className="mb-5 flex gap-2">
+                                <div className="h-7 w-36 animate-pulse rounded-full bg-white/10" />
+                                <div className="h-7 w-24 animate-pulse rounded-full bg-indigo-400/10" />
+                            </div>
+                            <div className="h-10 w-[78%] max-w-xl animate-pulse rounded-2xl bg-white/10 sm:h-14" />
+                            <div className="mt-4 h-3 w-36 animate-pulse rounded-full bg-white/[0.07]" />
+                            <div className="mt-6 max-w-2xl space-y-3">
+                                <div className="h-3 w-full animate-pulse rounded-full bg-white/[0.07]" />
+                                <div className="h-3 w-[88%] animate-pulse rounded-full bg-white/[0.06]" />
+                                <div className="h-3 w-[62%] animate-pulse rounded-full bg-white/[0.05]" />
+                            </div>
+                            <div className="mt-6 flex flex-wrap gap-2">
+                                <div className="h-8 w-32 animate-pulse rounded-full bg-white/[0.08]" />
+                                <div className="h-8 w-20 animate-pulse rounded-full bg-emerald-400/10" />
+                                <div className="h-8 w-28 animate-pulse rounded-full bg-sky-400/10" />
+                            </div>
+                            <div className="mt-7 flex gap-3">
+                                <div className="h-12 w-36 animate-pulse rounded-xl bg-emerald-400/15" />
+                                <div className="h-12 w-44 animate-pulse rounded-xl bg-white/10" />
+                            </div>
+                            <p className="mt-5 text-xs font-bold text-white/40">
+                                {failed
+                                    ? "دریافت اطلاعات فروشگاه‌ها کامل نشد."
+                                    : "در حال دریافت تازه‌ترین بازی‌ها از فروشگاه‌ها…"}
+                            </p>
+                            {failed && (
+                                <button
+                                    className="mt-3 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-950 transition hover:scale-[1.02]"
+                                    onClick={onRetry}
+                                    type="button"
+                                >
+                                    تلاش دوباره
+                                </button>
+                            )}
+                        </div>
+                        <div className="hidden justify-self-end lg:block">
+                            <div className="aspect-[3/4] w-[260px] animate-pulse rounded-[28px] border border-white/10 bg-white/[0.05]" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div className="border-b border-white/10 bg-slate-950/95 px-3 py-3 sm:px-5 lg:px-8">
+                <div className="mx-auto flex max-w-[1500px] gap-2">
+                    {[120, 84, 118].map((width) => (
+                        <div
+                            className="h-10 animate-pulse rounded-full bg-white/[0.06]"
+                            key={width}
+                            style={{ width }}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            <div className="mx-auto max-w-[1500px] pb-14 pt-8">
+                {[0, 1].map((shelf) => (
+                    <section className="mb-10" key={shelf}>
+                        <div className="mb-4 px-3 sm:px-5 lg:px-8">
+                            <div className="h-6 w-44 animate-pulse rounded-lg bg-white/10" />
+                            <div className="mt-2 h-2.5 w-60 animate-pulse rounded-full bg-white/[0.05]" />
+                        </div>
+                        <div className="flex gap-3 overflow-hidden px-3 sm:px-5 lg:px-8">
+                            {Array.from({ length: 6 }).map((_, index) => (
+                                <div
+                                    className="aspect-[3/4] w-[46vw] max-w-[220px] shrink-0 animate-pulse rounded-[22px] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.025] sm:w-[210px]"
+                                    key={index}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                ))}
+            </div>
+        </main>
     );
 }
 
@@ -246,20 +341,48 @@ export default function GameRadarIndex({
     seo: SeoData;
     radar: GameRadarSnapshot;
 }) {
+    const [snapshot, setSnapshot] = useState<GameRadarSnapshot>(radar);
+    const [loading, setLoading] = useState(radar.items.length === 0);
+    const [failed, setFailed] = useState(false);
     const [platform, setPlatform] = useState<PlatformFilter>("all");
     const [status, setStatus] = useState<StatusFilter>("all");
     const [selectedId, setSelectedId] = useState<string | null>(
         radar.items[0]?.id ?? null,
     );
 
+    const loadRadar = async () => {
+        setLoading(true);
+        setFailed(false);
+
+        try {
+            const response = await fetch("/game-radar/data", {
+                headers: { Accept: "application/json" },
+            });
+            if (!response.ok) throw new Error("Game Radar request failed");
+            const next = (await response.json()) as GameRadarSnapshot;
+            setSnapshot(next);
+            setSelectedId(next.items[0]?.id ?? null);
+            setFailed(next.items.length === 0);
+        } catch {
+            setFailed(true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (radar.items.length > 0) return;
+        void loadRadar();
+    }, []);
+
     const platformItems = useMemo(
         () =>
-            radar.items.filter((item) => {
+            snapshot.items.filter((item) => {
                 if (platform === "xbox") return item.xbox.available;
                 if (platform === "psn") return item.psn.available;
                 return true;
             }),
-        [platform, radar.items],
+        [platform, snapshot.items],
     );
 
     const visibleItems = useMemo(
@@ -274,7 +397,7 @@ export default function GameRadarIndex({
         visibleItems.find((item) => item.id === selectedId) ??
         visibleItems[0] ??
         platformItems[0] ??
-        radar.items[0] ??
+        snapshot.items[0] ??
         null;
 
     const newItems = platformItems.filter((item) => item.status === "new");
@@ -284,6 +407,18 @@ export default function GameRadarIndex({
     const bothStores = platformItems.filter(
         (item) => item.xbox.available && item.psn.available,
     );
+
+    if (!snapshot.items.length) {
+        return (
+            <StorefrontLayout>
+                <Seo seo={seo} />
+                <GameHubSkeleton
+                    failed={failed && !loading}
+                    onRetry={() => void loadRadar()}
+                />
+            </StorefrontLayout>
+        );
+    }
 
     const selectGame = (item: GameRadarItem) => {
         setSelectedId(item.id);
@@ -498,7 +633,7 @@ export default function GameRadarIndex({
                     </div>
                 </section>
 
-                {radar.stale && (
+                {snapshot.stale && (
                     <div className="mx-auto mt-5 max-w-[1500px] px-3 sm:px-5 lg:px-8">
                         <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs text-amber-200">
                             ارتباط جدید با Storeها کامل نشد؛ آخرین snapshot موفق
@@ -549,8 +684,8 @@ export default function GameRadarIndex({
                     <footer className="mx-3 mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5 text-[10px] text-white/35 sm:mx-5 lg:mx-8">
                         <span>
                             آخرین بروزرسانی:{" "}
-                            {radar.generated_at
-                                ? dateLabel(radar.generated_at)
+                            {snapshot.generated_at
+                                ? dateLabel(snapshot.generated_at)
                                 : "هنوز انجام نشده"}
                         </span>
                         <Link
