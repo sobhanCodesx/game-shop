@@ -14,6 +14,7 @@ import {
     Package,
     Repeat2,
     Radio,
+    Radar,
     Search,
     ShieldCheck,
     ShoppingBag,
@@ -540,6 +541,14 @@ export default function DesktopNavigation({
                     >
                         <Sparkles size={15} className="shrink-0" />
                         کشف
+                    </Link>
+
+                    <Link
+                        className={navLinkClass(matchesPath("/game-radar"))}
+                        href="/game-radar"
+                    >
+                        <Radar size={15} className="shrink-0" />
+                        رادار بازی‌ها
                     </Link>
 
                     <Link
