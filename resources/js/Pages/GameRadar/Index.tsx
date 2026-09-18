@@ -126,8 +126,20 @@ function GameHubSkeleton({
                                 <div className="h-7 w-36 animate-pulse rounded-full bg-white/10" />
                                 <div className="h-7 w-24 animate-pulse rounded-full bg-indigo-400/10" />
                             </div>
-                            <div className="h-10 w-[78%] max-w-xl animate-pulse rounded-2xl bg-white/10 sm:h-14" />
-                            <div className="mt-4 h-3 w-36 animate-pulse rounded-full bg-white/[0.07]" />
+                            <h1 className="text-2xl font-black leading-tight text-white sm:text-3xl">
+                                بازی‌های جدید PS5 و Xbox
+                            </h1>
+                            <p className="mt-2 text-xs font-bold text-white/45 sm:text-sm">
+                                تاریخ انتشار، بازی‌های تازه و عناوین در راه کنسول‌ها
+                            </p>
+                            <div
+                                aria-hidden="true"
+                                className="mt-6 h-10 w-[78%] max-w-xl animate-pulse rounded-2xl bg-white/10 sm:h-14"
+                            />
+                            <div
+                                aria-hidden="true"
+                                className="mt-4 h-3 w-36 animate-pulse rounded-full bg-white/[0.07]"
+                            />
                             <div className="mt-6 max-w-2xl space-y-3">
                                 <div className="h-3 w-full animate-pulse rounded-full bg-white/[0.07]" />
                                 <div className="h-3 w-[88%] animate-pulse rounded-full bg-white/[0.06]" />
@@ -476,9 +488,16 @@ export default function GameRadarIndex({
                                         </span>
                                     </div>
 
-                                    <h1 className="max-w-3xl text-4xl font-black leading-[1.1] drop-shadow-2xl sm:text-5xl lg:text-6xl">
-                                        {hero.title}
+                                    <h1 className="text-lg font-black leading-tight text-white/90 sm:text-xl">
+                                        بازی‌های جدید PS5 و Xbox
                                     </h1>
+                                    <p className="mt-1 text-[11px] font-bold text-white/45 sm:text-xs">
+                                        تاریخ انتشار، بازی‌های تازه و عناوین در راه
+                                    </p>
+
+                                    <h2 className="mt-4 max-w-3xl text-4xl font-black leading-[1.1] drop-shadow-2xl sm:text-5xl lg:text-6xl">
+                                        {hero.title}
+                                    </h2>
 
                                     {(hero.developer || hero.publisher) && (
                                         <p className="mt-3 text-xs font-black uppercase tracking-[.12em] text-white/50 sm:text-sm">
@@ -567,8 +586,11 @@ export default function GameRadarIndex({
                     <section className="mx-auto max-w-7xl px-4 py-20 text-center">
                         <Radar className="mx-auto text-indigo-400" size={48} />
                         <h1 className="mt-4 text-2xl font-black">
-                            Game Radar هنوز همگام نشده
+                            بازی‌های جدید PS5 و Xbox
                         </h1>
+                        <h2 className="mt-2 text-base font-black text-white/70">
+                            Game Radar هنوز همگام نشده
+                        </h2>
                         <p className="mt-2 text-sm text-white/45">
                             بعد از اولین sync، بازی‌های تازه اینجا نمایش داده
                             می‌شوند.
