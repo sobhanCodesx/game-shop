@@ -9,8 +9,8 @@ return [
     |
     | This file is for storing the credentials for third party services such
     | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
+    | location for this type of information, allowing packages to have a
+    | conventional file to locate the various services credentials.
     |
     */
 
@@ -55,6 +55,9 @@ return [
     'expo_push' => [
         'enabled' => env('EXPO_PUSH_ENABLED', false),
         'url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
+        'token_url' => env('EXPO_PUSH_TOKEN_URL', 'https://exp.host/--/api/v2/push/getExpoPushToken'),
+        'project_id' => env('EXPO_PROJECT_ID', 'c97e2285-4f2e-466e-aac7-b0595a10ded3'),
+        'application_id' => env('EXPO_APPLICATION_ID', 'com.playnexus.app'),
         'access_token' => env('EXPO_ACCESS_TOKEN'),
         'connect_timeout' => 3,
         'timeout' => 10,
