@@ -23,6 +23,33 @@ class GameRadarService
      *
      * @return array{generated_at:?string, stale:bool, items:array<int, array<string, mixed>>}
      */
+    /**
+     * Return cache/storage only. This never performs an external request and
+     * is safe for the first render of Home/Game Hub.
+     *
+     * @return array{generated_at:?string, stale:bool, items:array<int, array<string, mixed>>}
+     */
+    public function cachedSnapshot(): array
+    {
+        $cached = Cache::get(self::CACHE_KEY);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $stored = $this->readStoredSnapshot();
+        if ($stored !== null) {
+            Cache::put(self::CACHE_KEY, $stored, now()->addHours(self::CACHE_HOURS));
+
+            return $stored;
+        }
+
+        return [
+            'generated_at' => null,
+            'stale' => false,
+            'items' => [],
+        ];
+    }
+
     public function snapshot(): array
     {
         $cached = Cache::get(self::CACHE_KEY);
