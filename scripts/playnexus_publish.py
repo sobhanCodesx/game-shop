@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import ipaddress
 import json
@@ -312,7 +313,7 @@ def materialize_source(arguments: dict[str, Any], directory: Path) -> tuple[Path
 
         try:
             decoded = base64.b64decode(source_base64, validate=True)
-        except (ValueError, base64.binascii.Error):
+        except (ValueError, binascii.Error):
             fail("source_base64 is not valid Base64.")
 
         if not decoded:

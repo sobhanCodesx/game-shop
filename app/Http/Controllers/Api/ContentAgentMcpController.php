@@ -378,7 +378,7 @@ class ContentAgentMcpController extends Controller
             ],
             [
                 'name' => 'start_asset_upload',
-                'description' => 'Start a secure chunked binary upload for a PlayNexus record. This tool accepts metadata only; it never fetches a remote URL. Valid slots: game cover/background/attachment; studio logo/background/attachment; collection logo/attachment; feed media/attachment; story media/thumbnail/attachment; video video/thumbnail/attachment.',
+                'description' => 'Start a secure chunked binary upload for a PlayNexus record. Metadata only; this MCP never fetches a remote URL. Slots depend on the resource.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
@@ -386,11 +386,93 @@ class ContentAgentMcpController extends Controller
                         'id' => ['type' => 'integer', 'minimum' => 1],
                         'slot' => ['type' => 'string', 'enum' => $mediaSlotEnum],
                         'name' => ['type' => 'string', 'maxLength' => 255],
-                        'mime' => ['type' => 'string', 'maxLength' => 120, 'description' => 'Client-declared MIME. The server independently detects the real MIME before attaching the file.'],
+                        'mime' => ['type' => 'string', 'maxLength' => 120, 'description' => 'Client-declared MIME; the server independently detects the real MIME before attaching.'],
                         'size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxUploadSize],
                         'chunk_size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxChunkSize],
                         'total_chunks' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 1000],
-                        'sha256' => ['type' => ['string', 'null'], 'pattern' => '^[A-Fa-f0-9]{64}
+                        'sha256' => ['type' => ['string', 'null'], 'minLength' => 64, 'maxLength' => 64],
+                        'alt' => ['type' => ['string', 'null'], 'maxLength' => 255],
+                        'sort_order' => ['type' => ['integer', 'null'], 'minimum' => 0],
+                        'duration' => ['type' => ['integer', 'null'], 'minimum' => 0],
+                    ],
+                    'required' => ['resource', 'id', 'slot', 'name', 'mime', 'size', 'chunk_size', 'total_chunks'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'upload_asset_chunk',
+                'description' => 'Upload one Base64-encoded binary chunk into an existing PlayNexus upload session. URLs are not accepted.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                        'chunk_index' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 999],
+                        'data_base64' => ['type' => 'string', 'description' => 'Raw Base64 bytes without a data-URL prefix.'],
+                    ],
+                    'required' => ['upload_id', 'chunk_index', 'data_base64'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'complete_asset_upload',
+                'description' => 'Verify size, SHA-256 and real MIME, assemble all chunks, store the binary, and attach it to the target record.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'abort_asset_upload',
+                'description' => 'Discard an incomplete temporary binary upload session.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'list_content_assets',
+                'description' => 'List current media slots and general file attachments for one PlayNexus content record.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'remove_content_asset',
+                'description' => 'Remove a media slot, feed-media item, or general attachment. asset_id is required for feed media and attachments; destructive permission is required.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'slot' => ['type' => 'string', 'enum' => $mediaSlotEnum],
+                        'asset_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id', 'slot'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'sync_collection_videos',
                 'description' => 'Replace the ordered videos in a collection. video_ids order becomes playlist position.',
                 'inputSchema' => [
                     'type' => 'object',
