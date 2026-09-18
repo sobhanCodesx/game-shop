@@ -182,6 +182,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('system-maintenance/run', [SystemMaintenanceController::class, 'run'])->middleware('throttle:6,1')->name('system-maintenance.run');
         Route::post('system-maintenance/cron', [SystemMaintenanceController::class, 'manageCron'])->middleware('throttle:4,1')->name('system-maintenance.cron');
         Route::post('system-maintenance/push-test', [SystemMaintenanceController::class, 'testPush'])->middleware('throttle:3,1')->name('system-maintenance.push-test');
+        Route::post('system-maintenance/game-radar-settings', [SystemMaintenanceController::class, 'updateGameRadarSettings'])->middleware('throttle:8,1')->name('system-maintenance.game-radar-settings');
     });
     Route::prefix('deployments')->name('deployments.')->middleware('deployment.guard')->group(function () {
         Route::get('/', [DeploymentController::class, 'index'])->name('index');
