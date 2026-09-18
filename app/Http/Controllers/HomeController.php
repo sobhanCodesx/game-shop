@@ -114,7 +114,21 @@ class HomeController extends Controller
             ...$seo,
             'latestFeed' => $feed->latestImportant($request, 8),
             'latestStudios' => $latestStudios,
-            'gameRadar' => collect($radar->cachedSnapshot()['items'] ?? [])->take(30)->values(),
+            'gameRadar' => (function () use ($radar) {
+                $items = collect($radar->cachedSnapshot()['items'] ?? []);
+
+                $ps5 = $items
+                    ->filter(fn (array $item) => ($item['psn']['available'] ?? false) === true)
+                    ->take(8);
+                $xbox = $items
+                    ->filter(fn (array $item) => ($item['xbox']['available'] ?? false) === true)
+                    ->take(8);
+
+                return $ps5
+                    ->concat($xbox)
+                    ->unique('id')
+                    ->values();
+            })(),
             'settings' => $settings,
             'slides' => $slides,
             'categories' => Category::query()
