@@ -8,6 +8,8 @@ use Throwable;
 
 final class ExpoPushService
 {
+    public function __construct(private readonly FcmPushService $fcm) {}
+
     /**
      * @param  array<int, int>  $deviceIds
      * @param  array<string, mixed>  $payload
@@ -22,7 +24,7 @@ final class ExpoPushService
                 'accepted' => 0,
                 'failed' => 0,
                 'disabled' => 0,
-                'errors' => ['Expo Push روی سرور غیرفعال است.'],
+                'errors' => ['Push روی سرور غیرفعال است.'],
             ];
         }
 
@@ -40,7 +42,9 @@ final class ExpoPushService
             'errors' => [],
         ];
 
-        foreach ($devices->chunk(100) as $chunk) {
+        $expoDevices = $devices->where('push_provider', 'expo')->values();
+
+        foreach ($expoDevices->chunk(100) as $chunk) {
             try {
                 $messages = $chunk->map(fn (MobileDevice $device) => [
                     'to' => $device->push_token,
@@ -103,12 +107,56 @@ final class ExpoPushService
                 report($exception);
                 $result['successful'] = false;
                 $result['failed'] += $chunk->count();
-                $result['errors'][] = $exception->getMessage();
+                $result['errors'][] = 'Expo: '.$exception->getMessage();
 
                 foreach ($chunk as $device) {
                     $device->increment('failure_count');
                 }
             }
+        }
+
+        foreach ($devices->where('push_provider', 'fcm') as $device) {
+            try {
+                $send = $this->fcm->send($device, $payload);
+
+                if ($send['accepted']) {
+                    $device->update(['failure_count' => 0]);
+                    $result['accepted']++;
+
+                    continue;
+                }
+
+                $result['successful'] = false;
+                $result['failed']++;
+                $result['errors'][] = $device->id.': '.($send['error'] ?? 'Unknown FCM error');
+
+                if ($send['disable']) {
+                    $device->update([
+                        'push_enabled' => false,
+                        'failure_count' => $device->failure_count + 1,
+                    ]);
+                    $result['disabled']++;
+                } else {
+                    $device->increment('failure_count');
+                }
+            } catch (Throwable $exception) {
+                if ($throwOnTransportFailure) {
+                    throw $exception;
+                }
+
+                report($exception);
+                $result['successful'] = false;
+                $result['failed']++;
+                $result['errors'][] = 'FCM: '.$exception->getMessage();
+                $device->increment('failure_count');
+            }
+        }
+
+        foreach ($devices->where('push_provider', 'apns') as $device) {
+            $result['successful'] = false;
+            $result['failed']++;
+            $result['errors'][] = $device->id.': Direct APNs sending is not configured yet.';
+            $device->increment('failure_count');
         }
 
         return $result;
