@@ -14,6 +14,7 @@ class GameRadarController extends Controller
     {
         $siteName = (string) config('seo.site_name', 'PlayNexus');
         $canonical = route('game-radar.index');
+        $image = url((string) config('seo.default_image', '/logo.png'));
 
         return Inertia::render('GameRadar/Index', [
             'seo' => Seo::page([
@@ -24,6 +25,8 @@ class GameRadarController extends Controller
                 'type' => 'website',
                 'siteName' => $siteName,
                 'locale' => (string) config('seo.locale', 'fa-IR'),
+                'image' => $image,
+                'imageAlt' => "Game Radar {$siteName}",
             ]),
             'radar' => $radar->cachedSnapshot(),
         ]);
