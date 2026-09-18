@@ -1,0 +1,9 @@
+{
+  "job_id": "create-ubisoft-studio-20260918-001",
+  "tool": "create_studio",
+  "arguments": {
+    "name": "Ubisoft",
+    "description": "یوبی‌سافت (Ubisoft) یک شرکت فرانسوی فعال در توسعه و انتشار بازی‌های ویدیویی است که مجموعه‌هایی مانند Assassin’s Creed، Far Cry و Tom Clancy’s Rainbow Six را در کارنامه دارد.",
+    "website": "https://www.ubisoft.com/"
+  }
+}
