@@ -122,6 +122,12 @@ interface GameRadarItem {
     psn: RadarStorePresence;
 }
 
+interface GameRadarSnapshot {
+    generated_at: string | null;
+    stale: boolean;
+    items: GameRadarItem[];
+}
+
 interface FreshItem {
     key: string;
     type: "product" | "video";
@@ -918,9 +924,83 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
     );
 }
 
-function GameRadarRail({ items }: { items: GameRadarItem[] }) {
+function GameRadarRail({
+    items,
+    loading,
+    failed,
+    onRetry,
+}: {
+    items: GameRadarItem[];
+    loading: boolean;
+    failed: boolean;
+    onRetry: () => void;
+}) {
     const railRef = useRef<HTMLDivElement>(null);
-    if (!items.length) return null;
+
+    if (!items.length) {
+        return (
+            <section className="mx-auto max-w-7xl px-4 pb-5 pt-2" aria-busy={loading}>
+                <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_-58px_rgba(79,70,229,.8)] sm:p-5">
+                    <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-indigo-500/20 blur-3xl"
+                    />
+                    <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -bottom-32 left-16 size-72 rounded-full bg-cyan-500/10 blur-3xl"
+                    />
+                    <header className="relative mb-4 flex items-center gap-3">
+                        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white/10 text-indigo-300">
+                            <Radar className={loading ? "animate-pulse" : ""} size={20} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <h2 className="truncate text-base font-black sm:text-lg">
+                                    NEXUS GAME RADAR
+                                </h2>
+                                <span className="rounded-full bg-indigo-400/10 px-2 py-0.5 text-[9px] font-black text-indigo-200">
+                                    {loading ? "SYNCING" : "STANDBY"}
+                                </span>
+                            </div>
+                            <p className="mt-0.5 text-[10px] text-white/50 sm:text-xs">
+                                {failed
+                                    ? "دریافت اطلاعات کامل نشد؛ دوباره تلاش کن"
+                                    : "در حال آماده‌سازی بازی‌های تازه و در راه"}
+                            </p>
+                        </div>
+                        {failed && (
+                            <button
+                                className="shrink-0 rounded-full bg-white px-3 py-2 text-[10px] font-black text-slate-950 transition hover:scale-[1.02]"
+                                onClick={onRetry}
+                                type="button"
+                            >
+                                تلاش دوباره
+                            </button>
+                        )}
+                    </header>
+
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {Array.from({ length: 4 }).map((_, index) => (
+                            <div
+                                className={`relative overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.035] ${index === 0 ? "col-span-2 min-h-[250px] sm:min-h-[300px]" : "aspect-[4/5] sm:aspect-[16/11]"}`}
+                                key={index}
+                            >
+                                <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-white/[0.06] via-white/[0.02] to-transparent" />
+                                <div className="absolute inset-x-4 bottom-4 space-y-2">
+                                    <div className="h-3 w-2/3 animate-pulse rounded-full bg-white/10" />
+                                    <div className="h-2 w-1/3 animate-pulse rounded-full bg-white/[0.07]" />
+                                    <div className="flex gap-2 pt-1">
+                                        <div className="h-5 w-14 animate-pulse rounded-full bg-emerald-400/10" />
+                                        <div className="h-5 w-16 animate-pulse rounded-full bg-sky-400/10" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+        );
+    }
 
     const dateLabel = (value: string | null) => {
         if (!value) return "تاریخ نامشخص";
@@ -1128,8 +1208,35 @@ export default function Home({
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
     const [activeSlide, setActiveSlide] = useState(0);
+    const [radarItems, setRadarItems] = useState<GameRadarItem[]>(gameRadar);
+    const [radarLoading, setRadarLoading] = useState(gameRadar.length === 0);
+    const [radarFailed, setRadarFailed] = useState(false);
     const touchStartX = useRef<number | null>(null);
     const categoryRailRef = useRef<HTMLDivElement>(null);
+    const loadGameRadar = async () => {
+        setRadarLoading(true);
+        setRadarFailed(false);
+
+        try {
+            const response = await fetch("/game-radar/data", {
+                headers: { Accept: "application/json" },
+            });
+            if (!response.ok) throw new Error("Game Radar request failed");
+            const snapshot = (await response.json()) as GameRadarSnapshot;
+            setRadarItems(snapshot.items.slice(0, 8));
+            setRadarFailed(snapshot.items.length === 0);
+        } catch {
+            setRadarFailed(true);
+        } finally {
+            setRadarLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (gameRadar.length > 0) return;
+        void loadGameRadar();
+    }, []);
+
     useEffect(() => {
         if (slides.length < 2) return;
         const timer = window.setInterval(
@@ -1282,7 +1389,12 @@ export default function Home({
                         <LatestStudioRail items={latestStudios} />
                     </section>
                 )}
-                <GameRadarRail items={gameRadar} />
+                <GameRadarRail
+                    failed={radarFailed}
+                    items={radarItems}
+                    loading={radarLoading}
+                    onRetry={() => void loadGameRadar()}
+                />
                 <section className="home-slider mx-auto flex max-w-7xl snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],
