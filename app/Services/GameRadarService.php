@@ -9,19 +9,21 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
-use function Illuminate\Support\defer;
 
 class GameRadarService
 {
-    private const CACHE_KEY = 'playnexus:game-radar:v1';
-    private const REFRESHING_KEY = 'playnexus:game-radar:refreshing';
-    private const SNAPSHOT_PATH = 'game-radar/snapshot.json';
+    private const CACHE_KEY = 'playnexus:game-radar:v2';
+    private const SNAPSHOT_PATH = 'game-radar/snapshot-v2.json';
     private const CACHE_HOURS = 6;
-    private const MAX_ITEMS = 24;
+    private const MAX_ITEMS = 30;
+
+    private const PSN_GRAPHQL_URL = 'https://web.np.playstation.com/api/graphql/v1/op';
+    private const PSN_CATEGORY_GRID_HASH = '88c0b9a1273c6d320c51cd73e390924e21ae28bf09f01cde8b84b1034b16cd03';
+    private const PS5_CATEGORY = 'd71e8e6d-0940-4e03-bd02-404fc7d31a31';
+    private const PS5_COMING_SOON_CATEGORY = '82ced94c-ed3f-4d81-9b50-4d4cf1da170b';
 
     /**
-     * Return cache/storage only. This never performs an external request and
-     * is safe for the first render of Home/Game Hub.
+     * Cache/storage only. Never performs an external HTTP request.
      *
      * @return array{generated_at:?string, stale:bool, items:array<int, array<string, mixed>>}
      */
@@ -46,117 +48,23 @@ class GameRadarService
         ];
     }
 
-    public function snapshot(): array
-    {
-        $cached = Cache::get(self::CACHE_KEY);
-        if (is_array($cached)) {
-            return $cached;
-        }
-
-        $stored = $this->readStoredSnapshot();
-        if ($stored !== null) {
-            Cache::put(self::CACHE_KEY, $stored, now()->addHours(self::CACHE_HOURS));
-
-            return $stored;
-        }
-
-        try {
-            $snapshot = Cache::lock(self::CACHE_KEY.':warmup', 120)->block(3, function (): array {
-                $cached = Cache::get(self::CACHE_KEY);
-                if (is_array($cached)) {
-                    return $cached;
-                }
-
-                $stored = $this->readStoredSnapshot();
-                if ($stored !== null) {
-                    Cache::put(self::CACHE_KEY, $stored, now()->addHours(self::CACHE_HOURS));
-
-                    return $stored;
-                }
-
-                return $this->refresh();
-            });
-
-            if (is_array($snapshot)) {
-                return $snapshot;
-            }
-        } catch (Throwable $exception) {
-            Log::warning('Game Radar cold-start refresh unavailable', [
-                'message' => $exception->getMessage(),
-            ]);
-
-            $cached = Cache::get(self::CACHE_KEY);
-            if (is_array($cached)) {
-                return $cached;
-            }
-
-            $stored = $this->readStoredSnapshot();
-            if ($stored !== null) {
-                $stored['stale'] = true;
-
-                return $stored;
-            }
-        }
-
-        return [
-            'generated_at' => null,
-            'stale' => false,
-            'items' => [],
-        ];
-    }
-
     /**
-     * Schedule a cold-cache refresh after the HTTP response has already been
-     * sent. This keeps the Game Hub request independent from third-party
-     * network latency.
-     */
-    public function scheduleWarmup(): bool
-    {
-        if (! Cache::add(self::REFRESHING_KEY, true, now()->addMinutes(2))) {
-            return false;
-        }
-
-        defer(function (): void {
-            try {
-                Cache::lock(self::CACHE_KEY.':warmup', 120)->get(function (): void {
-                    $cached = $this->cachedSnapshot();
-
-                    if (($cached['items'] ?? []) === []) {
-                        $this->refresh();
-                    }
-                });
-            } catch (Throwable $exception) {
-                Log::warning('Game Radar deferred warmup failed', [
-                    'message' => $exception->getMessage(),
-                ]);
-            } finally {
-                Cache::forget(self::REFRESHING_KEY);
-            }
-        });
-
-        return true;
-    }
-
-    public function isRefreshing(): bool
-    {
-        return Cache::has(self::REFRESHING_KEY);
-    }
-
-    /**
-     * Refresh the snapshot from independent public Xbox and PlayStation
-     * catalog sources. No API key is required.
+     * The only method that talks to Xbox/PlayStation. Call it from the
+     * scheduled Artisan job or the protected admin maintenance action.
      *
      * @return array{generated_at:string, stale:bool, items:array<int, array<string, mixed>>}
      */
     public function refresh(): array
     {
         try {
-            $xboxNew = $this->fetchXboxList('Computed/New', 'new');
-            $xboxComing = $this->fetchXboxList('Computed/ComingSoon', 'coming');
-            $xboxItems = [...$xboxNew, ...$xboxComing];
-            $playStationItems = $this->fetchPlayStationLatest();
+            $playStationItems = $this->fetchPlayStationCatalog();
+            $xboxNew = $this->fetchXboxList('new');
+            $xboxComing = $this->fetchXboxList('coming');
 
-            $items = $this->mergeRadarSources($xboxItems, $playStationItems);
+            $items = $this->mergeRadarSources(
+                [...$xboxNew, ...$xboxComing],
+                $playStationItems,
+            );
 
             if ($items === []) {
                 throw new \RuntimeException('Game Radar sources returned no titles.');
@@ -170,8 +78,12 @@ class GameRadarService
 
             Storage::disk('local')->put(
                 self::SNAPSHOT_PATH,
-                json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
+                json_encode(
+                    $snapshot,
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT,
+                ),
             );
+
             Cache::put(self::CACHE_KEY, $snapshot, now()->addHours(self::CACHE_HOURS));
 
             return $snapshot;
@@ -193,28 +105,17 @@ class GameRadarService
     }
 
     /**
-     * Load public Xbox/Game Pass lists without requiring an API key.
-     *
-     * We deliberately avoid the old reco-public.rec.mp.microsoft.com host
-     * because it is not reliably resolvable across networks. SIGL lists are
-     * small public JSON documents that contain product ids; product details
-     * still come from Microsoft's display catalog.
-     *
      * @return array<int, array<string, mixed>>
      */
-    private function fetchXboxList(string $list, string $status): array
+    private function fetchXboxList(string $status): array
     {
         $siglIds = match ($status) {
             'new' => [
-                // Current Xbox Cloud "Recently added" collection.
                 '44a55037-770f-4bbf-bde5-a9fa27dba1da',
-                // Public Xbox Cloud / Game Pass "Recently added" fallback.
                 'f13cf6b4-57e6-4459-89df-6aec18cf0538',
-                // Additional Game Pass Recently Added fallback.
                 '3fdd7f57-7092-4b65-bd40-5a9dac1b2b84',
             ],
             'coming' => [
-                // Public Game Pass "Coming soon" collection.
                 '4165f752-d702-49c8-886b-fb57936f6bae',
             ],
             default => [],
@@ -235,11 +136,6 @@ class GameRadarService
                     ]);
 
                 if (! $response->successful()) {
-                    Log::warning('Game Radar Xbox SIGL request failed', [
-                        'sigl_id' => $siglId,
-                        'status' => $response->status(),
-                    ]);
-
                     continue;
                 }
 
@@ -249,7 +145,7 @@ class GameRadarService
                     ->filter(fn ($id) => is_string($id) && $id !== '');
 
                 if ($sourceIds->isNotEmpty()) {
-                    $ids = $ids->concat($sourceIds);
+                    $ids = $sourceIds;
                     break;
                 }
             } catch (Throwable $exception) {
@@ -260,7 +156,7 @@ class GameRadarService
             }
         }
 
-        $ids = $ids->unique()->take(30)->values();
+        $ids = $ids->unique()->take(24)->values();
 
         if ($ids->isEmpty()) {
             return [];
@@ -270,7 +166,7 @@ class GameRadarService
 
         foreach ($ids->chunk(18) as $chunk) {
             try {
-                $catalogResponse = Http::acceptJson()
+                $response = Http::acceptJson()
                     ->connectTimeout(3)
                     ->timeout(8)
                     ->retry(1, 200)
@@ -281,24 +177,14 @@ class GameRadarService
                         'bigIds' => $chunk->implode(','),
                     ]);
 
-                if (! $catalogResponse->successful()) {
-                    Log::warning('Game Radar Microsoft display catalog request failed', [
-                        'status' => $catalogResponse->status(),
-                    ]);
-
-                    continue;
+                if ($response->successful()) {
+                    $products = $products->concat($response->json('Products', []));
                 }
-
-                $products = $products->concat($catalogResponse->json('Products', []));
             } catch (Throwable $exception) {
                 Log::warning('Game Radar Microsoft display catalog unavailable', [
                     'message' => $exception->getMessage(),
                 ]);
             }
-        }
-
-        if ($products->isEmpty()) {
-            return [];
         }
 
         $rank = $ids->flip();
@@ -307,6 +193,7 @@ class GameRadarService
             ->map(fn (array $product) => $this->mapXboxProduct($product, $status))
             ->filter()
             ->sortBy(fn (array $item) => $rank->get($item['id'], PHP_INT_MAX))
+            ->take(16)
             ->values()
             ->all();
     }
@@ -323,14 +210,14 @@ class GameRadarService
 
         $title = trim((string) ($localized['ProductTitle'] ?? $localized['ShortTitle'] ?? ''));
         $productId = trim((string) ($product['ProductId'] ?? ''));
+
         if ($title === '' || $productId === '') {
             return null;
         }
 
-        $images = collect((array) ($localized['Images'] ?? []));
-        $cover = $this->pickImage($images->all(), ['Poster', 'BoxArt', 'Tile', 'Logo']);
-        $banner = $this->pickImage($images->all(), ['SuperHeroArt', 'Hero', 'Screenshot', 'Poster', 'BoxArt']);
-
+        $images = (array) ($localized['Images'] ?? []);
+        $cover = $this->pickXboxImage($images, ['Poster', 'BoxArt', 'Tile', 'Logo']);
+        $banner = $this->pickXboxImage($images, ['SuperHeroArt', 'Hero', 'Screenshot', 'Poster', 'BoxArt']);
         $price = data_get(
             $product,
             'DisplaySkuAvailabilities.0.Availabilities.0.OrderManagementData.Price',
@@ -339,7 +226,7 @@ class GameRadarService
         $releaseDate = data_get($product, 'MarketProperties.0.OriginalReleaseDate');
 
         return [
-            'id' => $productId,
+            'id' => 'xbox:'.$productId,
             'title' => $title,
             'description' => Str::limit(trim((string) ($localized['ShortDescription'] ?? '')), 220),
             'cover_url' => $this->normalizeMediaUrl($cover),
@@ -352,93 +239,123 @@ class GameRadarService
                 'available' => true,
                 'price' => $this->displayXboxPrice($price),
                 'currency' => is_array($price) ? ($price['CurrencyCode'] ?? null) : null,
-                'platforms' => ['Xbox'],
+                'platforms' => ['Xbox Series X|S'],
                 'url' => 'https://www.xbox.com/en-us/games/store/'.Str::slug($title).'/'.$productId,
             ],
-            'psn' => [
-                'available' => false,
-                'price' => null,
-                'platforms' => [],
-                'url' => null,
-            ],
+            'psn' => $this->emptyStore(),
         ];
     }
 
     /**
-     * Read the public PlayStation Store Latest page directly. The page embeds
-     * its catalog in __NEXT_DATA__, so no PSN account or API key is required.
-     *
      * @return array<int, array<string, mixed>>
      */
-    private function fetchPlayStationLatest(): array
+    private function fetchPlayStationCatalog(): array
     {
+        $new = $this->fetchPlayStationGrid(
+            self::PS5_CATEGORY,
+            'new',
+            'products',
+            18,
+        );
+
+        $coming = $this->fetchPlayStationGrid(
+            self::PS5_COMING_SOON_CATEGORY,
+            'coming',
+            'concepts',
+            10,
+        );
+
+        return collect([...$coming, ...$new])
+            ->filter(fn (array $item) => ($item['psn']['available'] ?? false) === true)
+            ->unique(fn (array $item) => $this->normalizeTitle((string) $item['title']))
+            ->take(20)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchPlayStationGrid(
+        string $categoryId,
+        string $status,
+        string $collection,
+        int $limit,
+    ): array {
         try {
+            $variables = [
+                'id' => $categoryId,
+                'pageArgs' => [
+                    'size' => min(24, $limit),
+                    'offset' => 0,
+                ],
+                'sortBy' => null,
+                'filterBy' => [],
+                'facetOptions' => [],
+            ];
+
+            $extensions = [
+                'persistedQuery' => [
+                    'version' => 1,
+                    'sha256Hash' => self::PSN_CATEGORY_GRID_HASH,
+                ],
+            ];
+
             $response = Http::withHeaders([
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
-                'Accept-Language' => 'en-US,en;q=0.9',
+                'Accept' => 'application/json',
+                'Accept-Language' => 'es-CR,es;q=0.9,en;q=0.8',
+                'Referer' => 'https://store.playstation.com/es-cr/category/'.$categoryId.'/1',
+                'Origin' => 'https://store.playstation.com',
+                'apollo-require-preflight' => 'true',
+                'x-apollo-operation-name' => 'categoryGridRetrieve',
             ])
                 ->connectTimeout(3)
                 ->timeout(9)
                 ->retry(1, 250)
-                ->get('https://store.playstation.com/en-us/pages/latest');
+                ->get(self::PSN_GRAPHQL_URL, [
+                    'operationName' => 'categoryGridRetrieve',
+                    'variables' => json_encode($variables, JSON_UNESCAPED_SLASHES),
+                    'extensions' => json_encode($extensions, JSON_UNESCAPED_SLASHES),
+                ]);
 
             if (! $response->successful()) {
-                Log::warning('Game Radar PlayStation Latest request failed', [
+                Log::warning('Game Radar PlayStation GraphQL request failed', [
+                    'category' => $categoryId,
                     'status' => $response->status(),
                 ]);
 
                 return [];
             }
 
-            if (! preg_match('~<script id="__NEXT_DATA__" type="application/json">(.*?)</script>~s', $response->body(), $matches)) {
-                Log::warning('Game Radar PlayStation Latest page did not contain __NEXT_DATA__.');
+            $payload = $response->json();
+
+            if (! is_array($payload) || filled($payload['errors'] ?? null)) {
+                Log::warning('Game Radar PlayStation GraphQL returned errors', [
+                    'category' => $categoryId,
+                    'errors' => $payload['errors'] ?? null,
+                ]);
 
                 return [];
             }
 
-            $payload = json_decode($matches[1], true);
-            $apollo = data_get($payload, 'props.apolloState', []);
+            $nodes = data_get($payload, 'data.categoryGridRetrieve.'.$collection, []);
 
-            if (! is_array($apollo)) {
+            if (! is_array($nodes)) {
                 return [];
             }
 
-            return collect($apollo)
-                ->filter(function ($entity, $key) {
-                    if (! is_array($entity)
-                        || ! str_starts_with((string) $key, 'Product:')
-                        || ($entity['__typename'] ?? null) !== 'Product'
-                        || blank($entity['name'] ?? null)
-                    ) {
-                        return false;
-                    }
-
-                    $platforms = array_map(
-                        fn ($platform) => strtoupper((string) $platform),
-                        (array) ($entity['platforms'] ?? []),
-                    );
-
-                    if (! in_array('PS5', $platforms, true)) {
-                        return false;
-                    }
-
-                    $classification = strtoupper((string) (
-                        $entity['localizedStoreDisplayClassification']
-                        ?? $entity['storeDisplayClassification']
-                        ?? ''
-                    ));
-
-                    return ! str_contains($classification, 'ADD-ON')
-                        && ! str_contains($classification, 'ADD_ON');
-                })
-                ->map(fn (array $entity) => $this->mapPlayStationProduct($entity))
+            return collect($nodes)
+                ->map(fn (array $node) => $collection === 'concepts'
+                    ? $this->mapPlayStationConcept($node, $status)
+                    : $this->mapPlayStationProduct($node, $status))
                 ->filter()
-                ->unique(fn (array $item) => $this->normalizeTitle((string) $item['title']))
-                ->take(18)
+                ->take($limit)
                 ->values()
                 ->all();
         } catch (Throwable $exception) {
-            Log::warning('Game Radar PlayStation Latest source unavailable', [
+            Log::warning('Game Radar PlayStation GraphQL source unavailable', [
+                'category' => $categoryId,
                 'message' => $exception->getMessage(),
             ]);
 
@@ -449,92 +366,113 @@ class GameRadarService
     /**
      * @return array<string, mixed>|null
      */
-    private function mapPlayStationProduct(array $entity): ?array
+    private function mapPlayStationProduct(array $product, string $status): ?array
     {
-        $productId = trim((string) ($entity['id'] ?? ''));
-        $title = trim((string) ($entity['name'] ?? ''));
+        $productId = trim((string) ($product['id'] ?? ''));
+        $title = trim((string) ($product['name'] ?? ''));
 
         if ($productId === '' || $title === '') {
             return null;
         }
 
-        $media = collect((array) ($entity['media'] ?? []));
-        $master = $media->first(
-            fn ($item) => is_array($item)
-                && ($item['type'] ?? null) === 'IMAGE'
-                && ($item['role'] ?? null) === 'MASTER',
-        );
-        $background = $media->first(
-            fn ($item) => is_array($item)
-                && ($item['type'] ?? null) === 'IMAGE'
-                && in_array(($item['role'] ?? null), ['BACKGROUND', 'HERO'], true),
-        );
-        $fallbackImage = $media->first(
-            fn ($item) => is_array($item) && ($item['type'] ?? null) === 'IMAGE',
-        );
+        $classification = strtoupper((string) ($product['storeDisplayClassification'] ?? ''));
+        if (
+            str_contains($classification, 'ADD_ON')
+            || str_contains($classification, 'ADD-ON')
+            || str_contains($classification, 'SOUNDTRACK')
+            || str_contains($classification, 'DEMO')
+        ) {
+            return null;
+        }
 
-        $cover = is_array($master)
-            ? ($master['url'] ?? null)
-            : (is_array($fallbackImage) ? ($fallbackImage['url'] ?? null) : null);
-        $banner = is_array($background)
-            ? ($background['url'] ?? null)
-            : $cover;
-
-        $price = is_array($entity['price'] ?? null) ? $entity['price'] : [];
         $platforms = array_values(array_filter(
-            (array) ($entity['platforms'] ?? []),
+            (array) ($product['platforms'] ?? []),
             'is_string',
         ));
 
-        $releaseDate = collect([
-            $entity['releaseDate'] ?? null,
-            $entity['releaseDateTime'] ?? null,
-            $entity['release_date'] ?? null,
-        ])->first(fn ($value) => is_string($value) && $value !== '');
+        if ($platforms !== [] && ! in_array('PS5', array_map('strtoupper', $platforms), true)) {
+            return null;
+        }
 
-        $encoded = strtoupper(json_encode($entity, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
-        $coming = str_contains($encoded, 'PRE_ORDER')
-            || str_contains($encoded, 'PRE-ORDER')
-            || (
-                is_string($releaseDate)
-                && strtotime($releaseDate) !== false
-                && strtotime($releaseDate) > now()->timestamp
-            );
+        $cover = $this->pickPlayStationImage((array) ($product['media'] ?? []));
+        $price = is_array($product['price'] ?? null) ? $product['price'] : [];
 
         return [
             'id' => 'psn:'.$productId,
             'title' => $title,
-            'description' => Str::limit(trim((string) (
-                $entity['shortDescription']
-                ?? $entity['description']
-                ?? ''
-            )), 220),
+            'description' => null,
             'cover_url' => $cover,
-            'banner_url' => $banner,
-            'release_date' => $releaseDate,
-            'status' => $coming ? 'coming' : 'new',
-            'developer' => $entity['developerName'] ?? null,
-            'publisher' => $entity['publisherName'] ?? null,
-            'xbox' => [
-                'available' => false,
-                'price' => null,
-                'currency' => null,
-                'platforms' => [],
-                'url' => null,
-            ],
+            'banner_url' => $cover,
+            'release_date' => null,
+            'status' => $status,
+            'developer' => null,
+            'publisher' => null,
+            'xbox' => $this->emptyStore(),
             'psn' => [
                 'available' => true,
                 'price' => $price['discountedPrice'] ?? $price['basePrice'] ?? null,
-                'platforms' => $platforms,
-                'url' => 'https://store.playstation.com/en-us/product/'.rawurlencode($productId),
+                'currency' => null,
+                'platforms' => $platforms !== [] ? $platforms : ['PS5'],
+                'url' => 'https://store.playstation.com/es-cr/product/'.rawurlencode($productId),
                 'image_url' => $cover,
             ],
         ];
     }
 
     /**
-     * Merge independent Xbox and PlayStation feeds while preserving titles
-     * that exist on only one console.
+     * @return array<string, mixed>|null
+     */
+    private function mapPlayStationConcept(array $concept, string $status): ?array
+    {
+        $conceptId = trim((string) ($concept['id'] ?? ''));
+        $title = trim((string) ($concept['name'] ?? ''));
+
+        if ($conceptId === '' || $title === '') {
+            return null;
+        }
+
+        $productIds = collect((array) ($concept['products'] ?? []))
+            ->pluck('id')
+            ->filter(fn ($id) => is_string($id) && $id !== '')
+            ->values();
+
+        $hasPs5 = $productIds->contains(fn ($id) => str_contains(strtoupper((string) $id), 'PPSA'));
+
+        if ($productIds->isNotEmpty() && ! $hasPs5) {
+            return null;
+        }
+
+        $cover = $this->pickPlayStationImage((array) ($concept['media'] ?? []));
+        $price = is_array($concept['price'] ?? null) ? $concept['price'] : [];
+        $productId = $productIds->first();
+
+        return [
+            'id' => 'psn:concept:'.$conceptId,
+            'title' => $title,
+            'description' => null,
+            'cover_url' => $cover,
+            'banner_url' => $cover,
+            'release_date' => null,
+            'status' => $status,
+            'developer' => null,
+            'publisher' => null,
+            'xbox' => $this->emptyStore(),
+            'psn' => [
+                'available' => true,
+                'price' => $price['discountedPrice'] ?? $price['basePrice'] ?? null,
+                'currency' => null,
+                'platforms' => ['PS5'],
+                'url' => $productId
+                    ? 'https://store.playstation.com/es-cr/product/'.rawurlencode((string) $productId)
+                    : 'https://store.playstation.com/es-cr/concept/'.rawurlencode($conceptId),
+                'image_url' => $cover,
+            ],
+        ];
+    }
+
+    /**
+     * Keep PS5 titles first in the stored snapshot. UI can then render
+     * independent PS5 and Xbox shelves without doing any network work.
      *
      * @param array<int, array<string, mixed>> $xboxItems
      * @param array<int, array<string, mixed>> $playStationItems
@@ -542,22 +480,9 @@ class GameRadarService
      */
     private function mergeRadarSources(array $xboxItems, array $playStationItems): array
     {
-        $interleaved = [];
-        $max = max(count($xboxItems), count($playStationItems));
-
-        for ($index = 0; $index < $max; $index++) {
-            if (isset($playStationItems[$index])) {
-                $interleaved[] = $playStationItems[$index];
-            }
-
-            if (isset($xboxItems[$index])) {
-                $interleaved[] = $xboxItems[$index];
-            }
-        }
-
         $merged = [];
 
-        foreach ($interleaved as $item) {
+        foreach ([...$playStationItems, ...$xboxItems] as $item) {
             $key = $this->normalizeTitle((string) ($item['title'] ?? ''));
             if ($key === '') {
                 continue;
@@ -570,12 +495,12 @@ class GameRadarService
 
             $current = $merged[$key];
 
-            if (($item['xbox']['available'] ?? false) === true) {
-                $current['xbox'] = $item['xbox'];
-            }
-
             if (($item['psn']['available'] ?? false) === true) {
                 $current['psn'] = $item['psn'];
+            }
+
+            if (($item['xbox']['available'] ?? false) === true) {
+                $current['xbox'] = $item['xbox'];
             }
 
             foreach (['description', 'cover_url', 'banner_url', 'release_date', 'developer', 'publisher'] as $field) {
@@ -600,11 +525,15 @@ class GameRadarService
     /**
      * @param array<int, array<string, mixed>> $images
      */
-    private function pickImage(array $images, array $purposes): ?string
+    private function pickXboxImage(array $images, array $purposes): ?string
     {
         foreach ($purposes as $purpose) {
             foreach ($images as $image) {
-                if (is_array($image) && ($image['ImagePurpose'] ?? null) === $purpose && filled($image['Uri'] ?? null)) {
+                if (
+                    is_array($image)
+                    && ($image['ImagePurpose'] ?? null) === $purpose
+                    && filled($image['Uri'] ?? null)
+                ) {
                     return (string) $image['Uri'];
                 }
             }
@@ -619,17 +548,54 @@ class GameRadarService
         return null;
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $media
+     */
+    private function pickPlayStationImage(array $media): ?string
+    {
+        foreach (['MASTER', 'GAMEHUB_COVER_ART', 'PORTRAIT', 'KEY_ART'] as $role) {
+            foreach ($media as $item) {
+                if (
+                    is_array($item)
+                    && ($item['role'] ?? null) === $role
+                    && filled($item['url'] ?? null)
+                ) {
+                    return (string) $item['url'];
+                }
+            }
+        }
+
+        foreach ($media as $item) {
+            if (is_array($item) && filled($item['url'] ?? null)) {
+                return (string) $item['url'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function emptyStore(): array
+    {
+        return [
+            'available' => false,
+            'price' => null,
+            'currency' => null,
+            'platforms' => [],
+            'url' => null,
+            'image_url' => null,
+        ];
+    }
+
     private function normalizeMediaUrl(?string $url): ?string
     {
         if (! $url) {
             return null;
         }
 
-        if (str_starts_with($url, '//')) {
-            return 'https:'.$url;
-        }
-
-        return $url;
+        return str_starts_with($url, '//') ? 'https:'.$url : $url;
     }
 
     private function displayXboxPrice(mixed $price): ?string
