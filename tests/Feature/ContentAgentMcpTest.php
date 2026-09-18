@@ -49,7 +49,7 @@ class ContentAgentMcpTest extends TestCase
             ->assertJsonFragment(['name' => 'unpublish_feed'])
             ->assertJsonFragment(['name' => 'delete_content'])
             ->assertJsonFragment(['name' => 'restore_content'])
-            ->assertJsonPath('result._meta.io.modelcontextprotocol/serverInfo.version', '2.0.0');
+            ->assertJsonFragment(['version' => '2.0.0']);
     }
 
     public function test_mcp_endpoint_supports_modern_discovery(): void
@@ -68,6 +68,6 @@ class ContentAgentMcpTest extends TestCase
             ],
         ])->assertOk()
             ->assertJsonPath('result.supportedVersions.0', '2026-07-28')
-            ->assertJsonPath('result._meta.io.modelcontextprotocol/serverInfo.version', '2.0.0');
+            ->assertJsonFragment(['version' => '2.0.0']);
     }
 }
