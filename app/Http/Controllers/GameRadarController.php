@@ -145,8 +145,18 @@ class GameRadarController extends Controller
 
     public function data(GameRadarService $radar): JsonResponse
     {
+        $snapshot = $radar->cachedSnapshot();
+
+        if (($snapshot['items'] ?? []) === []) {
+            $radar->scheduleWarmup();
+        }
+
         return response()
-            ->json($radar->snapshot())
+            ->json([
+                ...$snapshot,
+                'refreshing' => $radar->isRefreshing(),
+            ])
+            ->header('Cache-Control', 'no-store, private')
             ->header('X-Robots-Tag', 'noindex, nofollow');
     }
 }
