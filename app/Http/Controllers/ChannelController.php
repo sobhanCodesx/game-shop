@@ -79,7 +79,9 @@ class ChannelController extends Controller
                             '@id' => $canonical.'#breadcrumb',
                             'itemListElement' => [
                                 ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => route('home')],
-                                ['@type' => 'ListItem', 'position' => 2, 'name' => 'ویدیوها', 'item' => route('videos.index')],
+                                $storeInfo
+                                    ? ['@type' => 'ListItem', 'position' => 2, 'name' => 'رادار بازی‌ها', 'item' => route('game-radar.index')]
+                                    : ['@type' => 'ListItem', 'position' => 2, 'name' => 'ویدیوها', 'item' => route('videos.index')],
                                 ['@type' => 'ListItem', 'position' => 3, 'name' => $game->name, 'item' => $canonical],
                             ],
                         ],
