@@ -43,10 +43,12 @@ final class ExpoPushTokenProxyController extends Controller
                 ->timeout((int) config('services.expo_push.timeout', 10))
                 ->post((string) config('services.expo_push.token_url'), $data);
 
+            $contentType = $upstream->header('Content-Type') ?: 'application/json';
+
             return response(
                 $upstream->body(),
                 $upstream->status(),
-                ['Content-Type' => $upstream->header('Content-Type', 'application/json')],
+                ['Content-Type' => $contentType],
             );
         } catch (Throwable $exception) {
             report($exception);
