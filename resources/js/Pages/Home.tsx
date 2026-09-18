@@ -7,6 +7,7 @@ import {
     Gamepad2,
     Headphones,
     Eye,
+    ExternalLink,
     Play,
     ArrowUpLeft,
     Clock3,
@@ -993,71 +994,129 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
 
                 {shelfItems.length ? (
                     <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4 lg:grid lg:grid-flow-dense lg:grid-cols-12 lg:overflow-visible">
-                        {shelfItems.map((item, index) => (
-                            <Link
-                                className={`group relative aspect-[4/5] w-[68vw] max-w-[285px] shrink-0 snap-center overflow-hidden rounded-[19px] border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-1 sm:aspect-[16/11] sm:w-[300px] lg:w-full lg:max-w-none ${
-                                    index === 0
-                                        ? "lg:col-span-6 lg:row-span-2 lg:aspect-auto lg:min-h-[360px]"
-                                        : index >= 5
-                                          ? "lg:col-span-4 lg:aspect-[16/9]"
-                                          : "lg:col-span-3 lg:aspect-[16/10]"
-                                }`}
-                                href="/game-radar"
-                                key={item.id}
-                            >
-                                {item.banner_url || item.cover_url ? (
-                                    <img
-                                        alt={item.title}
-                                        className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.04]"
-                                        decoding="async"
-                                        loading="lazy"
-                                        src={
-                                            item.banner_url ??
-                                            item.cover_url ??
-                                            undefined
-                                        }
-                                    />
-                                ) : (
-                                    <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)]">
-                                        <Gamepad2
-                                            className={
-                                                isPs5
-                                                    ? "text-sky-300"
-                                                    : "text-emerald-300"
-                                            }
-                                            size={42}
-                                        />
-                                    </span>
-                                )}
-                                <span className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-                                <span
-                                    className={`absolute right-2.5 top-2.5 rounded-full px-2 py-1 text-[8px] font-black backdrop-blur-md ${
-                                        item.status === "coming"
-                                            ? "bg-amber-400/15 text-amber-200"
-                                            : "bg-white/12 text-white/80"
+                        {shelfItems.map((item, index) => {
+                            const store = isPs5 ? item.psn : item.xbox;
+                            const alsoAvailable = isPs5
+                                ? item.xbox.available
+                                : item.psn.available;
+
+                            return (
+                                <article
+                                    className={`group relative aspect-[4/5] w-[68vw] max-w-[285px] shrink-0 snap-center overflow-hidden rounded-[19px] border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-1 sm:aspect-[16/11] sm:w-[300px] lg:w-full lg:max-w-none ${
+                                        index === 0
+                                            ? "lg:col-span-6 lg:row-span-2 lg:aspect-auto lg:min-h-[360px]"
+                                            : index >= 5
+                                              ? "lg:col-span-4 lg:aspect-[16/9]"
+                                              : "lg:col-span-3 lg:aspect-[16/10]"
                                     }`}
+                                    key={item.id}
                                 >
-                                    {item.status === "coming"
-                                        ? "COMING SOON"
-                                        : "NEW"}
-                                </span>
-                                <span className="absolute inset-x-3 bottom-3 text-white">
-                                    <strong
-                                        className={`block line-clamp-2 font-black leading-6 ${
-                                            index === 0
-                                                ? "text-lg sm:text-xl"
-                                                : "text-sm"
+                                    <Link
+                                        aria-label={`مشاهده ${item.title} در Game Radar`}
+                                        className="absolute inset-0 z-10"
+                                        href="/game-radar"
+                                    />
+
+                                    {item.banner_url || item.cover_url ? (
+                                        <img
+                                            alt={item.title}
+                                            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.04]"
+                                            decoding="async"
+                                            loading="lazy"
+                                            src={
+                                                item.banner_url ??
+                                                item.cover_url ??
+                                                undefined
+                                            }
+                                        />
+                                    ) : (
+                                        <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)]">
+                                            <Gamepad2
+                                                className={
+                                                    isPs5
+                                                        ? "text-sky-300"
+                                                        : "text-emerald-300"
+                                                }
+                                                size={42}
+                                            />
+                                        </span>
+                                    )}
+
+                                    <span className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+
+                                    <span
+                                        className={`pointer-events-none absolute right-2.5 top-2.5 z-20 rounded-full px-2 py-1 text-[8px] font-black backdrop-blur-md ${
+                                            item.status === "coming"
+                                                ? "bg-amber-400/15 text-amber-200"
+                                                : "bg-white/12 text-white/80"
                                         }`}
                                     >
-                                        {item.title}
-                                    </strong>
-                                    <span className="mt-1.5 flex items-center gap-1 text-[9px] text-white/55">
-                                        <CalendarDays size={11} />
-                                        {dateLabel(item.release_date)}
+                                        {item.status === "coming"
+                                            ? "COMING SOON"
+                                            : "NEW"}
                                     </span>
-                                </span>
-                            </Link>
-                        ))}
+
+                                    {store.price && (
+                                        <span className="pointer-events-none absolute left-2.5 top-2.5 z-20 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white backdrop-blur-md">
+                                            {store.price}
+                                        </span>
+                                    )}
+
+                                    <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 text-white">
+                                        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                                            <span
+                                                className={`rounded-full px-2 py-1 text-[8px] font-black ${
+                                                    isPs5
+                                                        ? "bg-sky-400/15 text-sky-200"
+                                                        : "bg-emerald-400/15 text-emerald-200"
+                                                }`}
+                                            >
+                                                {isPs5 ? "PS5" : "Xbox Series X|S"}
+                                            </span>
+                                            {alsoAvailable && (
+                                                <span className="rounded-full bg-white/10 px-2 py-1 text-[8px] font-bold text-white/65 backdrop-blur-md">
+                                                    هر دو Store
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <strong
+                                            className={`block line-clamp-2 font-black leading-6 ${
+                                                index === 0
+                                                    ? "text-lg sm:text-xl"
+                                                    : "text-sm"
+                                            }`}
+                                        >
+                                            {item.title}
+                                        </strong>
+
+                                        <span className="mt-1.5 flex items-center gap-1 text-[9px] text-white/55">
+                                            <CalendarDays size={11} />
+                                            {dateLabel(item.release_date)}
+                                        </span>
+
+                                        <div className="mt-2 min-h-7" />
+                                    </div>
+
+                                    {store.url && (
+                                        <a
+                                            aria-label={`باز کردن ${item.title} در ${isPs5 ? "PlayStation Store" : "Xbox Store"}`}
+                                            className={`absolute bottom-2.5 left-2.5 z-30 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[9px] font-black shadow-lg backdrop-blur-md transition hover:scale-[1.03] ${
+                                                isPs5
+                                                    ? "bg-sky-400 text-slate-950"
+                                                    : "bg-emerald-400 text-slate-950"
+                                            }`}
+                                            href={store.url}
+                                            rel="noreferrer"
+                                            target="_blank"
+                                        >
+                                            {isPs5 ? "PS Store" : "Xbox Store"}
+                                            <ExternalLink size={10} />
+                                        </a>
+                                    )}
+                                </article>
+                            );
+                        })}
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
