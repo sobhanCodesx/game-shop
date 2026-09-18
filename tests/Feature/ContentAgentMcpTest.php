@@ -17,7 +17,7 @@ class ContentAgentMcpTest extends TestCase
         ])->assertUnauthorized();
     }
 
-    public function test_mcp_endpoint_lists_content_tools_with_valid_token(): void
+    public function test_mcp_endpoint_lists_advanced_content_admin_tools_with_valid_token(): void
     {
         config()->set('content_agent.token', 'test-secret');
 
@@ -34,12 +34,22 @@ class ContentAgentMcpTest extends TestCase
             ->assertJsonFragment(['name' => 'search_studios'])
             ->assertJsonFragment(['name' => 'search_platforms'])
             ->assertJsonFragment(['name' => 'search_collections'])
+            ->assertJsonFragment(['name' => 'select_content'])
+            ->assertJsonFragment(['name' => 'get_content'])
             ->assertJsonFragment(['name' => 'create_game'])
             ->assertJsonFragment(['name' => 'create_studio'])
             ->assertJsonFragment(['name' => 'create_collection'])
             ->assertJsonFragment(['name' => 'create_story'])
+            ->assertJsonFragment(['name' => 'create_video'])
             ->assertJsonFragment(['name' => 'create_feed'])
-            ->assertJsonFragment(['name' => 'publish_feed']);
+            ->assertJsonFragment(['name' => 'update_content'])
+            ->assertJsonFragment(['name' => 'sync_collection_videos'])
+            ->assertJsonFragment(['name' => 'set_content_state'])
+            ->assertJsonFragment(['name' => 'publish_feed'])
+            ->assertJsonFragment(['name' => 'unpublish_feed'])
+            ->assertJsonFragment(['name' => 'delete_content'])
+            ->assertJsonFragment(['name' => 'restore_content'])
+            ->assertJsonPath('result._meta.io.modelcontextprotocol/serverInfo.version', '2.0.0');
     }
 
     public function test_mcp_endpoint_supports_modern_discovery(): void
@@ -57,6 +67,7 @@ class ContentAgentMcpTest extends TestCase
                 ],
             ],
         ])->assertOk()
-            ->assertJsonPath('result.supportedVersions.0', '2026-07-28');
+            ->assertJsonPath('result.supportedVersions.0', '2026-07-28')
+            ->assertJsonPath('result._meta.io.modelcontextprotocol/serverInfo.version', '2.0.0');
     }
 }
