@@ -1,0 +1,7 @@
+{
+  "job_id": "20260918-fc27-feed-50-publish",
+  "tool": "publish_feed",
+  "arguments": {
+    "id": 50
+  }
+}
