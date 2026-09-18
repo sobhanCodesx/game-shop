@@ -10,6 +10,7 @@ import {
     Eraser,
     HardDrive,
     Play,
+    Radar,
     RefreshCw,
     RotateCcw,
     ServerCog,
@@ -31,6 +32,7 @@ type MaintenanceAction =
     | "clear-cache"
     | "config-cache"
     | "schedule-run"
+    | "game-radar-sync"
     | "queue-once"
     | "all";
 
@@ -223,6 +225,15 @@ const operations: Array<{
             "برای تست، تمام Taskهایی که در همین دقیقه Due هستند را همان لحظه اجرا می‌کند.",
         icon: TimerReset,
         tone: "border-cyan-500/20 bg-cyan-500/10 text-cyan-300",
+    },
+    {
+        action: "game-radar-sync",
+        title: "همگام‌سازی Game Radar",
+        command: "php artisan nexus:sync-game-radar",
+        description:
+            "بازی‌های تازه و در راه را از منابع Xbox و PlayStation دوباره می‌خواند و snapshot کش‌شده Home و صفحه Game Radar را بروزرسانی می‌کند.",
+        icon: Radar,
+        tone: "border-indigo-500/20 bg-indigo-500/10 text-indigo-300",
     },
     {
         action: "queue-once",
