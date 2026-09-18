@@ -38,6 +38,7 @@ export default function Discover({
         if (loadingRef.current || !nextPageUrl) return [];
         loadingRef.current = true;
         setLoading(true);
+        setError("");
         try {
             const response = await fetch(nextPageUrl, {
                 headers: { Accept: "application/json" },
@@ -53,6 +54,7 @@ export default function Discover({
             setNextPageUrl(next.next_page_url);
             return next.data;
         } catch {
+            setError("بارگذاری ادامه اکسپلور انجام نشد؛ دوباره تلاش کنید.");
             return [];
         } finally {
             loadingRef.current = false;
