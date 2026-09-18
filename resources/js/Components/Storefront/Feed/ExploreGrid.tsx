@@ -98,7 +98,7 @@ function ReelVideo({
                 loop
                 playsInline
                 poster={poster ?? undefined}
-                preload={active ? "auto" : "metadata"}
+                preload="metadata"
                 ref={ref}
                 src={src}
             />
@@ -124,6 +124,20 @@ function ReelVideo({
             )}
         </div>
     );
+}
+
+function useDesktopViewer() {
+    const [desktop, setDesktop] = useState(false);
+
+    useEffect(() => {
+        const query = window.matchMedia("(min-width: 768px)");
+        const sync = () => setDesktop(query.matches);
+        sync();
+        query.addEventListener("change", sync);
+        return () => query.removeEventListener("change", sync);
+    }, []);
+
+    return desktop;
 }
 
 function MobileAction({
@@ -187,16 +201,24 @@ function MobileReels({
 }) {
     const scroller = useRef<HTMLDivElement>(null);
     const initialIndex = useRef(index);
+    const frame = useRef<number | null>(null);
 
     useEffect(() => {
-        requestAnimationFrame(() =>
-            scroller.current?.scrollTo({
-                top: initialIndex.current * window.innerHeight,
-            }),
-        );
+        const overflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        requestAnimationFrame(() => {
+            const node = scroller.current;
+            if (!node) return;
+            node.scrollTo({ top: initialIndex.current * node.clientHeight });
+        });
+
+        return () => {
+            document.body.style.overflow = overflow;
+            if (frame.current !== null) cancelAnimationFrame(frame.current);
+        };
     }, []);
 
-    const scroll = () => {
+    const syncScroll = () => {
         const node = scroller.current;
         if (!node) return;
         const active = Math.max(
@@ -211,11 +233,19 @@ function MobileReels({
             void onLoadMore();
     };
 
+    const scroll = () => {
+        if (frame.current !== null) return;
+        frame.current = requestAnimationFrame(() => {
+            frame.current = null;
+            syncScroll();
+        });
+    };
+
     return (
         <div className="fixed inset-0 z-[110] bg-black md:hidden" dir="rtl">
             <button
                 aria-label="بستن"
-                className="fixed left-3 top-3 z-[130] grid size-10 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md"
+                className="fixed left-3 top-[max(.75rem,env(safe-area-inset-top))] z-[130] grid size-10 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md"
                 onClick={onClose}
                 type="button"
             >
@@ -319,7 +349,6 @@ function MobileReels({
                                         value={interaction.likes}
                                     />
                                     <MobileAction
-                                        disabled={!content.allow_comments}
                                         icon={MessageCircle}
                                         label="نظرات"
                                         onClick={() => onComments(item)}
@@ -637,7 +666,6 @@ function Modal({
                                 value={interaction.likes}
                             />
                             <DesktopAction
-                                disabled={!content.allow_comments}
                                 icon={MessageCircle}
                                 label="نظرات"
                                 onClick={() => onComments(item)}
@@ -688,6 +716,7 @@ export default function ExploreGrid({
     onLoadMore: () => Promise<ExploreItem[]>;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
+    const desktop = useDesktopViewer();
     const [interactions, setInteractions] = useState<
         Record<string, InteractionState>
     >({});
@@ -826,21 +855,8 @@ export default function ExploreGrid({
                     />
                 ))}
             </section>
-            {selected !== null && (
-                <>
-                    <MobileReels
-                        hasMore={hasMore}
-                        index={selected}
-                        interactions={interactions}
-                        items={items}
-                        loading={loading}
-                        onClose={onClose}
-                        onComments={setCommentsItem}
-                        onIndex={onIndex}
-                        onLike={(item) => void toggleLike(item)}
-                        onLoadMore={onLoadMore}
-                        onShare={(item) => void share(item)}
-                    />
+            {selected !== null &&
+                (desktop ? (
                     <Modal
                         hasMore={hasMore}
                         index={selected}
@@ -854,8 +870,21 @@ export default function ExploreGrid({
                         onLoadMore={onLoadMore}
                         onShare={(item) => void share(item)}
                     />
-                </>
-            )}
+                ) : (
+                    <MobileReels
+                        hasMore={hasMore}
+                        index={selected}
+                        interactions={interactions}
+                        items={items}
+                        loading={loading}
+                        onClose={onClose}
+                        onComments={setCommentsItem}
+                        onIndex={onIndex}
+                        onLike={(item) => void toggleLike(item)}
+                        onLoadMore={onLoadMore}
+                        onShare={(item) => void share(item)}
+                    />
+                ))}
             {commentsContent && commentsItem && (
                 <FeedCommentsSheet
                     allowComments={commentsContent.allow_comments}

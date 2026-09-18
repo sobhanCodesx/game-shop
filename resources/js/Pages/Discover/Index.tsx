@@ -30,7 +30,6 @@ export default function Discover({
     const [error, setError] = useState("");
     const [selected, setSelected] = useState<number | null>(null);
     const sentinel = useRef<HTMLDivElement>(null);
-    const pending = useRef(false);
     const loadingRef = useRef(false);
     const hasMore = Boolean(nextPageUrl);
 

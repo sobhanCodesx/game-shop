@@ -21,7 +21,7 @@ class DiscoverViewTest extends TestCase
             'published_at' => now()->subMinute(),
         ]);
 
-        $this->post(route('discover.content.view', $content))
+        $this->post(route('discover.views.store', ['content' => $content->slug]))
             ->assertOk()
             ->assertJson(['views' => 1]);
 
