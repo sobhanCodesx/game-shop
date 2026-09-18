@@ -14,6 +14,7 @@ use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\Studio;
 use App\Services\FeedService;
+use App\Services\GameRadarService;
 use App\Services\MediaStorage;
 use App\Services\ProductPriceService;
 use App\Services\StorefrontDataService;
@@ -25,7 +26,7 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed): Response
+    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar): Response
     {
         $settings = [...HomeSettingsController::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])];
         $limit = (int) $settings['products_limit'];
@@ -113,6 +114,7 @@ class HomeController extends Controller
             ...$seo,
             'latestFeed' => $feed->latestImportant($request, 8),
             'latestStudios' => $latestStudios,
+            'gameRadar' => collect($radar->snapshot()['items'] ?? [])->take(8)->values(),
             'settings' => $settings,
             'slides' => $slides,
             'categories' => Category::query()
