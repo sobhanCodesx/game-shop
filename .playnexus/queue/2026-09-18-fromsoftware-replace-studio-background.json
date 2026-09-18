@@ -1,0 +1,13 @@
+{
+  "job_id": "20260918-fromsoftware-replace-studio-background",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "studio",
+    "query": "FromSoftware",
+    "slot": "background",
+    "source_url": "https://media.fromsoftware.jp/careers/jp/resources/images/company_scene/001.jpg",
+    "name": "fromsoftware-office-background.jpg",
+    "alt": "نمای ورودی دفتر FromSoftware با لوگوی رسمی استودیو",
+    "sort_order": 0
+  }
+}
