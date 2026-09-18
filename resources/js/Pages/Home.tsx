@@ -1184,11 +1184,23 @@ export default function Home({
                                 >
                                     {categories.map((category, index) => {
                                         const fallbackTone = [
-                                            "from-indigo-950 via-violet-950 to-slate-950",
-                                            "from-sky-950 via-cyan-950 to-slate-950",
-                                            "from-fuchsia-950 via-purple-950 to-slate-950",
-                                            "from-emerald-950 via-teal-950 to-slate-950",
+                                            "from-indigo-950 via-violet-900 to-slate-950",
+                                            "from-sky-950 via-cyan-900 to-slate-950",
+                                            "from-fuchsia-950 via-purple-900 to-slate-950",
+                                            "from-emerald-950 via-teal-900 to-slate-950",
                                         ][index % 4];
+                                        const categoryKey =
+                                            `${category.slug} ${category.name}`.toLowerCase();
+                                        const visualMark =
+                                            categoryKey.includes("playstation") ||
+                                            categoryKey.includes("پلی")
+                                                ? "PLAYSTATION"
+                                                : categoryKey.includes("xbox") ||
+                                                    categoryKey.includes("ایکس")
+                                                  ? "XBOX"
+                                                  : categoryKey.includes("pc")
+                                                    ? "PC GAMING"
+                                                    : "PLAY NEXUS";
 
                                         return (
                                             <Link
@@ -1207,14 +1219,39 @@ export default function Home({
                                                     />
                                                 ) : (
                                                     <span
-                                                        className={`absolute inset-0 bg-gradient-to-br ${fallbackTone}`}
+                                                        className={`absolute inset-0 overflow-hidden bg-gradient-to-br ${fallbackTone}`}
                                                     >
-                                                        <span className="absolute -left-8 -top-8 size-36 rounded-full bg-white/5 blur-2xl" />
-                                                        <span className="absolute -bottom-12 -right-8 size-44 rounded-full bg-indigo-400/10 blur-3xl" />
-                                                        <Gamepad2
-                                                            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/15 transition duration-500 group-hover:scale-110 group-hover:text-white/20"
-                                                            size={96}
-                                                        />
+                                                        <span className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:34px_34px]" />
+                                                        <span className="absolute -left-12 -top-16 size-52 rounded-full bg-cyan-400/20 blur-3xl transition duration-700 group-hover:scale-125" />
+                                                        <span className="absolute -bottom-20 -right-16 size-64 rounded-full bg-fuchsia-500/25 blur-3xl transition duration-700 group-hover:scale-125" />
+                                                        <span className="absolute left-5 top-5 flex items-center gap-2 text-[9px] font-black tracking-[.22em] text-white/50 sm:left-6 sm:top-6 sm:text-[10px]">
+                                                            <span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,.9)]" />
+                                                            {visualMark}
+                                                        </span>
+                                                        <span className="absolute -left-3 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-black tracking-[.35em] text-white/15 sm:text-xs">
+                                                            NEXUS GAMING
+                                                        </span>
+                                                        <span className="absolute right-5 top-1/2 -translate-y-1/2 sm:right-8">
+                                                            <span className="relative grid size-28 place-items-center rounded-[30px] border border-white/15 bg-white/10 shadow-[0_24px_80px_rgba(0,0,0,.35)] backdrop-blur-md transition duration-500 group-hover:-translate-y-2 group-hover:rotate-[-3deg] group-hover:scale-105 sm:size-36">
+                                                                <span className="absolute inset-2 rounded-[24px] border border-white/10" />
+                                                                <Gamepad2
+                                                                    className="relative text-white drop-shadow-[0_8px_24px_rgba(255,255,255,.2)]"
+                                                                    size={58}
+                                                                />
+                                                            </span>
+                                                        </span>
+                                                        <strong className="absolute bottom-24 left-5 max-w-[48%] text-3xl font-black leading-none tracking-tight text-white/10 sm:bottom-20 sm:left-7 sm:text-5xl">
+                                                            {visualMark}
+                                                        </strong>
+                                                        <span className="absolute left-5 top-16 h-px w-16 bg-gradient-to-r from-white/40 to-transparent sm:left-6 sm:top-20 sm:w-24" />
+                                                        <span className="absolute bottom-6 right-6 grid grid-cols-3 gap-1 opacity-25">
+                                                            {Array.from({ length: 9 }).map((_, dot) => (
+                                                                <span
+                                                                    className="size-1 rounded-full bg-white"
+                                                                    key={dot}
+                                                                />
+                                                            ))}
+                                                        </span>
                                                     </span>
                                                 )}
 
