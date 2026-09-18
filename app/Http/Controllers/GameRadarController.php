@@ -72,7 +72,7 @@ class GameRadarController extends Controller
                             'name' => (string) $item['publisher'],
                         ]
                         : null,
-                    'url' => $item['playnexus_url'] ?? null,
+                    'url' => filled($item['playnexus_url'] ?? null) ? url((string) $item['playnexus_url']) : null,
                     'sameAs' => $sameAs !== [] ? $sameAs : null,
                 ], fn ($value) => $value !== null && $value !== '' && $value !== []);
 
