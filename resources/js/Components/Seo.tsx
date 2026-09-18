@@ -27,7 +27,7 @@ function safeJsonLd(value: Record<string, unknown>): string {
 }
 
 export default function Seo({ seo }: { seo: SeoData }) {
-    const locale = seo.locale.replace("-", "_");
+    const locale = (seo.locale || "fa-IR").replace("-", "_");
 
     return (
         <Head>

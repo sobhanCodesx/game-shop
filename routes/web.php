@@ -29,6 +29,7 @@ use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\GameRadarController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaStreamController;
 use App\Http\Controllers\MobileDeviceController;
@@ -106,6 +107,10 @@ Route::get('shop', [StorefrontController::class, 'shop'])->name('shop.index');
 Route::get('exchange-products', [StorefrontController::class, 'exchangeProducts'])->name('exchange-products.index');
 Route::get('products', [StorefrontController::class, 'shop'])->name('products.index');
 Route::get('discover', [StorefrontController::class, 'discover'])->name('discover');
+Route::get('game-radar', [GameRadarController::class, 'index'])->name('game-radar.index');
+Route::post('discover/content/{content:slug}/view', [StorefrontController::class, 'recordDiscoverView'])
+    ->middleware('throttle:90,1')
+    ->name('discover.views.store');
 Route::get('categories', [StorefrontController::class, 'shop'])->name('categories.index');
 Route::get('categories/{category:slug}', [StorefrontController::class, 'category'])->name('categories.show');
 Route::get('games', [StorefrontController::class, 'shop'])->name('games.index');
@@ -177,6 +182,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::post('system-maintenance/run', [SystemMaintenanceController::class, 'run'])->middleware('throttle:6,1')->name('system-maintenance.run');
         Route::post('system-maintenance/cron', [SystemMaintenanceController::class, 'manageCron'])->middleware('throttle:4,1')->name('system-maintenance.cron');
         Route::post('system-maintenance/push-test', [SystemMaintenanceController::class, 'testPush'])->middleware('throttle:3,1')->name('system-maintenance.push-test');
+        Route::post('system-maintenance/game-radar-settings', [SystemMaintenanceController::class, 'updateGameRadarSettings'])->middleware('throttle:8,1')->name('system-maintenance.game-radar-settings');
     });
     Route::prefix('deployments')->name('deployments.')->middleware('deployment.guard')->group(function () {
         Route::get('/', [DeploymentController::class, 'index'])->name('index');

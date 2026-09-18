@@ -1,0 +1,12 @@
+{
+  "job_id": "20260918-ac-black-flag-refresh-background",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game",
+    "id": 10,
+    "slot": "background",
+    "source_url": "https://img.youtube.com/vi/3AQacnWn3qw/maxresdefault.jpg",
+    "name": "assassins-creed-black-flag-resynced-background.jpg",
+    "alt": "ادوارد کنوی و فضای دریایی Assassin's Creed Black Flag Resynced"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "job_id": "20260918-ac-black-flag-refresh-cover",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game",
+    "id": 10,
+    "slot": "cover",
+    "source_url": "https://store.ubisoft.com/dw/image/v2/ABBS_PRD/on/demandware.static/-/Sites-masterCatalog/default/dwdf74f242/images/large/699e938f2f25b911ef69de95.jpg?sh=1200&sm=fit&sw=900",
+    "name": "assassins-creed-black-flag-resynced-cover.jpg",
+    "alt": "کاور رسمی Assassin's Creed Black Flag Resynced با ادوارد کنوی"
+  }
+}

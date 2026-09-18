@@ -1,0 +1,13 @@
+{
+  "job_id": "20260918-ubisoft-studio-10-background",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "studio",
+    "id": 10,
+    "slot": "background",
+    "source_url": "https://mir-s3-cdn-cf.behance.net/project_modules/1400_opt_1/d4cb88147131715.62bca4d482731.jpg",
+    "name": "ubisoft-studio-background.jpg",
+    "alt": "نمای دفتر Ubisoft با لوگوی این شرکت",
+    "sort_order": 0
+  }
+}

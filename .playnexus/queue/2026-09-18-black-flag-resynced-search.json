@@ -1,0 +1,8 @@
+{
+  "job_id": "20260918-black-flag-resynced-search",
+  "tool": "search_games",
+  "arguments": {
+    "query": "Assassin's Creed Black Flag Resynced",
+    "limit": 20
+  }
+}

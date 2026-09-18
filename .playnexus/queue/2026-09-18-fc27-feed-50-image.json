@@ -1,0 +1,13 @@
+{
+  "job_id": "20260918-fc27-feed-50-image",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 50,
+    "slot": "media",
+    "source_url": "https://drop-assets.ea.com/images/1K45DzLGKMnk122DtTp6S2/38e5f8fdd2204a1e8d455f2c1a0c81bb/FC27_PitchNotes_Purple_NoImage-1.png?im=AspectCrop%3D%2816%2C9%29%2CxPosition%3D0.5%2CyPosition%3D0.5",
+    "name": "ea-sports-fc-27-early-access.png",
+    "alt": "EA SPORTS FC 27؛ آغاز دسترسی زودهنگام بازی در ۱۸ سپتامبر ۲۰۲۶",
+    "sort_order": 0
+  }
+}

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\CronManagerService;
 use App\Services\ExpoPushService;
+use App\Services\GameRadarService;
 use App\Services\SystemMaintenanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ use Inertia\Response;
 
 class SystemMaintenanceController extends Controller
 {
-    public function index(Request $request, CronManagerService $cron): Response
+    public function index(Request $request, CronManagerService $cron, GameRadarService $radar): Response
     {
         $pushTargets = User::query()
             ->select(['id', 'name', 'email'])
@@ -80,6 +81,7 @@ class SystemMaintenanceController extends Controller
             ],
             'pushTargets' => $pushTargets,
             'currentAdminId' => $request->user()->id,
+            'gameRadarSettings' => $radar->settings(),
         ]);
     }
 
@@ -91,6 +93,7 @@ class SystemMaintenanceController extends Controller
                 'clear-cache',
                 'config-cache',
                 'schedule-run',
+                'game-radar-sync',
                 'queue-once',
                 'all',
             ])],
@@ -135,6 +138,29 @@ class SystemMaintenanceController extends Controller
             'result' => $result,
             'message' => $this->terminalSummary($result),
             'cron_status' => $cron->status(),
+        ]);
+    }
+
+    public function updateGameRadarSettings(Request $request, GameRadarService $radar): JsonResponse
+    {
+        $data = $request->validate([
+            'ps5_new_limit' => ['required', 'integer', 'min:1', 'max:60'],
+            'ps5_coming_limit' => ['required', 'integer', 'min:1', 'max:60'],
+            'xbox_new_limit' => ['required', 'integer', 'min:1', 'max:60'],
+            'xbox_coming_limit' => ['required', 'integer', 'min:1', 'max:60'],
+            'snapshot_limit' => ['required', 'integer', 'min:8', 'max:160'],
+        ]);
+
+        $settings = $radar->saveSettings($data);
+
+        Log::notice('Super admin updated Game Radar sync settings', [
+            'admin_id' => $request->user()->id,
+            'settings' => $settings,
+        ]);
+
+        return response()->json([
+            'message' => 'تنظیمات Game Radar ذخیره شد و از همگام‌سازی بعدی اعمال می‌شود.',
+            'game_radar_settings' => $settings,
         ]);
     }
 

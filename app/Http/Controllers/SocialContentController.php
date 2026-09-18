@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\SocialComment;
 use App\Models\SocialContent;
 use App\Models\VideoPlaylist;
+use App\Services\ContentViewService;
 use App\Services\MediaStorage;
 use App\Services\StorefrontDataService;
 use App\Services\VideoCommunityService;
@@ -18,7 +19,7 @@ use Inertia\Response;
 
 class SocialContentController extends Controller
 {
-    public function show(Request $request, string $type, SocialContent $content, StorefrontDataService $data, VideoCommunityService $community): Response
+    public function show(Request $request, string $type, SocialContent $content, StorefrontDataService $data, VideoCommunityService $community, ContentViewService $views): Response
     {
         $expectedType = match ($type) {
             'posts' => 'post', 'videos' => 'video', 'shorts' => 'short', default => abort(404),
@@ -26,12 +27,8 @@ class SocialContentController extends Controller
 
         abort_unless($content->type === $expectedType && $content->status === 'published' && $content->published_at?->isPast(), 404);
 
-        if ($content->type === 'video') {
-            $viewed = $request->session()->get('viewed_videos', []);
-            if (! in_array($content->id, $viewed, true)) {
-                $content->increment('views');
-                $request->session()->put('viewed_videos', [...array_slice($viewed, -199), $content->id]);
-            }
+        if (in_array($content->type, ['video', 'short'], true)) {
+            $views->record($request, $content);
         }
 
         $content->load([

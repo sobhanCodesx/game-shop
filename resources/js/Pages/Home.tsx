@@ -7,11 +7,14 @@ import {
     Gamepad2,
     Headphones,
     Eye,
+    ExternalLink,
     Play,
     ArrowUpLeft,
     Clock3,
     PackageOpen,
     Radio,
+    Radar,
+    CalendarDays,
     ShieldCheck,
     Sparkles,
     Truck,
@@ -78,6 +81,7 @@ interface Props {
     channels: ChannelItem[];
     latestFeed: FeedItemData[];
     latestStudios: StudioItem[];
+    gameRadar: GameRadarItem[];
 }
 interface ChannelItem {
     id: number;
@@ -97,6 +101,29 @@ interface StudioItem {
     channels_count: number;
     created_at: string;
 }
+interface RadarStorePresence {
+    available: boolean;
+    price: string | null;
+    platforms: string[];
+    url: string | null;
+}
+
+interface GameRadarItem {
+    id: string;
+    title: string;
+    description: string | null;
+    cover_url: string | null;
+    banner_url: string | null;
+    release_date: string | null;
+    status: "new" | "coming";
+    developer: string | null;
+    publisher: string | null;
+    xbox: RadarStorePresence;
+    psn: RadarStorePresence;
+    playnexus_game_id?: number | null;
+    playnexus_url?: string | null;
+}
+
 interface FreshItem {
     key: string;
     type: "product" | "video";
@@ -893,6 +920,270 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
     );
 }
 
+function GameRadarRail({ items }: { items: GameRadarItem[] }) {
+    const psItems = items
+        .filter((item) => item.psn.available)
+        .slice(0, 8);
+    const xboxItems = items
+        .filter((item) => item.xbox.available)
+        .slice(0, 8);
+
+    const dateLabel = (value: string | null) => {
+        if (!value) return "تاریخ نامشخص";
+
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "تاریخ نامشخص";
+
+        return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+            month: "short",
+            day: "numeric",
+            timeZone: "Asia/Tehran",
+        }).format(date);
+    };
+
+    const shelf = (
+        shelfItems: GameRadarItem[],
+        platform: "ps5" | "xbox",
+    ) => {
+        const isPs5 = platform === "ps5";
+
+        return (
+            <div
+                className={`relative overflow-hidden rounded-[24px] border p-3 sm:p-4 ${
+                    isPs5
+                        ? "border-sky-400/15 bg-[linear-gradient(135deg,rgba(2,132,199,.12),rgba(2,6,23,.78)_45%)]"
+                        : "border-emerald-400/15 bg-[linear-gradient(135deg,rgba(16,185,129,.10),rgba(2,6,23,.78)_45%)]"
+                }`}
+            >
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span
+                                className={`grid size-8 place-items-center rounded-xl ${
+                                    isPs5
+                                        ? "bg-sky-400/15 text-sky-300"
+                                        : "bg-emerald-400/15 text-emerald-300"
+                                }`}
+                            >
+                                {isPs5 ? (
+                                    <Play size={15} fill="currentColor" />
+                                ) : (
+                                    <Gamepad2 size={16} />
+                                )}
+                            </span>
+                            <h3 className="text-sm font-black sm:text-base">
+                                {isPs5
+                                    ? "PlayStation 5"
+                                    : "Xbox Series X|S"}
+                            </h3>
+                        </div>
+                        <p className="mt-1 text-[10px] text-white/45">
+                            {isPs5
+                                ? "تازه‌ها و بازی‌های در راه PS5"
+                                : "تازه‌ها و بازی‌های در راه Xbox"}
+                        </p>
+                    </div>
+                    <span
+                        className={`rounded-full px-2.5 py-1 text-[9px] font-black ${
+                            isPs5
+                                ? "bg-sky-400/10 text-sky-200"
+                                : "bg-emerald-400/10 text-emerald-200"
+                        }`}
+                    >
+                        {isPs5 ? "PS STORE" : "XBOX"}
+                    </span>
+                </div>
+
+                {shelfItems.length ? (
+                    <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4 lg:grid lg:grid-flow-dense lg:grid-cols-12 lg:overflow-visible">
+                        {shelfItems.map((item, index) => {
+                            const store = isPs5 ? item.psn : item.xbox;
+                            const alsoAvailable = isPs5
+                                ? item.xbox.available
+                                : item.psn.available;
+
+                            return (
+                                <article
+                                    className={`group relative aspect-[4/5] w-[68vw] max-w-[285px] shrink-0 snap-center overflow-hidden rounded-[19px] border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-1 sm:aspect-[16/11] sm:w-[300px] lg:w-full lg:max-w-none ${
+                                        index === 0
+                                            ? "lg:col-span-6 lg:row-span-2 lg:aspect-auto lg:min-h-[360px]"
+                                            : index >= 5
+                                              ? "lg:col-span-4 lg:aspect-[16/9]"
+                                              : "lg:col-span-3 lg:aspect-[16/10]"
+                                    }`}
+                                    key={item.id}
+                                >
+                                    <Link
+                                        aria-label={`مشاهده ${item.title} در Game Radar`}
+                                        className="absolute inset-0 z-10"
+                                        href={item.playnexus_url ?? "/game-radar"}
+                                    />
+
+                                    {item.banner_url || item.cover_url ? (
+                                        <img
+                                            alt={item.title}
+                                            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.04]"
+                                            decoding="async"
+                                            loading="lazy"
+                                            src={
+                                                item.banner_url ??
+                                                item.cover_url ??
+                                                undefined
+                                            }
+                                        />
+                                    ) : (
+                                        <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)]">
+                                            <Gamepad2
+                                                className={
+                                                    isPs5
+                                                        ? "text-sky-300"
+                                                        : "text-emerald-300"
+                                                }
+                                                size={42}
+                                            />
+                                        </span>
+                                    )}
+
+                                    <span className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+
+                                    <span
+                                        className={`pointer-events-none absolute right-2.5 top-2.5 z-20 rounded-full px-2 py-1 text-[8px] font-black backdrop-blur-md ${
+                                            item.status === "coming"
+                                                ? "bg-amber-400/15 text-amber-200"
+                                                : "bg-white/12 text-white/80"
+                                        }`}
+                                    >
+                                        {item.status === "coming"
+                                            ? "COMING SOON"
+                                            : "NEW"}
+                                    </span>
+
+                                    {store.price && (
+                                        <span className="pointer-events-none absolute left-2.5 top-2.5 z-20 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white backdrop-blur-md">
+                                            {store.price}
+                                        </span>
+                                    )}
+
+                                    <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 text-white">
+                                        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                                            <span
+                                                className={`rounded-full px-2 py-1 text-[8px] font-black ${
+                                                    isPs5
+                                                        ? "bg-sky-400/15 text-sky-200"
+                                                        : "bg-emerald-400/15 text-emerald-200"
+                                                }`}
+                                            >
+                                                {isPs5 ? "PS5" : "Xbox Series X|S"}
+                                            </span>
+                                            {alsoAvailable && (
+                                                <span className="rounded-full bg-white/10 px-2 py-1 text-[8px] font-bold text-white/65 backdrop-blur-md">
+                                                    هر دو Store
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <strong
+                                            className={`block line-clamp-2 font-black leading-6 ${
+                                                index === 0
+                                                    ? "text-lg sm:text-xl"
+                                                    : "text-sm"
+                                            }`}
+                                        >
+                                            {item.title}
+                                        </strong>
+
+                                        <span className="mt-1.5 flex items-center gap-1 text-[9px] text-white/55">
+                                            <CalendarDays size={11} />
+                                            {dateLabel(item.release_date)}
+                                        </span>
+
+                                        <div className="mt-2 min-h-7" />
+                                    </div>
+
+                                    {item.playnexus_url && (
+                                        <Link
+                                            className="absolute bottom-2.5 right-2.5 z-30 inline-flex items-center rounded-lg bg-white/90 px-2.5 py-1.5 text-[9px] font-black text-slate-950 shadow-lg backdrop-blur-md transition hover:scale-[1.03]"
+                                            href={item.playnexus_url}
+                                        >
+                                            صفحه PlayNexus
+                                        </Link>
+                                    )}
+
+                                    {store.url && (
+                                        <a
+                                            aria-label={`باز کردن ${item.title} در ${isPs5 ? "PlayStation Store" : "Xbox Store"}`}
+                                            className={`absolute bottom-2.5 left-2.5 z-30 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[9px] font-black shadow-lg backdrop-blur-md transition hover:scale-[1.03] ${
+                                                isPs5
+                                                    ? "bg-sky-400 text-slate-950"
+                                                    : "bg-emerald-400 text-slate-950"
+                                            }`}
+                                            href={store.url}
+                                            rel="noreferrer"
+                                            target="_blank"
+                                        >
+                                            {isPs5 ? "PS Store" : "Xbox Store"}
+                                            <ExternalLink size={10} />
+                                        </a>
+                                    )}
+                                </article>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {Array.from({ length: 4 }).map((_, index) => (
+                            <div
+                                className="aspect-[16/11] animate-pulse rounded-[19px] border border-white/10 bg-white/[0.035]"
+                                key={index}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <section className="mx-auto max-w-7xl px-4 pb-5 pt-2">
+            <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_-58px_rgba(79,70,229,.8)] sm:p-5">
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-indigo-500/20 blur-3xl"
+                />
+                <header className="relative mb-4 flex items-center gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white/10 text-indigo-300">
+                        <Radar size={20} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                            <h2 className="truncate text-base font-black sm:text-lg">
+                                NEXUS GAME RADAR
+                            </h2>
+                            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black text-white/60">
+                                CACHED
+                            </span>
+                        </div>
+                        <p className="mt-0.5 text-[10px] text-white/50 sm:text-xs">
+                            داده‌ها هر ۶ ساعت روی سرور بروزرسانی می‌شوند
+                        </p>
+                    </div>
+                    <Link
+                        className="shrink-0 rounded-full bg-white px-3 py-2 text-[10px] font-black text-slate-950 transition hover:scale-[1.02] sm:px-4 sm:text-xs"
+                        href="/game-radar"
+                    >
+                        مشاهده همه
+                    </Link>
+                </header>
+
+                <div className="relative space-y-4">
+                    {shelf(psItems, "ps5")}
+                    {shelf(xboxItems, "xbox")}
+                </div>
+            </div>
+        </section>
+    );
+}
+
 function RailButtons({
     onPrevious,
     onNext,
@@ -940,6 +1231,7 @@ export default function Home({
     channels,
     latestFeed,
     latestStudios,
+    gameRadar,
 }: Props) {
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
@@ -1098,6 +1390,7 @@ export default function Home({
                         <LatestStudioRail items={latestStudios} />
                     </section>
                 )}
+                <GameRadarRail items={gameRadar} />
                 <section className="home-slider mx-auto flex max-w-7xl snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],
@@ -1126,63 +1419,174 @@ export default function Home({
                 {settings.featured_categories_enabled &&
                     categories.length > 0 && (
                         <section
-                            className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10"
+                            className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10 sm:py-12"
                             id="categories"
                         >
-                            <div className="mb-6 flex items-end justify-between gap-4">
-                                <div className="min-w-0">
-                                    <p className="text-sm font-bold text-indigo-400">
-                                        انتخاب سریع
-                                    </p>
-                                    <h2 className="mt-2 text-2xl font-black md:text-3xl">
-                                        {settings.featured_categories_title}
-                                    </h2>
-                                </div>
-                                {categories.length > 1 && (
-                                    <RailButtons
-                                        onNext={() =>
-                                            categoryRailRef.current?.scrollBy({
-                                                left: -220,
-                                                behavior: "smooth",
-                                            })
-                                        }
-                                        onPrevious={() =>
-                                            categoryRailRef.current?.scrollBy({
-                                                left: 220,
-                                                behavior: "smooth",
-                                            })
-                                        }
-                                        prefix="دسته‌بندی"
-                                    />
-                                )}
-                            </div>
-                            <div
-                                className="home-slider flex max-w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                                ref={categoryRailRef}
-                            >
-                                {categories.map((category) => (
-                                    <Link
-                                        className="w-[calc((100%_-_1rem)/2)] shrink-0 snap-start rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-center transition hover:border-indigo-500 hover:bg-indigo-500/10 sm:w-[180px]"
-                                        href={`/categories/${category.slug}`}
-                                        key={category.id}
-                                    >
-                                        <div className="mx-auto mb-3 grid aspect-square place-items-center rounded-xl bg-slate-950">
-                                            <Gamepad2
-                                                className="text-indigo-400"
-                                                size={32}
+                            <div className="relative overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:p-6 lg:p-7">
+                                <span
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-indigo-500/10 blur-3xl"
+                                />
+                                <span
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute -bottom-32 left-12 size-72 rounded-full bg-fuchsia-500/10 blur-3xl"
+                                />
+
+                                <div className="relative mb-5 flex items-end justify-between gap-4 sm:mb-6">
+                                    <div className="min-w-0">
+                                        <div className="mb-2 flex items-center gap-2">
+                                            <span className="grid size-8 place-items-center rounded-xl bg-indigo-500/10 text-indigo-400">
+                                                <Sparkles size={16} />
+                                            </span>
+                                            <p className="text-[11px] font-black tracking-[.12em] text-indigo-400 sm:text-xs">
+                                                EXPLORE
+                                            </p>
+                                        </div>
+                                        <h2 className="text-2xl font-black leading-tight sm:text-3xl">
+                                            {settings.featured_categories_title}
+                                        </h2>
+                                        <p className="mt-2 max-w-2xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm sm:leading-7">
+                                            از کنسول موردعلاقه‌ات شروع کن و سریع وارد دنیای بازی‌ها و محصولات مرتبط شو.
+                                        </p>
+                                    </div>
+
+                                    {categories.length > 1 && (
+                                        <div className="lg:hidden">
+                                            <RailButtons
+                                                onNext={() =>
+                                                    categoryRailRef.current?.scrollBy({
+                                                        left: -320,
+                                                        behavior: "smooth",
+                                                    })
+                                                }
+                                                onPrevious={() =>
+                                                    categoryRailRef.current?.scrollBy({
+                                                        left: 320,
+                                                        behavior: "smooth",
+                                                    })
+                                                }
+                                                prefix="دسته‌بندی"
                                             />
                                         </div>
-                                        <strong className="text-sm">
-                                            {category.name}
-                                        </strong>
-                                        <p className="mt-1 text-xs text-slate-500">
-                                            {money.format(
-                                                category.products_count,
-                                            )}{" "}
-                                            محصول
-                                        </p>
-                                    </Link>
-                                ))}
+                                    )}
+                                </div>
+
+                                <div
+                                    className="home-slider relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-[repeat(auto-fit,minmax(240px,1fr))] lg:gap-4 lg:overflow-visible lg:px-0"
+                                    ref={categoryRailRef}
+                                >
+                                    {categories.map((category, index) => {
+                                        const fallbackTone = [
+                                            "from-indigo-950 via-violet-900 to-slate-950",
+                                            "from-sky-950 via-cyan-900 to-slate-950",
+                                            "from-fuchsia-950 via-purple-900 to-slate-950",
+                                            "from-emerald-950 via-teal-900 to-slate-950",
+                                        ][index % 4];
+                                        const categoryKey =
+                                            `${category.slug} ${category.name}`.toLowerCase();
+                                        const visualMark =
+                                            categoryKey.includes("playstation") ||
+                                            categoryKey.includes("پلی")
+                                                ? "PLAYSTATION"
+                                                : categoryKey.includes("xbox") ||
+                                                    categoryKey.includes("ایکس")
+                                                  ? "XBOX"
+                                                  : categoryKey.includes("pc")
+                                                    ? "PC GAMING"
+                                                    : "PLAY NEXUS";
+
+                                        return (
+                                            <Link
+                                                aria-label={`مشاهده دسته‌بندی ${category.name}`}
+                                                className="group relative aspect-[4/5] w-[78vw] max-w-[360px] shrink-0 snap-center overflow-hidden rounded-[24px] bg-slate-950 shadow-lg ring-1 ring-black/5 transition duration-300 active:scale-[.985] sm:aspect-[16/10] sm:w-[430px] sm:max-w-none lg:aspect-[16/11] lg:w-auto lg:snap-none lg:hover:-translate-y-1 lg:hover:shadow-2xl lg:hover:shadow-indigo-500/10"
+                                                href={`/categories/${category.slug}`}
+                                                key={category.id}
+                                            >
+                                                {category.image_url ? (
+                                                    <img
+                                                        alt={category.name}
+                                                        className="absolute inset-0 size-full object-cover transition duration-700 ease-out group-hover:scale-[1.045]"
+                                                        decoding="async"
+                                                        loading="lazy"
+                                                        src={category.image_url}
+                                                    />
+                                                ) : (
+                                                    <span
+                                                        className={`absolute inset-0 overflow-hidden bg-gradient-to-br ${fallbackTone}`}
+                                                    >
+                                                        <span className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:34px_34px]" />
+                                                        <span className="absolute -left-12 -top-16 size-52 rounded-full bg-cyan-400/20 blur-3xl transition duration-700 group-hover:scale-125" />
+                                                        <span className="absolute -bottom-20 -right-16 size-64 rounded-full bg-fuchsia-500/25 blur-3xl transition duration-700 group-hover:scale-125" />
+                                                        <span className="absolute left-5 top-5 flex items-center gap-2 text-[9px] font-black tracking-[.22em] text-white/50 sm:left-6 sm:top-6 sm:text-[10px]">
+                                                            <span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,.9)]" />
+                                                            {visualMark}
+                                                        </span>
+                                                        <span className="absolute -left-3 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-black tracking-[.35em] text-white/15 sm:text-xs">
+                                                            NEXUS GAMING
+                                                        </span>
+                                                        <span className="absolute right-5 top-1/2 -translate-y-1/2 sm:right-8">
+                                                            <span className="relative grid size-28 place-items-center rounded-[30px] border border-white/15 bg-white/10 shadow-[0_24px_80px_rgba(0,0,0,.35)] backdrop-blur-md transition duration-500 group-hover:-translate-y-2 group-hover:rotate-[-3deg] group-hover:scale-105 sm:size-36">
+                                                                <span className="absolute inset-2 rounded-[24px] border border-white/10" />
+                                                                <Gamepad2
+                                                                    className="relative text-white drop-shadow-[0_8px_24px_rgba(255,255,255,.2)]"
+                                                                    size={58}
+                                                                />
+                                                            </span>
+                                                        </span>
+                                                        <strong className="absolute bottom-24 left-5 max-w-[48%] text-3xl font-black leading-none tracking-tight text-white/10 sm:bottom-20 sm:left-7 sm:text-5xl">
+                                                            {visualMark}
+                                                        </strong>
+                                                        <span className="absolute left-5 top-16 h-px w-16 bg-gradient-to-r from-white/40 to-transparent sm:left-6 sm:top-20 sm:w-24" />
+                                                        <span className="absolute bottom-6 right-6 grid grid-cols-3 gap-1 opacity-25">
+                                                            {Array.from({ length: 9 }).map((_, dot) => (
+                                                                <span
+                                                                    className="size-1 rounded-full bg-white"
+                                                                    key={dot}
+                                                                />
+                                                            ))}
+                                                        </span>
+                                                    </span>
+                                                )}
+
+                                                <span className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-black/5" />
+                                                <span className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5">
+                                                    <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-black text-white/75 backdrop-blur-md">
+                                                        <Gamepad2 size={12} />
+                                                        {money.format(
+                                                            category.products_count,
+                                                        )}{" "}
+                                                        محصول
+                                                    </span>
+
+                                                    <span className="flex items-end justify-between gap-3">
+                                                        <span className="min-w-0">
+                                                            <strong className="block truncate text-xl font-black sm:text-2xl">
+                                                                {category.name}
+                                                            </strong>
+                                                            <small className="mt-1 block text-[11px] text-white/65 sm:text-xs">
+                                                                وارد این دنیا شو
+                                                            </small>
+                                                        </span>
+                                                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-slate-950 shadow-lg transition duration-300 group-hover:-translate-x-1 group-hover:scale-105">
+                                                            <ArrowUpLeft size={18} />
+                                                        </span>
+                                                    </span>
+                                                </span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+
+                                {categories.length > 1 && (
+                                    <div className="mt-4 flex justify-center gap-1.5 lg:hidden">
+                                        {categories.slice(0, 6).map((category) => (
+                                            <span
+                                                className="size-1.5 rounded-full bg-[var(--store-muted)]/30"
+                                                key={category.id}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </section>
                     )}

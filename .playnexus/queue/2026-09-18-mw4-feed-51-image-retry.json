@@ -1,0 +1,14 @@
+{
+  "job_id": "20260918-mw4-feed-51-image-retry",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 51,
+    "slot": "media",
+    "source_url": "https://i.ytimg.com/vi/yLFRQaQT0qM/maxresdefault.jpg",
+    "name": "modern-warfare-4-campaign-price.jpg",
+    "mime": "image/jpeg",
+    "alt": "کاپیتان پرایس در تریلر داستانی Call of Duty Modern Warfare 4",
+    "sort_order": 0
+  }
+}

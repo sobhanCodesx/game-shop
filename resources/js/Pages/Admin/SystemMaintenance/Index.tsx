@@ -10,6 +10,7 @@ import {
     Eraser,
     HardDrive,
     Play,
+    Radar,
     RefreshCw,
     RotateCcw,
     ServerCog,
@@ -31,6 +32,7 @@ type MaintenanceAction =
     | "clear-cache"
     | "config-cache"
     | "schedule-run"
+    | "game-radar-sync"
     | "queue-once"
     | "all";
 
@@ -96,10 +98,19 @@ type PushTarget = {
     devices: MobileDevice[];
 };
 
+type GameRadarSettings = {
+    ps5_new_limit: number;
+    ps5_coming_limit: number;
+    xbox_new_limit: number;
+    xbox_coming_limit: number;
+    snapshot_limit: number;
+};
+
 type JsonConsoleResponse = {
     result?: TerminalResult;
     message?: string;
     cron_status?: CronStatus;
+    game_radar_settings?: GameRadarSettings;
     errors?: Record<string, string[]>;
 };
 
@@ -112,6 +123,7 @@ type Props = {
     pushStatus: PushStatus;
     pushTargets: PushTarget[];
     currentAdminId: number;
+    gameRadarSettings: GameRadarSettings;
 };
 
 const csrfToken = (): string =>
@@ -225,6 +237,15 @@ const operations: Array<{
         tone: "border-cyan-500/20 bg-cyan-500/10 text-cyan-300",
     },
     {
+        action: "game-radar-sync",
+        title: "همگام‌سازی Game Radar",
+        command: "php artisan nexus:sync-game-radar",
+        description:
+            "بازی‌های تازه و در راه را از منابع Xbox و PlayStation دوباره می‌خواند و snapshot کش‌شده Home و صفحه Game Radar را بروزرسانی می‌کند.",
+        icon: Radar,
+        tone: "border-indigo-500/20 bg-indigo-500/10 text-indigo-300",
+    },
+    {
         action: "queue-once",
         title: "خالی‌کردن Queue",
         command:
@@ -255,6 +276,7 @@ export default function SystemMaintenance({
     pushStatus,
     pushTargets,
     currentAdminId,
+    gameRadarSettings: initialGameRadarSettings,
 }: Props) {
     const [panel, setPanel] = useState<Panel>("maintenance");
     const [copied, setCopied] = useState<string | null>(null);
@@ -262,6 +284,9 @@ export default function SystemMaintenance({
     const [runningCommand, setRunningCommand] = useState<string | null>(null);
     const [runningKey, setRunningKey] = useState<string | null>(null);
     const [cronStatus, setCronStatus] = useState(initialCronStatus);
+    const [gameRadarSettings, setGameRadarSettings] =
+        useState<GameRadarSettings>(initialGameRadarSettings);
+    const [savingRadarSettings, setSavingRadarSettings] = useState(false);
 
     const initialTarget =
         pushTargets.find((target) => target.id === currentAdminId) ??
@@ -354,6 +379,44 @@ export default function SystemMaintenance({
 
         if (data?.cron_status) {
             setCronStatus(data.cron_status);
+        }
+    };
+
+    const saveGameRadarSettings = async (): Promise<void> => {
+        setSavingRadarSettings(true);
+
+        try {
+            const data = await postConsole(
+                "/admin/system-maintenance/game-radar-settings",
+                gameRadarSettings,
+            );
+
+            if (data.game_radar_settings) {
+                setGameRadarSettings(data.game_radar_settings);
+            }
+
+            const now = new Date().toISOString();
+            setResult({
+                action: "game-radar:settings",
+                successful: true,
+                started_at: now,
+                finished_at: now,
+                duration_ms: 0,
+                commands: [
+                    {
+                        command: "Save Game Radar sync limits",
+                        exit_code: 0,
+                        successful: true,
+                        output:
+                            data.message ??
+                            "تنظیمات Game Radar با موفقیت ذخیره شد.",
+                    },
+                ],
+            });
+        } catch (error) {
+            setResult(clientErrorResult("Save Game Radar sync limits", error));
+        } finally {
+            setSavingRadarSettings(false);
         }
     };
 
@@ -506,6 +569,10 @@ export default function SystemMaintenance({
                         <MaintenancePanel
                             busy={busy}
                             runningKey={runningKey}
+                            gameRadarSettings={gameRadarSettings}
+                            savingRadarSettings={savingRadarSettings}
+                            onGameRadarSettingsChange={setGameRadarSettings}
+                            onSaveGameRadarSettings={saveGameRadarSettings}
                             onRun={runMaintenance}
                         />
                     )}
@@ -563,14 +630,107 @@ export default function SystemMaintenance({
 function MaintenancePanel({
     busy,
     runningKey,
+    gameRadarSettings,
+    savingRadarSettings,
+    onGameRadarSettingsChange,
+    onSaveGameRadarSettings,
     onRun,
 }: {
     busy: boolean;
     runningKey: string | null;
+    gameRadarSettings: GameRadarSettings;
+    savingRadarSettings: boolean;
+    onGameRadarSettingsChange: (settings: GameRadarSettings) => void;
+    onSaveGameRadarSettings: () => Promise<void>;
     onRun: (action: MaintenanceAction, warning?: boolean) => Promise<void>;
 }) {
+    const updateRadarField = (
+        field: keyof GameRadarSettings,
+        value: string,
+    ) => {
+        const parsed = Number.parseInt(value || "0", 10);
+        onGameRadarSettingsChange({
+            ...gameRadarSettings,
+            [field]: Number.isFinite(parsed) ? parsed : 0,
+        });
+    };
+
     return (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-3">
+            <Card className="border border-indigo-500/20 bg-[linear-gradient(135deg,rgba(79,70,229,.12),rgba(15,23,42,.72))]">
+                <Card.Content className="p-5">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="grid size-10 place-items-center rounded-xl border border-indigo-400/20 bg-indigo-500/10 text-indigo-300">
+                                    <Radar size={18} />
+                                </span>
+                                <div>
+                                    <h2 className="font-black text-slate-100">
+                                        تنظیم تعداد Sync در Game Radar
+                                    </h2>
+                                    <p className="mt-1 text-[11px] leading-5 text-slate-400">
+                                        Scheduler هر ۶ ساعت فقط همین تعداد را از Storeها می‌گیرد. بازدیدکننده هیچ API خارجی صدا نمی‌زند.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <Chip color="primary" size="sm" variant="soft">
+                            پیش‌فرض فعلی: PS5 24+16 · Xbox 24+24 · Snapshot 64
+                        </Chip>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                        {[
+                            ["ps5_new_limit", "PS5 تازه‌ها", 1, 60],
+                            ["ps5_coming_limit", "PS5 به‌زودی", 1, 60],
+                            ["xbox_new_limit", "Xbox تازه‌ها", 1, 60],
+                            ["xbox_coming_limit", "Xbox به‌زودی", 1, 60],
+                            ["snapshot_limit", "سقف Snapshot", 8, 160],
+                        ].map(([field, label, min, max]) => (
+                            <label
+                                className="rounded-xl border border-slate-800 bg-slate-950/45 p-3"
+                                key={String(field)}
+                            >
+                                <span className="mb-2 block text-[11px] font-bold text-slate-300">
+                                    {String(label)}
+                                </span>
+                                <input
+                                    className="h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm font-black text-white outline-none transition focus:border-indigo-500"
+                                    max={Number(max)}
+                                    min={Number(min)}
+                                    onChange={(event) =>
+                                        updateRadarField(
+                                            field as keyof GameRadarSettings,
+                                            event.target.value,
+                                        )
+                                    }
+                                    type="number"
+                                    value={gameRadarSettings[field as keyof GameRadarSettings]}
+                                />
+                            </label>
+                        ))}
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-[10px] leading-5 text-slate-500">
+                            ذخیره تنظیمات Sync را همان لحظه اجرا نمی‌کند؛ برای تست فوری از کارت «همگام‌سازی Game Radar» پایین استفاده کن.
+                        </p>
+                        <Button
+                            className="sm:min-w-36"
+                            isDisabled={busy || savingRadarSettings}
+                            isPending={savingRadarSettings}
+                            onPress={() => void onSaveGameRadarSettings()}
+                            variant="primary"
+                        >
+                            <Settings2 size={16} />
+                            ذخیره تنظیمات
+                        </Button>
+                    </div>
+                </Card.Content>
+            </Card>
+
+            <div className="grid gap-3 md:grid-cols-2">
             {operations.map((operation) => {
                 const Icon = operation.icon;
                 const active =
@@ -629,6 +789,7 @@ function MaintenancePanel({
                     </Card>
                 );
             })}
+            </div>
         </div>
     );
 }

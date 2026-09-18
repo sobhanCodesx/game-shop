@@ -6,6 +6,7 @@ use App\Models\Game;
 use App\Models\SocialContent;
 use App\Models\VideoPlaylist;
 use App\Services\FeedService;
+use App\Services\GameRadarService;
 use App\Services\MediaStorage;
 use App\Services\StorefrontDataService;
 use App\Support\RichText;
@@ -17,7 +18,7 @@ use Inertia\Response;
 
 class ChannelController extends Controller
 {
-    public function show(Request $request, Game $game, StorefrontDataService $data, FeedService $feed): Response
+    public function show(Request $request, Game $game, StorefrontDataService $data, FeedService $feed, GameRadarService $radar): Response
     {
         $this->ensureVisible($game);
 
@@ -30,6 +31,7 @@ class ChannelController extends Controller
             ->withCount(['videos' => fn ($query) => $query->published()->where('type', 'video')])
             ->orderBy('sort_order')->get()->map(fn (VideoPlaylist $playlist) => $this->playlistData($game, $playlist));
         $channel = $this->channelData($request, $game);
+        $storeInfo = $radar->storeDataForGame($game);
         $canonical = route('channels.show', $game->slug);
         $description = Str::limit(
             RichText::plainText($game->description) ?: "ویدیوها، کالکشن‌ها و تازه‌ترین محتوای {$game->name} در PlayNexus.",
@@ -59,15 +61,27 @@ class ChannelController extends Controller
                             'image' => $image,
                             'mainEntityOfPage' => $canonical,
                             ...($channel['platforms'] ? ['gamePlatform' => $channel['platforms']] : []),
+                            ...($game->release_date ? ['datePublished' => $game->release_date->toDateString()] : []),
                             ...($game->developer ? ['author' => ['@type' => 'Organization', 'name' => $game->developer]] : []),
                             ...($game->publisher ? ['publisher' => ['@type' => 'Organization', 'name' => $game->publisher]] : []),
+                            ...(collect([
+                                data_get($storeInfo, 'psn.url'),
+                                data_get($storeInfo, 'xbox.url'),
+                            ])->filter()->isNotEmpty()
+                                ? ['sameAs' => collect([
+                                    data_get($storeInfo, 'psn.url'),
+                                    data_get($storeInfo, 'xbox.url'),
+                                ])->filter()->values()->all()]
+                                : []),
                         ],
                         [
                             '@type' => 'BreadcrumbList',
                             '@id' => $canonical.'#breadcrumb',
                             'itemListElement' => [
                                 ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => route('home')],
-                                ['@type' => 'ListItem', 'position' => 2, 'name' => 'ویدیوها', 'item' => route('videos.index')],
+                                $storeInfo
+                                    ? ['@type' => 'ListItem', 'position' => 2, 'name' => 'رادار بازی‌ها', 'item' => route('game-radar.index')]
+                                    : ['@type' => 'ListItem', 'position' => 2, 'name' => 'ویدیوها', 'item' => route('videos.index')],
                                 ['@type' => 'ListItem', 'position' => 3, 'name' => $game->name, 'item' => $canonical],
                             ],
                         ],
@@ -78,6 +92,7 @@ class ChannelController extends Controller
             'videos' => $videos,
             'playlists' => $playlists,
             'feed' => $feed->channel($request, $game),
+            'storeInfo' => $storeInfo,
         ]);
     }
 
@@ -133,7 +148,8 @@ class ChannelController extends Controller
         $logo = $game->cover ?: $game->playlists()->publiclyVisible()->whereNotNull('logo')->value('logo');
 
         return [
-            ...$game->only(['id', 'name', 'slug', 'developer', 'publisher']),
+            ...$game->only(['id', 'name', 'slug', 'developer', 'publisher', 'age_rating']),
+            'release_date' => $game->release_date?->toDateString(),
             'description' => RichText::plainText($game->description),
             'description_html' => RichText::sanitize($game->description),
             'cover_url' => MediaStorage::url($logo),

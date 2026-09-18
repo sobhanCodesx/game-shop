@@ -15,6 +15,11 @@ final class SystemMaintenanceService
             'clear-cache' => [['optimize:clear', [], 'php artisan optimize:clear']],
             'config-cache' => [['config:cache', [], 'php artisan config:cache']],
             'schedule-run' => [['schedule:run', [], 'php artisan schedule:run']],
+            'game-radar-sync' => [[
+                'nexus:sync-game-radar',
+                [],
+                'php artisan nexus:sync-game-radar',
+            ]],
             'queue-once' => [[
                 'queue:work',
                 ['--stop-when-empty' => true, '--tries' => 3, '--timeout' => 60],

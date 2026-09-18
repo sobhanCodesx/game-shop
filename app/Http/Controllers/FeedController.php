@@ -7,6 +7,7 @@ use App\Models\Game;
 use App\Models\Product;
 use App\Models\SocialComment;
 use App\Models\SocialContent;
+use App\Services\ContentViewService;
 use App\Services\FeedService;
 use App\Services\MediaStorage;
 use App\Services\StorefrontDataService;
@@ -123,7 +124,7 @@ class FeedController extends Controller
         ]);
     }
 
-    public function show(Request $request, SocialContent $content, FeedService $feed, StorefrontDataService $storefront): RedirectResponse|Response
+    public function show(Request $request, SocialContent $content, FeedService $feed, StorefrontDataService $storefront, ContentViewService $views): RedirectResponse|Response
     {
         $this->ensureVisible($content);
 
@@ -134,6 +135,7 @@ class FeedController extends Controller
             ], 301);
         }
 
+        $views->record($request, $content);
         $item = $feed->single($content, $request->user());
         $canonical = route('posts.show', $content->slug);
         $description = Str::limit((string) ($item['body'] ?: $content->title), 160, '…');

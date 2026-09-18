@@ -1,6 +1,15 @@
 import { Avatar, Button } from "@heroui/react";
 import { Link, router, usePage } from "@inertiajs/react";
-import { Gamepad2, ListVideo, Play, Radio, Users } from "lucide-react";
+import {
+    CalendarDays,
+    ExternalLink,
+    Gamepad2,
+    ListVideo,
+    Play,
+    Radio,
+    Store,
+    Users,
+} from "lucide-react";
 
 import FeedItem from "../../Components/Storefront/Feed/FeedItem";
 import Seo, { type SeoData } from "../../Components/Seo";
@@ -23,6 +32,8 @@ interface Channel {
     description_html: string | null;
     developer: string | null;
     publisher: string | null;
+    age_rating: string | null;
+    release_date: string | null;
     cover_url: string | null;
     background_url: string | null;
     platforms: string[];
@@ -30,6 +41,26 @@ interface Channel {
     videos_count: number;
     is_subscribed: boolean;
     studio: { name: string; url: string; logo_url: string | null } | null;
+}
+
+interface StorePresence {
+    available: boolean;
+    price: string | null;
+    currency?: string | null;
+    platforms: string[];
+    url: string | null;
+    image_url?: string | null;
+}
+
+interface StoreInfo {
+    title: string;
+    release_date: string | null;
+    status: "new" | "coming";
+    developer: string | null;
+    publisher: string | null;
+    xbox: StorePresence;
+    psn: StorePresence;
+    playnexus_url: string | null;
 }
 
 interface Playlist {
@@ -47,12 +78,14 @@ export default function ChannelShow({
     videos,
     playlists,
     feed,
+    storeInfo,
 }: {
     seo: SeoData;
     channel: Channel;
     videos: Paginated<StorefrontContent>;
     playlists: Playlist[];
     feed: FeedItemData[];
+    storeInfo: StoreInfo | null;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
     const subscribe = () => {
@@ -70,7 +103,12 @@ export default function ChannelShow({
         <StorefrontLayout>
             <Seo seo={seo} />
             <main className="w-full max-w-full overflow-x-clip pb-16">
-                <nav aria-label="مسیر صفحه" className="mx-auto flex w-full max-w-7xl items-center gap-2 px-3 pt-3 text-xs text-[var(--store-muted)] sm:px-5"><Link className="hover:text-indigo-400" href="/">خانه</Link><span aria-hidden="true">/</span><Link className="hover:text-indigo-400" href="/videos">ویدیوها</Link><span aria-hidden="true">/</span><span aria-current="page" className="truncate">{channel.name}</span></nav>
+                <nav aria-label="مسیر صفحه" className="mx-auto flex w-full max-w-7xl items-center gap-2 px-3 pt-3 text-xs text-[var(--store-muted)] sm:px-5"><Link className="hover:text-indigo-400" href="/">خانه</Link><span aria-hidden="true">/</span><Link
+                    className="hover:text-indigo-400"
+                    href={storeInfo ? "/game-radar" : "/videos"}
+                >
+                    {storeInfo ? "رادار بازی‌ها" : "ویدیوها"}
+                </Link><span aria-hidden="true">/</span><span aria-current="page" className="truncate">{channel.name}</span></nav>
                 <div className="mx-auto w-full max-w-7xl px-3 pt-3 sm:px-5 sm:pt-5">
                     <div className="relative h-36 overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_20%_0%,#4f46e5,#171338_45%,#080c14)] sm:h-52 sm:rounded-3xl lg:h-64">
                         {channel.background_url && (
@@ -138,7 +176,129 @@ export default function ChannelShow({
                             {channel.is_subscribed ? "مشترک هستید" : "عضویت"}
                         </Button>
                     </section>
+                    {storeInfo && (
+                        <section
+                            className="mt-5 scroll-mt-24 overflow-hidden rounded-3xl border border-[var(--store-border)] bg-[var(--store-panel)] p-4 sm:p-5"
+                            id="stores"
+                        >
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="grid size-9 place-items-center rounded-xl bg-indigo-500/10 text-indigo-400">
+                                            <Store size={18} />
+                                        </span>
+                                        <div>
+                                            <h2 className="font-black">
+                                                اطلاعات انتشار و فروشگاه‌ها
+                                            </h2>
+                                            <p className="mt-0.5 text-[11px] text-[var(--store-muted)]">
+                                                اطلاعات کش‌شده Game Radar؛ بدون درخواست مستقیم به Store هنگام بازدید
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
+                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--store-surface-strong)] px-3 py-1.5 text-[var(--store-muted)]">
+                                            <CalendarDays size={13} />
+                                            {channel.release_date ??
+                                                storeInfo.release_date ??
+                                                "تاریخ انتشار نامشخص"}
+                                        </span>
+                                        {channel.age_rating && (
+                                            <span className="rounded-full bg-[var(--store-surface-strong)] px-3 py-1.5 text-[var(--store-muted)]">
+                                                رده سنی {channel.age_rating}
+                                            </span>
+                                        )}
+                                        {channel.platforms.map((platform) => (
+                                            <span
+                                                className="rounded-full bg-indigo-500/10 px-3 py-1.5 font-bold text-indigo-400"
+                                                key={platform}
+                                            >
+                                                {platform}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[430px]">
+                                    {storeInfo.psn.available && (
+                                        <a
+                                            className="group flex items-center justify-between gap-3 rounded-2xl border border-sky-400/15 bg-sky-400/[0.07] p-3 transition hover:border-sky-400/30 hover:bg-sky-400/10"
+                                            href={storeInfo.psn.url ?? undefined}
+                                            rel="noreferrer"
+                                            target="_blank"
+                                        >
+                                            <span>
+                                                <strong className="block text-sm text-sky-400">
+                                                    PlayStation Store
+                                                </strong>
+                                                <small className="mt-1 block text-[10px] text-[var(--store-muted)]">
+                                                    {storeInfo.psn.platforms.join("، ") || "PS5"}
+                                                </small>
+                                            </span>
+                                            <span className="flex items-center gap-2">
+                                                {storeInfo.psn.price && (
+                                                    <b className="text-xs">
+                                                        {storeInfo.psn.price}
+                                                    </b>
+                                                )}
+                                                <ExternalLink
+                                                    className="text-sky-400"
+                                                    size={15}
+                                                />
+                                            </span>
+                                        </a>
+                                    )}
+
+                                    {storeInfo.xbox.available && (
+                                        <a
+                                            className="group flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.07] p-3 transition hover:border-emerald-400/30 hover:bg-emerald-400/10"
+                                            href={storeInfo.xbox.url ?? undefined}
+                                            rel="noreferrer"
+                                            target="_blank"
+                                        >
+                                            <span>
+                                                <strong className="block text-sm text-emerald-400">
+                                                    Xbox Store
+                                                </strong>
+                                                <small className="mt-1 block text-[10px] text-[var(--store-muted)]">
+                                                    {storeInfo.xbox.platforms.join("، ") || "Xbox Series X|S"}
+                                                </small>
+                                            </span>
+                                            <span className="flex items-center gap-2">
+                                                {storeInfo.xbox.price && (
+                                                    <b className="text-xs">
+                                                        {storeInfo.xbox.price}
+                                                    </b>
+                                                )}
+                                                <ExternalLink
+                                                    className="text-emerald-400"
+                                                    size={15}
+                                                />
+                                            </span>
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+
+                            <Link
+                                className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-black text-indigo-400 transition hover:text-indigo-300"
+                                href="/game-radar"
+                            >
+                                مشاهده بازی‌های جدید در Game Radar
+                            </Link>
+                        </section>
+                    )}
+
                     <nav className="mt-4 flex max-w-full gap-6 overflow-x-auto border-b border-[var(--store-border)] px-2 text-sm font-bold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-6 sm:gap-8">
+                        {storeInfo && (
+                            <a
+                                className="shrink-0 py-4 text-[var(--store-muted)] transition hover:text-[var(--store-text)]"
+                                href="#stores"
+                            >
+                                فروشگاه‌ها
+                            </a>
+                        )}
                         {feed.length > 0 && (
                             <a className="shrink-0 border-b-2 border-indigo-500 py-4" href="#feed">فید کانال</a>
                         )}

@@ -1,0 +1,13 @@
+{
+  "job_id": "20260918-ac-shadows-game-9-background-retry",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game",
+    "id": 9,
+    "slot": "background",
+    "source_url": "https://staticctf.ubisoft.com/J3yJr34U2pZ2Ieem48Dwy9uqj5PNUQTn/6Kko4QVNPheYQebIQEgLHJ/788493bc0a205a53a959b93944572675/960x540_ACSH_KeyartCast_Previews__Jan16_Horizontal__1_.jpg",
+    "name": "assassins-creed-shadows-key-art-background.jpg",
+    "alt": "Assassin’s Creed Shadows؛ تصویر کلیدی رسمی Naoe و Yasuke در ژاپن فئودال",
+    "sort_order": 0
+  }
+}

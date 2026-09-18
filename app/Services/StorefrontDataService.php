@@ -154,7 +154,11 @@ class StorefrontDataService
             'thumbnail_url' => MediaStorage::url($thumbnail),
             'video_url' => MediaStorage::url($video),
             'duration' => $content->duration,
-            'views' => $content->views,
+            'views' => (int) $content->views,
+            'likes_count' => (int) ($content->likes_count ?? 0),
+            'comments_count' => (int) ($content->comments_count ?? 0),
+            'is_liked' => (int) ($content->viewer_like_count ?? 0) > 0,
+            'allow_comments' => (bool) $content->allow_comments,
             'published_at' => $content->published_at?->toISOString(),
             'channel' => $content->relationLoaded('game') && $content->game ? [
                 'id' => $content->game->id,
