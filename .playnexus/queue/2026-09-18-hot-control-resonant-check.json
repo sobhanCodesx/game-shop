@@ -1,9 +1,0 @@
-{
-  "job_id": "hot-control-resonant-check-20260918",
-  "tool": "select_content",
-  "arguments": {
-    "resource": "feed",
-    "search": "Control Resonant",
-    "limit": 20
-  }
-}
