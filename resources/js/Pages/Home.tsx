@@ -120,6 +120,8 @@ interface GameRadarItem {
     publisher: string | null;
     xbox: RadarStorePresence;
     psn: RadarStorePresence;
+    playnexus_game_id?: number | null;
+    playnexus_url?: string | null;
 }
 
 interface FreshItem {
@@ -1014,7 +1016,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                                     <Link
                                         aria-label={`مشاهده ${item.title} در Game Radar`}
                                         className="absolute inset-0 z-10"
-                                        href="/game-radar"
+                                        href={item.playnexus_url ?? "/game-radar"}
                                     />
 
                                     {item.banner_url || item.cover_url ? (
@@ -1097,6 +1099,15 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
 
                                         <div className="mt-2 min-h-7" />
                                     </div>
+
+                                    {item.playnexus_url && (
+                                        <Link
+                                            className="absolute bottom-2.5 right-2.5 z-30 inline-flex items-center rounded-lg bg-white/90 px-2.5 py-1.5 text-[9px] font-black text-slate-950 shadow-lg backdrop-blur-md transition hover:scale-[1.03]"
+                                            href={item.playnexus_url}
+                                        >
+                                            صفحه PlayNexus
+                                        </Link>
+                                    )}
 
                                     {store.url && (
                                         <a
