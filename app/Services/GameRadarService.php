@@ -121,6 +121,10 @@ class GameRadarService
                 ->values()
                 ->all();
 
+            if ($items === []) {
+                throw new \RuntimeException('Game Radar sources returned no Xbox titles.');
+            }
+
             $items = $this->enrichWithPlayStation($items);
 
             $snapshot = [
@@ -137,7 +141,9 @@ class GameRadarService
 
             return $snapshot;
         } catch (Throwable $exception) {
-            report($exception);
+            Log::warning('Game Radar refresh failed', [
+                'message' => $exception->getMessage(),
+            ]);
 
             $stale = $this->readStoredSnapshot();
             if ($stale !== null) {
@@ -165,9 +171,11 @@ class GameRadarService
     {
         $siglIds = match ($status) {
             'new' => [
-                // Xbox Cloud / Game Pass "Recently added".
+                // Current Xbox Cloud "Recently added" collection.
+                '44a55037-770f-4bbf-bde5-a9fa27dba1da',
+                // Public Xbox Cloud / Game Pass "Recently added" fallback.
                 'f13cf6b4-57e6-4459-89df-6aec18cf0538',
-                // Additional currently-used Recently Added collection.
+                // Additional Game Pass Recently Added fallback.
                 '3fdd7f57-7092-4b65-bd40-5a9dac1b2b84',
             ],
             'coming' => [
