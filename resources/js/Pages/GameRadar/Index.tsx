@@ -166,10 +166,11 @@ function GameCard({
     platform: "ps5" | "xbox";
 }) {
     const isPs5 = platform === "ps5";
+    const store = isPs5 ? item.psn : item.xbox;
+    const alsoAvailable = isPs5 ? item.xbox.available : item.psn.available;
 
     return (
-        <button
-            aria-label={`نمایش ${item.title}`}
+        <article
             className={`group relative aspect-[3/4] w-[46vw] max-w-[220px] shrink-0 snap-start overflow-hidden rounded-[22px] border bg-slate-900 text-right shadow-lg transition duration-300 sm:w-[210px] lg:w-[220px] ${
                 active
                     ? isPs5
@@ -177,9 +178,14 @@ function GameCard({
                         : "border-emerald-300/70 ring-2 ring-emerald-400/15"
                     : "border-white/10 hover:-translate-y-1 hover:border-white/35"
             }`}
-            onClick={onSelect}
-            type="button"
         >
+            <button
+                aria-label={`نمایش جزئیات ${item.title}`}
+                className="absolute inset-0 z-10"
+                onClick={onSelect}
+                type="button"
+            />
+
             {item.cover_url || item.banner_url ? (
                 <img
                     alt={item.title}
@@ -197,9 +203,10 @@ function GameCard({
                 </span>
             )}
 
-            <span className="absolute inset-0 bg-gradient-to-t from-black via-black/5 to-transparent" />
+            <span className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+
             <span
-                className={`absolute right-2.5 top-2.5 rounded-full border px-2 py-1 text-[8px] font-black backdrop-blur-md ${
+                className={`pointer-events-none absolute right-2.5 top-2.5 z-20 rounded-full border px-2 py-1 text-[8px] font-black backdrop-blur-md ${
                     item.status === "coming"
                         ? "border-amber-300/25 bg-amber-400/15 text-amber-200"
                         : isPs5
@@ -210,16 +217,65 @@ function GameCard({
                 {item.status === "coming" ? "COMING SOON" : "NEW"}
             </span>
 
-            <span className="absolute inset-x-3 bottom-3 text-white">
+            {store.price && (
+                <span className="pointer-events-none absolute left-2.5 top-2.5 z-20 rounded-full border border-white/15 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white backdrop-blur-md">
+                    {store.price}
+                </span>
+            )}
+
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 text-white">
+                <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                    <span
+                        className={`rounded-full px-2 py-1 text-[8px] font-black ${
+                            isPs5
+                                ? "bg-sky-400/15 text-sky-200"
+                                : "bg-emerald-400/15 text-emerald-200"
+                        }`}
+                    >
+                        {isPs5 ? "PS5" : "Xbox Series X|S"}
+                    </span>
+                    {alsoAvailable && (
+                        <span className="rounded-full bg-white/10 px-2 py-1 text-[8px] font-bold text-white/65 backdrop-blur-md">
+                            روی هر دو Store
+                        </span>
+                    )}
+                </div>
+
                 <strong className="line-clamp-2 block text-sm font-black leading-5">
                     {item.title}
                 </strong>
-                <span className="mt-1.5 flex items-center gap-1 text-[9px] text-white/60">
+
+                {(item.publisher || item.developer) && (
+                    <span className="mt-1 block truncate text-[9px] font-bold text-white/45">
+                        {item.developer ?? item.publisher}
+                    </span>
+                )}
+
+                <div className="mt-1.5 flex items-center gap-1 text-[9px] text-white/60">
                     <CalendarDays size={10} />
                     {compactDateLabel(item.release_date)}
-                </span>
-            </span>
-        </button>
+                </div>
+
+                <div className="mt-2.5 min-h-7" />
+            </div>
+
+            {store.url && (
+                <a
+                    aria-label={`باز کردن ${item.title} در ${isPs5 ? "PlayStation Store" : "Xbox Store"}`}
+                    className={`absolute bottom-2.5 left-2.5 z-30 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[9px] font-black shadow-lg backdrop-blur-md transition hover:scale-[1.03] ${
+                        isPs5
+                            ? "bg-sky-400 text-slate-950"
+                            : "bg-emerald-400 text-slate-950"
+                    }`}
+                    href={store.url}
+                    rel="noreferrer"
+                    target="_blank"
+                >
+                    {isPs5 ? "PS Store" : "Xbox Store"}
+                    <ExternalLink size={10} />
+                </a>
+            )}
+        </article>
     );
 }
 
@@ -489,6 +545,11 @@ export default function GameRadarIndex({
                                             >
                                                 <Play size={16} fill="currentColor" />
                                                 PlayStation Store
+                                                {hero.psn.price && (
+                                                    <span className="rounded-lg bg-black/10 px-2 py-1 text-[10px]">
+                                                        {hero.psn.price}
+                                                    </span>
+                                                )}
                                                 <ExternalLink size={14} />
                                             </a>
                                         )}
@@ -501,6 +562,11 @@ export default function GameRadarIndex({
                                             >
                                                 <Store size={17} />
                                                 Xbox Store
+                                                {hero.xbox.price && (
+                                                    <span className="rounded-lg bg-black/10 px-2 py-1 text-[10px]">
+                                                        {hero.xbox.price}
+                                                    </span>
+                                                )}
                                                 <ExternalLink size={14} />
                                             </a>
                                         )}
