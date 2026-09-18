@@ -114,7 +114,7 @@ class HomeController extends Controller
             ...$seo,
             'latestFeed' => $feed->latestImportant($request, 8),
             'latestStudios' => $latestStudios,
-            'gameRadar' => collect($radar->snapshot()['items'] ?? [])->take(8)->values(),
+            'gameRadar' => collect($radar->cachedSnapshot()['items'] ?? [])->take(8)->values(),
             'settings' => $settings,
             'slides' => $slides,
             'categories' => Category::query()
