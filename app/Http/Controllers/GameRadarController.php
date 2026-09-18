@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Services\GameRadarService;
 use App\Support\Seo;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -141,22 +140,5 @@ class GameRadarController extends Controller
             ]),
             'radar' => $snapshot,
         ]);
-    }
-
-    public function data(GameRadarService $radar): JsonResponse
-    {
-        $snapshot = $radar->cachedSnapshot();
-
-        if (($snapshot['items'] ?? []) === []) {
-            $radar->scheduleWarmup();
-        }
-
-        return response()
-            ->json([
-                ...$snapshot,
-                'refreshing' => $radar->isRefreshing(),
-            ])
-            ->header('Cache-Control', 'no-store, private')
-            ->header('X-Robots-Tag', 'noindex, nofollow');
     }
 }
