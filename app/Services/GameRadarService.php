@@ -15,7 +15,7 @@ class GameRadarService
     private const CACHE_KEY = 'playnexus:game-radar:v2';
     private const SNAPSHOT_PATH = 'game-radar/snapshot-v2.json';
     private const CACHE_HOURS = 6;
-    private const MAX_ITEMS = 30;
+    private const MAX_ITEMS = 64;
 
     private const PSN_GRAPHQL_URL = 'https://web.np.playstation.com/api/graphql/v1/op';
     private const PSN_CATEGORY_GRID_HASH = '88c0b9a1273c6d320c51cd73e390924e21ae28bf09f01cde8b84b1034b16cd03';
@@ -198,7 +198,7 @@ class GameRadarService
             ->map(fn (array $product) => $this->mapXboxProduct($product, $status))
             ->filter()
             ->sortBy(fn (array $item) => $rank->get($item['id'], PHP_INT_MAX))
-            ->take(16)
+            ->take(24)
             ->values()
             ->all();
     }
@@ -260,20 +260,20 @@ class GameRadarService
             self::PS5_CATEGORY,
             'new',
             'products',
-            18,
+            24,
         );
 
         $coming = $this->fetchPlayStationGrid(
             self::PS5_COMING_SOON_CATEGORY,
             'coming',
             'concepts',
-            10,
+            16,
         );
 
         return collect([...$coming, ...$new])
             ->filter(fn (array $item) => ($item['psn']['available'] ?? false) === true)
             ->unique(fn (array $item) => $this->normalizeTitle((string) $item['title']))
-            ->take(20)
+            ->take(40)
             ->values()
             ->all();
     }
