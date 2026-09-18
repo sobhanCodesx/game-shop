@@ -55,10 +55,14 @@ return [
     'expo_push' => [
         'enabled' => env('EXPO_PUSH_ENABLED', false),
         'url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
-        'token_url' => env('EXPO_PUSH_TOKEN_URL', 'https://exp.host/--/api/v2/push/getExpoPushToken'),
-        'project_id' => env('EXPO_PROJECT_ID', 'c97e2285-4f2e-466e-aac7-b0595a10ded3'),
-        'application_id' => env('EXPO_APPLICATION_ID', 'com.playnexus.app'),
         'access_token' => env('EXPO_ACCESS_TOKEN'),
+        'connect_timeout' => 3,
+        'timeout' => 10,
+    ],
+
+    'firebase_messaging' => [
+        'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'),
+        'project_id' => env('FIREBASE_PROJECT_ID'),
         'connect_timeout' => 3,
         'timeout' => 10,
     ],
