@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Game;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -45,6 +46,74 @@ class GameRadarService
             'generated_at' => null,
             'stale' => false,
             'items' => [],
+        ];
+    }
+
+    /**
+     * Return the cached snapshot enriched with links to existing PlayNexus
+     * game hubs. Matching is intentionally strict and local-only: no external
+     * request is made and no game record is created automatically.
+     *
+     * @return array{generated_at:?string, stale:bool, items:array<int, array<string, mixed>>}
+     */
+    public function linkedSnapshot(): array
+    {
+        $snapshot = $this->cachedSnapshot();
+        $items = collect($snapshot['items'] ?? []);
+
+        if ($items->isEmpty()) {
+            return $snapshot;
+        }
+
+        $games = Game::query()
+            ->whereIn('status', ['active', 'published'])
+            ->get(['id', 'name', 'slug'])
+            ->keyBy(fn (Game $game) => $this->strictTitleKey($game->name));
+
+        $snapshot['items'] = $items
+            ->map(function (array $item) use ($games): array {
+                $key = $this->strictTitleKey((string) ($item['title'] ?? ''));
+                $game = $key !== '' ? $games->get($key) : null;
+
+                return [
+                    ...$item,
+                    'playnexus_game_id' => $game?->id,
+                    'playnexus_url' => $game
+                        ? route('channels.show', $game->slug, false)
+                        : null,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return $snapshot;
+    }
+
+    /**
+     * Return Store metadata for an existing PlayNexus game using the cached
+     * snapshot only. A non-exact title match returns null by design.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function storeDataForGame(Game $game): ?array
+    {
+        $key = $this->strictTitleKey($game->name);
+
+        if ($key === '') {
+            return null;
+        }
+
+        $item = collect($this->cachedSnapshot()['items'] ?? [])
+            ->first(fn (array $item) => $this->strictTitleKey((string) ($item['title'] ?? '')) === $key);
+
+        if (! is_array($item)) {
+            return null;
+        }
+
+        return [
+            ...$item,
+            'playnexus_game_id' => $game->id,
+            'playnexus_url' => route('channels.show', $game->slug, false),
         ];
     }
 
@@ -618,6 +687,19 @@ class GameRadarService
         $amount = number_format((float) $value, 2);
 
         return $currency === 'USD' ? '$'.$amount : "{$amount} {$currency}";
+    }
+
+    /**
+     * Conservative key used only for internal linking. Unlike normalizeTitle
+     * used for cross-store merging, this does not strip edition words.
+     */
+    private function strictTitleKey(string $value): string
+    {
+        $value = Str::lower($value);
+        $value = str_replace(['™', '®', '©'], '', $value);
+        $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
+
+        return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
     }
 
     private function normalizeTitle(string $value): string
