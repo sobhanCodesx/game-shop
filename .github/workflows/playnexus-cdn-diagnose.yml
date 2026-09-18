@@ -1,0 +1,33 @@
+name: PlayNexus CDN Diagnose
+
+on:
+  push:
+    branches:
+      - chatgpt_dev
+    paths:
+      - '.github/workflows/playnexus-cdn-diagnose.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check PlayNexus CDN assets
+        shell: bash
+        run: |
+          set -u
+          urls=(
+            "https://cdnpn.ir/storage/games/covers/36b79703-842f-496f-b7aa-cef657f54f57.webp"
+            "https://cdnpn.ir/storage/games/backgrounds/c3f4f739-7aa8-40ea-9435-c31ede112f0e.webp"
+            "https://playnexus.ir/channels/assassins-creed-black-flag-resynced"
+          )
+          for url in "${urls[@]}"; do
+            echo "===== $url ====="
+            curl -sS -L --max-time 20 -o /tmp/body -D /tmp/headers -w 'HTTP=%{http_code} TYPE=%{content_type} SIZE=%{size_download} IP=%{remote_ip} SSL=%{ssl_verify_result}\n' "$url" || true
+            cat /tmp/headers || true
+            echo "BODY_BYTES=$(wc -c < /tmp/body 2>/dev/null || echo 0)"
+            echo
+          done
