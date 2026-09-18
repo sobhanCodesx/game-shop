@@ -103,7 +103,12 @@ export default function ChannelShow({
         <StorefrontLayout>
             <Seo seo={seo} />
             <main className="w-full max-w-full overflow-x-clip pb-16">
-                <nav aria-label="مسیر صفحه" className="mx-auto flex w-full max-w-7xl items-center gap-2 px-3 pt-3 text-xs text-[var(--store-muted)] sm:px-5"><Link className="hover:text-indigo-400" href="/">خانه</Link><span aria-hidden="true">/</span><Link className="hover:text-indigo-400" href="/videos">ویدیوها</Link><span aria-hidden="true">/</span><span aria-current="page" className="truncate">{channel.name}</span></nav>
+                <nav aria-label="مسیر صفحه" className="mx-auto flex w-full max-w-7xl items-center gap-2 px-3 pt-3 text-xs text-[var(--store-muted)] sm:px-5"><Link className="hover:text-indigo-400" href="/">خانه</Link><span aria-hidden="true">/</span><Link
+                    className="hover:text-indigo-400"
+                    href={storeInfo ? "/game-radar" : "/videos"}
+                >
+                    {storeInfo ? "رادار بازی‌ها" : "ویدیوها"}
+                </Link><span aria-hidden="true">/</span><span aria-current="page" className="truncate">{channel.name}</span></nav>
                 <div className="mx-auto w-full max-w-7xl px-3 pt-3 sm:px-5 sm:pt-5">
                     <div className="relative h-36 overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_20%_0%,#4f46e5,#171338_45%,#080c14)] sm:h-52 sm:rounded-3xl lg:h-64">
                         {channel.background_url && (
