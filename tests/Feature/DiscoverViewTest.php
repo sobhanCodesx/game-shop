@@ -25,7 +25,7 @@ class DiscoverViewTest extends TestCase
             ->assertOk()
             ->assertJson(['views' => 1]);
 
-        $this->post(route('discover.content.view', $content))
+        $this->post(route('discover.views.store', ['content' => $content->slug]))
             ->assertOk()
             ->assertJson(['views' => 1]);
 
