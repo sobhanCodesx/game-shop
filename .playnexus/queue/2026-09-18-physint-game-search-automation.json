@@ -1,0 +1,5 @@
+{
+  "job_id": "20260918-physint-game-search-automation",
+  "tool": "search_games",
+  "arguments": {"query": "PHYSINT", "limit": 10}
+}
