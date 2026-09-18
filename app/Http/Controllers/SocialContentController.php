@@ -38,6 +38,7 @@ class SocialContentController extends Controller
             'game:id,name,slug,cover,background,developer,publisher',
             'game.playlists' => fn ($query) => $query->publiclyVisible()->whereNotNull('logo')->select(['id', 'game_id', 'logo', 'sort_order']),
             'user:id,name,avatar',
+            'media',
         ]);
         $reactionCounts = $content->reactions()->selectRaw('type, COUNT(*) as aggregate')->groupBy('type')->pluck('aggregate', 'type');
         $userReaction = $request->user()
@@ -63,19 +64,24 @@ class SocialContentController extends Controller
         }
 
         $related = SocialContent::query()->published()->where('type', $content->type)->whereKeyNot($content->id)
-            ->with('game:id,name,slug,cover')
+            ->with(['game:id,name,slug,cover', 'media'])
             ->when($content->game_id, fn (Builder $query) => $query->orderByRaw('CASE WHEN game_id = ? THEN 0 ELSE 1 END', [$content->game_id]))
             ->latest('published_at')->limit(12)->get()->map(fn (SocialContent $item) => $data->content($item));
 
         $playlist = $this->playlistContext($request, $content, $data);
         $breadcrumbs = $this->breadcrumbs($content, $type, $playlist);
         $seo = $this->seo($content, $type, $breadcrumbs);
+        $excerpt = RichText::plainText($content->excerpt);
 
-        return Inertia::render('Content/Show', [
+        if (! $excerpt && $content->type === 'short') {
+            $excerpt = $this->shortFallbackDescription($content);
+        }
+
+        return Inertia::render($content->type === 'short' ? 'Content/ShortShow' : 'Content/Show', [
             ...$seo,
             'content' => [
                 ...$data->content($content),
-                'excerpt' => RichText::plainText($content->excerpt),
+                'excerpt' => $excerpt,
                 'body' => RichText::sanitize($content->body),
                 'video_mime' => $content->video_mime,
                 'allow_comments' => $content->allow_comments,
@@ -109,11 +115,20 @@ class SocialContentController extends Controller
         $locale = (string) config('seo.locale', 'fa-IR');
         $canonical = route('content.show', ['type' => $routeType, 'content' => $content->slug]);
         $logo = url((string) config('seo.default_image', '/logo.png'));
-        $thumbnail = MediaStorage::url($content->thumbnail);
+        $primaryVideoMedia = $content->media->first(fn ($media) => $media->type === 'video');
+        $primaryImageMedia = $content->media->first(fn ($media) => $media->type === 'image');
+        $thumbnailPath = $content->thumbnail ?: $primaryVideoMedia?->thumbnail ?: $primaryImageMedia?->path;
+        $videoPath = $content->video_path ?: $primaryVideoMedia?->path;
+        $thumbnail = MediaStorage::url($thumbnailPath);
         $thumbnail = $thumbnail ? url($thumbnail) : null;
-        $videoUrl = MediaStorage::url($content->video_path);
+        $videoUrl = MediaStorage::url($videoPath);
         $videoUrl = $videoUrl ? url($videoUrl) : null;
-        $summary = RichText::plainText($content->seo_description ?: $content->excerpt);
+        $summary = RichText::plainText($content->seo_description ?: $content->excerpt ?: $content->body);
+
+        if (! $summary && $content->type === 'short') {
+            $summary = $this->shortFallbackDescription($content);
+        }
+
         $description = $summary
             ? Str::limit($summary, 160, '…')
             : Str::limit("تماشای {$content->title}، ویدیوها و محتوای تازه دنیای گیمینگ در {$siteName}.", 160, '…');
@@ -194,6 +209,24 @@ class SocialContentController extends Controller
                 ],
             ],
         ]);
+    }
+
+    private function shortFallbackDescription(SocialContent $content): string
+    {
+        $siteName = (string) config('seo.site_name', 'PlayNexus');
+        $parts = ["«{$content->title}» یک ویدیوی کوتاه گیمینگ در {$siteName} است."];
+
+        if ($content->game) {
+            $parts[] = "این شورت به بازی {$content->game->name} مرتبط است و می‌توانید محتوای بیشتر این بازی را در کانال آن دنبال کنید.";
+        } else {
+            $parts[] = "این شورت بخشی از محتوای کوتاه پلی نکسوس برای دنبال‌کردن لحظه‌ها، بازی‌ها و موضوعات دنیای گیمینگ است.";
+        }
+
+        if ($content->duration && $content->duration > 0) {
+            $parts[] = "مدت این ویدیو {$content->duration} ثانیه است.";
+        }
+
+        return implode(' ', $parts);
     }
 
     private function isoDuration(int $seconds): string

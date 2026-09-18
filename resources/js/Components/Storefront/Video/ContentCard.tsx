@@ -2,6 +2,7 @@ import { Link } from "@inertiajs/react";
 import { Eye, Gamepad2, Play } from "lucide-react";
 
 import type { StorefrontContent } from "../../../types";
+import VideoProgressBar from "./VideoProgressBar";
 
 const number = new Intl.NumberFormat("fa-IR");
 const duration = (seconds: number | null) =>
@@ -17,7 +18,12 @@ export default function ContentCard({
     return (
         <Link className="group block" href={content.url}>
             <article>
-                <div className="relative aspect-video overflow-hidden rounded-2xl bg-[var(--store-surface-strong)] shadow-lg ring-1 ring-[var(--store-border)] transition duration-300 group-hover:-translate-y-1 group-hover:ring-indigo-500/60">
+                <div
+                    className="relative aspect-video overflow-hidden rounded-2xl bg-[var(--store-surface-strong)] shadow-lg ring-1 ring-[var(--store-border)] transition duration-300 group-hover:-translate-y-1 group-hover:ring-indigo-500/60"
+                    data-video-preview-surface={
+                        content.type === "video" ? "true" : undefined
+                    }
+                >
                     {content.thumbnail_url ? (
                         <img
                             alt={content.title}
@@ -31,7 +37,7 @@ export default function ContentCard({
                         </div>
                     )}
                     {content.type !== "post" && (
-                        <span className="absolute inset-0 grid place-items-center">
+                        <span className="absolute inset-0 z-[1] grid place-items-center">
                             <span className="grid size-11 place-items-center rounded-full bg-white/95 text-slate-950 opacity-0 shadow-xl transition duration-300 group-hover:scale-110 group-hover:opacity-100">
                                 <Play fill="currentColor" size={19} />
                             </span>
@@ -39,11 +45,17 @@ export default function ContentCard({
                     )}
                     {duration(content.duration) && (
                         <span
-                            className="absolute bottom-2 left-2 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] text-white"
+                            className="absolute bottom-2 left-2 z-[3] rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] text-white"
                             dir="ltr"
                         >
                             {duration(content.duration)}
                         </span>
+                    )}
+                    {content.type !== "post" && (
+                        <VideoProgressBar
+                            contentId={content.id}
+                            duration={content.duration}
+                        />
                     )}
                 </div>
                 <div className="space-y-2 px-1 pt-4">

@@ -17,12 +17,18 @@ import {
     useRef,
     useState,
 } from "react";
+import {
+    saveVideoProgress,
+    useVideoProgress,
+} from "../../../lib/videoProgress";
 import { useVideoAmbientColors } from "./useVideoAmbientColors";
 
 interface VideoSource {
+    id: number;
     title: string;
     thumbnail_url: string | null;
     video_url: string | null;
+    duration: number | null;
 }
 
 export default function FloatingVideoPlayer({
@@ -35,13 +41,73 @@ export default function FloatingVideoPlayer({
     const ambientCanvasRef = useRef<HTMLCanvasElement>(null);
     const playerRef = useRef<MediaPlayerInstance>(null);
     const dragRef = useRef({ pointerX: 0, pointerY: 0, x: 0, y: 0 });
+    const resumeAppliedRef = useRef(false);
+    const lastSavedSecondRef = useRef(-1);
     const [hasStarted, setHasStarted] = useState(false);
     const [isFloating, setIsFloating] = useState(false);
     const [isClosed, setIsClosed] = useState(false);
     const [playbackError, setPlaybackError] = useState(false);
+    const [canResume, setCanResume] = useState(false);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const { progress, ready: progressReady, userId } = useVideoProgress(
+        content.id,
+    );
 
     useVideoAmbientColors(shellRef, ambientCanvasRef, content.video_url);
+
+    useEffect(() => {
+        resumeAppliedRef.current = false;
+        lastSavedSecondRef.current = -1;
+        setCanResume(false);
+    }, [content.id]);
+
+    useEffect(() => {
+        const player = playerRef.current;
+        if (
+            !player ||
+            !canResume ||
+            !progressReady ||
+            resumeAppliedRef.current
+        ) {
+            return;
+        }
+
+        const duration = Number(player.duration || content.duration || 0);
+        const target = progress && !progress.completed ? progress.position : 0;
+        if (
+            target >= 2 &&
+            (!duration || target < Math.max(0, duration - 2))
+        ) {
+            player.currentTime = target;
+        }
+        resumeAppliedRef.current = true;
+    }, [canResume, content.duration, progress, progressReady]);
+
+    useEffect(() => {
+        const persistBeforeLeave = () => {
+            const player = playerRef.current;
+            if (!player || !resumeAppliedRef.current) return;
+
+            saveVideoProgress({
+                userId,
+                contentId: content.id,
+                position: Number(player.currentTime || 0),
+                duration: Number(player.duration || content.duration || 0),
+                immediate: true,
+            });
+        };
+        const visibility = () => {
+            if (document.visibilityState === "hidden") persistBeforeLeave();
+        };
+
+        window.addEventListener("pagehide", persistBeforeLeave);
+        document.addEventListener("visibilitychange", visibility);
+        return () => {
+            persistBeforeLeave();
+            window.removeEventListener("pagehide", persistBeforeLeave);
+            document.removeEventListener("visibilitychange", visibility);
+        };
+    }, [content.duration, content.id, userId]);
 
     useEffect(() => {
         const anchor = anchorRef.current;
@@ -60,6 +126,25 @@ export default function FloatingVideoPlayer({
         observer.observe(anchor);
         return () => observer.disconnect();
     }, [hasStarted, isClosed]);
+
+    const captureProgress = (immediate = false, completed = false) => {
+        const player = playerRef.current;
+        if (!player || !resumeAppliedRef.current) return;
+
+        const duration = Number(player.duration || content.duration || 0);
+        const position = completed ? duration : Number(player.currentTime || 0);
+        if (!Number.isFinite(position) || position < 0) return;
+
+        saveVideoProgress({
+            userId,
+            contentId: content.id,
+            position,
+            duration,
+            completed,
+            immediate,
+        });
+        lastSavedSecondRef.current = Math.floor(position);
+    };
 
     const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -125,11 +210,26 @@ export default function FloatingVideoPlayer({
                     <MediaPlayer
                         key={content.video_url}
                         className="playnexus-player size-full"
-                        onCanPlay={() => setPlaybackError(false)}
+                        onCanPlay={() => {
+                            setPlaybackError(false);
+                            setCanResume(true);
+                        }}
+                        onEnded={() => captureProgress(true, true)}
                         onError={() => setPlaybackError(true)}
+                        onPause={() => captureProgress(true)}
                         onPlay={() => {
                             setHasStarted(true);
                             setIsClosed(false);
+                        }}
+                        onSeeked={() => captureProgress(true)}
+                        onTimeUpdate={() => {
+                            if (!resumeAppliedRef.current) return;
+                            const second = Math.floor(
+                                Number(playerRef.current?.currentTime || 0),
+                            );
+                            if (second !== lastSavedSecondRef.current) {
+                                captureProgress(false);
+                            }
                         }}
                         playsInline
                         poster={content.thumbnail_url ?? undefined}
@@ -192,6 +292,7 @@ export default function FloatingVideoPlayer({
                                 aria-label="بستن پخش‌کننده کوچک"
                                 className="absolute right-2 top-2 z-50 grid size-9 place-items-center rounded-full bg-black/75 text-white shadow-lg backdrop-blur transition hover:bg-rose-600"
                                 onClick={() => {
+                                    captureProgress(true);
                                     playerRef.current?.pause();
                                     setIsClosed(true);
                                     setIsFloating(false);

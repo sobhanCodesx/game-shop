@@ -10,7 +10,12 @@ class RejectImpersonatedDeployment
 {
     public function handle(Request $request, Closure $next): Response
     {
-        abort_if($request->session()->has('impersonator_id'), Response::HTTP_FORBIDDEN, 'در حالت ورود آزمایشی امکان deployment وجود ندارد.');
+        abort_if(
+            $request->session()->has('impersonator_id'),
+            Response::HTTP_FORBIDDEN,
+            'در حالت ورود آزمایشی امکان اجرای عملیات زیرساختی وجود ندارد.',
+        );
+
         return $next($request);
     }
 }

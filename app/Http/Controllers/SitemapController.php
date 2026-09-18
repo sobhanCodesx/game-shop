@@ -17,7 +17,7 @@ use XMLWriter;
 
 class SitemapController extends Controller
 {
-    private const TYPES = ['static', 'products', 'categories', 'feed', 'content', 'channels', 'studios', 'playlists'];
+    private const TYPES = ['static', 'products', 'categories', 'feed', 'videos', 'content', 'channels', 'studios', 'playlists'];
 
     public function index(): Response
     {
@@ -39,7 +39,7 @@ class SitemapController extends Controller
     {
         abort_unless(in_array($type, self::TYPES, true), 404);
 
-        $writer = $this->writer('urlset', $type === 'content');
+        $writer = $this->writer('urlset', in_array($type, ['videos', 'content'], true));
         foreach ($this->urls($type) as $entry) {
             $writer->startElement('url');
             $writer->writeElement('loc', $entry['loc']);
@@ -95,34 +95,14 @@ class SitemapController extends Controller
             return;
         }
 
+        if ($type === 'videos') {
+            yield from $this->socialContentUrls('video');
+
+            return;
+        }
+
         if ($type === 'content') {
-            foreach (SocialContent::query()->published()->whereIn('type', ['video', 'short'])->orderBy('id')->cursor() as $content) {
-                $plural = match ($content->type) {
-                    'video' => 'videos', 'short' => 'shorts', default => 'posts',
-                };
-                $entry = $this->entry(route('content.show', [$plural, $content->slug]), $content->updated_at);
-                $thumbnail = MediaStorage::url($content->thumbnail);
-                $videoUrl = MediaStorage::url($content->video_path);
-
-                if ($videoUrl && ($thumbnail || $content->type === 'video')) {
-                    $description = RichText::plainText(
-                        $content->seo_description ?: $content->excerpt ?: $content->body,
-                    ) ?: "تماشای {$content->title} در پلی نکسوس";
-                    $entry['video'] = array_filter([
-                        'thumbnail_loc' => $thumbnail
-                            ? url($thumbnail)
-                            : url((string) config('seo.default_image', '/logo.png')),
-                        'title' => Str::limit($content->title, 100, '…'),
-                        'description' => Str::limit($description, 2048, '…'),
-                        'content_loc' => url($videoUrl),
-                        'duration' => $content->duration && $content->duration <= 28800 ? $content->duration : null,
-                        'publication_date' => $content->published_at?->toAtomString(),
-                        'view_count' => max(0, (int) $content->views),
-                    ], fn ($value) => $value !== null && $value !== '');
-                }
-
-                yield $entry;
-            }
+            yield from $this->socialContentUrls('short');
 
             return;
         }
@@ -148,8 +128,38 @@ class SitemapController extends Controller
         foreach (VideoPlaylist::query()->where('visibility', 'public')
             ->whereHas('game', fn (Builder $query) => $query->whereIn('status', ['active', 'published']))
             ->whereHas('videos', fn (Builder $query) => $query->published()->where('type', 'video'))
-            ->with('game:id,slug')->orderBy('id')->cursor() as $playlist) {
-            yield $this->entry(route('channels.playlists.show', [$playlist->game->slug, $playlist->slug]), $playlist->updated_at);
+            ->orderBy('id')->cursor() as $playlist) {
+            yield $this->entry(route('collections.show', $playlist->slug), $playlist->updated_at);
+        }
+    }
+
+    /** @return iterable<array{loc: string, lastmod?: string, video?: array<string, mixed>}> */
+    private function socialContentUrls(string $contentType): iterable
+    {
+        foreach (SocialContent::query()->published()->where('type', $contentType)->orderBy('id')->cursor() as $content) {
+            $plural = $contentType === 'video' ? 'videos' : 'shorts';
+            $entry = $this->entry(route('content.show', [$plural, $content->slug]), $content->updated_at);
+            $thumbnail = MediaStorage::url($content->thumbnail);
+            $videoUrl = MediaStorage::url($content->video_path);
+
+            if ($videoUrl && ($thumbnail || $contentType === 'video')) {
+                $description = RichText::plainText(
+                    $content->seo_description ?: $content->excerpt ?: $content->body,
+                ) ?: "تماشای {$content->title} در پلی نکسوس";
+                $entry['video'] = array_filter([
+                    'thumbnail_loc' => $thumbnail
+                        ? url($thumbnail)
+                        : url((string) config('seo.default_image', '/logo.png')),
+                    'title' => Str::limit($content->title, 100, '…'),
+                    'description' => Str::limit($description, 2048, '…'),
+                    'content_loc' => url($videoUrl),
+                    'duration' => $content->duration && $content->duration <= 28800 ? $content->duration : null,
+                    'publication_date' => $content->published_at?->toAtomString(),
+                    'view_count' => max(0, (int) $content->views),
+                ], fn ($value) => $value !== null && $value !== '');
+            }
+
+            yield $entry;
         }
     }
 
@@ -159,7 +169,8 @@ class SitemapController extends Controller
             'products' => Product::query()->publiclyVisible()->max('updated_at'),
             'categories' => Category::query()->where('status', 'active')->max('updated_at'),
             'feed' => SocialContent::query()->published()->where('type', 'post')->max('updated_at'),
-            'content' => SocialContent::query()->published()->whereIn('type', ['video', 'short'])->max('updated_at'),
+            'videos' => SocialContent::query()->published()->where('type', 'video')->max('updated_at'),
+            'content' => SocialContent::query()->published()->where('type', 'short')->max('updated_at'),
             'channels' => Game::query()->whereIn('status', ['active', 'published'])->whereHas('videos', fn (Builder $query) => $query->published())->max('updated_at'),
             'studios' => Studio::query()->where('status', 'active')->max('updated_at'),
             'playlists' => VideoPlaylist::query()->where('visibility', 'public')->max('updated_at'),

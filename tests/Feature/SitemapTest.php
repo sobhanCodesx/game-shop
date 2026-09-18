@@ -19,7 +19,7 @@ class SitemapTest extends TestCase
     {
         $response = $this->get('/sitemap.xml')->assertOk()->assertHeader('Content-Type', 'application/xml; charset=UTF-8');
 
-        foreach (['static', 'products', 'categories', 'feed', 'content', 'channels', 'studios', 'playlists'] as $type) {
+        foreach (['static', 'products', 'categories', 'feed', 'videos', 'content', 'channels', 'studios', 'playlists'] as $type) {
             $response->assertSee("http://localhost/sitemaps/{$type}.xml", false);
         }
 
@@ -48,6 +48,19 @@ class SitemapTest extends TestCase
             'video_path' => 'videos/public-video.mp4',
             'duration' => 125,
             'views' => 42,
+        ]);
+        $short = SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'short',
+            'title' => 'شورت عمومی',
+            'slug' => 'public-short',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+            'excerpt' => 'شورت تستی عمومی',
+            'thumbnail' => 'shorts/thumbnails/public-short.jpg',
+            'video_path' => 'shorts/public-short.mp4',
+            'duration' => 35,
+            'views' => 7,
         ]);
         $feedPost = SocialContent::query()->create([
             'type' => 'post',
@@ -93,24 +106,31 @@ class SitemapTest extends TestCase
         $this->get('/sitemaps/categories.xml')->assertOk()
             ->assertSee(route('categories.show', $visibleCategory->slug), false)
             ->assertDontSee('inactive-category');
-        $this->get('/sitemaps/content.xml')->assertOk()
+        $this->get('/sitemaps/videos.xml')->assertOk()
             ->assertSee(route('content.show', ['videos', $video->slug]), false)
             ->assertSee('<video:video>', false)
             ->assertSee('<video:thumbnail_loc>http://localhost/storage/videos/thumbnails/public-video.jpg</video:thumbnail_loc>', false)
             ->assertSee('<video:content_loc>http://localhost/storage/videos/public-video.mp4</video:content_loc>', false)
             ->assertSee('<video:duration>125</video:duration>', false)
+            ->assertDontSee('public-short')
             ->assertDontSee('public-feed-post')
             ->assertDontSee('draft-video');
+        $this->get('/sitemaps/content.xml')->assertOk()
+            ->assertSee(route('content.show', ['shorts', $short->slug]), false)
+            ->assertSee('<video:video>', false)
+            ->assertDontSee('public-video')
+            ->assertDontSee('public-feed-post');
         $this->get('/sitemaps/feed.xml')->assertOk()
             ->assertSee(route('feed.index'), false)
-            ->assertSee(route('feed.show', $feedPost->slug), false);
+            ->assertSee(route('posts.show', $feedPost->slug), false);
         $this->get('/sitemaps/channels.xml')->assertOk()
             ->assertSee(route('channels.show', $game->slug), false);
         $this->get('/sitemaps/studios.xml')->assertOk()
             ->assertSee(route('studios.show', $studio->slug), false)
             ->assertDontSee('private-studio');
         $this->get('/sitemaps/playlists.xml')->assertOk()
-            ->assertSee(route('channels.playlists.show', [$game->slug, $publicPlaylist->slug]), false)
+            ->assertSee(route('collections.show', $publicPlaylist->slug), false)
+            ->assertDontSee(route('channels.playlists.show', [$game->slug, $publicPlaylist->slug]), false)
             ->assertDontSee('unlisted-playlist');
     }
 

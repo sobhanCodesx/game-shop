@@ -185,7 +185,7 @@ final class PackageBuilder
         foreach ($it as $file) if ($file->isFile()) { $path=str_replace('\\', '/', substr($file->getPathname(), strlen($stage) + 1)); if (!$this->excluded($path)) $zip->addFile($file->getPathname(), $path); }
         $zip->close();
     }
-    private function excluded(string $path): bool { return str_starts_with($path, 'bootstrap/cache/') || $path === 'public/hot' || str_starts_with($path, 'node_modules/'); }
+    private function excluded(string $path): bool { return str_starts_with($path, 'bootstrap/cache/') || $path === 'public/hot' || str_starts_with($path, 'public/apk/') || str_starts_with($path, 'node_modules/'); }
     private function gitCommit(): ?string { $head = base_path('.git/HEAD'); if (! is_file($head)) return null; $value = trim((string) file_get_contents($head)); if (str_starts_with($value, 'ref: ')) { $ref = base_path('.git/'.substr($value, 5)); return is_file($ref) ? trim((string) file_get_contents($ref)) : null; } return $value; }
     private function deleteDirectory(string $path): void { if (is_dir($path)) \Illuminate\Support\Facades\File::deleteDirectory($path); }
 }

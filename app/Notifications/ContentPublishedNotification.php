@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\User;
+use App\Notifications\Channels\ExpoPushChannel;
 use App\Notifications\Channels\SmsChannel;
 use App\Services\Sms\SmsPattern;
 use Illuminate\Bus\Queueable;
@@ -28,6 +29,7 @@ class ContentPublishedNotification extends Notification
 
         if ($preference?->feed_enabled ?? true) {
             $channels[] = 'database';
+            $channels[] = ExpoPushChannel::class;
         }
 
         if (($preference?->sms_enabled ?? true) && filled($notifiable->phone)) {

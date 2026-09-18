@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminResourceController;
 use App\Http\Controllers\Admin\AttributeController;
@@ -51,7 +50,7 @@ Route::get('feed/{content:slug}', [FeedController::class, 'legacyShow'])->name('
 Route::get('feed/{content:slug}/comments', [FeedController::class, 'comments'])->name('feed.comments');
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
 Route::get('sitemaps/{type}.xml', [SitemapController::class, 'show'])
-    ->whereIn('type', ['static', 'products', 'categories', 'feed', 'content', 'channels', 'studios', 'playlists'])
+    ->whereIn('type', ['static', 'products', 'categories', 'feed', 'videos', 'content', 'channels', 'studios', 'playlists'])
     ->name('sitemap.show');
 Route::get('media/{path}', MediaStreamController::class)->where('path', '.*')->name('media.stream');
 
@@ -149,92 +148,86 @@ Route::get('{type}/{content:slug}', [SocialContentController::class, 'show'])
     ->whereIn('type', ['videos', 'shorts'])
     ->name('content.show');
 
-Route::prefix('admin')->name('admin.')->group(function () {
-    Route::middleware('guest')->group(function () {
-        Route::get('login', [AdminAuthController::class, 'create'])->name('login');
-        Route::post('login', [AdminAuthController::class, 'store'])
-            ->middleware('throttle:5,1')
-            ->name('login.store');
-    });
-
-    Route::middleware(['auth', 'admin'])->group(function () {
-        Route::get('/', AdminDashboardController::class)->name('dashboard');
-        Route::post('logout', [AdminAuthController::class, 'destroy'])->name('logout');
-        Route::get('home', [HomeSettingsController::class, 'edit'])->name('home.edit');
-        Route::post('home', [HomeSettingsController::class, 'update'])->name('home.update');
-        Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
-        Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
-        Route::patch('orders/{order}', [AdminOrderController::class, 'update'])->name('orders.update');
-        Route::get('orders/{order}/tickets/create', [AdminTicketController::class, 'createForOrder'])->name('orders.tickets.create');
-        Route::post('orders/{order}/tickets', [AdminTicketController::class, 'storeForOrder'])->name('orders.tickets.store');
-        Route::get('tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
-        Route::get('tickets/{ticket}', [AdminTicketController::class, 'show'])->name('tickets.show');
-        Route::post('tickets/{ticket}/replies', [AdminTicketController::class, 'reply'])->name('tickets.reply');
-        Route::patch('tickets/{ticket}', [AdminTicketController::class, 'update'])->name('tickets.update');
-        Route::patch('tickets/{ticket}/exchange-offer', [AdminTicketController::class, 'offer'])->name('tickets.exchange-offer');
-        Route::patch('tickets/{ticket}/exchange-cancel', [AdminTicketController::class, 'cancelExchange'])->name('tickets.exchange-cancel');
-        Route::patch('tickets/{ticket}/exchange-complete', [AdminTicketController::class, 'completeExchange'])->name('tickets.exchange-complete');
-        Route::delete('tickets/{ticket}/attachments', [AdminTicketController::class, 'destroyAttachments'])->name('tickets.attachments.destroy');
-        Route::resource('coupons', AdminCouponController::class)->only(['index', 'store', 'update', 'destroy']);
-        Route::get('settings', [CommerceSettingsController::class, 'edit'])->name('settings.edit');
-        Route::put('settings', [CommerceSettingsController::class, 'update'])->name('settings.update');
-        Route::get('sms-patterns', [SmsPatternController::class, 'index'])->name('sms-patterns.index');
-        Route::put('sms-patterns', [SmsPatternController::class, 'update'])->name('sms-patterns.update');
-        Route::get('sms-test', [SmsTestController::class, 'index'])->name('sms-test.index');
-        Route::post('sms-test', [SmsTestController::class, 'store'])->middleware('throttle:5,1')->name('sms-test.store');
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('/', AdminDashboardController::class)->name('dashboard');
+    Route::get('home', [HomeSettingsController::class, 'edit'])->name('home.edit');
+    Route::post('home', [HomeSettingsController::class, 'update'])->name('home.update');
+    Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
+    Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::patch('orders/{order}', [AdminOrderController::class, 'update'])->name('orders.update');
+    Route::get('orders/{order}/tickets/create', [AdminTicketController::class, 'createForOrder'])->name('orders.tickets.create');
+    Route::post('orders/{order}/tickets', [AdminTicketController::class, 'storeForOrder'])->name('orders.tickets.store');
+    Route::get('tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
+    Route::get('tickets/{ticket}', [AdminTicketController::class, 'show'])->name('tickets.show');
+    Route::post('tickets/{ticket}/replies', [AdminTicketController::class, 'reply'])->name('tickets.reply');
+    Route::patch('tickets/{ticket}', [AdminTicketController::class, 'update'])->name('tickets.update');
+    Route::patch('tickets/{ticket}/exchange-offer', [AdminTicketController::class, 'offer'])->name('tickets.exchange-offer');
+    Route::patch('tickets/{ticket}/exchange-cancel', [AdminTicketController::class, 'cancelExchange'])->name('tickets.exchange-cancel');
+    Route::patch('tickets/{ticket}/exchange-complete', [AdminTicketController::class, 'completeExchange'])->name('tickets.exchange-complete');
+    Route::delete('tickets/{ticket}/attachments', [AdminTicketController::class, 'destroyAttachments'])->name('tickets.attachments.destroy');
+    Route::resource('coupons', AdminCouponController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('settings', [CommerceSettingsController::class, 'edit'])->name('settings.edit');
+    Route::put('settings', [CommerceSettingsController::class, 'update'])->name('settings.update');
+    Route::get('sms-patterns', [SmsPatternController::class, 'index'])->name('sms-patterns.index');
+    Route::put('sms-patterns', [SmsPatternController::class, 'update'])->name('sms-patterns.update');
+    Route::get('sms-test', [SmsTestController::class, 'index'])->name('sms-test.index');
+    Route::post('sms-test', [SmsTestController::class, 'store'])->middleware('throttle:5,1')->name('sms-test.store');
+    Route::middleware('super-admin')->group(function () {
         Route::get('system-maintenance', [SystemMaintenanceController::class, 'index'])->name('system-maintenance.index');
         Route::post('system-maintenance/run', [SystemMaintenanceController::class, 'run'])->middleware('throttle:6,1')->name('system-maintenance.run');
-        Route::prefix('deployments')->name('deployments.')->middleware('deployment.guard')->group(function () {
-            Route::get('/', [DeploymentController::class, 'index'])->name('index');
-            Route::post('export', [DeploymentController::class, 'export'])->name('export');
-            Route::post('upload/chunk', [DeploymentController::class, 'chunk'])->name('chunk');
-            Route::post('upload/complete', [DeploymentController::class, 'complete'])->name('complete');
-            Route::post('{deployment}/verify', [DeploymentController::class, 'verify'])->name('verify');
-            Route::get('{deployment}/status', [DeploymentController::class, 'status'])->name('status');
-            Route::post('{deployment}/apply', [DeploymentController::class, 'apply'])->name('apply');
-            Route::post('{deployment}/rollback', [DeploymentController::class, 'rollback'])->name('rollback');
-            Route::get('{deployment}/report', [DeploymentController::class, 'report'])->name('report');
-            Route::delete('cleanup/expired', [DeploymentController::class, 'cleanup'])->name('cleanup');
+        Route::post('system-maintenance/cron', [SystemMaintenanceController::class, 'manageCron'])->middleware('throttle:4,1')->name('system-maintenance.cron');
+        Route::post('system-maintenance/push-test', [SystemMaintenanceController::class, 'testPush'])->middleware('throttle:3,1')->name('system-maintenance.push-test');
+    });
+    Route::prefix('deployments')->name('deployments.')->middleware('deployment.guard')->group(function () {
+        Route::get('/', [DeploymentController::class, 'index'])->name('index');
+        Route::post('export', [DeploymentController::class, 'export'])->name('export');
+        Route::post('upload/chunk', [DeploymentController::class, 'chunk'])->name('chunk');
+        Route::post('upload/complete', [DeploymentController::class, 'complete'])->name('complete');
+        Route::post('{deployment}/verify', [DeploymentController::class, 'verify'])->name('verify');
+        Route::get('{deployment}/status', [DeploymentController::class, 'status'])->name('status');
+        Route::post('{deployment}/apply', [DeploymentController::class, 'apply'])->name('apply');
+        Route::post('{deployment}/rollback', [DeploymentController::class, 'rollback'])->name('rollback');
+        Route::get('{deployment}/report', [DeploymentController::class, 'report'])->name('report');
+        Route::delete('cleanup/expired', [DeploymentController::class, 'cleanup'])->name('cleanup');
+    });
+
+    Route::resource('product-types', ProductTypeController::class)->except('show');
+    Route::resource('attributes', AttributeController::class)->except('show');
+    Route::get('products/{product}/media', [ProductMediaController::class, 'edit'])->name('products.media.edit');
+    Route::post('products/{product}/media/upload', [ProductMediaController::class, 'upload'])->name('products.media.upload');
+    Route::post('products/{product}/media', [ProductMediaController::class, 'update'])->name('products.media.update');
+    Route::patch('products/{product}/exchange', [CatalogController::class, 'toggleExchange'])->name('products.exchange.toggle');
+    Route::resource('videos', AdminVideoController::class)->except('show');
+    Route::resource('feed', AdminFeedPostController::class)
+        ->parameters(['feed' => 'post'])
+        ->except('show');
+    Route::resource('studios', AdminStudioController::class)->except('show');
+    Route::resource('video-playlists', AdminVideoPlaylistController::class)
+        ->parameters(['video-playlists' => 'playlist'])
+        ->except('show');
+    Route::resource('shorts', AdminShortController::class)
+        ->parameters(['shorts' => 'short'])
+        ->except('show');
+    Route::post('uploads/chunk', [TemporaryUploadController::class, 'chunk'])->name('uploads.chunk');
+    Route::post('uploads/complete', [TemporaryUploadController::class, 'complete'])->name('uploads.complete');
+    Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+    Route::patch('users/{user}', [AdminUserController::class, 'update'])->name('users.update');
+    Route::post('users/{user}/impersonate', [AdminUserController::class, 'impersonate'])->name('users.impersonate');
+
+    Route::prefix('{catalog}')
+        ->whereIn('catalog', ['categories', 'brands', 'games', 'platforms', 'products'])
+        ->name('catalog.')
+        ->controller(CatalogController::class)
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('{id}/edit', 'edit')->whereNumber('id')->name('edit');
+            Route::put('{id}', 'update')->whereNumber('id')->name('update');
+            Route::delete('{id}', 'destroy')->whereNumber('id')->name('destroy');
         });
 
-        Route::resource('product-types', ProductTypeController::class)->except('show');
-        Route::resource('attributes', AttributeController::class)->except('show');
-        Route::get('products/{product}/media', [ProductMediaController::class, 'edit'])->name('products.media.edit');
-        Route::post('products/{product}/media/upload', [ProductMediaController::class, 'upload'])->name('products.media.upload');
-        Route::post('products/{product}/media', [ProductMediaController::class, 'update'])->name('products.media.update');
-        Route::patch('products/{product}/exchange', [CatalogController::class, 'toggleExchange'])->name('products.exchange.toggle');
-        Route::resource('videos', AdminVideoController::class)->except('show');
-        Route::resource('feed', AdminFeedPostController::class)
-            ->parameters(['feed' => 'post'])
-            ->except('show');
-        Route::resource('studios', AdminStudioController::class)->except('show');
-        Route::resource('video-playlists', AdminVideoPlaylistController::class)
-            ->parameters(['video-playlists' => 'playlist'])
-            ->except('show');
-        Route::resource('shorts', AdminShortController::class)
-            ->parameters(['shorts' => 'short'])
-            ->except('show');
-        Route::post('uploads/chunk', [TemporaryUploadController::class, 'chunk'])->name('uploads.chunk');
-        Route::post('uploads/complete', [TemporaryUploadController::class, 'complete'])->name('uploads.complete');
-        Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
-        Route::patch('users/{user}', [AdminUserController::class, 'update'])->name('users.update');
-        Route::post('users/{user}/impersonate', [AdminUserController::class, 'impersonate'])->name('users.impersonate');
-
-        Route::prefix('{catalog}')
-            ->whereIn('catalog', ['categories', 'brands', 'games', 'platforms', 'products'])
-            ->name('catalog.')
-            ->controller(CatalogController::class)
-            ->group(function () {
-                Route::get('/', 'index')->name('index');
-                Route::get('create', 'create')->name('create');
-                Route::post('/', 'store')->name('store');
-                Route::get('{id}/edit', 'edit')->whereNumber('id')->name('edit');
-                Route::put('{id}', 'update')->whereNumber('id')->name('update');
-                Route::delete('{id}', 'destroy')->whereNumber('id')->name('destroy');
-            });
-
-        Route::get('{resource}', AdminResourceController::class)
-            ->where('resource', 'creators|inventory|payments|reviews|trades|posts|videos|shorts|comments|reports|moderation|notifications|banners|pages|audit-logs|support')
-            ->name('resources.index');
-    });
+    Route::get('{resource}', AdminResourceController::class)
+        ->where('resource', 'creators|inventory|payments|reviews|trades|posts|videos|shorts|comments|reports|moderation|notifications|banners|pages|audit-logs|support')
+        ->name('resources.index');
 });

@@ -43,7 +43,7 @@ final class DeploymentManager
         $manifest = $this->verifier->verify($dir.'/package.zip', $stage);
         $current = $this->currentManifest(); $currentFiles = collect($current['files'] ?? [])->keyBy('path'); $newFiles = collect($manifest['files'])->keyBy('path');
         $changed = $newFiles->filter(fn ($file, $path) => ! isset($currentFiles[$path]) || $currentFiles[$path]['sha256'] !== $file['sha256'])->keys()->values()->all();
-        $deleted = $currentFiles->keys()->diff($newFiles->keys())->filter(fn ($path) => $this->allowed($path))->values()->all();
+        $deleted = $currentFiles->keys()->diff($newFiles->keys())->filter(fn ($path) => $this->allowed($path) && ! $this->preservedServerPath($path))->values()->all();
         $pending = array_values(array_diff($manifest['migrations'] ?? [], $current['migrations'] ?? []));
         $dangerous = $this->dangerousMigrations($stage, $pending);
         $preflight = $this->preflight($manifest, $dangerous, $stage);
@@ -97,7 +97,7 @@ final class DeploymentManager
     {
         $stage = $this->paths->operation($state['id']).'/staging'; $new = [];
         foreach ($state['diff']['changed'] as $path) { if (! is_file(base_path($path))) $new[] = $path; $this->copyFile($stage.'/'.$path, base_path($path)); }
-        foreach ($state['diff']['deleted'] as $path) if ($this->allowed($path) && is_file(base_path($path))) @unlink(base_path($path));
+        foreach ($state['diff']['deleted'] as $path) if ($this->allowed($path) && ! $this->preservedServerPath($path) && is_file(base_path($path))) @unlink(base_path($path));
         foreach (['deployment-manifest.json', 'deployment-manifest.sig'] as $file) $this->copyFile($stage.'/'.$file, base_path($file));
         $state['stage']='switched'; $state['progress']=55; $state['new_files']=$new; unset($state['maintenance_bypass']); return $this->states->save($state);
     }
@@ -148,6 +148,12 @@ final class DeploymentManager
     private function owned(string $id, int $userId): array { $state=$this->states->get($id); if ((int)$state['user_id']!==$userId) throw new RuntimeException('دسترسی به عملیات مجاز نیست.'); if (strtotime($state['expires_at']) < time() && ! in_array($state['status'], ['completed','rolled_back'], true)) throw new RuntimeException('توکن عملیات منقضی شده است.'); return $state; }
     private function currentManifest(): array { return is_file(base_path('deployment-manifest.json')) ? json_decode((string) file_get_contents(base_path('deployment-manifest.json')), true, flags: JSON_THROW_ON_ERROR) : ['files'=>[], 'migrations'=>[]]; }
     private function allowed(string $path): bool { foreach (config('deployment.allowed_roots') as $root) if ($path===$root || str_starts_with($path,$root.'/')) return true; return in_array($path, config('deployment.allowed_files'), true); }
+    private function preservedServerPath(string $path): bool
+    {
+        $path = ltrim(str_replace('\\', '/', $path), '/');
+
+        return $path === 'public/apk' || str_starts_with($path, 'public/apk/');
+    }
     private function syncSsrBundle(): void
     {
         $destination = trim((string) config('deployment.ssr_bundle_destination'));

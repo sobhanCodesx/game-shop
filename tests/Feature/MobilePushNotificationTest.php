@@ -22,7 +22,8 @@ class MobilePushNotificationTest extends TestCase
 
         $payload = [
             'installation_id' => $installationId,
-            'push_token' => 'ExponentPushToken[first_device_token]',
+            'push_token' => 'native-fcm-device-token',
+            'push_provider' => 'fcm',
             'platform' => 'android',
             'device_name' => 'Pixel',
             'app_version' => '1.0.0',
@@ -35,8 +36,7 @@ class MobilePushNotificationTest extends TestCase
         $this->assertDatabaseCount('mobile_devices', 1);
         $this->assertDatabaseHas('mobile_devices', ['user_id' => $firstUser->id, 'installation_id' => $installationId]);
 
-        $payload['push_token'] = 'ExponentPushToken[changed_device_token]';
-        $payload['platform'] = 'ios';
+        $payload['push_token'] = 'changed-native-fcm-device-token';
         $this->actingAs($secondUser)->putJson(route('mobile.devices.store'), $payload)->assertOk();
 
         $this->assertDatabaseCount('mobile_devices', 1);
@@ -44,7 +44,8 @@ class MobilePushNotificationTest extends TestCase
             'user_id' => $secondUser->id,
             'installation_id' => $installationId,
             'push_token' => $payload['push_token'],
-            'platform' => 'ios',
+            'push_provider' => 'fcm',
+            'platform' => 'android',
         ]);
     }
 

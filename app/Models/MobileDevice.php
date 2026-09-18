@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MobileDevice extends Model
 {
     protected $fillable = [
-        'user_id', 'installation_id', 'push_token', 'platform', 'device_name',
+        'user_id', 'installation_id', 'push_token', 'push_provider', 'platform', 'device_name',
         'app_version', 'push_enabled', 'failure_count', 'last_seen_at',
     ];
 

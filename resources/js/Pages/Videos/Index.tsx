@@ -14,6 +14,7 @@ import EmptyState from "../../Components/Storefront/Shared/EmptyState";
 import Seo, { type SeoData } from "../../Components/Seo";
 import Pagination from "../../Components/Storefront/Shared/Pagination";
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
+import VideoProgressBar from "../../Components/Storefront/Video/VideoProgressBar";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import type { Paginated, StorefrontContent } from "../../types";
 
@@ -137,6 +138,11 @@ export default function Videos({
                                         </span>
                                     </div>
                                 </div>
+                                <VideoProgressBar
+                                    className="h-1.5"
+                                    contentId={featured.id}
+                                    duration={featured.duration}
+                                />
                             </div>
                         </Link>
                     ) : (

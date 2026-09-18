@@ -7,6 +7,32 @@ import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import type { NavigationCategory } from "../../Components/Storefront/Navigation/types";
 import type { Paginated, StorefrontProduct } from "../../types";
 
+const SITE_URL = "https://playnexus.ir";
+
+function plainText(value?: string | null): string {
+    return (value ?? "")
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function absoluteUrl(value?: string | null): string {
+    if (!value) {
+        return `${SITE_URL}/logo.png`;
+    }
+
+    return /^https?:\/\//i.test(value)
+        ? value
+        : `${SITE_URL}${value.startsWith("/") ? value : `/${value}`}`;
+}
+
+function safeJsonLd(value: Record<string, unknown>): string {
+    return JSON.stringify(value)
+        .replaceAll("<", "\\u003c")
+        .replaceAll(">", "\\u003e")
+        .replaceAll("&", "\\u0026");
+}
+
 export default function CategoryShow({
     category,
     products,
@@ -17,9 +43,102 @@ export default function CategoryShow({
     filters: { q?: string; sort?: string; trade?: string };
 }) {
     const tradeActive = filters.trade === "1";
+    const canonical = `${SITE_URL}/categories/${category.slug}`;
+    const categoryDescription = plainText(category.description);
+    const description = (
+        categoryDescription ||
+        `محصولات و بازی‌های دسته ${category.name} را در پلی نکسوس ببینید؛ قیمت، موجودی و تازه‌ترین گزینه‌های مرتبط.`
+    ).slice(0, 160);
+    const title = `${category.name}؛ محصولات و بازی‌ها - پلی نکسوس`;
+    const image = absoluteUrl(category.image_url);
+    const hasFilters = Boolean(
+        filters.q || filters.sort || filters.trade || products.current_page > 1,
+    );
+    const structuredData = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "CollectionPage",
+                "@id": `${canonical}#category`,
+                url: canonical,
+                name: category.name,
+                description,
+                image,
+            },
+            {
+                "@type": "ItemList",
+                "@id": `${canonical}#products`,
+                numberOfItems: products.data.length,
+                itemListElement: products.data.map((product, index) => ({
+                    "@type": "ListItem",
+                    position: index + 1,
+                    name: product.title,
+                    url: absoluteUrl(product.url),
+                })),
+            },
+            {
+                "@type": "BreadcrumbList",
+                itemListElement: [
+                    {
+                        "@type": "ListItem",
+                        position: 1,
+                        name: "خانه",
+                        item: SITE_URL,
+                    },
+                    {
+                        "@type": "ListItem",
+                        position: 2,
+                        name: category.name,
+                        item: canonical,
+                    },
+                ],
+            },
+        ],
+    };
+
     return (
         <StorefrontLayout>
-            <Head title={category.name} />
+            <Head>
+                <title>{title}</title>
+                <meta content={description} head-key="description" name="description" />
+                <meta
+                    content={hasFilters ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1"}
+                    head-key="robots"
+                    name="robots"
+                />
+                <link head-key="canonical" href={canonical} rel="canonical" />
+                <meta content="website" head-key="og:type" property="og:type" />
+                <meta content={title} head-key="og:title" property="og:title" />
+                <meta
+                    content={description}
+                    head-key="og:description"
+                    property="og:description"
+                />
+                <meta content={canonical} head-key="og:url" property="og:url" />
+                <meta content={image} head-key="og:image" property="og:image" />
+                <meta
+                    content={`دسته ${category.name}`}
+                    head-key="og:image:alt"
+                    property="og:image:alt"
+                />
+                <meta
+                    content="summary_large_image"
+                    head-key="twitter:card"
+                    name="twitter:card"
+                />
+                <meta content={title} head-key="twitter:title" name="twitter:title" />
+                <meta
+                    content={description}
+                    head-key="twitter:description"
+                    name="twitter:description"
+                />
+                <meta content={image} head-key="twitter:image" name="twitter:image" />
+                <script
+                    dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }}
+                    head-key="structured-data"
+                    type="application/ld+json"
+                />
+            </Head>
             <main className="mx-auto max-w-7xl px-4 py-8 md:py-12">
                 <header className="relative mb-8 overflow-hidden rounded-[28px] border border-[var(--store-border)] bg-[var(--store-surface)] p-6 md:p-10">
                     {category.image_url && (

@@ -24,6 +24,28 @@
                 color-scheme: light;
             }
         </style>
+        @if (request()->is('videos/*'))
+            <style>
+                /* Keep desktop watch pages close to YouTube's primary-player/sidebar proportions.
+                   Mobile and tablet sizing stay untouched. */
+                @media (min-width: 1280px) {
+                    .playnexus-watch-page > .grid {
+                        width: 100%;
+                        max-width: 1324px;
+                        margin-inline: auto;
+                        grid-template-columns: minmax(0, 1fr) 340px;
+                        gap: 24px;
+                    }
+                }
+
+                @media (min-width: 1536px) {
+                    .playnexus-watch-page > .grid {
+                        max-width: 1424px;
+                        grid-template-columns: minmax(0, 1fr) 360px;
+                    }
+                }
+            </style>
+        @endif
         <meta name="application-name" content="{{ config('seo.site_name', 'PlayNexus') }}">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

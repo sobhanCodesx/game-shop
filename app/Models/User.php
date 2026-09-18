@@ -69,6 +69,47 @@ class User extends Authenticatable
         ];
     }
 
+    public function isSuperAdmin(): bool
+    {
+        if ($this->role === 'super-admin') {
+            return true;
+        }
+
+        return $this->roles()->where('slug', 'super-admin')->exists();
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        $aliases = config("admin-access.permission_aliases.{$permission}", []);
+        $candidates = array_values(array_unique([$permission, ...$aliases]));
+
+        if ($this->permissions()->whereIn('slug', $candidates)->exists()) {
+            return true;
+        }
+
+        return $this->roles()
+            ->whereHas('permissions', fn ($query) => $query->whereIn('slug', $candidates))
+            ->exists();
+    }
+
+    public function canAccessAdminPanel(): bool
+    {
+        if (! $this->is_admin || $this->status !== 'active') {
+            return false;
+        }
+
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->permissions()->exists()
+            || $this->roles()->whereHas('permissions')->exists();
+    }
+
     public function addresses(): HasMany
     {
         return $this->hasMany(UserAddress::class);
@@ -112,6 +153,11 @@ class User extends Authenticatable
     public function socialComments(): HasMany
     {
         return $this->hasMany(SocialComment::class);
+    }
+
+    public function videoWatchProgress(): HasMany
+    {
+        return $this->hasMany(VideoWatchProgress::class);
     }
 
     public function mobileDevices(): HasMany

@@ -9,8 +9,8 @@ return [
     |
     | This file is for storing the credentials for third party services such
     | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
+    | location for this type of information, allowing packages to have a
+    | conventional file to locate the various services credentials.
     |
     */
 
@@ -56,6 +56,13 @@ return [
         'enabled' => env('EXPO_PUSH_ENABLED', false),
         'url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
         'access_token' => env('EXPO_ACCESS_TOKEN'),
+        'connect_timeout' => 3,
+        'timeout' => 10,
+    ],
+
+    'firebase_messaging' => [
+        'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'),
+        'project_id' => env('FIREBASE_PROJECT_ID'),
         'connect_timeout' => 3,
         'timeout' => 10,
     ],

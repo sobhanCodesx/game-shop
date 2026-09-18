@@ -1,0 +1,8 @@
+{
+  "job_id": "20260918-control-resonant-game-search",
+  "tool": "search_games",
+  "arguments": {
+    "query": "Control Resonant",
+    "limit": 10
+  }
+}

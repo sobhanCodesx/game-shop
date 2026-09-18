@@ -26,6 +26,39 @@ class InertiaSsrRoutingTest extends TestCase
         $this->assertFalse($middleware->usesSsr('/cart'));
     }
 
+    public function test_indexable_content_routes_are_in_the_default_ssr_surface(): void
+    {
+        $inertiaConfig = require base_path('config/inertia.php');
+
+        config([
+            'inertia.ssr.enabled' => true,
+            'inertia.ssr.paths' => $inertiaConfig['ssr']['paths'],
+        ]);
+
+        $middleware = $this->middleware();
+
+        foreach ([
+            '/',
+            '/categories/action',
+            '/channels/crimson-desert',
+            '/collections/boss-guides',
+            '/feed',
+            '/posts/example-article',
+            '/products/example-product',
+            '/shorts/example-short',
+            '/studios',
+            '/studios/capcom',
+            '/videos',
+            '/videos/example-video',
+        ] as $path) {
+            $this->assertTrue($middleware->usesSsr($path), "Expected {$path} to use SSR.");
+        }
+
+        foreach (['/account', '/cart', '/checkout', '/login', '/register', '/search'] as $path) {
+            $this->assertFalse($middleware->usesSsr($path), "Expected {$path} to skip SSR.");
+        }
+    }
+
     public function test_admin_is_never_rendered_by_ssr(): void
     {
         config([

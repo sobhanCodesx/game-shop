@@ -11,16 +11,18 @@ class AdminAccessTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_can_view_admin_login(): void
+    public function test_dedicated_admin_login_routes_do_not_exist(): void
     {
-        $this->get('/admin/login')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Admin/Auth/Login'));
+        $this->get('/admin/login')->assertNotFound();
+        $this->post('/admin/login', [
+            'email' => 'admin@example.com',
+            'password' => 'password',
+        ])->assertNotFound();
     }
 
-    public function test_guest_is_redirected_from_admin_dashboard(): void
+    public function test_guest_is_redirected_from_admin_dashboard_to_main_login(): void
     {
-        $this->get('/admin')->assertRedirect('/admin/login');
+        $this->get('/admin')->assertRedirect('/login?redirect=%2Fadmin');
     }
 
     public function test_regular_user_cannot_access_admin_dashboard(): void
@@ -52,22 +54,26 @@ class AdminAccessTest extends TestCase
                 ->where('resource', 'products'));
     }
 
-    public function test_admin_can_login_and_logout(): void
+    public function test_admin_uses_the_main_login_and_logout_flow(): void
     {
         $admin = User::factory()->create([
             'email' => 'admin@example.com',
             'password' => 'password',
             'is_admin' => true,
+            'role' => 'super-admin',
+            'status' => 'active',
+            'email_verified_at' => now(),
         ]);
 
-        $this->post('/admin/login', [
-            'email' => $admin->email,
+        $this->post('/login', [
+            'identifier' => $admin->email,
             'password' => 'password',
+            'redirect' => '/admin',
         ])->assertRedirect('/admin');
 
         $this->assertAuthenticatedAs($admin);
 
-        $this->post('/admin/logout')->assertRedirect('/admin/login');
+        $this->post('/logout')->assertRedirect('/');
         $this->assertGuest();
     }
 }

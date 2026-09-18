@@ -32,7 +32,8 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    // Keep authenticated storefront sessions alive for two weeks (20,160 minutes).
+    'lifetime' => 20160,
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
@@ -56,7 +57,7 @@ return [
     |
     | When utilizing the "file" session driver, the session files are placed
     | on disk. The default storage location is defined here; however, you
-    | are free to provide another location where they should be stored.
+    | are free to change this when necessary.
     |
     */
 

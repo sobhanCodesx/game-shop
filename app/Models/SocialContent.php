@@ -68,4 +68,9 @@ class SocialContent extends Model
     {
         return $this->hasMany(SocialComment::class);
     }
+
+    public function watchProgress(): HasMany
+    {
+        return $this->hasMany(VideoWatchProgress::class);
+    }
 }

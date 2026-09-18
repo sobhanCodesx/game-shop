@@ -4,6 +4,7 @@ import "@fontsource-variable/vazirmatn";
 import { createInertiaApp, router } from "@inertiajs/react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import PageTransitionLoader from "./Components/PageTransitionLoader";
+import GlobalVideoPreview from "./Components/Storefront/Video/GlobalVideoPreview";
 import {
     createInertiaPageResolver,
     inertiaTitle,
@@ -39,10 +40,43 @@ const resolveInertiaPage = createInertiaPageResolver(
     import.meta.glob("./Pages/**/*.tsx") as InertiaPageModules,
 );
 
+let currentNativeUserId: number | null = null;
+let currentNativeUrl = window.location.pathname + window.location.search;
+let nativeSyncTimers: number[] = [];
+
+const syncNativeBridge = (): void => {
+    notifyNativeAuthState(currentNativeUserId);
+    notifyNativeNavigation(currentNativeUrl);
+};
+
+const scheduleNativeBridgeSync = (): void => {
+    for (const timer of nativeSyncTimers) {
+        window.clearTimeout(timer);
+    }
+
+    nativeSyncTimers = [250, 1500, 5000, 15000].map((delay) =>
+        window.setTimeout(syncNativeBridge, delay),
+    );
+};
+
+const updateNativeBridge = (userId: number | null, url: string): void => {
+    currentNativeUserId = userId;
+    currentNativeUrl = url;
+    syncNativeBridge();
+    scheduleNativeBridgeSync();
+};
+
+window.addEventListener("pageshow", scheduleNativeBridgeSync);
+window.addEventListener("focus", scheduleNativeBridgeSync);
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        scheduleNativeBridgeSync();
+    }
+});
+
 router.on("navigate", (event) => {
     const pageProps = event.detail.page.props as NativePageProps;
-    notifyNativeAuthState(pageProps.auth?.user?.id ?? null);
-    notifyNativeNavigation(event.detail.page.url);
+    updateNativeBridge(pageProps.auth?.user?.id ?? null, event.detail.page.url);
 });
 
 createInertiaApp({
@@ -51,12 +85,15 @@ createInertiaApp({
     resolve: resolveInertiaPage,
     setup({ el, App, props }) {
         const pageProps = props.initialPage.props as NativePageProps;
-        notifyNativeAuthState(pageProps.auth?.user?.id ?? null);
-        notifyNativeNavigation(props.initialPage.url);
+        updateNativeBridge(
+            pageProps.auth?.user?.id ?? null,
+            props.initialPage.url,
+        );
 
         const application = (
             <>
                 <App {...props} />
+                <GlobalVideoPreview />
                 <PageTransitionLoader />
             </>
         );

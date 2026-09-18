@@ -1,0 +1,14 @@
+{
+  "job_id": "mcp-test-feed-20260918-001",
+  "tool": "create_feed",
+  "arguments": {
+    "title": "تست اتصال MCP پلی‌نکسوس",
+    "body": "<p>این فید فقط برای تست اتصال MCP و مسیر انتشار محتوای PlayNexus ساخته شده است.</p>",
+    "feed_type": "post",
+    "feed_badge": null,
+    "allow_comments": false,
+    "notify_followers": false,
+    "seo_title": "تست اتصال MCP پلی‌نکسوس",
+    "seo_description": "فید آزمایشی برای بررسی اتصال MCP و ثبت محتوای Draft در PlayNexus."
+  }
+}
