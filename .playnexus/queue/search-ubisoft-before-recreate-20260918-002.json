@@ -1,0 +1,8 @@
+{
+  "job_id": "search-ubisoft-before-recreate-20260918-002",
+  "tool": "search_studios",
+  "arguments": {
+    "query": "Ubisoft",
+    "limit": 10
+  }
+}
