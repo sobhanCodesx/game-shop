@@ -185,6 +185,8 @@ function CommentItem({
         event.preventDefault();
         reply.post(`/videos/${contentSlug}/comments`, {
             preserveScroll: true,
+            preserveState: true,
+            only: ["content", "comments"],
             onSuccess: () => {
                 reply.reset("body");
                 setReplying(false);
@@ -566,6 +568,8 @@ export default function Show({
         event.preventDefault();
         commentForm.post(`/videos/${content.slug}/comments`, {
             preserveScroll: true,
+            preserveState: true,
+            only: ["content", "comments"],
             onSuccess: () => {
                 commentForm.reset("body");
                 setCommentFocused(false);
@@ -715,7 +719,7 @@ export default function Show({
                     />
                 </Head>
             )}
-            <main className="playnexus-watch-page mx-auto max-w-[1480px] px-3 py-5 sm:px-5 lg:py-7">
+            <main className="playnexus-watch-page mx-auto max-w-[1240px] px-3 py-5 sm:px-5 lg:py-7">
                 <nav
                     aria-label="مسیر صفحه"
                     className="mb-4 flex min-w-0 items-center gap-2 overflow-hidden text-xs text-[var(--store-muted)]"
@@ -741,7 +745,7 @@ export default function Show({
                         </span>
                     ))}
                 </nav>
-                <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
+                <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,840px)_330px] xl:justify-center">
                     <div className="flex min-w-0 flex-col">
                         <div
                             className={`relative bg-black ${content.video_url ? "overflow-visible" : "overflow-hidden"} ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-xl" : "aspect-video w-full rounded-xl"}`}
@@ -943,7 +947,7 @@ export default function Show({
                                     </div>
                                     <button
                                         aria-haspopup="dialog"
-                                        className="group m-3 flex w-[calc(100%-1.5rem)] items-center gap-2.5 rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-2.5 py-2 text-right transition hover:border-indigo-400/70 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="group m-3 flex w-[calc(100%-1.5rem)] items-center gap-2.5 rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-2.5 py-2 text-right transition hover:border-indigo-400/70 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60 xl:hidden"
                                         disabled={!content.allow_comments}
                                         onClick={() => setCommentsOpen(true)}
                                         type="button"
@@ -971,13 +975,48 @@ export default function Show({
                                             </span>
                                         )}
                                     </button>
+
+                                    <div className="hidden xl:block">
+                                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--store-border)] px-4 py-3">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    className={`rounded-lg px-3 py-2 text-xs font-black transition ${currentCommentSort === "top" ? "bg-[var(--store-text)] text-[var(--store-bg)]" : "bg-[var(--store-bg)] hover:bg-[var(--store-accent-soft)]"}`}
+                                                    onClick={() =>
+                                                        setCommentSort("top")
+                                                    }
+                                                    type="button"
+                                                >
+                                                    برترین‌ها
+                                                </button>
+                                                <button
+                                                    className={`rounded-lg px-3 py-2 text-xs font-black transition ${currentCommentSort === "newest" ? "bg-[var(--store-text)] text-[var(--store-bg)]" : "bg-[var(--store-bg)] hover:bg-[var(--store-accent-soft)]"}`}
+                                                    onClick={() =>
+                                                        setCommentSort("newest")
+                                                    }
+                                                    type="button"
+                                                >
+                                                    جدیدترین
+                                                </button>
+                                            </div>
+                                            <span className="text-[11px] text-[var(--store-muted)]">
+                                                گفت‌وگوی کاربران درباره این ویدیو
+                                            </span>
+                                        </div>
+
+                                        <div className="px-4">
+                                            {renderCommentComposer()}
+                                        </div>
+                                        <div className="max-h-[560px] overflow-y-auto overscroll-contain px-4 pb-3">
+                                            {renderCommentList()}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {commentsOpen && content.allow_comments && (
                                     <div
                                         aria-label="نظرات ویدیو"
                                         aria-modal="true"
-                                        className="pointer-events-none fixed inset-0 z-[80]"
+                                        className="pointer-events-none fixed inset-0 z-[80] xl:hidden"
                                         role="dialog"
                                     >
                                         <button
