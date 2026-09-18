@@ -38,10 +38,12 @@ Supported resource/slot combinations:
 
 - `game`: `cover`, `background`, `attachment`
 - `studio`: `logo`, `background`, `attachment`
+- `platform`: `icon`, `attachment`
 - `collection`: `logo`, `attachment`
 - `feed`: `media`, `attachment`
 - `story`: `media`, `thumbnail`, `attachment`
 - `video`: `video`, `thumbnail`, `attachment`
+- `product`: `media`, `attachment`
 
 Server uploads require `PLAYNEXUS_CONTENT_AGENT_ALLOW_UPLOADS=true`. They use
 the existing `PLAYNEXUS_CONTENT_AGENT_TOKEN`; no extra authentication token is

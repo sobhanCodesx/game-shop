@@ -163,8 +163,8 @@ class ContentAgentMcpController extends Controller
     {
         $resourceEnum = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product'];
         $mutableResourceEnum = ['game', 'studio', 'collection', 'feed', 'story', 'video'];
-        $mediaResourceEnum = ['game', 'studio', 'collection', 'feed', 'story', 'video'];
-        $mediaSlotEnum = ['cover', 'background', 'logo', 'media', 'video', 'thumbnail', 'attachment'];
+        $mediaResourceEnum = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product'];
+        $mediaSlotEnum = ['cover', 'background', 'logo', 'icon', 'media', 'video', 'thumbnail', 'attachment'];
         $maxUploadSize = max(1, (int) config('content_agent.uploads.max_size', 104857600));
         $maxChunkSize = max(1, (int) config('content_agent.uploads.max_chunk_size', 2097152));
 
@@ -378,7 +378,7 @@ class ContentAgentMcpController extends Controller
             ],
             [
                 'name' => 'start_asset_upload',
-                'description' => 'Start a secure chunked binary upload for a PlayNexus record. Metadata only; this MCP never fetches a remote URL. Slots depend on the resource.',
+                'description' => 'Start a secure chunked binary upload for a PlayNexus record. Metadata only; this MCP never fetches a remote URL. Supports games, studios, platforms, collections, feeds, stories, videos and products.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [

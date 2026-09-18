@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\ContentAsset;
 use App\Models\Game;
+use App\Models\Platform;
+use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\Studio;
 use App\Models\VideoPlaylist;
@@ -18,7 +20,7 @@ use Throwable;
 
 class ContentAgentMediaService
 {
-    private const RESOURCES = ['game', 'studio', 'collection', 'feed', 'story', 'video'];
+    private const RESOURCES = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product'];
 
     private const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -263,6 +265,9 @@ class ContentAgentMediaService
                 $this->directAsset('logo', 'image', $target->logo),
                 $this->directAsset('background', 'image', $target->background),
             ])),
+            'platform' => array_values(array_filter([
+                $this->directAsset('icon', 'image', $target->icon),
+            ])),
             'collection' => array_values(array_filter([
                 $this->directAsset('logo', 'image', $target->logo),
             ])),
@@ -285,6 +290,16 @@ class ContentAgentMediaService
                 $this->directAsset('video', 'video', $target->video_path, $target->video_mime),
                 $this->directAsset('thumbnail', 'image', $target->thumbnail),
             ])),
+            'product' => $target->media()->get()->map(fn ($media) => [
+                'id' => $media->id,
+                'slot' => 'media',
+                'kind' => $media->type,
+                'path' => $media->path,
+                'url' => MediaStorage::url($media->path),
+                'alt' => $media->alt,
+                'sort_order' => (int) $media->sort_order,
+                'is_primary' => (bool) $media->is_primary,
+            ])->values()->all(),
         };
 
         $attachments = ContentAsset::query()
@@ -340,15 +355,25 @@ class ContentAgentMediaService
             return ['resource' => $resource, 'id' => $id, 'slot' => $slot, 'asset_id' => (int) $data['asset_id'], 'removed' => true];
         }
 
-        if ($resource === 'feed' && $slot === 'media') {
+        if (in_array($resource, ['feed', 'product'], true) && $slot === 'media') {
             if (empty($data['asset_id'])) {
-                throw new RuntimeException('asset_id is required when removing feed media.');
+                throw new RuntimeException('asset_id is required when removing list media.');
             }
 
             $media = $target->media()->whereKey((int) $data['asset_id'])->firstOrFail();
-            $paths = array_values(array_filter([$media->path, $media->thumbnail]));
+            $paths = $resource === 'feed'
+                ? array_values(array_filter([$media->path, $media->thumbnail]))
+                : array_values(array_filter([$media->path]));
+            $wasPrimary = $resource === 'product' && (bool) $media->is_primary;
             $media->delete();
             MediaStorage::disk()->delete($paths);
+
+            if ($wasPrimary) {
+                $nextPrimary = $target->media()->where('type', 'image')->orderBy('sort_order')->orderBy('id')->first();
+                if ($nextPrimary) {
+                    $nextPrimary->update(['is_primary' => true]);
+                }
+            }
 
             return ['resource' => $resource, 'id' => $id, 'slot' => $slot, 'asset_id' => (int) $data['asset_id'], 'removed' => true];
         }
@@ -356,6 +381,7 @@ class ContentAgentMediaService
         $removedPath = match ($resource) {
             'game' => $this->removeDirectField($target, $slot, ['cover', 'background']),
             'studio' => $this->removeDirectField($target, $slot, ['logo', 'background']),
+            'platform' => $this->removeDirectField($target, $slot, ['icon']),
             'collection' => $this->removeDirectField($target, $slot, ['logo']),
             'story' => $this->removeStorySlot($target, $slot),
             'video' => $this->removeVideoSlot($target, $slot),
@@ -412,10 +438,12 @@ class ContentAgentMediaService
                 $file,
                 $actualMime,
             ),
+            'platform' => $this->replaceImageField($target, 'icon', 'platforms/icons', $file, $actualMime),
             'collection' => $this->replaceImageField($target, 'logo', 'video-playlists/logos', $file, $actualMime),
             'feed' => $this->storeFeedMedia($target, $metadata, $file, $actualMime),
             'story' => $this->storeStoryMedia($target, $metadata, $file, $actualMime),
             'video' => $this->storeVideoMedia($target, $metadata, $file, $actualMime),
+            'product' => $this->storeProductMedia($target, $metadata, $file, $actualMime),
         };
     }
 
@@ -595,6 +623,51 @@ class ContentAgentMediaService
         return $this->directAsset('video', 'video', $stored['path'], $actualMime) ?? [];
     }
 
+    private function storeProductMedia(
+        Product $product,
+        array $metadata,
+        UploadedFile $file,
+        string $actualMime,
+    ): array {
+        if (! in_array($actualMime, [...self::IMAGE_MIMES, ...self::VIDEO_MIMES], true)) {
+            throw new RuntimeException('Product media must be a supported image or video.');
+        }
+
+        $kind = str_starts_with($actualMime, 'video/') ? 'video' : 'image';
+        if ($kind === 'image' && $file->getSize() > 8 * 1024 * 1024) {
+            throw new RuntimeException('Product images must be 8 MB or smaller.');
+        }
+
+        $stored = $this->optimizer->store($file, "products/{$product->id}");
+        $sortOrder = $metadata['sort_order'] ?? ((int) $product->media()->max('sort_order') + 1);
+        $isPrimary = $kind === 'image' && ! $product->media()->where('type', 'image')->exists();
+
+        try {
+            $media = $product->media()->create([
+                'type' => $kind,
+                'path' => $stored['path'],
+                'alt' => filled($metadata['alt'] ?? null) ? trim((string) $metadata['alt']) : $product->title,
+                'sort_order' => (int) $sortOrder,
+                'is_primary' => $isPrimary,
+            ]);
+        } catch (Throwable $exception) {
+            MediaStorage::disk()->delete($stored['path']);
+            throw $exception;
+        }
+
+        return [
+            'id' => $media->id,
+            'slot' => 'media',
+            'kind' => $kind,
+            'path' => $media->path,
+            'url' => MediaStorage::url($media->path),
+            'mime' => $actualMime,
+            'alt' => $media->alt,
+            'sort_order' => (int) $media->sort_order,
+            'is_primary' => (bool) $media->is_primary,
+        ];
+    }
+
     private function storeAttachment(
         array $metadata,
         UploadedFile $file,
@@ -744,10 +817,12 @@ class ContentAgentMediaService
         return match ($resource) {
             'game' => Game::query()->findOrFail($id),
             'studio' => Studio::query()->findOrFail($id),
+            'platform' => Platform::query()->findOrFail($id),
             'collection' => VideoPlaylist::query()->findOrFail($id),
             'feed' => SocialContent::query()->where('type', 'post')->findOrFail($id),
             'story' => SocialContent::query()->where('type', 'short')->findOrFail($id),
             'video' => SocialContent::query()->where('type', 'video')->findOrFail($id),
+            'product' => Product::query()->findOrFail($id),
         };
     }
 
@@ -756,10 +831,12 @@ class ContentAgentMediaService
         $allowed = match ($resource) {
             'game' => ['cover', 'background', 'attachment'],
             'studio' => ['logo', 'background', 'attachment'],
+            'platform' => ['icon', 'attachment'],
             'collection' => ['logo', 'attachment'],
             'feed' => ['media', 'attachment'],
             'story' => ['media', 'thumbnail', 'attachment'],
             'video' => ['video', 'thumbnail', 'attachment'],
+            'product' => ['media', 'attachment'],
         };
 
         if (! in_array($slot, $allowed, true)) {
@@ -773,7 +850,7 @@ class ContentAgentMediaService
             return;
         }
 
-        if (in_array($slot, ['cover', 'background', 'logo', 'thumbnail'], true)) {
+        if (in_array($slot, ['cover', 'background', 'logo', 'icon', 'thumbnail'], true)) {
             $this->ensureImageMime($mime);
 
             return;
@@ -785,9 +862,9 @@ class ContentAgentMediaService
             return;
         }
 
-        if ($resource === 'feed' && $slot === 'media') {
+        if (in_array($resource, ['feed', 'product'], true) && $slot === 'media') {
             if (! in_array($mime, [...self::IMAGE_MIMES, ...self::VIDEO_MIMES], true)) {
-                throw new RuntimeException('Feed media must be a supported image or video.');
+                throw new RuntimeException('List media must be a supported image or video.');
             }
 
             return;
