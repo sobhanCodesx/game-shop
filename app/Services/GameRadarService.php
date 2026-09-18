@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Http\Client\Pool;
-use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -15,6 +13,7 @@ use Throwable;
 class GameRadarService
 {
     private const CACHE_KEY = 'playnexus:game-radar:v1';
+    private const REFRESHING_KEY = 'playnexus:game-radar:refreshing';
     private const SNAPSHOT_PATH = 'game-radar/snapshot.json';
     private const CACHE_HOURS = 6;
     private const MAX_ITEMS = 24;
@@ -106,6 +105,43 @@ class GameRadarService
     }
 
     /**
+     * Schedule a cold-cache refresh after the HTTP response has already been
+     * sent. This keeps the Game Hub request independent from third-party
+     * network latency.
+     */
+    public function scheduleWarmup(): bool
+    {
+        if (! Cache::add(self::REFRESHING_KEY, true, now()->addMinutes(2))) {
+            return false;
+        }
+
+        defer(function (): void {
+            try {
+                Cache::lock(self::CACHE_KEY.':warmup', 120)->get(function (): void {
+                    $cached = $this->cachedSnapshot();
+
+                    if (($cached['items'] ?? []) === []) {
+                        $this->refresh();
+                    }
+                });
+            } catch (Throwable $exception) {
+                Log::warning('Game Radar deferred warmup failed', [
+                    'message' => $exception->getMessage(),
+                ]);
+            } finally {
+                Cache::forget(self::REFRESHING_KEY);
+            }
+        });
+
+        return true;
+    }
+
+    public function isRefreshing(): bool
+    {
+        return Cache::has(self::REFRESHING_KEY);
+    }
+
+    /**
      * Refresh the snapshot from the public Xbox catalog and enrich each title
      * with a best-effort PlayStation Store lookup. No API key is required.
      *
@@ -116,7 +152,7 @@ class GameRadarService
         try {
             $xboxNew = $this->fetchXboxList('Computed/New', 'new');
             $xboxComing = $this->fetchXboxList('Computed/ComingSoon', 'coming');
-            $xboxItems = $this->enrichWithPlayStation([...$xboxNew, ...$xboxComing]);
+            $xboxItems = [...$xboxNew, ...$xboxComing];
             $playStationItems = $this->fetchPlayStationLatest();
 
             $items = $this->mergeRadarSources($xboxItems, $playStationItems);
@@ -188,8 +224,9 @@ class GameRadarService
         foreach ($siglIds as $siglId) {
             try {
                 $response = Http::acceptJson()
-                    ->timeout(10)
-                    ->retry(1, 250)
+                    ->connectTimeout(3)
+                    ->timeout(7)
+                    ->retry(1, 200)
                     ->get('https://catalog.gamepass.com/sigls/v2', [
                         'id' => $siglId,
                         'market' => 'US',
@@ -233,8 +270,9 @@ class GameRadarService
         foreach ($ids->chunk(18) as $chunk) {
             try {
                 $catalogResponse = Http::acceptJson()
-                    ->timeout(12)
-                    ->retry(1, 250)
+                    ->connectTimeout(3)
+                    ->timeout(8)
+                    ->retry(1, 200)
                     ->get('https://displaycatalog.mp.microsoft.com/v7.0/products', [
                         'market' => 'US',
                         'languages' => 'en-US',
@@ -338,8 +376,9 @@ class GameRadarService
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
                 'Accept-Language' => 'en-US,en;q=0.9',
             ])
-                ->timeout(15)
-                ->retry(1, 300)
+                ->connectTimeout(3)
+                ->timeout(9)
+                ->retry(1, 250)
                 ->get('https://store.playstation.com/en-us/pages/latest');
 
             if (! $response->successful()) {
@@ -555,124 +594,6 @@ class GameRadarService
             ->values()
             ->take(self::MAX_ITEMS)
             ->all();
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $items
-     * @return array<int, array<string, mixed>>
-     */
-    private function enrichWithPlayStation(array $items): array
-    {
-        if ($items === []) {
-            return [];
-        }
-
-        try {
-            $responses = Http::pool(function (Pool $pool) use ($items) {
-                return array_map(
-                    fn (array $item, int $index) => $pool
-                        ->as((string) $index)
-                        ->withHeaders([
-                            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
-                            'Accept-Language' => 'en-US,en;q=0.9',
-                        ])
-                        ->timeout(12)
-                        ->get('https://store.playstation.com/en-us/search/'.rawurlencode($item['title'])),
-                    $items,
-                    array_keys($items),
-                );
-            });
-        } catch (Throwable $exception) {
-            Log::warning('Game Radar PlayStation enrichment unavailable', [
-                'message' => $exception->getMessage(),
-            ]);
-
-            return $items;
-        }
-
-        foreach ($items as $index => &$item) {
-            $response = $responses[(string) $index] ?? null;
-            if (! $response instanceof Response || ! $response->successful()) {
-                continue;
-            }
-
-            $match = $this->parsePlayStationSearch($response->body(), (string) $item['title']);
-            if ($match !== null) {
-                $item['psn'] = $match;
-            }
-        }
-        unset($item);
-
-        return $items;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function parsePlayStationSearch(string $html, string $title): ?array
-    {
-        if (! preg_match('~<script id="__NEXT_DATA__" type="application/json">(.*?)</script>~s', $html, $matches)) {
-            return null;
-        }
-
-        $payload = json_decode($matches[1], true);
-        $apollo = data_get($payload, 'props.apolloState', []);
-        if (! is_array($apollo)) {
-            return null;
-        }
-
-        $needle = $this->normalizeTitle($title);
-        $best = null;
-        $bestScore = 0.0;
-
-        foreach ($apollo as $key => $entity) {
-            if (! is_array($entity)
-                || ! str_starts_with((string) $key, 'Product:')
-                || ($entity['__typename'] ?? null) !== 'Product'
-                || blank($entity['name'] ?? null)) {
-                continue;
-            }
-
-            $candidate = $this->normalizeTitle((string) $entity['name']);
-            if ($candidate === '') {
-                continue;
-            }
-
-            similar_text($needle, $candidate, $score);
-            if ($needle === $candidate) {
-                $score = 100;
-            } elseif (str_contains($candidate, $needle) || str_contains($needle, $candidate)) {
-                $score = max($score, 88);
-            }
-
-            if ($score > $bestScore) {
-                $bestScore = $score;
-                $best = $entity;
-            }
-        }
-
-        if (! is_array($best) || $bestScore < 74) {
-            return null;
-        }
-
-        $productId = trim((string) ($best['id'] ?? ''));
-        if ($productId === '') {
-            return null;
-        }
-
-        $price = is_array($best['price'] ?? null) ? $best['price'] : [];
-        $media = collect((array) ($best['media'] ?? []));
-        $image = $media->first(
-            fn ($item) => is_array($item) && ($item['type'] ?? null) === 'IMAGE' && ($item['role'] ?? null) === 'MASTER',
-        ) ?? $media->first(fn ($item) => is_array($item) && ($item['type'] ?? null) === 'IMAGE');
-
-        return [
-            'available' => true,
-            'price' => $price['discountedPrice'] ?? $price['basePrice'] ?? null,
-            'platforms' => array_values(array_filter((array) ($best['platforms'] ?? []), 'is_string')),
-            'url' => 'https://store.playstation.com/en-us/product/'.rawurlencode($productId),
-            'image_url' => is_array($image) ? ($image['url'] ?? null) : null,
-        ];
     }
 
     /**
