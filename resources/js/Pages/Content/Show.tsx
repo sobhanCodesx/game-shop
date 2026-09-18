@@ -187,6 +187,7 @@ function CommentItem({
             preserveScroll: true,
             preserveState: true,
             only: ["content", "comments"],
+            showProgress: false,
             onSuccess: () => {
                 reply.reset("body");
                 setReplying(false);
@@ -570,6 +571,7 @@ export default function Show({
             preserveScroll: true,
             preserveState: true,
             only: ["content", "comments"],
+            showProgress: false,
             onSuccess: () => {
                 commentForm.reset("body");
                 setCommentFocused(false);
