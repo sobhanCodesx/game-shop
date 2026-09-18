@@ -91,6 +91,7 @@ class SystemMaintenanceController extends Controller
                 'clear-cache',
                 'config-cache',
                 'schedule-run',
+                'game-radar-sync',
                 'queue-once',
                 'all',
             ])],
