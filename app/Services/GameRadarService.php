@@ -7,6 +7,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
@@ -151,48 +152,108 @@ class GameRadarService
     }
 
     /**
+     * Load public Xbox/Game Pass lists without requiring an API key.
+     *
+     * We deliberately avoid the old reco-public.rec.mp.microsoft.com host
+     * because it is not reliably resolvable across networks. SIGL lists are
+     * small public JSON documents that contain product ids; product details
+     * still come from Microsoft's display catalog.
+     *
      * @return array<int, array<string, mixed>>
      */
     private function fetchXboxList(string $list, string $status): array
     {
-        $idsResponse = Http::acceptJson()
-            ->timeout(12)
-            ->retry(2, 300)
-            ->get("https://reco-public.rec.mp.microsoft.com/channels/Reco/V8.0/Lists/{$list}", [
-                'market' => 'US',
-                'language' => 'en-US',
-                'itemTypes' => 'Game',
-                'deviceFamily' => 'Windows.Xbox',
-                'count' => 36,
-                'skipItems' => 0,
-            ]);
+        $siglIds = match ($status) {
+            'new' => [
+                // Xbox Cloud / Game Pass "Recently added".
+                'f13cf6b4-57e6-4459-89df-6aec18cf0538',
+                // Additional currently-used Recently Added collection.
+                '3fdd7f57-7092-4b65-bd40-5a9dac1b2b84',
+            ],
+            'coming' => [
+                // Public Game Pass "Coming soon" collection.
+                '4165f752-d702-49c8-886b-fb57936f6bae',
+            ],
+            default => [],
+        };
 
-        $idsResponse->throw();
+        $ids = collect();
 
-        $ids = collect($idsResponse->json('Items', []))
-            ->pluck('Id')
-            ->filter(fn ($id) => is_string($id) && $id !== '')
-            ->take(30)
-            ->values();
+        foreach ($siglIds as $siglId) {
+            try {
+                $response = Http::acceptJson()
+                    ->timeout(10)
+                    ->retry(1, 250)
+                    ->get('https://catalog.gamepass.com/sigls/v2', [
+                        'id' => $siglId,
+                        'market' => 'US',
+                        'language' => 'en-US',
+                    ]);
+
+                if (! $response->successful()) {
+                    Log::warning('Game Radar Xbox SIGL request failed', [
+                        'sigl_id' => $siglId,
+                        'status' => $response->status(),
+                    ]);
+
+                    continue;
+                }
+
+                $sourceIds = collect($response->json())
+                    ->filter(fn ($entry) => is_array($entry) && filled($entry['id'] ?? null))
+                    ->pluck('id')
+                    ->filter(fn ($id) => is_string($id) && $id !== '');
+
+                if ($sourceIds->isNotEmpty()) {
+                    $ids = $ids->concat($sourceIds);
+                    break;
+                }
+            } catch (Throwable $exception) {
+                Log::warning('Game Radar Xbox SIGL source unavailable', [
+                    'sigl_id' => $siglId,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        $ids = $ids->unique()->take(30)->values();
 
         if ($ids->isEmpty()) {
             return [];
         }
 
         $products = collect();
-        foreach ($ids->chunk(18) as $chunk) {
-            $catalogResponse = Http::acceptJson()
-                ->timeout(12)
-                ->retry(2, 300)
-                ->get('https://displaycatalog.mp.microsoft.com/v7.0/products', [
-                    'market' => 'US',
-                    'languages' => 'en-US',
-                    'fieldsTemplate' => 'details',
-                    'bigIds' => $chunk->implode(','),
-                ]);
 
-            $catalogResponse->throw();
-            $products = $products->concat($catalogResponse->json('Products', []));
+        foreach ($ids->chunk(18) as $chunk) {
+            try {
+                $catalogResponse = Http::acceptJson()
+                    ->timeout(12)
+                    ->retry(1, 250)
+                    ->get('https://displaycatalog.mp.microsoft.com/v7.0/products', [
+                        'market' => 'US',
+                        'languages' => 'en-US',
+                        'fieldsTemplate' => 'details',
+                        'bigIds' => $chunk->implode(','),
+                    ]);
+
+                if (! $catalogResponse->successful()) {
+                    Log::warning('Game Radar Microsoft display catalog request failed', [
+                        'status' => $catalogResponse->status(),
+                    ]);
+
+                    continue;
+                }
+
+                $products = $products->concat($catalogResponse->json('Products', []));
+            } catch (Throwable $exception) {
+                Log::warning('Game Radar Microsoft display catalog unavailable', [
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        if ($products->isEmpty()) {
+            return [];
         }
 
         $rank = $ids->flip();
