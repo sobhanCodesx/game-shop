@@ -1,6 +1,6 @@
 import { Button } from "@heroui/react";
 import { Link, usePage } from "@inertiajs/react";
-import { Compass, Gamepad2, LoaderCircle, Search, Zap } from "lucide-react";
+import { Compass, Gamepad2, LoaderCircle, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import ExploreGrid, {
@@ -75,80 +75,69 @@ export default function Discover({
     return (
         <StorefrontLayout>
             <Seo seo={seo} />
-            <main className="mx-auto max-w-[1500px] px-1 py-4 sm:px-4 md:py-8">
-                <header className="mx-auto mb-5 max-w-7xl px-2 sm:mb-7 sm:px-0">
-                    <section className="relative overflow-hidden rounded-[28px] border border-[var(--store-border)] bg-[var(--store-panel)] px-4 py-5 shadow-[0_26px_80px_-52px_rgba(79,70,229,.85)] sm:px-7 sm:py-7">
-                        <div
-                            aria-hidden="true"
-                            className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-indigo-500/20 blur-3xl"
-                        />
-                        <div
-                            aria-hidden="true"
-                            className="pointer-events-none absolute -bottom-32 left-10 size-64 rounded-full bg-fuchsia-500/10 blur-3xl"
-                        />
-                        <div className="relative flex items-start justify-between gap-4">
-                            <div className="max-w-2xl">
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1.5 text-[10px] font-black tracking-[.16em] text-indigo-400 sm:text-xs">
-                                    <Zap size={13} />
-                                    NEXUS EXPLORE
-                                </span>
-                                <h1 className="mt-3 flex items-center gap-2 text-2xl font-black tracking-tight sm:text-3xl md:text-4xl">
-                                    <Compass className="text-indigo-500" size={30} />
-                                    اکسپلور پلی‌نکسوس
+            <main className="mx-auto w-full px-0 py-2 sm:px-4 sm:py-5 md:py-6">
+                <header className="mx-auto mb-3 w-full max-w-[1080px] px-3 sm:mb-4 sm:px-0">
+                    <div className="flex items-center gap-3 py-2 sm:py-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-500/20">
+                                <Compass size={19} />
+                            </span>
+                            <div className="min-w-0">
+                                <h1 className="truncate text-lg font-black sm:text-xl">
+                                    اکسپلور
                                 </h1>
-                                <p className="mt-2 max-w-xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm sm:leading-7">
-                                    یک جریان تصویری زنده از ویدیوها، فیدها و محصولات؛
-                                    اسکرول کن، باز کن و همان‌جا با محتوا تعامل داشته باش.
+                                <p className="hidden text-[11px] text-[var(--store-muted)] sm:block">
+                                    کشف تازه‌های PlayNexus
                                 </p>
                             </div>
-                            <Link href="/search">
-                                <Button
-                                    aria-label="جستجو در اکسپلور"
-                                    className="shadow-lg shadow-indigo-500/10"
-                                    isIconOnly
-                                    variant="secondary"
-                                >
-                                    <Search size={19} />
-                                </Button>
-                            </Link>
                         </div>
-                        {!!storefront.categories.length && (
-                            <nav
-                                aria-label="دسته‌بندی‌ها"
-                                className="relative mt-6 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                            >
-                                {storefront.categories.map((category) => (
-                                    <Link
-                                        className="group flex w-[74px] shrink-0 flex-col items-center gap-2 text-center"
-                                        href={"/categories/" + category.slug}
-                                        key={category.id}
-                                    >
-                                        <span className="rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-400 p-[2px] shadow-lg shadow-indigo-500/10 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-indigo-500/25">
-                                            <span className="grid size-14 place-items-center overflow-hidden rounded-full border-2 border-[var(--store-bg)] bg-[var(--store-surface)] sm:size-16">
-                                                {category.image_url ? (
-                                                    <img
-                                                        alt={category.name}
-                                                        className="size-full object-cover"
-                                                        decoding="async"
-                                                        loading="lazy"
-                                                        src={category.image_url}
-                                                    />
-                                                ) : (
-                                                    <Gamepad2
-                                                        className="text-indigo-500"
-                                                        size={22}
-                                                    />
-                                                )}
-                                            </span>
+
+                        <Link
+                            aria-label="جستجو در پلی نکسوس"
+                            className="mr-auto flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl bg-[var(--store-surface)] px-3 text-xs text-[var(--store-muted)] transition hover:bg-[var(--store-surface-strong)] sm:max-w-sm sm:text-sm"
+                            href="/search"
+                        >
+                            <Search className="shrink-0" size={17} />
+                            <span className="truncate">جستجو در بازی‌ها و محتوا</span>
+                        </Link>
+                    </div>
+
+                    {!!storefront.categories.length && (
+                        <nav
+                            aria-label="دسته‌بندی‌ها"
+                            className="flex gap-3 overflow-x-auto border-t border-[var(--store-border)] py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        >
+                            {storefront.categories.map((category) => (
+                                <Link
+                                    className="group flex w-[66px] shrink-0 flex-col items-center gap-1.5 text-center sm:w-[72px]"
+                                    href={"/categories/" + category.slug}
+                                    key={category.id}
+                                >
+                                    <span className="rounded-full bg-gradient-to-tr from-amber-400 via-fuchsia-500 to-indigo-500 p-[2px]">
+                                        <span className="grid size-12 place-items-center overflow-hidden rounded-full border-2 border-[var(--store-bg)] bg-[var(--store-surface)] transition-transform duration-200 group-active:scale-95 sm:size-14">
+                                            {category.image_url ? (
+                                                <img
+                                                    alt={category.name}
+                                                    className="size-full object-cover"
+                                                    decoding="async"
+                                                    loading="lazy"
+                                                    src={category.image_url}
+                                                />
+                                            ) : (
+                                                <Gamepad2
+                                                    className="text-indigo-500"
+                                                    size={19}
+                                                />
+                                            )}
                                         </span>
-                                        <span className="line-clamp-1 w-full text-[10px] font-black text-[var(--store-muted)] transition group-hover:text-[var(--store-text)] sm:text-[11px]">
-                                            {category.name}
-                                        </span>
-                                    </Link>
-                                ))}
-                            </nav>
-                        )}
-                    </section>
+                                    </span>
+                                    <span className="line-clamp-1 w-full text-[10px] font-bold text-[var(--store-muted)] sm:text-[11px]">
+                                        {category.name}
+                                    </span>
+                                </Link>
+                            ))}
+                        </nav>
+                    )}
                 </header>
                 {items.length ? (
                     <>
@@ -164,7 +153,7 @@ export default function Discover({
                         />
                         <div
                             aria-live="polite"
-                            className="grid min-h-24 place-items-center py-5"
+                            className="mx-auto grid min-h-24 w-full max-w-[1080px] place-items-center py-5"
                             ref={sentinel}
                         >
                             {loading && (
