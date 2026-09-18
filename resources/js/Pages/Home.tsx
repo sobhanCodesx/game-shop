@@ -12,6 +12,9 @@ import {
     Clock3,
     PackageOpen,
     Radio,
+    Radar,
+    CalendarDays,
+    CheckCircle2,
     ShieldCheck,
     Sparkles,
     Truck,
@@ -78,6 +81,7 @@ interface Props {
     channels: ChannelItem[];
     latestFeed: FeedItemData[];
     latestStudios: StudioItem[];
+    gameRadar: GameRadarItem[];
 }
 interface ChannelItem {
     id: number;
@@ -97,6 +101,27 @@ interface StudioItem {
     channels_count: number;
     created_at: string;
 }
+interface RadarStorePresence {
+    available: boolean;
+    price: string | null;
+    platforms: string[];
+    url: string | null;
+}
+
+interface GameRadarItem {
+    id: string;
+    title: string;
+    description: string | null;
+    cover_url: string | null;
+    banner_url: string | null;
+    release_date: string | null;
+    status: "new" | "coming";
+    developer: string | null;
+    publisher: string | null;
+    xbox: RadarStorePresence;
+    psn: RadarStorePresence;
+}
+
 interface FreshItem {
     key: string;
     type: "product" | "video";
@@ -893,6 +918,164 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
     );
 }
 
+function GameRadarRail({ items }: { items: GameRadarItem[] }) {
+    const railRef = useRef<HTMLDivElement>(null);
+    if (!items.length) return null;
+
+    const dateLabel = (value: string | null) => {
+        if (!value) return "تاریخ نامشخص";
+
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "تاریخ نامشخص";
+
+        return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+            month: "short",
+            day: "numeric",
+            timeZone: "Asia/Tehran",
+        }).format(date);
+    };
+
+    return (
+        <section className="mx-auto max-w-7xl px-4 pb-5 pt-2">
+            <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_-58px_rgba(79,70,229,.8)] sm:p-5">
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-indigo-500/20 blur-3xl"
+                />
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -bottom-32 left-16 size-72 rounded-full bg-cyan-500/10 blur-3xl"
+                />
+
+                <header className="relative mb-4 flex items-center gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white/10 text-indigo-300">
+                        <Radar size={20} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                            <h2 className="truncate text-base font-black sm:text-lg">
+                                NEXUS GAME RADAR
+                            </h2>
+                            <span className="rounded-full bg-emerald-400/10 px-2 py-0.5 text-[9px] font-black text-emerald-300">
+                                LIVE
+                            </span>
+                        </div>
+                        <p className="mt-0.5 text-[10px] text-white/50 sm:text-xs">
+                            بازی‌های تازه، در راه و وضعیت حضور در فروشگاه‌ها
+                        </p>
+                    </div>
+                    <Link
+                        className="shrink-0 rounded-full bg-white px-3 py-2 text-[10px] font-black text-slate-950 transition hover:scale-[1.02] sm:px-4 sm:text-xs"
+                        href="/game-radar"
+                    >
+                        مشاهده همه
+                    </Link>
+                </header>
+
+                <div
+                    className="home-slider relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-5 sm:px-5 lg:mx-0 lg:grid lg:grid-cols-4 lg:px-0"
+                    ref={railRef}
+                >
+                    {items.slice(0, 8).map((item, index) => (
+                        <Link
+                            className={`group relative aspect-[4/5] w-[72vw] max-w-[300px] shrink-0 snap-center overflow-hidden rounded-[22px] border border-white/10 bg-slate-900 transition duration-300 active:scale-[.985] sm:aspect-[16/11] sm:w-[340px] sm:max-w-none lg:w-auto lg:snap-none lg:hover:-translate-y-1 ${index === 0 ? "lg:col-span-2 lg:row-span-2 lg:aspect-auto lg:min-h-[410px]" : ""}`}
+                            href="/game-radar"
+                            key={item.id}
+                        >
+                            {item.banner_url || item.cover_url ? (
+                                <img
+                                    alt={item.title}
+                                    className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.04]"
+                                    decoding="async"
+                                    loading="lazy"
+                                    src={
+                                        item.banner_url ??
+                                        item.cover_url ??
+                                        undefined
+                                    }
+                                />
+                            ) : (
+                                <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)]">
+                                    <Gamepad2
+                                        className="text-indigo-300"
+                                        size={44}
+                                    />
+                                </span>
+                            )}
+
+                            <span className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-black/5" />
+                            <span
+                                className={`absolute right-3 top-3 rounded-full border px-2.5 py-1 text-[9px] font-black backdrop-blur-md ${item.status === "coming" ? "border-amber-300/20 bg-amber-400/15 text-amber-200" : "border-emerald-300/20 bg-emerald-400/15 text-emerald-200"}`}
+                            >
+                                {item.status === "coming"
+                                    ? "COMING SOON"
+                                    : "NEW"}
+                            </span>
+
+                            <span className="absolute inset-x-3 bottom-3 text-white sm:inset-x-4 sm:bottom-4">
+                                <strong
+                                    className={`block line-clamp-2 font-black leading-6 ${index === 0 ? "text-xl sm:text-2xl" : "text-sm sm:text-base"}`}
+                                >
+                                    {item.title}
+                                </strong>
+                                <span className="mt-2 flex items-center gap-1.5 text-[10px] text-white/60">
+                                    <CalendarDays size={12} />
+                                    {dateLabel(item.release_date)}
+                                </span>
+                                <span className="mt-2 flex flex-wrap gap-1.5">
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-1 text-[9px] font-black text-emerald-200">
+                                        <CheckCircle2 size={10} />
+                                        Xbox
+                                    </span>
+                                    {item.psn.available && (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-400/15 px-2 py-1 text-[9px] font-black text-sky-200">
+                                            <CheckCircle2 size={10} />
+                                            PS Store
+                                        </span>
+                                    )}
+                                </span>
+                            </span>
+                        </Link>
+                    ))}
+                </div>
+
+                {items.length > 1 && (
+                    <div className="relative mt-4 hidden justify-end gap-2 sm:flex lg:hidden">
+                        <Button
+                            aria-label="بازی قبلی"
+                            className="size-9 min-w-9 rounded-full border border-white/10 bg-white/10 text-white"
+                            isIconOnly
+                            onPress={() =>
+                                railRef.current?.scrollBy({
+                                    left: 340,
+                                    behavior: "smooth",
+                                })
+                            }
+                            variant="ghost"
+                        >
+                            <ChevronRight size={17} />
+                        </Button>
+                        <Button
+                            aria-label="بازی بعدی"
+                            className="size-9 min-w-9 rounded-full border border-white/10 bg-white/10 text-white"
+                            isIconOnly
+                            onPress={() =>
+                                railRef.current?.scrollBy({
+                                    left: -340,
+                                    behavior: "smooth",
+                                })
+                            }
+                            variant="ghost"
+                        >
+                            <ChevronLeft size={17} />
+                        </Button>
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+}
+
 function RailButtons({
     onPrevious,
     onNext,
@@ -940,6 +1123,7 @@ export default function Home({
     channels,
     latestFeed,
     latestStudios,
+    gameRadar,
 }: Props) {
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
@@ -1098,6 +1282,7 @@ export default function Home({
                         <LatestStudioRail items={latestStudios} />
                     </section>
                 )}
+                <GameRadarRail items={gameRadar} />
                 <section className="home-slider mx-auto flex max-w-7xl snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],
