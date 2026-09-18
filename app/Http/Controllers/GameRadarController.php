@@ -15,7 +15,7 @@ class GameRadarController extends Controller
         $siteName = (string) config('seo.site_name', 'PlayNexus');
         $locale = (string) config('seo.locale', 'fa-IR');
         $canonical = route('game-radar.index');
-        $snapshot = $radar->cachedSnapshot();
+        $snapshot = $radar->linkedSnapshot();
         $items = collect($snapshot['items'] ?? [])->values();
 
         $featured = $items->first();
@@ -72,6 +72,7 @@ class GameRadarController extends Controller
                             'name' => (string) $item['publisher'],
                         ]
                         : null,
+                    'url' => $item['playnexus_url'] ?? null,
                     'sameAs' => $sameAs !== [] ? $sameAs : null,
                 ], fn ($value) => $value !== null && $value !== '' && $value !== []);
 
