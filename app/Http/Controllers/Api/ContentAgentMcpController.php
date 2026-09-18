@@ -106,14 +106,23 @@ class ContentAgentMcpController extends Controller
             'search_studios' => $contentAgent->searchStudios($arguments),
             'search_platforms' => $contentAgent->searchPlatforms($arguments),
             'search_collections' => $contentAgent->searchCollections($arguments),
+            'select_content' => $contentAgent->selectContent($arguments),
+            'get_content' => $contentAgent->getContent($arguments),
             'create_game' => $contentAgent->createGame($arguments),
             'create_studio' => $contentAgent->createStudio($arguments),
             'create_collection' => $contentAgent->createCollection($arguments),
             'create_story' => $contentAgent->createStory($arguments),
+            'create_video' => $contentAgent->createVideo($arguments),
             'get_feed' => $contentAgent->getFeed($arguments),
             'create_feed' => $contentAgent->createFeed($arguments),
+            'update_content' => $contentAgent->updateContent($arguments),
             'update_feed' => $contentAgent->updateFeed($arguments),
+            'sync_collection_videos' => $contentAgent->syncCollectionVideos($arguments),
+            'set_content_state' => $contentAgent->setContentState($arguments),
             'publish_feed' => $contentAgent->publishFeed($arguments),
+            'unpublish_feed' => $contentAgent->unpublishFeed($arguments),
+            'delete_content' => $contentAgent->deleteContent($arguments),
+            'restore_content' => $contentAgent->restoreContent($arguments),
             default => throw new RuntimeException("Unknown PlayNexus tool: {$name}"),
         };
 
@@ -145,6 +154,9 @@ class ContentAgentMcpController extends Controller
 
     private function tools(): array
     {
+        $resourceEnum = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product'];
+        $mutableResourceEnum = ['game', 'studio', 'collection', 'feed', 'story', 'video'];
+
         $feedProperties = [
             'title' => ['type' => 'string', 'maxLength' => 160, 'description' => 'Persian SEO-friendly feed title.'],
             'body' => ['type' => ['string', 'null'], 'maxLength' => 100000, 'description' => 'Feed body. Safe HTML is supported; scripts and unsafe markup are stripped.'],
@@ -160,11 +172,11 @@ class ContentAgentMcpController extends Controller
         ];
 
         return [
-            $this->searchTool('search_games', 'Search existing active PlayNexus games before linking content to a game.'),
-            $this->searchTool('search_studios', 'Search existing active PlayNexus game studios.'),
+            $this->searchTool('search_games', 'Search PlayNexus games before linking or creating content.'),
+            $this->searchTool('search_studios', 'Search PlayNexus game studios before linking or creating content.'),
             [
                 'name' => 'search_platforms',
-                'description' => 'Search active platforms and retrieve ids for create_game.',
+                'description' => 'Search active platforms and retrieve ids for games.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
@@ -175,10 +187,48 @@ class ContentAgentMcpController extends Controller
                 ],
                 'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
-            $this->searchTool('search_collections', 'Search existing public PlayNexus collections.'),
+            $this->searchTool('search_collections', 'Search PlayNexus collections.'),
+            [
+                'name' => 'select_content',
+                'description' => 'Advanced safe SELECT over PlayNexus content resources. Supports search, ids, state/status, game/studio filters, pagination, sorting, and optional soft-deleted records. Does not execute raw SQL.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $resourceEnum],
+                        'query' => ['type' => ['string', 'null'], 'maxLength' => 160],
+                        'ids' => ['type' => 'array', 'items' => ['type' => 'integer', 'minimum' => 1], 'maxItems' => 100, 'uniqueItems' => true],
+                        'status' => ['type' => ['string', 'null'], 'maxLength' => 40, 'description' => 'For collections this maps to visibility.'],
+                        'game_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'studio_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'include_deleted' => ['type' => 'boolean', 'default' => false],
+                        'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20],
+                        'offset' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 10000, 'default' => 0],
+                        'order_by' => ['type' => 'string', 'enum' => ['id', 'name', 'title', 'created_at', 'updated_at', 'published_at', 'release_date', 'sort_order', 'status'], 'default' => 'id'],
+                        'order_dir' => ['type' => 'string', 'enum' => ['asc', 'desc'], 'default' => 'desc'],
+                    ],
+                    'required' => ['resource'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'get_content',
+                'description' => 'Read one PlayNexus record by resource and id, including draft content and optionally soft-deleted records.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $resourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'include_deleted' => ['type' => 'boolean', 'default' => false],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
             [
                 'name' => 'create_game',
-                'description' => 'Create a new PlayNexus game as INACTIVE. It is never made public by this tool and media can be added later in admin.',
+                'description' => 'Create a PlayNexus game as INACTIVE. Activation is a separate explicit state operation.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
@@ -198,7 +248,7 @@ class ContentAgentMcpController extends Controller
             ],
             [
                 'name' => 'create_studio',
-                'description' => 'Create a new PlayNexus studio as INACTIVE. It is never made public by this tool and logo/background can be added later in admin.',
+                'description' => 'Create a PlayNexus studio as INACTIVE. Activation is a separate explicit state operation.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
@@ -213,7 +263,7 @@ class ContentAgentMcpController extends Controller
             ],
             [
                 'name' => 'create_collection',
-                'description' => 'Create a PlayNexus video collection as PRIVATE. It is never made public by this tool.',
+                'description' => 'Create a PlayNexus collection as PRIVATE. Making it public is a separate explicit state operation.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
@@ -230,7 +280,7 @@ class ContentAgentMcpController extends Controller
             ],
             [
                 'name' => 'create_story',
-                'description' => 'Create PlayNexus storefront story metadata as DRAFT. Media is intentionally not accepted by this JSON tool; add image/video before publishing.',
+                'description' => 'Create PlayNexus story metadata as DRAFT. Media is attached separately.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
@@ -247,15 +297,25 @@ class ContentAgentMcpController extends Controller
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             [
-                'name' => 'get_feed',
-                'description' => 'Read one PlayNexus feed post by id, including draft content.',
+                'name' => 'create_video',
+                'description' => 'Create PlayNexus video metadata as DRAFT. The binary video/thumbnail can be attached later by the media tools.',
                 'inputSchema' => [
                     'type' => 'object',
-                    'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]],
-                    'required' => ['id'],
+                    'properties' => [
+                        'title' => ['type' => 'string', 'maxLength' => 160],
+                        'game_id' => ['type' => ['integer', 'null']],
+                        'playlist_ids' => ['type' => 'array', 'items' => ['type' => 'integer'], 'maxItems' => 100, 'uniqueItems' => true],
+                        'excerpt' => ['type' => ['string', 'null'], 'maxLength' => 500],
+                        'body' => ['type' => ['string', 'null'], 'maxLength' => 100000],
+                        'seo_title' => ['type' => ['string', 'null'], 'maxLength' => 60],
+                        'seo_description' => ['type' => ['string', 'null'], 'maxLength' => 160],
+                        'featured' => ['type' => 'boolean'],
+                        'allow_comments' => ['type' => 'boolean'],
+                    ],
+                    'required' => ['title'],
                     'additionalProperties' => false,
                 ],
-                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             [
                 'name' => 'create_feed',
@@ -269,8 +329,34 @@ class ContentAgentMcpController extends Controller
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             [
+                'name' => 'update_content',
+                'description' => 'Edit an existing game, studio, collection, feed, story, or video. Only allowlisted fields are accepted for each resource and publication state is never changed here.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mutableResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'data' => ['type' => 'object', 'description' => 'Fields to update. Resource-specific server validation applies.', 'additionalProperties' => true],
+                    ],
+                    'required' => ['resource', 'id', 'data'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'get_feed',
+                'description' => 'Compatibility helper to read one feed by id, including draft content.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
                 'name' => 'update_feed',
-                'description' => 'Edit an existing PlayNexus feed post. Publishing is not performed by this tool.',
+                'description' => 'Compatibility helper to edit an existing PlayNexus feed without changing publication state.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => ['id' => ['type' => 'integer', 'minimum' => 1], ...$feedProperties],
@@ -280,8 +366,37 @@ class ContentAgentMcpController extends Controller
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             [
+                'name' => 'sync_collection_videos',
+                'description' => 'Replace the ordered videos in a collection. video_ids order becomes playlist position.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'collection_id' => ['type' => 'integer', 'minimum' => 1],
+                        'video_ids' => ['type' => 'array', 'items' => ['type' => 'integer', 'minimum' => 1], 'maxItems' => 500, 'uniqueItems' => true],
+                    ],
+                    'required' => ['collection_id', 'video_ids'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'set_content_state',
+                'description' => 'Explicitly change public/private or active/draft state for games, studios, collections, stories and videos. Feed publishing is intentionally excluded; use publish_feed. Public/active/published transitions require server-side publishing permission.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => ['game', 'studio', 'collection', 'feed', 'story', 'video']],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'state' => ['type' => 'string', 'maxLength' => 30, 'description' => 'game/studio: active|inactive; collection: public|private; story/video: published|draft; feed: draft only'],
+                    ],
+                    'required' => ['resource', 'id', 'state'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
                 'name' => 'publish_feed',
-                'description' => 'Publish an existing PlayNexus feed post. Use only when the user explicitly asks to publish. Server-side publishing must also be enabled.',
+                'description' => 'Publish an existing PlayNexus feed. Use only after an explicit user request. Server-side publishing must be enabled.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]],
@@ -289,6 +404,45 @@ class ContentAgentMcpController extends Controller
                     'additionalProperties' => false,
                 ],
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'unpublish_feed',
+                'description' => 'Return a published PlayNexus feed to draft and clear published_at.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'delete_content',
+                'description' => 'Delete a mutable content record. Games/studios use soft delete; collections/feeds/stories/videos are removed and their owned media is cleaned up. Requires destructive operations to be enabled server-side.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mutableResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'restore_content',
+                'description' => 'Restore a soft-deleted game or studio. Requires destructive operations to be enabled server-side.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => ['game', 'studio']],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
         ];
     }
@@ -313,15 +467,15 @@ class ContentAgentMcpController extends Controller
 
     private function instructions(): string
     {
-        return 'PlayNexus content tools. Create feeds and stories as drafts, games/studios as inactive, and collections as private. Publish or activate content only after an explicit user request and only through dedicated server-side gated tools.';
+        return 'PlayNexus Content Admin MCP v2. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
     }
 
     private function serverInfo(): array
     {
         return [
             'name' => 'playnexus-content-agent',
-            'title' => 'PlayNexus Content Agent',
-            'version' => '1.1.0',
+            'title' => 'PlayNexus Content Admin Agent',
+            'version' => '2.0.0',
         ];
     }
 

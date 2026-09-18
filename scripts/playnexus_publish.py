@@ -16,14 +16,23 @@ ALLOWED_TOOLS = {
     "search_studios",
     "search_platforms",
     "search_collections",
+    "select_content",
+    "get_content",
     "create_game",
     "create_studio",
     "create_collection",
     "create_story",
+    "create_video",
     "get_feed",
     "create_feed",
+    "update_content",
     "update_feed",
+    "sync_collection_videos",
+    "set_content_state",
     "publish_feed",
+    "unpublish_feed",
+    "delete_content",
+    "restore_content",
 }
 
 
@@ -74,7 +83,7 @@ def rpc_request(url: str, token: str, job: dict[str, Any]) -> dict[str, Any]:
             "Authorization": f"Bearer {token}",
             "Accept": "application/json",
             "Content-Type": "application/json; charset=utf-8",
-            "User-Agent": "PlayNexus-GitHub-Publisher/1.1",
+            "User-Agent": "PlayNexus-GitHub-Publisher/2.0",
         },
     )
 
@@ -118,11 +127,10 @@ def append_summary(job_path: Path, response: dict[str, Any]) -> None:
     structured = result.get("structuredContent", {}) if isinstance(result, dict) else {}
 
     with open(summary_path, "a", encoding="utf-8") as handle:
-        handle.write(f"### ✅ {job_path.name}\n\n")
-        handle.write(f"Tool: `{load_job(job_path)['tool']}`\n\n")
-        handle.write("```json\n")
+        handle.write(f"### {job_path.name}\n\n")
+        handle.write(f"Tool: {load_job(job_path)['tool']}\n\n")
         handle.write(json.dumps(structured, ensure_ascii=False, indent=2)[:12000])
-        handle.write("\n```\n\n")
+        handle.write("\n\n")
 
 
 def main() -> None:
