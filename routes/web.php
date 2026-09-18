@@ -106,6 +106,8 @@ Route::get('shop', [StorefrontController::class, 'shop'])->name('shop.index');
 Route::get('exchange-products', [StorefrontController::class, 'exchangeProducts'])->name('exchange-products.index');
 Route::get('products', [StorefrontController::class, 'shop'])->name('products.index');
 Route::get('discover', [StorefrontController::class, 'discover'])->name('discover');
+Route::post('discover/content/{content:slug}/view', [StorefrontController::class, 'recordDiscoverView'])
+    ->middleware('throttle:90,1')->name('discover.views.store');
 Route::post('discover/content/{content}/view', [StorefrontController::class, 'recordDiscoverView'])
     ->middleware('throttle:120,1')
     ->name('discover.content.view');
