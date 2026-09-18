@@ -128,6 +128,10 @@ interface GameRadarSnapshot {
     items: GameRadarItem[];
 }
 
+interface GameRadarDataResponse extends GameRadarSnapshot {
+    refreshing?: boolean;
+}
+
 interface FreshItem {
     key: string;
     type: "product" | "video";
@@ -1211,30 +1215,65 @@ export default function Home({
     const [radarItems, setRadarItems] = useState<GameRadarItem[]>(gameRadar);
     const [radarLoading, setRadarLoading] = useState(gameRadar.length === 0);
     const [radarFailed, setRadarFailed] = useState(false);
+    const radarPollTimerRef = useRef<number | null>(null);
     const touchStartX = useRef<number | null>(null);
     const categoryRailRef = useRef<HTMLDivElement>(null);
-    const loadGameRadar = async () => {
-        setRadarLoading(true);
-        setRadarFailed(false);
+    const loadGameRadar = async (attempt = 0) => {
+        if (attempt === 0) {
+            setRadarLoading(true);
+            setRadarFailed(false);
+        }
 
         try {
             const response = await fetch("/game-radar/data", {
+                cache: "no-store",
                 headers: { Accept: "application/json" },
             });
             if (!response.ok) throw new Error("Game Radar request failed");
-            const snapshot = (await response.json()) as GameRadarSnapshot;
-            setRadarItems(snapshot.items.slice(0, 8));
-            setRadarFailed(snapshot.items.length === 0);
-        } catch {
+
+            const snapshot = (await response.json()) as GameRadarDataResponse;
+
+            if (snapshot.items.length > 0) {
+                setRadarItems(snapshot.items.slice(0, 8));
+                setRadarFailed(false);
+                setRadarLoading(false);
+                return;
+            }
+
+            if (snapshot.refreshing && attempt < 20) {
+                radarPollTimerRef.current = window.setTimeout(
+                    () => void loadGameRadar(attempt + 1),
+                    1500,
+                );
+                return;
+            }
+
             setRadarFailed(true);
-        } finally {
+            setRadarLoading(false);
+        } catch {
+            if (attempt < 3) {
+                radarPollTimerRef.current = window.setTimeout(
+                    () => void loadGameRadar(attempt + 1),
+                    1200,
+                );
+                return;
+            }
+
+            setRadarFailed(true);
             setRadarLoading(false);
         }
     };
 
     useEffect(() => {
-        if (gameRadar.length > 0) return;
-        void loadGameRadar();
+        if (gameRadar.length === 0) {
+            void loadGameRadar();
+        }
+
+        return () => {
+            if (radarPollTimerRef.current !== null) {
+                window.clearTimeout(radarPollTimerRef.current);
+            }
+        };
     }, []);
 
     useEffect(() => {
