@@ -1,0 +1,14 @@
+{
+  "job_id": "create-crazy-taxi-japan-feed-20260918-daily001",
+  "tool": "create_feed",
+  "arguments": {
+    "title": "نقشه ژاپن Crazy Taxi: World Tour رونمایی شد؛ سومین مقصد تور جهانی",
+    "body": "<p><strong>SEGA در جریان برنامه Xbox در Tokyo Game Show 2026 از نقشه ژاپن بازی Crazy Taxi: World Tour رونمایی کرد.</strong> ژاپن سومین نقشه از پنج مقصد کمپین تک‌نفره World Tour است و در کنار سان‌فرانسیسکو و آلمان، یکی از متفاوت‌ترین محیط‌های بازی را می‌سازد.</p>\n\n<p>این نقشه قرار است خیابان‌های شلوغ و مدرن، بزرگراه‌های میان آسمان‌خراش‌ها و محله‌های تاریخی ژاپن را کنار هم قرار دهد. حتی مکان‌ها و برندهای شناخته‌شده‌ای مثل SHIBUYA109، ICHIRAN و Kani Doraku هم در محیط دیده می‌شوند؛ یعنی همان آشوب دوست‌داشتنی Crazy Taxi، این بار وسط ژاپن.</p>\n\n<p>Crazy Taxi: World Tour فقط به کمپین داستانی محدود نیست و بخش چندنفره کراس‌پلتفرم هم دارد. بازی برای <strong>PS5، Xbox Series X|S، Nintendo Switch 2 و PC</strong> در سال <strong>۲۰۲۷</strong> منتشر می‌شود.</p>\n\n<p>فعلاً تاریخ انتشار دقیق اعلام نشده، اما با نمایش تازه TGS 2026 مشخص است SEGA جدی‌تر از همیشه روی بازگشت یکی از دیوانه‌وارترین آرکیدهای رانندگی خودش حساب کرده است.</p>",
+    "feed_type": "news",
+    "feed_badge": "news",
+    "allow_comments": true,
+    "notify_followers": false,
+    "seo_title": "نقشه ژاپن Crazy Taxi: World Tour رونمایی شد",
+    "seo_description": "SEGA نقشه ژاپن Crazy Taxi: World Tour را در TGS 2026 معرفی کرد؛ سومین مقصد کمپین World Tour برای بازی جدیدی که سال ۲۰۲۷ منتشر می‌شود."
+  }
+}
