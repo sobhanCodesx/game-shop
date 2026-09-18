@@ -115,7 +115,7 @@ class HomeController extends Controller
             'latestFeed' => $feed->latestImportant($request, 8),
             'latestStudios' => $latestStudios,
             'gameRadar' => (function () use ($radar) {
-                $items = collect($radar->cachedSnapshot()['items'] ?? []);
+                $items = collect($radar->linkedSnapshot()['items'] ?? []);
 
                 $ps5 = $items
                     ->filter(fn (array $item) => ($item['psn']['available'] ?? false) === true)
