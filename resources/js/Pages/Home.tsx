@@ -992,13 +992,13 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                 </div>
 
                 {shelfItems.length ? (
-                    <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4 lg:grid lg:grid-cols-4 lg:overflow-visible">
+                    <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4 lg:grid lg:grid-flow-dense lg:grid-cols-4 lg:overflow-visible">
                         {shelfItems.map((item, index) => (
                             <Link
-                                className={`group relative aspect-[4/5] w-[68vw] max-w-[285px] shrink-0 snap-center overflow-hidden rounded-[19px] border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-1 sm:aspect-[16/11] sm:w-[300px] lg:w-auto ${
+                                className={`group relative aspect-[4/5] w-[68vw] max-w-[285px] shrink-0 snap-center overflow-hidden rounded-[19px] border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-1 sm:aspect-[16/11] sm:w-[300px] lg:w-full lg:max-w-none ${
                                     index === 0
                                         ? "lg:col-span-2 lg:row-span-2 lg:aspect-auto lg:min-h-[340px]"
-                                        : ""
+                                        : "lg:aspect-[16/11]"
                                 }`}
                                 href="/game-radar"
                                 key={item.id}
