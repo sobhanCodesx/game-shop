@@ -1,0 +1,8 @@
+{
+  "job_id": "20260918-delete-video-queue-cleanup-test",
+  "tool": "delete_content",
+  "arguments": {
+    "resource": "video",
+    "id": 53
+  }
+}
