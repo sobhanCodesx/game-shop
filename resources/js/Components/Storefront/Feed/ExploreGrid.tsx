@@ -159,13 +159,13 @@ function MobileAction({
         <button
             aria-label={label}
             aria-pressed={active || undefined}
-            className={`flex min-w-12 flex-col items-center gap-1 text-[10px] font-black text-white transition active:scale-95 ${disabled ? "opacity-40" : ""}`}
+            className={`flex min-w-12 flex-col items-center gap-1.5 text-[10px] font-black text-white transition active:scale-90 ${disabled ? "opacity-40" : ""}`}
             disabled={disabled}
             onClick={onClick}
             type="button"
         >
             <span
-                className={`grid size-11 place-items-center rounded-full border border-white/10 bg-black/55 shadow-lg backdrop-blur-md ${active ? "text-rose-400" : ""}`}
+                className={`grid size-11 place-items-center rounded-full bg-black/45 text-white shadow-lg backdrop-blur-md transition ${active ? "text-rose-400" : ""}`}
             >
                 <Icon fill={active ? "currentColor" : "none"} size={21} />
             </span>
@@ -302,7 +302,7 @@ function MobileReels({
                                         size={80}
                                     />
                                 ))}
-                            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/75 to-transparent px-4 pb-24 pt-36 text-white">
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/65 to-transparent px-4 pb-[max(5.5rem,env(safe-area-inset-bottom))] pt-40 text-white">
                                 <span className="text-[11px] font-black text-indigo-300">
                                     {product
                                         ? "محصول فروشگاه"
@@ -340,7 +340,7 @@ function MobileReels({
                                 )}
                             </div>
                             {content && interaction && (
-                                <div className="absolute bottom-24 right-3 z-20 flex flex-col gap-4">
+                                <div className="absolute bottom-[max(6.25rem,env(safe-area-inset-bottom))] right-3 z-20 flex flex-col gap-4">
                                     <MobileAction
                                         active={interaction.liked}
                                         icon={Heart}
@@ -395,52 +395,60 @@ function Tile({
     const content = item.kind === "content" ? item.data : null;
     const image = itemImage(item);
     const video = itemVideo(item);
-    const large = index % 10 === 2 || index % 10 === 7;
 
     return (
         <>
             <button
                 aria-label={`باز کردن ${item.data.title}`}
-                className={`group relative min-h-0 overflow-hidden rounded-[3px] bg-[var(--store-surface-strong)] text-right shadow-sm transition duration-300 hover:z-10 hover:shadow-2xl focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 ${large ? "col-span-2 row-span-2" : ""}`}
+                className="group relative aspect-square min-w-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-[-2px]"
                 onClick={onOpen}
                 type="button"
             >
                 {image ? (
                     <img
                         alt={item.data.title}
-                        className="size-full object-cover transition duration-500 group-hover:scale-[1.035]"
+                        className="size-full object-cover transition-transform duration-300 ease-out md:group-hover:scale-[1.025]"
                         decoding="async"
-                        fetchPriority={index < 4 ? "high" : "auto"}
-                        loading={index < 4 ? "eager" : "lazy"}
+                        fetchPriority={index < 6 ? "high" : "auto"}
+                        loading={index < 6 ? "eager" : "lazy"}
                         src={image}
                     />
                 ) : (
                     <span className="grid size-full place-items-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
-                        <Gamepad2
-                            className="text-indigo-400"
-                            size={large ? 58 : 32}
-                        />
+                        <Gamepad2 className="text-indigo-400" size={34} />
                     </span>
                 )}
-                <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/5 to-black/15 opacity-65 transition md:opacity-20 md:group-hover:opacity-80" />
-                <span className="absolute left-2 top-2 grid size-8 place-items-center rounded-full border border-white/10 bg-black/45 text-white backdrop-blur-md">
+
+                <span className="pointer-events-none absolute inset-0 hidden bg-black/45 opacity-0 transition-opacity duration-200 md:block md:group-hover:opacity-100" />
+
+                <span className="pointer-events-none absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-sm sm:left-2.5 sm:top-2.5">
                     {video ? (
-                        <Play fill="currentColor" size={13} />
+                        <Play fill="currentColor" size={12} />
                     ) : content ? (
-                        <Images size={14} />
+                        <Images size={13} />
                     ) : (
-                        <ShoppingBag size={14} />
+                        <ShoppingBag size={13} />
                     )}
                 </span>
+
                 {content && (
-                    <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full border border-white/10 bg-black/45 px-2 py-1 text-[10px] font-black text-white backdrop-blur-md">
-                        <Eye size={12} />
-                        {compact.format(content.views)}
+                    <span className="pointer-events-none absolute inset-0 hidden items-center justify-center gap-7 text-sm font-black text-white opacity-0 transition-opacity duration-200 md:flex md:group-hover:opacity-100">
+                        <span className="flex items-center gap-2">
+                            <Heart fill="currentColor" size={21} />
+                            {compact.format(content.likes_count)}
+                        </span>
+                        <span className="flex items-center gap-2">
+                            <MessageCircle fill="currentColor" size={21} />
+                            {compact.format(content.comments_count)}
+                        </span>
                     </span>
                 )}
-                <strong className="absolute inset-x-0 bottom-0 line-clamp-2 p-2 text-[10px] leading-5 text-white transition md:translate-y-3 md:p-4 md:text-sm md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
-                    {item.data.title}
-                </strong>
+
+                {item.kind === "product_media" && (
+                    <span className="pointer-events-none absolute inset-x-0 bottom-0 hidden bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-10 text-xs font-black text-white opacity-0 transition-opacity duration-200 md:block md:group-hover:opacity-100">
+                        <span className="line-clamp-1">{item.data.title}</span>
+                    </span>
+                )}
             </button>
             <Link className="sr-only" href={item.data.url}>
                 مشاهده {item.data.title}
@@ -548,23 +556,23 @@ function Modal({
     return createPortal(
         <div
             aria-modal="true"
-            className="fixed inset-0 z-[100] hidden bg-black/88 backdrop-blur-md md:grid md:place-items-center md:p-6"
+            className="fixed inset-0 z-[100] hidden bg-black/80 backdrop-blur-sm md:grid md:place-items-center md:p-5 lg:p-8"
             dir="rtl"
             onMouseDown={(event) =>
                 event.target === event.currentTarget && onClose()
             }
             role="dialog"
         >
-            <div className="relative flex h-full w-full flex-col overflow-hidden bg-[var(--store-surface)] shadow-2xl md:h-[min(88vh,900px)] md:max-w-7xl md:flex-row md:rounded-[28px] md:border md:border-white/10">
+            <div className="relative flex h-full w-full flex-col overflow-hidden bg-[var(--store-panel)] shadow-2xl md:h-[min(86vh,860px)] md:max-w-[1180px] md:flex-row md:rounded-xl md:border md:border-[var(--store-border)]">
                 <button
                     aria-label="بستن"
-                    className="absolute left-3 top-3 z-30 grid size-10 place-items-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition hover:bg-black/80"
+                    className="absolute -left-14 top-0 z-30 grid size-10 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition hover:bg-black/70"
                     onClick={onClose}
                     type="button"
                 >
                     <X />
                 </button>
-                <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black md:w-[70%]">
+                <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black md:w-[68%]">
                     {video ? (
                         <ReelVideo
                             active
@@ -603,8 +611,8 @@ function Modal({
                         </button>
                     )}
                 </div>
-                <aside className="flex max-h-[43%] shrink-0 flex-col border-t border-[var(--store-border)] bg-[var(--store-panel)] p-5 md:max-h-none md:w-[30%] md:border-r md:border-t-0 md:p-7">
-                    <div className="mb-5 flex items-center gap-3 border-b border-[var(--store-border)] pb-4">
+                <aside className="flex max-h-[43%] shrink-0 flex-col border-t border-[var(--store-border)] bg-[var(--store-panel)] p-5 md:max-h-none md:w-[32%] md:border-r md:border-t-0 md:p-0">
+                    <div className="flex items-center gap-3 border-b border-[var(--store-border)] px-5 py-4">
                         {content?.channel?.avatar_url ? (
                             <img
                                 alt={content.channel.name}
@@ -625,7 +633,7 @@ function Modal({
                             </small>
                         </div>
                     </div>
-                    <div className="min-h-0 flex-1 overflow-y-auto">
+                    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
                         <span className="text-xs font-black text-indigo-500">
                             {product
                                 ? "محصول فروشگاه"
@@ -657,7 +665,7 @@ function Modal({
                         )}
                     </div>
                     {content && interaction && (
-                        <div className="mt-4 grid grid-cols-4 gap-1 border-y border-[var(--store-border)] py-2">
+                        <div className="grid grid-cols-4 gap-1 border-t border-[var(--store-border)] px-3 py-2">
                             <DesktopAction
                                 active={interaction.liked}
                                 icon={Heart}
@@ -684,7 +692,7 @@ function Modal({
                             />
                         </div>
                     )}
-                    <Link className="mt-auto pt-5" href={item.data.url}>
+                    <Link className="border-t border-[var(--store-border)] p-4" href={item.data.url}>
                         <Button fullWidth variant="primary">
                             مشاهده صفحه کامل
                         </Button>
@@ -844,7 +852,7 @@ export default function ExploreGrid({
         <>
             <section
                 aria-label="شبکه اکسپلور"
-                className="grid auto-flow-dense auto-rows-[calc((100vw-0.5rem)/3)] grid-cols-3 gap-0.5 overflow-hidden rounded-2xl bg-[var(--store-border)] sm:auto-rows-[calc((min(100vw,1500px)-2.5rem)/3)] sm:gap-1 md:rounded-[28px]"
+                className="mx-auto grid w-full max-w-[1080px] grid-cols-3 gap-[2px] overflow-hidden bg-[var(--store-bg)] sm:gap-1"
             >
                 {items.map((item, index) => (
                     <Tile
