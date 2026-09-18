@@ -1,0 +1,7 @@
+{
+  "job_id": "20260918-mw4-feed-51-publish",
+  "tool": "publish_feed",
+  "arguments": {
+    "id": 51
+  }
+}
