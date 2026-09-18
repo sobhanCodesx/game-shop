@@ -263,7 +263,7 @@ function SpotlightCard({
 
             <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-black/35 to-black/5" />
 
-            <div className="flex h-full min-h-inherit flex-col justify-end p-4 sm:p-5">
+            <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-5">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                     <PlatformBadge platform={platform} />
                     <span className="rounded-full bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/70 backdrop-blur-md">
