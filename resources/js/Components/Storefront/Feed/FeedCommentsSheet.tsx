@@ -108,7 +108,7 @@ export default function FeedCommentsSheet({
         <div
             aria-label="نظرات پست"
             aria-modal="true"
-            className="fixed inset-0 z-[100]"
+            className="fixed inset-0 z-[160]"
             role="dialog"
         >
             <button

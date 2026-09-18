@@ -7,6 +7,7 @@ use App\Models\Game;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\SocialContent;
+use App\Services\ContentViewService;
 use App\Services\MediaStorage;
 use App\Services\SmartSearchService;
 use App\Services\StorefrontDataService;
@@ -14,7 +15,6 @@ use App\Support\Seo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -180,14 +180,37 @@ class StorefrontController extends Controller
             ->select(['id', 'published_at as sort_at'])
             ->selectRaw("'content' as kind");
 
-        /** @var LengthAwarePaginator $feed */
+        // Infinite scroll does not need an expensive total count on every request.
         $feed = DB::query()->fromSub($productMediaFeed->unionAll($contentFeed), 'explore_feed')
-            ->orderByDesc('sort_at')->orderByDesc('id')->paginate(18)->withQueryString();
+            ->orderByDesc('sort_at')->orderByDesc('id')->simplePaginate(18)->withQueryString();
         $rows = collect($feed->items());
-        $media = ProductMedia::query()->with(['product' => fn ($query) => $query->with($this->productRelations())])
-            ->whereIn('id', $rows->where('kind', 'product_media')->pluck('id'))->get()->keyBy('id');
-        $content = SocialContent::query()->with(['game:id,name,slug,cover', 'media'])
-            ->whereIn('id', $rows->where('kind', 'content')->pluck('id'))->get()->keyBy('id');
+
+        $media = ProductMedia::query()
+            ->with(['product' => fn ($query) => $query->with($this->productRelations())])
+            ->whereIn('id', $rows->where('kind', 'product_media')->pluck('id'))
+            ->get()
+            ->keyBy('id');
+
+        $contentQuery = SocialContent::query()
+            ->with(['game:id,name,slug,cover', 'media'])
+            ->withCount([
+                'reactions as likes_count' => fn (Builder $query) => $query->where('type', 'like'),
+                'comments as comments_count' => fn (Builder $query) => $query->published(),
+            ]);
+
+        if ($request->user()) {
+            $contentQuery->withExists([
+                'reactions as is_liked' => fn (Builder $query) => $query
+                    ->where('type', 'like')
+                    ->where('user_id', $request->user()->id),
+            ]);
+        }
+
+        $content = $contentQuery
+            ->whereIn('id', $rows->where('kind', 'content')->pluck('id'))
+            ->get()
+            ->keyBy('id');
+
         $feed->setCollection($rows->map(function (object $row) use ($media, $content, $data, $request) {
             if ($row->kind === 'product_media' && $media->has($row->id)) {
                 $item = $media[$row->id];
@@ -204,7 +227,23 @@ class StorefrontController extends Controller
                 ];
             }
 
-            return ['key' => "content-{$row->id}", 'kind' => 'content', 'data' => $data->content($content[$row->id])];
+            if (! $content->has($row->id)) {
+                return null;
+            }
+
+            $item = $content[$row->id];
+
+            return [
+                'key' => "content-{$row->id}",
+                'kind' => 'content',
+                'data' => [
+                    ...$data->content($item),
+                    'likes_count' => (int) $item->likes_count,
+                    'comments_count' => (int) $item->comments_count,
+                    'is_liked' => (bool) ($item->is_liked ?? false),
+                    'allow_comments' => (bool) $item->allow_comments,
+                ],
+            ];
         })->filter()->values());
 
         if ($request->wantsJson()) {
@@ -258,6 +297,23 @@ class StorefrontController extends Controller
             ]),
             'feed' => $feed,
         ]);
+    }
+
+    public function recordDiscoverView(
+        Request $request,
+        SocialContent $content,
+        ContentViewService $views,
+    ): JsonResponse {
+        abort_unless(
+            in_array($content->type, ['post', 'video'], true)
+                && $content->status === 'published'
+                && $content->published_at?->isPast(),
+            404,
+        );
+
+        $views->record($request, $content);
+
+        return response()->json(['views' => (int) $content->views]);
     }
 
     public function videos(Request $request, StorefrontDataService $data): Response
