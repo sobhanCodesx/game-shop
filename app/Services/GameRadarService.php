@@ -15,13 +15,74 @@ class GameRadarService
 {
     private const CACHE_KEY = 'playnexus:game-radar:v2';
     private const SNAPSHOT_PATH = 'game-radar/snapshot-v2.json';
+    private const SETTINGS_PATH = 'game-radar/settings.json';
     private const CACHE_HOURS = 6;
-    private const MAX_ITEMS = 64;
+    private const DEFAULT_SETTINGS = [
+        'ps5_new_limit' => 24,
+        'ps5_coming_limit' => 16,
+        'xbox_new_limit' => 24,
+        'xbox_coming_limit' => 24,
+        'snapshot_limit' => 64,
+    ];
 
     private const PSN_GRAPHQL_URL = 'https://web.np.playstation.com/api/graphql/v1/op';
     private const PSN_CATEGORY_GRID_HASH = '88c0b9a1273c6d320c51cd73e390924e21ae28bf09f01cde8b84b1034b16cd03';
     private const PS5_CATEGORY = 'd71e8e6d-0940-4e03-bd02-404fc7d31a31';
     private const PS5_COMING_SOON_CATEGORY = '82ced94c-ed3f-4d81-9b50-4d4cf1da170b';
+
+    /**
+     * @return array{ps5_new_limit:int,ps5_coming_limit:int,xbox_new_limit:int,xbox_coming_limit:int,snapshot_limit:int}
+     */
+    public function settings(): array
+    {
+        $settings = self::DEFAULT_SETTINGS;
+
+        if (Storage::disk('local')->exists(self::SETTINGS_PATH)) {
+            $decoded = json_decode(
+                Storage::disk('local')->get(self::SETTINGS_PATH),
+                true,
+            );
+
+            if (is_array($decoded)) {
+                $settings = [...$settings, ...$decoded];
+            }
+        }
+
+        return [
+            'ps5_new_limit' => max(1, min(60, (int) ($settings['ps5_new_limit'] ?? 24))),
+            'ps5_coming_limit' => max(1, min(60, (int) ($settings['ps5_coming_limit'] ?? 16))),
+            'xbox_new_limit' => max(1, min(60, (int) ($settings['xbox_new_limit'] ?? 24))),
+            'xbox_coming_limit' => max(1, min(60, (int) ($settings['xbox_coming_limit'] ?? 24))),
+            'snapshot_limit' => max(8, min(160, (int) ($settings['snapshot_limit'] ?? 64))),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $settings
+     * @return array{ps5_new_limit:int,ps5_coming_limit:int,xbox_new_limit:int,xbox_coming_limit:int,snapshot_limit:int}
+     */
+    public function saveSettings(array $settings): array
+    {
+        $current = $this->settings();
+
+        $normalized = [
+            'ps5_new_limit' => max(1, min(60, (int) ($settings['ps5_new_limit'] ?? $current['ps5_new_limit']))),
+            'ps5_coming_limit' => max(1, min(60, (int) ($settings['ps5_coming_limit'] ?? $current['ps5_coming_limit']))),
+            'xbox_new_limit' => max(1, min(60, (int) ($settings['xbox_new_limit'] ?? $current['xbox_new_limit']))),
+            'xbox_coming_limit' => max(1, min(60, (int) ($settings['xbox_coming_limit'] ?? $current['xbox_coming_limit']))),
+            'snapshot_limit' => max(8, min(160, (int) ($settings['snapshot_limit'] ?? $current['snapshot_limit']))),
+        ];
+
+        Storage::disk('local')->put(
+            self::SETTINGS_PATH,
+            json_encode(
+                $normalized,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT,
+            ),
+        );
+
+        return $normalized;
+    }
 
     /**
      * Cache/storage only. Never performs an external HTTP request.
@@ -126,9 +187,10 @@ class GameRadarService
     public function refresh(): array
     {
         try {
-            $playStationItems = $this->fetchPlayStationCatalog();
-            $xboxNew = $this->fetchXboxList('new');
-            $xboxComing = $this->fetchXboxList('coming');
+            $settings = $this->settings();
+            $playStationItems = $this->fetchPlayStationCatalog($settings);
+            $xboxNew = $this->fetchXboxList('new', $settings['xbox_new_limit']);
+            $xboxComing = $this->fetchXboxList('coming', $settings['xbox_coming_limit']);
             $xboxItems = [...$xboxNew, ...$xboxComing];
 
             if ($playStationItems === []) {
@@ -142,6 +204,7 @@ class GameRadarService
             $items = $this->mergeRadarSources(
                 $xboxItems,
                 $playStationItems,
+                $settings['snapshot_limit'],
             );
 
             $snapshot = [
@@ -181,7 +244,7 @@ class GameRadarService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function fetchXboxList(string $status): array
+    private function fetchXboxList(string $status, int $limit): array
     {
         $siglIds = match ($status) {
             'new' => [
@@ -230,7 +293,7 @@ class GameRadarService
             }
         }
 
-        $ids = $ids->unique()->take(24)->values();
+        $ids = $ids->unique()->take($limit)->values();
 
         if ($ids->isEmpty()) {
             return [];
@@ -267,7 +330,7 @@ class GameRadarService
             ->map(fn (array $product) => $this->mapXboxProduct($product, $status))
             ->filter()
             ->sortBy(fn (array $item) => $rank->get($item['id'], PHP_INT_MAX))
-            ->take(24)
+            ->take($limit)
             ->values()
             ->all();
     }
@@ -323,26 +386,26 @@ class GameRadarService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function fetchPlayStationCatalog(): array
+    private function fetchPlayStationCatalog(array $settings): array
     {
         $new = $this->fetchPlayStationGrid(
             self::PS5_CATEGORY,
             'new',
             'products',
-            24,
+            $settings['ps5_new_limit'],
         );
 
         $coming = $this->fetchPlayStationGrid(
             self::PS5_COMING_SOON_CATEGORY,
             'coming',
             'concepts',
-            16,
+            $settings['ps5_coming_limit'],
         );
 
         return collect([...$coming, ...$new])
             ->filter(fn (array $item) => ($item['psn']['available'] ?? false) === true)
             ->unique(fn (array $item) => $this->normalizeTitle((string) $item['title']))
-            ->take(40)
+            ->take($settings['ps5_new_limit'] + $settings['ps5_coming_limit'])
             ->values()
             ->all();
     }
@@ -356,85 +419,102 @@ class GameRadarService
         string $collection,
         int $limit,
     ): array {
-        try {
-            $variables = [
-                'id' => $categoryId,
-                'pageArgs' => [
-                    'size' => min(24, $limit),
-                    'offset' => 0,
-                ],
-                'sortBy' => null,
-                'filterBy' => [],
-                'facetOptions' => [],
-            ];
+        $results = collect();
+        $offset = 0;
 
-            $extensions = [
-                'persistedQuery' => [
-                    'version' => 1,
-                    'sha256Hash' => self::PSN_CATEGORY_GRID_HASH,
-                ],
-            ];
+        while ($results->count() < $limit) {
+            $pageSize = min(24, $limit - $results->count());
 
-            $response = Http::withHeaders([
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
-                'Accept' => 'application/json',
-                'Accept-Language' => 'es-CR,es;q=0.9,en;q=0.8',
-                'Referer' => 'https://store.playstation.com/es-cr/category/'.$categoryId.'/1',
-                'Origin' => 'https://store.playstation.com',
-                'apollo-require-preflight' => 'true',
-                'x-apollo-operation-name' => 'categoryGridRetrieve',
-            ])
-                ->connectTimeout(3)
-                ->timeout(9)
-                ->retry(1, 250)
-                ->get(self::PSN_GRAPHQL_URL, [
-                    'operationName' => 'categoryGridRetrieve',
-                    'variables' => json_encode($variables, JSON_UNESCAPED_SLASHES),
-                    'extensions' => json_encode($extensions, JSON_UNESCAPED_SLASHES),
-                ]);
+            try {
+                $variables = [
+                    'id' => $categoryId,
+                    'pageArgs' => [
+                        'size' => $pageSize,
+                        'offset' => $offset,
+                    ],
+                    'sortBy' => null,
+                    'filterBy' => [],
+                    'facetOptions' => [],
+                ];
 
-            if (! $response->successful()) {
-                Log::warning('Game Radar PlayStation GraphQL request failed', [
+                $extensions = [
+                    'persistedQuery' => [
+                        'version' => 1,
+                        'sha256Hash' => self::PSN_CATEGORY_GRID_HASH,
+                    ],
+                ];
+
+                $response = Http::withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
+                    'Accept' => 'application/json',
+                    'Accept-Language' => 'es-CR,es;q=0.9,en;q=0.8',
+                    'Referer' => 'https://store.playstation.com/es-cr/category/'.$categoryId.'/1',
+                    'Origin' => 'https://store.playstation.com',
+                    'apollo-require-preflight' => 'true',
+                    'x-apollo-operation-name' => 'categoryGridRetrieve',
+                ])
+                    ->connectTimeout(3)
+                    ->timeout(9)
+                    ->retry(1, 250)
+                    ->get(self::PSN_GRAPHQL_URL, [
+                        'operationName' => 'categoryGridRetrieve',
+                        'variables' => json_encode($variables, JSON_UNESCAPED_SLASHES),
+                        'extensions' => json_encode($extensions, JSON_UNESCAPED_SLASHES),
+                    ]);
+
+                if (! $response->successful()) {
+                    Log::warning('Game Radar PlayStation GraphQL request failed', [
+                        'category' => $categoryId,
+                        'status' => $response->status(),
+                    ]);
+
+                    break;
+                }
+
+                $payload = $response->json();
+
+                if (! is_array($payload) || filled($payload['errors'] ?? null)) {
+                    Log::warning('Game Radar PlayStation GraphQL returned errors', [
+                        'category' => $categoryId,
+                        'errors' => $payload['errors'] ?? null,
+                    ]);
+
+                    break;
+                }
+
+                $nodes = data_get($payload, 'data.categoryGridRetrieve.'.$collection, []);
+
+                if (! is_array($nodes) || $nodes === []) {
+                    break;
+                }
+
+                $mapped = collect($nodes)
+                    ->map(fn (array $node) => $collection === 'concepts'
+                        ? $this->mapPlayStationConcept($node, $status)
+                        : $this->mapPlayStationProduct($node, $status))
+                    ->filter()
+                    ->values();
+
+                $results = $results->concat($mapped);
+                $offset += count($nodes);
+
+                if (count($nodes) < $pageSize) {
+                    break;
+                }
+            } catch (Throwable $exception) {
+                Log::warning('Game Radar PlayStation GraphQL source unavailable', [
                     'category' => $categoryId,
-                    'status' => $response->status(),
+                    'message' => $exception->getMessage(),
                 ]);
 
-                return [];
+                break;
             }
-
-            $payload = $response->json();
-
-            if (! is_array($payload) || filled($payload['errors'] ?? null)) {
-                Log::warning('Game Radar PlayStation GraphQL returned errors', [
-                    'category' => $categoryId,
-                    'errors' => $payload['errors'] ?? null,
-                ]);
-
-                return [];
-            }
-
-            $nodes = data_get($payload, 'data.categoryGridRetrieve.'.$collection, []);
-
-            if (! is_array($nodes)) {
-                return [];
-            }
-
-            return collect($nodes)
-                ->map(fn (array $node) => $collection === 'concepts'
-                    ? $this->mapPlayStationConcept($node, $status)
-                    : $this->mapPlayStationProduct($node, $status))
-                ->filter()
-                ->take($limit)
-                ->values()
-                ->all();
-        } catch (Throwable $exception) {
-            Log::warning('Game Radar PlayStation GraphQL source unavailable', [
-                'category' => $categoryId,
-                'message' => $exception->getMessage(),
-            ]);
-
-            return [];
         }
+
+        return $results
+            ->take($limit)
+            ->values()
+            ->all();
     }
 
     /**
@@ -552,7 +632,7 @@ class GameRadarService
      * @param array<int, array<string, mixed>> $playStationItems
      * @return array<int, array<string, mixed>>
      */
-    private function mergeRadarSources(array $xboxItems, array $playStationItems): array
+    private function mergeRadarSources(array $xboxItems, array $playStationItems, int $maxItems): array
     {
         $merged = [];
 
@@ -592,7 +672,7 @@ class GameRadarService
 
         return collect($merged)
             ->values()
-            ->take(self::MAX_ITEMS)
+            ->take($maxItems)
             ->all();
     }
 
