@@ -51,7 +51,7 @@ MCP_TOOLS = {
 
 # Synthetic GitHub-runner operation. source_url/file_path/source_base64 are
 # consumed here and are never forwarded to the PlayNexus MCP endpoint.
-LOCAL_TOOLS = {"upload_asset"}
+LOCAL_TOOLS = {"upload_asset", "upload_asset_by_query"}
 ALLOWED_TOOLS = MCP_TOOLS | LOCAL_TOOLS
 
 DEFAULT_CHUNK_SIZE = 2 * 1024 * 1024
@@ -164,6 +164,102 @@ def structured_result(response: dict[str, Any]) -> dict[str, Any]:
         fail("PlayNexus response is missing structuredContent.result.")
 
     return value
+
+
+
+def normalized_lookup_value(value: Any) -> str:
+    return "".join(character for character in str(value or "").casefold() if character.isalnum())
+
+
+def resolve_content_id_by_query(
+    url: str,
+    token: str,
+    *,
+    resource: str,
+    query: str,
+    request_id: str,
+) -> int:
+    if not isinstance(resource, str) or not resource.strip():
+        fail("upload_asset_by_query resource must be a non-empty string.")
+    if not isinstance(query, str) or not query.strip():
+        fail("upload_asset_by_query query must be a non-empty string.")
+
+    response = rpc_request(
+        url,
+        token,
+        tool="select_content",
+        arguments={
+            "resource": resource.strip(),
+            "query": query.strip(),
+            "limit": 20,
+        },
+        request_id=f"{request_id}:resolve",
+    )
+
+    result = response.get("result")
+    structured = result.get("structuredContent") if isinstance(result, dict) else None
+    value = structured.get("result") if isinstance(structured, dict) else None
+    items = value.get("items") if isinstance(value, dict) else None
+    if not isinstance(items, list):
+        fail("PlayNexus selector did not return an items list.")
+
+    needle = normalized_lookup_value(query)
+    exact_matches = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        labels = (item.get("name"), item.get("title"), item.get("slug"))
+        if any(normalized_lookup_value(label) == needle for label in labels if label):
+            exact_matches.append(item)
+
+    if len(exact_matches) != 1:
+        fail(
+            "upload_asset_by_query requires exactly one exact PlayNexus match; "
+            f"found {len(exact_matches)} for {resource!r} query {query!r}."
+        )
+
+    resolved_id = exact_matches[0].get("id")
+    if not isinstance(resolved_id, int) or resolved_id < 1:
+        fail("Resolved PlayNexus record is missing a valid integer id.")
+
+    print(
+        f"Resolved {resource} {query!r} to id={resolved_id} "
+        f"({exact_matches[0].get('name') or exact_matches[0].get('title') or exact_matches[0].get('slug')})."
+    )
+    return resolved_id
+
+
+def upload_asset_by_query(
+    url: str,
+    token: str,
+    job: dict[str, Any],
+    request_id: str,
+) -> dict[str, Any]:
+    arguments = job.get("arguments", {})
+    if not isinstance(arguments, dict):
+        fail("upload_asset_by_query arguments must be an object.")
+
+    delegated_arguments = dict(arguments)
+    query = delegated_arguments.pop("query", None)
+    resource = delegated_arguments.get("resource")
+    if "id" in delegated_arguments:
+        fail("upload_asset_by_query must not include id; it resolves the id from query.")
+
+    delegated_arguments["id"] = resolve_content_id_by_query(
+        url,
+        token,
+        resource=resource,
+        query=query,
+        request_id=request_id,
+    )
+
+    delegated_job = {
+        **job,
+        "tool": "upload_asset",
+        "arguments": delegated_arguments,
+    }
+    return upload_asset(url, token, delegated_job, request_id)
+
 
 
 def positive_env_int(name: str, default: int) -> int:
@@ -472,6 +568,8 @@ def main() -> None:
     request_id = str(job.get("job_id") or job_path.stem)
     if job["tool"] == "upload_asset":
         response = upload_asset(url, token, job, request_id)
+    elif job["tool"] == "upload_asset_by_query":
+        response = upload_asset_by_query(url, token, job, request_id)
     else:
         response = rpc_request(
             url,
