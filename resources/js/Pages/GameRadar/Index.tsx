@@ -47,6 +47,10 @@ interface GameRadarSnapshot {
     items: GameRadarItem[];
 }
 
+interface GameRadarDataResponse extends GameRadarSnapshot {
+    refreshing?: boolean;
+}
+
 type PlatformFilter = "all" | "xbox" | "psn";
 type StatusFilter = "all" | "new" | "coming";
 
@@ -361,30 +365,65 @@ export default function GameRadarIndex({
     const [selectedId, setSelectedId] = useState<string | null>(
         radar.items[0]?.id ?? null,
     );
+    const pollTimerRef = useRef<number | null>(null);
 
-    const loadRadar = async () => {
-        setLoading(true);
-        setFailed(false);
+    const loadRadar = async (attempt = 0) => {
+        if (attempt === 0) {
+            setLoading(true);
+            setFailed(false);
+        }
 
         try {
             const response = await fetch("/game-radar/data", {
+                cache: "no-store",
                 headers: { Accept: "application/json" },
             });
             if (!response.ok) throw new Error("Game Radar request failed");
-            const next = (await response.json()) as GameRadarSnapshot;
-            setSnapshot(next);
-            setSelectedId(next.items[0]?.id ?? null);
-            setFailed(next.items.length === 0);
-        } catch {
+
+            const next = (await response.json()) as GameRadarDataResponse;
+
+            if (next.items.length > 0) {
+                setSnapshot(next);
+                setSelectedId(next.items[0]?.id ?? null);
+                setFailed(false);
+                setLoading(false);
+                return;
+            }
+
+            if (next.refreshing && attempt < 20) {
+                pollTimerRef.current = window.setTimeout(
+                    () => void loadRadar(attempt + 1),
+                    1500,
+                );
+                return;
+            }
+
             setFailed(true);
-        } finally {
+            setLoading(false);
+        } catch {
+            if (attempt < 3) {
+                pollTimerRef.current = window.setTimeout(
+                    () => void loadRadar(attempt + 1),
+                    1200,
+                );
+                return;
+            }
+
+            setFailed(true);
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (radar.items.length > 0) return;
-        void loadRadar();
+        if (radar.items.length === 0) {
+            void loadRadar();
+        }
+
+        return () => {
+            if (pollTimerRef.current !== null) {
+                window.clearTimeout(pollTimerRef.current);
+            }
+        };
     }, []);
 
     const platformItems = useMemo(
