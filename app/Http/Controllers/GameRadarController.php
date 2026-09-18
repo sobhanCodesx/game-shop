@@ -84,7 +84,7 @@ class GameRadarController extends Controller
             ->all();
 
         return Inertia::render('GameRadar/Index', [
-            'seo' => Seo::page([
+            ...Seo::page([
                 'title' => $title,
                 'description' => $description,
                 'canonical' => $canonical,
