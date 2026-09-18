@@ -60,15 +60,20 @@ class GameRadarService
             $playStationItems = $this->fetchPlayStationCatalog();
             $xboxNew = $this->fetchXboxList('new');
             $xboxComing = $this->fetchXboxList('coming');
+            $xboxItems = [...$xboxNew, ...$xboxComing];
+
+            if ($playStationItems === []) {
+                throw new \RuntimeException('PlayStation 5 source returned no titles.');
+            }
+
+            if ($xboxItems === []) {
+                throw new \RuntimeException('Xbox source returned no titles.');
+            }
 
             $items = $this->mergeRadarSources(
-                [...$xboxNew, ...$xboxComing],
+                $xboxItems,
                 $playStationItems,
             );
-
-            if ($items === []) {
-                throw new \RuntimeException('Game Radar sources returned no titles.');
-            }
 
             $snapshot = [
                 'generated_at' => now()->toISOString(),
