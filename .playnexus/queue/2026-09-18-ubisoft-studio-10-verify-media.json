@@ -1,0 +1,8 @@
+{
+  "job_id": "20260918-ubisoft-studio-10-verify-media",
+  "tool": "search_studios",
+  "arguments": {
+    "query": "Ubisoft",
+    "limit": 10
+  }
+}
