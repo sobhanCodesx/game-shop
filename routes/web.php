@@ -29,6 +29,7 @@ use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\GameRadarController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaStreamController;
 use App\Http\Controllers\MobileDeviceController;
@@ -106,6 +107,7 @@ Route::get('shop', [StorefrontController::class, 'shop'])->name('shop.index');
 Route::get('exchange-products', [StorefrontController::class, 'exchangeProducts'])->name('exchange-products.index');
 Route::get('products', [StorefrontController::class, 'shop'])->name('products.index');
 Route::get('discover', [StorefrontController::class, 'discover'])->name('discover');
+Route::get('game-radar', GameRadarController::class)->name('game-radar.index');
 Route::post('discover/content/{content:slug}/view', [StorefrontController::class, 'recordDiscoverView'])
     ->middleware('throttle:90,1')
     ->name('discover.views.store');
