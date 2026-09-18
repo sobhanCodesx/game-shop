@@ -1,0 +1,8 @@
+{
+  "job_id": "search-crazy-taxi-world-tour-20260918-daily001",
+  "tool": "search_games",
+  "arguments": {
+    "query": "Crazy Taxi: World Tour",
+    "limit": 5
+  }
+}
