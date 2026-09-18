@@ -22,7 +22,8 @@ class MobilePushNotificationTest extends TestCase
 
         $payload = [
             'installation_id' => $installationId,
-            'push_token' => 'ExponentPushToken[first_device_token]',
+            'push_token' => 'native-fcm-device-token',
+            'push_provider' => 'fcm',
             'platform' => 'android',
             'device_name' => 'Pixel',
             'app_version' => '1.0.0',
@@ -35,8 +36,7 @@ class MobilePushNotificationTest extends TestCase
         $this->assertDatabaseCount('mobile_devices', 1);
         $this->assertDatabaseHas('mobile_devices', ['user_id' => $firstUser->id, 'installation_id' => $installationId]);
 
-        $payload['push_token'] = 'ExponentPushToken[changed_device_token]';
-        $payload['platform'] = 'ios';
+        $payload['push_token'] = 'changed-native-fcm-device-token';
         $this->actingAs($secondUser)->putJson(route('mobile.devices.store'), $payload)->assertOk();
 
         $this->assertDatabaseCount('mobile_devices', 1);
@@ -44,7 +44,8 @@ class MobilePushNotificationTest extends TestCase
             'user_id' => $secondUser->id,
             'installation_id' => $installationId,
             'push_token' => $payload['push_token'],
-            'platform' => 'ios',
+            'push_provider' => 'fcm',
+            'platform' => 'android',
         ]);
     }
 
@@ -93,51 +94,6 @@ class MobilePushNotificationTest extends TestCase
 
         $this->assertFalse($device->refresh()->push_enabled);
         Http::assertSent(fn ($request) => $request[0]['data']['url'] === '/videos/example');
-    }
-
-    public function test_mobile_app_can_proxy_expo_push_token_registration(): void
-    {
-        $tokenUrl = 'https://exp.host/--/api/v2/push/getExpoPushToken';
-        config()->set('services.expo_push.token_url', $tokenUrl);
-
-        Http::fake([
-            $tokenUrl => Http::response([
-                'data' => ['expoPushToken' => 'ExponentPushToken[proxied_device]'],
-            ]),
-        ]);
-
-        $payload = [
-            'type' => 'fcm',
-            'deviceId' => strtolower((string) Str::uuid()),
-            'development' => false,
-            'appId' => (string) config('services.expo_push.application_id'),
-            'deviceToken' => 'native-fcm-device-token',
-            'projectId' => (string) config('services.expo_push.project_id'),
-        ];
-
-        $this->postJson(route('mobile.push.expo-token'), $payload)
-            ->assertOk()
-            ->assertJsonPath('data.expoPushToken', 'ExponentPushToken[proxied_device]');
-
-        Http::assertSent(fn ($request) => $request->url() === $tokenUrl
-            && $request['deviceToken'] === 'native-fcm-device-token'
-            && $request['projectId'] === config('services.expo_push.project_id'));
-    }
-
-    public function test_mobile_push_token_proxy_rejects_other_projects(): void
-    {
-        Http::fake();
-
-        $this->postJson(route('mobile.push.expo-token'), [
-            'type' => 'fcm',
-            'deviceId' => strtolower((string) Str::uuid()),
-            'development' => false,
-            'appId' => (string) config('services.expo_push.application_id'),
-            'deviceToken' => 'native-fcm-device-token',
-            'projectId' => (string) Str::uuid(),
-        ])->assertUnprocessable();
-
-        Http::assertNothingSent();
     }
 
     public function test_web_logout_unregisters_only_the_device_attached_to_that_session(): void
