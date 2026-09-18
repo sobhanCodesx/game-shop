@@ -1,0 +1,8 @@
+{
+  "job_id": "20260918-mw4-game-search",
+  "tool": "search_games",
+  "arguments": {
+    "query": "Call of Duty Modern Warfare 4",
+    "limit": 10
+  }
+}
