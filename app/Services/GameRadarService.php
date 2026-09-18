@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -232,7 +233,7 @@ class GameRadarService
 
         foreach ($items as $index => &$item) {
             $response = $responses[(string) $index] ?? null;
-            if (! $response || ! $response->successful()) {
+            if (! $response instanceof Response || ! $response->successful()) {
                 continue;
             }
 
