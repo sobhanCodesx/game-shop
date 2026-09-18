@@ -27,8 +27,10 @@ export default function Discover({
     const [items, setItems] = useState(feed.data);
     const [nextPageUrl, setNextPageUrl] = useState(feed.next_page_url);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
     const [selected, setSelected] = useState<number | null>(null);
     const sentinel = useRef<HTMLDivElement>(null);
+    const pending = useRef(false);
     const loadingRef = useRef(false);
     const hasMore = Boolean(nextPageUrl);
 
@@ -63,7 +65,7 @@ export default function Discover({
         if (!node || !hasMore) return;
         const observer = new IntersectionObserver(
             ([entry]) => entry.isIntersecting && void loadMore(),
-            { rootMargin: "500px" },
+            { rootMargin: "800px 0px" },
         );
         observer.observe(node);
         return () => observer.disconnect();
@@ -160,7 +162,8 @@ export default function Discover({
                             selected={selected}
                         />
                         <div
-                            className="grid h-24 place-items-center"
+                            aria-live="polite"
+                            className="grid min-h-24 place-items-center py-5"
                             ref={sentinel}
                         >
                             {loading && (
@@ -172,7 +175,12 @@ export default function Discover({
                                     در حال بارگذاری…
                                 </span>
                             )}
-                            {!hasMore && (
+                            {error && !loading && (
+                                <Button onPress={() => void loadMore()} size="sm" variant="secondary">
+                                    تلاش دوباره
+                                </Button>
+                            )}
+                            {!error && !hasMore && (
                                 <span className="text-xs text-[var(--store-muted)]">
                                     همه پیشنهادها را دیدید
                                 </span>
