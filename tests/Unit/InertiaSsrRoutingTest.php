@@ -63,7 +63,6 @@ class InertiaSsrRoutingTest extends TestCase
     {
         config([
             'inertia.ssr.enabled' => true,
-            'inertia.ssr.local_enabled' => true,
             'inertia.ssr.paths' => ['/'],
         ]);
 
@@ -98,6 +97,9 @@ class InertiaSsrRoutingTest extends TestCase
             'http://127.0.0.1/',
             'http://0.0.0.0/',
             'http://playnexus.test/',
+            'http://playnexus.local/',
+            'http://192.168.1.50/',
+            'http://10.0.0.20/',
         ] as $url) {
             $this->assertFalse(
                 $middleware->usesSsrUrl($url),
