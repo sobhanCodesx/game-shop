@@ -20,6 +20,11 @@ class PlayStationTrackedGameSourceAdapter implements TrackedGameSourceAdapter
         return 'playstation_store';
     }
 
+    public function supports(GameSourceState $state): bool
+    {
+        return $this->productId($state) !== null;
+    }
+
     public function fetch(Collection $states): array
     {
         $observations = [];
