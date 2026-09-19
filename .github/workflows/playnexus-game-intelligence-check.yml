@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'app/Services/FeedService.php'
-      - 'tests/Feature/FeedTest.php'
+      - 'tests/Feature/PersonalizedEditorialFeedTest.php'
       - 'vite.config.js'
       - 'resources/js/app.tsx'
       - 'app/Http/Middleware/HandleInertiaRequests.php'
@@ -39,7 +39,7 @@ on:
   pull_request:
     paths:
       - 'app/Services/FeedService.php'
-      - 'tests/Feature/FeedTest.php'
+      - 'tests/Feature/PersonalizedEditorialFeedTest.php'
       - 'vite.config.js'
       - 'resources/js/app.tsx'
       - 'app/Http/Middleware/HandleInertiaRequests.php'
@@ -110,7 +110,7 @@ jobs:
           php -l tests/Feature/GameEventTest.php
           php -l tests/Feature/GameSourceMonitorTest.php
           php -l tests/Feature/FollowedGameWatchTest.php
-          php -l tests/Feature/FeedTest.php
+          php -l tests/Feature/PersonalizedEditorialFeedTest.php
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -122,7 +122,7 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
-        run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php tests/Feature/FollowedGameWatchTest.php tests/Feature/FeedTest.php
+        run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php tests/Feature/FollowedGameWatchTest.php tests/Feature/PersonalizedEditorialFeedTest.php
 
       - name: Set up Node
         uses: actions/setup-node@v4
