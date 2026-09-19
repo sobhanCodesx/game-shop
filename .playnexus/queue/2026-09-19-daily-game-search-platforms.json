@@ -1,7 +1,0 @@
-{
-  "job_id": "20260919-daily-game-search-platforms",
-  "tool": "search_platforms",
-  "arguments": {
-    "limit": 100
-  }
-}
