@@ -149,6 +149,12 @@ interface PersonalizedHomeData {
     events: PersonalizedGameEvent[];
     feed: PersonalizedFeedItem[];
     radar: GameRadarItem[];
+    watch: {
+        active_games: number;
+        direct_games: number;
+        source_labels: string[];
+        last_checked_at: string | null;
+    };
     intelligence: {
         confidence: {
             key: "learning" | "growing" | "strong";
@@ -1111,6 +1117,12 @@ function PersonalizedHomePanel({
                                 <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.9)]" />
                                 {data.intelligence.confidence.label}
                             </span>
+                            {data.watch.active_games > 0 && (
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/10 bg-cyan-400/[0.07] px-2.5 py-1 text-[9px] font-black text-cyan-100/80">
+                                    <Radar size={11} />
+                                    Nexus Watch • {money.format(data.watch.active_games)} بازی
+                                </span>
+                            )}
                         </div>
                         <h1 className="text-2xl font-black leading-tight sm:text-3xl">
                             خوش برگشتی، {firstName}
@@ -1499,7 +1511,7 @@ function PersonalizedHomePanel({
                                     <div>
                                         <h3 className="text-sm font-black">بازی‌های تو</h3>
                                         <p className="mt-0.5 text-[9px] text-white/35">
-                                            ترتیب این لیست هم با اهمیت فعلی برای تو تغییر می‌کنه
+                                            Nexus Watch این بازی‌ها رو دنبال می‌کنه؛ ترتیب هم با اهمیت فعلی برای تو تغییر می‌کنه
                                         </p>
                                     </div>
                                     <Link
