@@ -106,7 +106,7 @@ class PlayNexusGraphService
                 'max_response_bytes' => (int) config('content_agent.graphql.max_response_bytes', 4194304),
                 'max_depth' => (int) config('content_agent.graphql.max_depth', 14),
                 'max_introspection_depth' => (int) config('content_agent.graphql.max_introspection_depth', 20),
-                'max_complexity' => (int) config('content_agent.graphql.max_complexity', 1500),
+                'max_complexity' => (int) config('content_agent.graphql.max_complexity', 12000),
                 'max_fields' => (int) config('content_agent.graphql.max_fields', 600),
                 'max_page_size' => (int) config('content_agent.graphql.max_page_size', 100),
                 'max_offset' => (int) config('content_agent.graphql.max_offset', 50000),
