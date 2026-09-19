@@ -545,6 +545,10 @@ html[data-storefront-theme="dark"] .storefront-theme select {
 }
 
 @media (hover: none) and (pointer: coarse) {
+    .pn-media-cloud__tile {
+        animation: none !important;
+    }
+
     .storefront-theme a,
     .storefront-theme button {
         -webkit-tap-highlight-color: transparent;
@@ -964,6 +968,12 @@ html[data-storefront-theme="light"]
 .pn-render-zone {
     content-visibility: auto;
     contain-intrinsic-size: auto 680px;
+}
+
+@media (max-width: 640px) {
+    .pn-render-zone {
+        contain-intrinsic-size: auto 540px;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
