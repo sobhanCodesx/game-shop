@@ -2430,9 +2430,8 @@ export default function Home({
     const categoryRailRef = useRef<HTMLDivElement>(null);
     const storefrontRootRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
-        const motionSurfaces = document.querySelectorAll<HTMLElement>(
-            ".pn-signature-frame, .pn-media-cloud",
-        );
+        const motionSurfaces =
+            document.querySelectorAll<HTMLElement>(".pn-media-cloud");
 
         if (motionSurfaces.length === 0) return;
 
