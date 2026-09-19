@@ -25,6 +25,8 @@ class PlayNexusGraphSchemaFactory
     private ?ObjectType $collectionType = null;
     private ?ObjectType $categoryType = null;
     private ?ObjectType $radarType = null;
+    private ?ObjectType $gameEventType = null;
+    private ?ObjectType $sourceStateType = null;
     private ?ObjectType $storePresenceType = null;
     private ?ObjectType $gameConnectionType = null;
     private ?ObjectType $studioConnectionType = null;
@@ -34,6 +36,8 @@ class PlayNexusGraphSchemaFactory
     private ?ObjectType $collectionConnectionType = null;
     private ?ObjectType $categoryConnectionType = null;
     private ?ObjectType $radarConnectionType = null;
+    private ?ObjectType $gameEventConnectionType = null;
+    private ?ObjectType $sourceStateConnectionType = null;
     private ?ObjectType $searchResultType = null;
     private ?ObjectType $statsType = null;
     private ?ObjectType $graphInfoType = null;
@@ -161,6 +165,18 @@ class PlayNexusGraphSchemaFactory
                         'args' => $this->categoryListArgs(),
                         'resolve' => fn ($root, array $args) => $this->repo->categories($args),
                     ],
+                    'gameEvents' => [
+                        'type' => Type::nonNull($this->gameEventConnectionType()),
+                        'description' => 'Structured game events from Nexus Pulse when that subsystem is installed. Returns an empty connection before its migration exists.',
+                        'args' => $this->gameEventListArgs(),
+                        'resolve' => fn ($root, array $args) => $this->repo->gameEvents($args),
+                    ],
+                    'sourceStates' => [
+                        'type' => Type::nonNull($this->sourceStateConnectionType()),
+                        'description' => 'Observed official-source state from Nexus Watch/Source Monitor when available.',
+                        'args' => $this->sourceStateListArgs(),
+                        'resolve' => fn ($root, array $args) => $this->repo->sourceStates($args),
+                    ],
                     'radar' => [
                         'type' => Type::nonNull($this->radarConnectionType()),
                         'description' => 'Read the cached, server-linked Game Radar snapshot without making Store requests.',
@@ -238,6 +254,18 @@ class PlayNexusGraphSchemaFactory
                     'type' => Type::nonNull($this->contentConnectionType()),
                     'args' => $this->contentListArgs(),
                     'resolve' => fn (Game $game, array $args) => $this->repo->contentForGame($game, $args),
+                ],
+                'events' => [
+                    'type' => Type::nonNull($this->gameEventConnectionType()),
+                    'description' => 'Structured intelligence events linked to this game when Nexus Pulse is installed.',
+                    'args' => $this->gameEventListArgs(nested: true),
+                    'resolve' => fn (Game $game, array $args) => $this->repo->eventsForGame($game, $args),
+                ],
+                'sourceStates' => [
+                    'type' => Type::nonNull($this->sourceStateConnectionType()),
+                    'description' => 'Last observed official-source states linked to this game.',
+                    'args' => $this->sourceStateListArgs(nested: true),
+                    'resolve' => fn (Game $game, array $args) => $this->repo->sourceStatesForGame($game, $args),
                 ],
                 'collections' => [
                     'type' => Type::nonNull($this->collectionConnectionType()),
@@ -519,6 +547,62 @@ class PlayNexusGraphSchemaFactory
         ]);
     }
 
+    private function gameEventType(): ObjectType
+    {
+        return $this->gameEventType ??= new ObjectType([
+            'name' => 'GameEvent',
+            'description' => 'Structured, evidence-backed game event from Nexus Pulse intelligence.',
+            'fields' => fn () => [
+                'id' => ['type' => Type::nonNull(Type::id()), 'resolve' => fn (array $event) => $event['id']],
+                'gameId' => ['type' => Type::nonNull(Type::id()), 'resolve' => fn (array $event) => $event['game_id']],
+                'type' => ['type' => Type::nonNull(Type::string()), 'resolve' => fn (array $event) => $event['type']],
+                'title' => ['type' => Type::nonNull(Type::string()), 'resolve' => fn (array $event) => $event['title']],
+                'summary' => ['type' => Type::string(), 'resolve' => fn (array $event) => $event['summary'] ?? null],
+                'sourceType' => ['type' => Type::string(), 'resolve' => fn (array $event) => $event['source_type'] ?? null],
+                'sourceName' => ['type' => Type::string(), 'resolve' => fn (array $event) => $event['source_name'] ?? null],
+                'sourceUrl' => ['type' => Type::string(), 'resolve' => fn (array $event) => $event['source_url'] ?? null],
+                'externalId' => ['type' => Type::string(), 'resolve' => fn (array $event) => $event['external_id'] ?? null],
+                'importanceScore' => ['type' => Type::int(), 'resolve' => fn (array $event) => isset($event['importance_score']) ? (int) $event['importance_score'] : null],
+                'confidence' => ['type' => Type::float(), 'resolve' => fn (array $event) => isset($event['confidence']) ? (float) $event['confidence'] : null],
+                'oldValueJson' => ['type' => Type::string(), 'resolve' => fn (array $event) => $this->jsonValue($event['old_value'] ?? null)],
+                'newValueJson' => ['type' => Type::string(), 'resolve' => fn (array $event) => $this->jsonValue($event['new_value'] ?? null)],
+                'metadataJson' => ['type' => Type::string(), 'resolve' => fn (array $event) => $this->jsonValue($event['metadata'] ?? null)],
+                'detectedAt' => ['type' => Type::string(), 'resolve' => fn (array $event) => $event['detected_at'] ?? null],
+                'effectiveAt' => ['type' => Type::string(), 'resolve' => fn (array $event) => $event['effective_at'] ?? null],
+                'expiresAt' => ['type' => Type::string(), 'resolve' => fn (array $event) => $event['expires_at'] ?? null],
+                'status' => ['type' => Type::string(), 'resolve' => fn (array $event) => $event['status'] ?? null],
+                'game' => [
+                    'type' => $this->gameType(),
+                    'resolve' => fn (array $event) => $this->repo->gameById($event['game_id'] ?? null),
+                ],
+            ],
+        ]);
+    }
+
+    private function sourceStateType(): ObjectType
+    {
+        return $this->sourceStateType ??= new ObjectType([
+            'name' => 'GameSourceState',
+            'description' => 'Last known state observed from an official external source.',
+            'fields' => fn () => [
+                'id' => ['type' => Type::nonNull(Type::id()), 'resolve' => fn (array $state) => $state['id']],
+                'gameId' => ['type' => Type::nonNull(Type::id()), 'resolve' => fn (array $state) => $state['game_id']],
+                'source' => ['type' => Type::nonNull(Type::string()), 'resolve' => fn (array $state) => $state['source']],
+                'scope' => ['type' => Type::string(), 'resolve' => fn (array $state) => $state['scope'] ?? null],
+                'externalId' => ['type' => Type::string(), 'resolve' => fn (array $state) => $state['external_id'] ?? null],
+                'sourceUrl' => ['type' => Type::string(), 'resolve' => fn (array $state) => $state['source_url'] ?? null],
+                'confidence' => ['type' => Type::float(), 'resolve' => fn (array $state) => isset($state['confidence']) ? (float) $state['confidence'] : null],
+                'stateJson' => ['type' => Type::string(), 'resolve' => fn (array $state) => $this->jsonValue($state['state'] ?? null)],
+                'observedAt' => ['type' => Type::string(), 'resolve' => fn (array $state) => $state['observed_at'] ?? null],
+                'changedAt' => ['type' => Type::string(), 'resolve' => fn (array $state) => $state['changed_at'] ?? null],
+                'game' => [
+                    'type' => $this->gameType(),
+                    'resolve' => fn (array $state) => $this->repo->gameById($state['game_id'] ?? null),
+                ],
+            ],
+        ]);
+    }
+
     private function storePresenceType(): ObjectType
     {
         return $this->storePresenceType ??= new ObjectType([
@@ -627,6 +711,16 @@ class PlayNexusGraphSchemaFactory
         ]);
     }
 
+    private function gameEventConnectionType(): ObjectType
+    {
+        return $this->gameEventConnectionType ??= $this->connectionType('GameEventConnection', $this->gameEventType());
+    }
+
+    private function sourceStateConnectionType(): ObjectType
+    {
+        return $this->sourceStateConnectionType ??= $this->connectionType('GameSourceStateConnection', $this->sourceStateType());
+    }
+
     private function searchResultType(): ObjectType
     {
         return $this->searchResultType ??= new ObjectType([
@@ -658,6 +752,9 @@ class PlayNexusGraphSchemaFactory
                 'collections' => Type::nonNull(Type::int()),
                 'publicCollections' => Type::nonNull(Type::int()),
                 'categories' => Type::nonNull(Type::int()),
+                'gameEvents' => Type::nonNull(Type::int()),
+                'activeGameEvents' => Type::nonNull(Type::int()),
+                'sourceStates' => Type::nonNull(Type::int()),
             ],
         ]);
     }
@@ -687,7 +784,7 @@ class PlayNexusGraphSchemaFactory
             'version' => '1.0.0',
             'readOnly' => true,
             'introspection' => (bool) config('content_agent.graphql.allow_introspection', true),
-            'entities' => ['Game', 'Studio', 'Platform', 'Product', 'Content', 'Collection', 'Category', 'RadarItem'],
+            'entities' => ['Game', 'Studio', 'Platform', 'Product', 'Content', 'Collection', 'Category', 'RadarItem', 'GameEvent', 'GameSourceState'],
             'maxDepth' => (int) config('content_agent.graphql.max_depth', 10),
             'maxComplexity' => (int) config('content_agent.graphql.max_complexity', 500),
             'maxFields' => (int) config('content_agent.graphql.max_fields', 250),
@@ -794,6 +891,37 @@ class PlayNexusGraphSchemaFactory
         ];
     }
 
+    private function gameEventListArgs(bool $nested = false): array
+    {
+        return [
+            ...$this->pageArgs(),
+            'search' => ['type' => Type::string()],
+            ...($nested ? [] : ['gameId' => ['type' => Type::id()]]),
+            'type' => ['type' => Type::string()],
+            'status' => ['type' => Type::string()],
+            'sourceType' => ['type' => Type::string()],
+            'minImportance' => ['type' => Type::int()],
+            'detectedFrom' => ['type' => Type::string()],
+            'detectedTo' => ['type' => Type::string()],
+            'orderBy' => ['type' => Type::string()],
+            'orderDir' => ['type' => Type::string(), 'defaultValue' => 'desc'],
+        ];
+    }
+
+    private function sourceStateListArgs(bool $nested = false): array
+    {
+        return [
+            ...$this->pageArgs(),
+            ...($nested ? [] : ['gameId' => ['type' => Type::id()]]),
+            'source' => ['type' => Type::string()],
+            'scope' => ['type' => Type::string()],
+            'observedFrom' => ['type' => Type::string()],
+            'observedTo' => ['type' => Type::string()],
+            'orderBy' => ['type' => Type::string()],
+            'orderDir' => ['type' => Type::string(), 'defaultValue' => 'desc'],
+        ];
+    }
+
     private function categoryListArgs(bool $nested = false): array
     {
         return [
@@ -805,5 +933,18 @@ class PlayNexusGraphSchemaFactory
             'orderBy' => ['type' => Type::string()],
             'orderDir' => ['type' => Type::string(), 'defaultValue' => 'asc'],
         ];
+    }    private function jsonValue(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_string($value)) {
+            return $value;
+        }
+
+        return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: null;
     }
+
+
 }
