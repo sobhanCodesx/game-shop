@@ -53,6 +53,11 @@ class Game extends Model
         return $this->hasMany(GameEvent::class)->latest('detected_at');
     }
 
+    public function sourceStates(): HasMany
+    {
+        return $this->hasMany(GameSourceState::class);
+    }
+
     public function subscribers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'game_subscriptions')->withTimestamps();
