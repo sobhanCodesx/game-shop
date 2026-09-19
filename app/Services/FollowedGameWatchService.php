@@ -17,8 +17,9 @@ class FollowedGameWatchService
         private readonly GameRadarService $radar,
         private readonly GameSourceMonitorService $monitor,
         XboxTrackedGameSourceAdapter $xbox,
+        PlayStationTrackedGameSourceAdapter $playStation,
     ) {
-        $this->adapters = [$xbox];
+        $this->adapters = [$xbox, $playStation];
     }
 
     /**
