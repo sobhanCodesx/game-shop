@@ -2,6 +2,7 @@
 
 namespace App\Services\GraphQL;
 
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Game;
 use App\Models\Platform;
@@ -55,6 +56,24 @@ class PlayNexusGraphRepository
         );
     }
 
+    public function brand(array $args): ?Brand
+    {
+        return $this->brandQuery($args)
+            ->withCount('products')
+            ->first();
+    }
+
+    public function brands(array $args): array
+    {
+        return $this->paginate(
+            $this->brandQuery($args)->withCount('products'),
+            $args,
+            ['id', 'name', 'created_at', 'updated_at', 'status'],
+            'name',
+            'asc',
+        );
+    }
+
     public function platform(array $args): ?Platform
     {
         return $this->platformQuery($args)
@@ -76,13 +95,13 @@ class PlayNexusGraphRepository
     public function product(array $args): ?Product
     {
         return $this->productQuery($args)
-            ->with(['game', 'category', 'platforms'])
+            ->with(['game', 'category', 'brand', 'platforms'])
             ->first();
     }
 
     public function products(array $args): array
     {
-        $query = $this->productQuery($args)->with(['game', 'category', 'platforms']);
+        $query = $this->productQuery($args)->with(['game', 'category', 'brand', 'platforms']);
 
         return $this->paginate(
             $query,
@@ -95,14 +114,24 @@ class PlayNexusGraphRepository
     public function content(array $args): ?SocialContent
     {
         return $this->contentQuery($args)
-            ->with(['game', 'relatedProduct', 'relatedContent', 'playlists'])
+            ->with(['game', 'relatedProduct', 'relatedContent', 'playlists', 'media'])
+            ->withCount([
+                'reactions as likes_count' => fn (Builder $query) => $query->where('type', 'like'),
+                'comments as comments_count' => fn (Builder $query) => $query->where('status', 'published'),
+                'savedBy as saves_count',
+            ])
             ->first();
     }
 
     public function contents(array $args): array
     {
         $query = $this->contentQuery($args)
-            ->with(['game', 'relatedProduct', 'playlists']);
+            ->with(['game', 'relatedProduct', 'playlists', 'media'])
+            ->withCount([
+                'reactions as likes_count' => fn (Builder $query) => $query->where('type', 'like'),
+                'comments as comments_count' => fn (Builder $query) => $query->where('status', 'published'),
+                'savedBy as saves_count',
+            ]);
 
         return $this->paginate(
             $query,
@@ -157,6 +186,13 @@ class PlayNexusGraphRepository
     public function productsForGame(Game $game, array $args): array
     {
         $args['gameId'] = $game->id;
+
+        return $this->products($args);
+    }
+
+    public function productsForBrand(Brand $brand, array $args): array
+    {
+        $args['brandId'] = $brand->id;
 
         return $this->products($args);
     }
@@ -341,6 +377,7 @@ class PlayNexusGraphRepository
                 'query' => '',
                 'games' => [],
                 'studios' => [],
+                'brands' => [],
                 'products' => [],
                 'content' => [],
                 'collections' => [],
@@ -351,7 +388,8 @@ class PlayNexusGraphRepository
             'query' => $query,
             'games' => $this->gameQuery(['search' => $query])->with(['studio', 'platforms'])->limit($first)->get()->all(),
             'studios' => $this->studioQuery(['search' => $query])->limit($first)->get()->all(),
-            'products' => $this->productQuery(['search' => $query])->with('game')->limit($first)->get()->all(),
+            'brands' => $this->brandQuery(['search' => $query])->limit($first)->get()->all(),
+            'products' => $this->productQuery(['search' => $query])->with(['game', 'brand'])->limit($first)->get()->all(),
             'content' => $this->contentQuery(['search' => $query])->with('game')->limit($first)->get()->all(),
             'collections' => $this->collectionQuery(['search' => $query])->with(['game', 'studio'])->limit($first)->get()->all(),
         ];
@@ -363,6 +401,7 @@ class PlayNexusGraphRepository
             'games' => Game::query()->count(),
             'activeGames' => Game::query()->whereIn('status', ['active', 'published'])->count(),
             'studios' => Studio::query()->count(),
+            'brands' => Brand::query()->count(),
             'platforms' => Platform::query()->count(),
             'products' => Product::query()->count(),
             'publishedProducts' => Product::query()->where('status', 'published')->where('visibility', 'public')->count(),
@@ -456,6 +495,29 @@ class PlayNexusGraphRepository
             });
     }
 
+    private function brandQuery(array $args): Builder
+    {
+        $query = Brand::query();
+
+        if (($args['includeDeleted'] ?? false) === true) {
+            $query->withTrashed();
+        }
+
+        return $query
+            ->when(isset($args['id']), fn (Builder $q) => $q->whereKey((int) $args['id']))
+            ->when(isset($args['slug']), fn (Builder $q) => $q->where('slug', $args['slug']))
+            ->when(! empty($args['ids']), fn (Builder $q) => $q->whereIn('id', array_map('intval', $args['ids'])))
+            ->when(isset($args['status']), fn (Builder $q) => $q->where('status', $args['status']))
+            ->when(isset($args['search']) && trim((string) $args['search']) !== '', function (Builder $q) use ($args) {
+                $term = trim((string) $args['search']);
+
+                $q->where(fn (Builder $inner) => $inner
+                    ->where('name', 'like', "%{$term}%")
+                    ->orWhere('slug', 'like', "%{$term}%")
+                    ->orWhere('description', 'like', "%{$term}%"));
+            });
+    }
+
     private function platformQuery(array $args): Builder
     {
         $query = Platform::query();
@@ -492,6 +554,7 @@ class PlayNexusGraphRepository
             ->when(! empty($args['ids']), fn (Builder $q) => $q->whereIn('id', array_map('intval', $args['ids'])))
             ->when(isset($args['gameId']), fn (Builder $q) => $q->where('game_id', (int) $args['gameId']))
             ->when(isset($args['categoryId']), fn (Builder $q) => $q->where('category_id', (int) $args['categoryId']))
+            ->when(isset($args['brandId']), fn (Builder $q) => $q->where('brand_id', (int) $args['brandId']))
             ->when(isset($args['platformId']), fn (Builder $q) => $q->whereHas('platforms', fn (Builder $p) => $p->whereKey((int) $args['platformId'])))
             ->when(isset($args['status']), fn (Builder $q) => $q->where('status', $args['status']))
             ->when(isset($args['visibility']), fn (Builder $q) => $q->where('visibility', $args['visibility']))
@@ -603,7 +666,7 @@ class PlayNexusGraphRepository
         return max(
             1,
             min(
-                (int) config('content_agent.graphql.max_page_size', 50),
+                (int) config('content_agent.graphql.max_page_size', 100),
                 (int) ($args['first'] ?? 20),
             ),
         );
@@ -614,7 +677,7 @@ class PlayNexusGraphRepository
         return max(
             0,
             min(
-                (int) config('content_agent.graphql.max_offset', 10000),
+                (int) config('content_agent.graphql.max_offset', 50000),
                 (int) ($args['offset'] ?? 0),
             ),
         );
