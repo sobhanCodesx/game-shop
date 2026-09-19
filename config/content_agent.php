@@ -14,7 +14,7 @@ return [
         'max_response_bytes' => env('PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_RESPONSE_BYTES', 4194304),
         'max_depth' => env('PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_DEPTH', 14),
         'max_introspection_depth' => env('PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_INTROSPECTION_DEPTH', 20),
-        'max_complexity' => env('PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_COMPLEXITY', 1500),
+        'max_complexity' => env('PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_COMPLEXITY', 12000),
         'max_fields' => env('PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_FIELDS', 600),
         'max_page_size' => env('PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_PAGE_SIZE', 100),
         'max_offset' => env('PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_OFFSET', 50000),
