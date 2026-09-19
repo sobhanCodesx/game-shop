@@ -1,8 +1,0 @@
-{
-  "job_id": "graphql-context-20260919-2114",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query PlayNexusContextTest {\n  games(search: \"Assassin\", first: 3, orderBy: \"id\", orderDir: \"desc\") {\n    nodes {\n      id\n      name\n      slug\n      status\n      studio { id name slug }\n      platforms { id name slug }\n      productCount\n      videoCount\n      products(first: 1, status: \"published\", visibility: \"public\") {\n        nodes { id title slug status price }\n        pageInfo { total hasMore }\n      }\n      content(first: 1, status: \"published\") {\n        nodes { id type title slug status publishedAt }\n        pageInfo { total hasMore }\n      }\n    }\n    pageInfo { total first offset hasMore nextOffset }\n  }\n}",
-    "operation_name": "PlayNexusContextTest"
-  }
-}
