@@ -3,6 +3,9 @@ name: PlayNexus Game Intelligence Check
 on:
   push:
     paths:
+      - 'vite.config.js'
+      - 'resources/js/app.tsx'
+      - 'app/Http/Middleware/HandleInertiaRequests.php'
       - 'app/Contracts/GameSourceAdapter.php'
       - 'tests/Feature/FollowedGameWatchTest.php'
       - 'resources/js/Pages/Channels/Show.tsx'
@@ -33,6 +36,9 @@ on:
       - '.github/workflows/playnexus-game-intelligence-check.yml'
   pull_request:
     paths:
+      - 'vite.config.js'
+      - 'resources/js/app.tsx'
+      - 'app/Http/Middleware/HandleInertiaRequests.php'
       - 'app/Contracts/GameSourceAdapter.php'
       - 'app/Contracts/TrackedGameSourceAdapter.php'
       - 'app/Services/FollowedGameWatchService.php'
@@ -92,6 +98,7 @@ jobs:
           php -l app/Services/RadarGameSourceAdapter.php
           php -l app/Services/GameRadarService.php
           php -l app/Http/Controllers/HomeController.php
+          php -l app/Http/Middleware/HandleInertiaRequests.php
           php -l routes/console.php
           php -l database/migrations/2026_09_19_120000_create_game_events_table.php
           php -l database/migrations/2026_09_19_130000_create_game_source_states_table.php
