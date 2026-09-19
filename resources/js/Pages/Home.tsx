@@ -1071,6 +1071,17 @@ function MobilePriorityCarousel({
         setActive(0);
     }, [active, items.length]);
 
+    useEffect(() => {
+        if (items.length < 2) return;
+
+        const next = items[(active + 1) % items.length];
+        if (!next?.image) return;
+
+        const image = new Image();
+        image.decoding = "async";
+        image.src = next.image;
+    }, [active, items]);
+
     if (!items.length) return null;
 
     const item = items[active];
@@ -1099,7 +1110,7 @@ function MobilePriorityCarousel({
             }}
         >
             <Link
-                className="pn-mobile-card pn-mobile-card--lead group relative block h-full min-h-[138px] overflow-hidden rounded-[18px] border border-white/8 bg-[#070b14]"
+                className="pn-mobile-card pn-mobile-card--lead group relative block h-full min-h-[144px] overflow-hidden rounded-[18px] border border-white/8 bg-[#070b14]"
                 href={item.url}
                 key={item.key}
             >
@@ -1139,7 +1150,7 @@ function MobilePriorityCarousel({
             </Link>
 
             {items.length > 1 && (
-                <div className="absolute bottom-2 left-2 z-[3] flex items-center gap-1 rounded-full bg-black/35 px-1.5 py-1 backdrop-blur-sm">
+                <div className="absolute bottom-2 left-2 z-[3] flex h-5 items-center gap-1 rounded-full bg-black/35 px-1.5 backdrop-blur-sm">
                     {items.map((slide, index) => (
                         <button
                             aria-label={`خبر مهم ${index + 1}`}
@@ -1401,7 +1412,7 @@ function PersonalizedHomePanel({
 
     const supportingEditorial = editorialFeed
         .filter((item) => item.id !== heroEditorial?.id)
-        .slice(0, 1);
+        .slice(0, 2);
     const supportingIds = new Set(supportingEditorial.map((item) => item.id));
     const continuationFeed = editorialFeed
         .filter(
@@ -1490,7 +1501,7 @@ function PersonalizedHomePanel({
             (event) =>
                 event.priority === "critical" || event.priority === "high",
         )
-        .slice(0, 2)
+        .slice(0, 1)
         .forEach((event) =>
             addMobilePriority({
                 key: `event-${event.id}`,
@@ -1861,10 +1872,10 @@ function PersonalizedHomePanel({
                                 items={mobilePrioritySlides.slice(0, 5)}
                             />
 
-                            <div className="grid grid-rows-2 gap-2">
+                            <div className="grid grid-rows-[68px_68px] gap-2">
                                 {showMobileFocusCard && focusGame ? (
                                     <Link
-                                        className="pn-mobile-card pn-mobile-utility-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card pn-mobile-utility-card relative h-[68px] min-h-0 overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={focusGame.url}
                                     >
                                         {focusGame.image_url && (
@@ -1889,7 +1900,7 @@ function PersonalizedHomePanel({
                                 ) : showMobileRadarPrimary &&
                                   mobileRadarLead ? (
                                     <Link
-                                        className="pn-mobile-card pn-mobile-utility-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card pn-mobile-utility-card relative h-[68px] min-h-0 overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={
                                             mobileRadarLead.playnexus_url ??
                                             "/game-radar"
@@ -1920,7 +1931,7 @@ function PersonalizedHomePanel({
                                         </span>
                                     </Link>
                                 ) : (
-                                    <div className="pn-mobile-card pn-mobile-utility-card flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
+                                    <div className="pn-mobile-card pn-mobile-utility-card flex h-[68px] min-h-0 items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
                                         <span>
                                             <span className="text-[7px] font-black tracking-[.1em] text-indigo-200/65">
                                                 SIGNALS
@@ -1934,7 +1945,7 @@ function PersonalizedHomePanel({
 
                                 {showMobileVideoCard && heroVideo ? (
                                     <Link
-                                        className="pn-mobile-card pn-mobile-utility-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card pn-mobile-utility-card relative h-[68px] min-h-0 overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={heroVideo.url}
                                     >
                                         {heroPreview && (
@@ -1967,7 +1978,7 @@ function PersonalizedHomePanel({
                                 ) : !showMobileRadarPrimary &&
                                   mobileRadarLead ? (
                                     <Link
-                                        className="pn-mobile-card pn-mobile-utility-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card pn-mobile-utility-card relative h-[68px] min-h-0 overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={
                                             mobileRadarLead.playnexus_url ??
                                             "/game-radar"
@@ -1998,7 +2009,7 @@ function PersonalizedHomePanel({
                                         </span>
                                     </Link>
                                 ) : (
-                                    <div className="pn-mobile-card pn-mobile-utility-card flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
+                                    <div className="pn-mobile-card pn-mobile-utility-card flex h-[68px] min-h-0 items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
                                         <span>
                                             <span className="text-[7px] font-black tracking-[.1em] text-cyan-200/60">
                                                 LIBRARY
