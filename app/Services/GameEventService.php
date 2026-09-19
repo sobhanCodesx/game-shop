@@ -168,6 +168,7 @@ class GameEventService
             'confidence' => 1,
             'old_value' => ['price' => (int) $product->price],
             'new_value' => ['price' => (int) $product->discount_price],
+            'metadata' => ['currency' => 'TOMAN'],
             'effective_at' => now(),
             'expires_at' => $product->expires_at,
             'status' => 'active',
@@ -392,6 +393,7 @@ class GameEventService
                 'kind' => 'money',
                 'from' => $event->old_value['price'] ?? null,
                 'to' => $event->new_value['price'] ?? null,
+                'currency' => $event->metadata['currency'] ?? 'TOMAN',
             ],
             default => null,
         };
