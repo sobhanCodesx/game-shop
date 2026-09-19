@@ -1,9 +1,0 @@
-{
-  "job_id": "20260919-daily-armored-core-vi-publish",
-  "tool": "set_content_state",
-  "arguments": {
-    "resource": "game",
-    "id": 11,
-    "state": "active"
-  }
-}
