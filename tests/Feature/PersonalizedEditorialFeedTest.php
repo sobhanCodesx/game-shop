@@ -62,4 +62,53 @@ class PersonalizedEditorialFeedTest extends TestCase
         $this->assertNull($items[0]['author']['url']);
         $this->assertNotContains($video->id, array_column($items, 'id'));
     }
+
+    public function test_personalized_video_stream_is_separate_from_editorial_feed(): void
+    {
+        $user = User::factory()->create();
+        $game = Game::factory()->create([
+            'status' => 'active',
+            'name' => 'Video Test Game',
+            'slug' => 'video-test-game',
+        ]);
+
+        $post = SocialContent::withoutEvents(fn () => SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'post',
+            'feed_type' => 'news',
+            'feed_badge' => 'news',
+            'title' => 'خبر ادیتوری',
+            'slug' => 'video-test-editorial',
+            'excerpt' => 'خبر',
+            'status' => 'published',
+            'published_at' => now()->subMinutes(5),
+        ]));
+
+        $video = SocialContent::withoutEvents(fn () => SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'video',
+            'feed_type' => 'video',
+            'feed_badge' => 'trailer',
+            'title' => 'ویدیوی منتخب',
+            'slug' => 'video-test-highlight',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]));
+
+        $request = Request::create('/');
+        $request->setUserResolver(fn () => $user);
+        $profile = [
+            'game_scores' => [$game->id => 80],
+            'signal_scores' => ['news' => 20, 'video' => 40],
+            'followed_game_ids' => [$game->id],
+        ];
+
+        $videos = app(FeedService::class)->smartVideosForProfile($request, $profile, 4);
+        $editorial = app(FeedService::class)->smartEditorialForProfile($request, $profile, 6);
+
+        $this->assertSame([$video->id], array_column($videos, 'id'));
+        $this->assertSame([$post->id], array_column($editorial, 'id'));
+        $this->assertSame('video', $videos[0]['type']);
+        $this->assertSame('PlayNexus', $editorial[0]['author']['name']);
+    }
 }
