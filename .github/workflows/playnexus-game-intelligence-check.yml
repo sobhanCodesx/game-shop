@@ -9,6 +9,7 @@ on:
       - 'app/Http/Controllers/ChannelController.php'
       - 'app/Services/VideoCommunityService.php'
       - 'app/Services/XboxTrackedGameSourceAdapter.php'
+      - 'app/Services/PlayStationTrackedGameSourceAdapter.php'
       - 'app/Services/FollowedGameWatchService.php'
       - 'app/Contracts/TrackedGameSourceAdapter.php'
       - 'app/Models/GameEvent.php'
@@ -36,6 +37,7 @@ on:
       - 'app/Contracts/TrackedGameSourceAdapter.php'
       - 'app/Services/FollowedGameWatchService.php'
       - 'app/Services/XboxTrackedGameSourceAdapter.php'
+      - 'app/Services/PlayStationTrackedGameSourceAdapter.php'
       - 'app/Services/VideoCommunityService.php'
       - 'app/Http/Controllers/ChannelController.php'
       - 'resources/js/Pages/Channels/Show.tsx'
@@ -75,6 +77,7 @@ jobs:
           php -l app/Contracts/TrackedGameSourceAdapter.php
           php -l app/Services/FollowedGameWatchService.php
           php -l app/Services/XboxTrackedGameSourceAdapter.php
+          php -l app/Services/PlayStationTrackedGameSourceAdapter.php
           php -l app/Services/VideoCommunityService.php
           php -l app/Http/Controllers/ChannelController.php
           php -l app/Models/GameEvent.php
