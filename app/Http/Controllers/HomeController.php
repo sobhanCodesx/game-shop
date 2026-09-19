@@ -375,6 +375,15 @@ class HomeController extends Controller
                 ->take(6)
                 ->values();
 
+        $mediaCloudRadar = $matchedRadar
+            ->concat(
+                collect($radarItems)
+                    ->filter(fn (array $item) => filled($item['banner_url'] ?? null) || filled($item['cover_url'] ?? null))
+            )
+            ->unique(fn (array $item) => mb_strtolower(trim((string) ($item['title'] ?? $item['id'] ?? ''))))
+            ->take(8)
+            ->values();
+
         $focusGame = null;
         if ($profile['focus_game_id']) {
             $focusGame = Game::query()
@@ -401,6 +410,7 @@ class HomeController extends Controller
             'videos' => $feed->smartVideosForProfile($request, $profile, 4),
             'feed' => $feed->smartEditorialForProfile($request, $profile, 8),
             'radar' => $matchedRadar,
+            'media_cloud_radar' => $mediaCloudRadar,
             'watch' => $watch->summaryForGames($followedGames->pluck('id')),
             'intelligence' => [
                 'confidence' => $profile['confidence'],
