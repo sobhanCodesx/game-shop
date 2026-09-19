@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-20-0032-graph-recent-feeds",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query RecentFeeds { feeds(first: 20, orderBy: {column: PUBLISHED_AT, order: DESC}) { data { id title status published_at created_at game_id } } }",
+    "variables": {}
+  }
+}
