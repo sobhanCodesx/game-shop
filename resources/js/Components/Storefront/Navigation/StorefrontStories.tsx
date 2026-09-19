@@ -35,7 +35,8 @@ function StoryThumbnail({ story }: { story: StorefrontStory }) {
     if (story.thumbnail_url) {
         return (
             <img
-                alt={story.title}
+                alt=""
+                aria-hidden="true"
                 className="size-full object-cover transition duration-300 group-hover:scale-110"
                 src={story.thumbnail_url}
             />
@@ -206,7 +207,8 @@ export default function StorefrontStories({
                             </div>
                             <div className="flex items-center gap-2 text-white">
                                 <img
-                                    alt={story.channel_name}
+                                    alt=""
+                                    aria-hidden="true"
                                     className="size-9 rounded-full border border-white/30 object-cover"
                                     src={story.channel_avatar_url}
                                 />
