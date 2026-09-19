@@ -10,7 +10,15 @@ export default defineConfig(({ isSsrBuild }) => {
             laravel({
                 input: "resources/js/app.tsx",
                 ssr: "resources/js/ssr.tsx",
-                refresh: true,
+                // Inertia/React already handles component HMR. A broad Laravel
+                // full-reload watcher can turn unrelated route/view writes into
+                // hard browser refreshes during local development.
+                refresh: [
+                    {
+                        paths: ["resources/views/**"],
+                        config: { delay: 250 },
+                    },
+                ],
             }),
             inertia({
                 ssr: {
