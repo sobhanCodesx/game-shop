@@ -1154,6 +1154,106 @@ html[data-storefront-theme="light"] .storefront-theme {
         0 0 0 1px rgb(var(--pn-ambient-primary) / 14%);
 }
 
+/* Video signature orbit ------------------------------------------------------
+   The neon streak celebrates the start of playback, then retires itself after
+   ten seconds of real media progression so the content stays visually dominant. */
+.playnexus-player-frame::before {
+    content: "";
+    position: absolute;
+    z-index: 90;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.2px;
+    background: conic-gradient(
+        from var(--pn-frame-angle),
+        rgb(129 140 248 / 0%) 0deg,
+        rgb(129 140 248 / 0%) 35deg,
+        rgb(139 92 246 / 34%) 70deg,
+        rgb(168 85 247 / 82%) 101deg,
+        rgb(34 211 238 / 92%) 128deg,
+        rgb(99 102 241 / 56%) 156deg,
+        rgb(99 102 241 / 10%) 190deg,
+        rgb(129 140 248 / 0%) 226deg,
+        rgb(129 140 248 / 0%) 360deg
+    );
+    opacity: 0;
+    pointer-events: none;
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    filter: saturate(1.08);
+}
+
+.playnexus-player-shell[data-neon-state="active"] .playnexus-player-frame::before {
+    opacity: 0.82;
+    animation: pn-signature-orbit 4.8s linear infinite;
+}
+
+.playnexus-player-shell[data-neon-state="active"] .playnexus-player-frame {
+    box-shadow:
+        0 30px 85px rgb(0 0 0 / 42%),
+        -34px 24px 90px rgb(var(--pn-ambient-primary) / 20%),
+        36px 18px 94px rgb(var(--pn-ambient-secondary) / 17%),
+        0 44px 100px rgb(var(--pn-ambient-highlight) / 13%),
+        0 0 0 1px rgb(129 140 248 / 18%),
+        0 0 24px rgb(99 102 241 / 10%);
+}
+
+.playnexus-player-shell[data-neon-state="fading"] .playnexus-player-frame::before {
+    animation:
+        pn-signature-orbit 4.8s linear infinite,
+        pn-video-signature-fade 2.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.playnexus-player-shell[data-neon-state="fading"] .playnexus-player-frame {
+    transition: box-shadow 2.4s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow:
+        0 30px 85px rgb(0 0 0 / 42%),
+        -34px 24px 90px rgb(var(--pn-ambient-primary) / 20%),
+        36px 18px 94px rgb(var(--pn-ambient-secondary) / 17%),
+        0 44px 100px rgb(var(--pn-ambient-highlight) / 13%),
+        0 0 0 1px rgb(var(--pn-ambient-primary) / 14%);
+}
+
+@keyframes pn-video-signature-fade {
+    0% {
+        opacity: 0.82;
+        filter: saturate(1.08) brightness(1.03);
+    }
+
+    42% {
+        opacity: 0.38;
+        filter: saturate(1.02) brightness(0.98);
+    }
+
+    100% {
+        opacity: 0;
+        filter: saturate(0.9) brightness(0.9);
+    }
+}
+
+@media (max-width: 640px) {
+    .playnexus-player-shell[data-neon-state="active"]
+        .playnexus-player-frame::before {
+        opacity: 0.68;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .playnexus-player-shell[data-neon-state="active"]
+        .playnexus-player-frame::before {
+        animation: none;
+        opacity: 0.5;
+    }
+
+    .playnexus-player-shell[data-neon-state="fading"]
+        .playnexus-player-frame::before {
+        animation: pn-video-signature-fade 300ms ease-out forwards;
+    }
+}
+
 .playnexus-player {
     --video-border: 0;
     --video-border-radius: inherit;
