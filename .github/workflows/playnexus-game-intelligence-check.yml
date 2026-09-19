@@ -4,6 +4,13 @@ on:
   push:
     paths:
       - 'app/Contracts/GameSourceAdapter.php'
+      - 'tests/Feature/FollowedGameWatchTest.php'
+      - 'resources/js/Pages/Channels/Show.tsx'
+      - 'app/Http/Controllers/ChannelController.php'
+      - 'app/Services/VideoCommunityService.php'
+      - 'app/Services/XboxTrackedGameSourceAdapter.php'
+      - 'app/Services/FollowedGameWatchService.php'
+      - 'app/Contracts/TrackedGameSourceAdapter.php'
       - 'app/Models/GameEvent.php'
       - 'app/Models/GameSourceState.php'
       - 'app/Observers/GameObserver.php'
@@ -58,6 +65,11 @@ jobs:
       - name: PHP syntax
         run: |
           php -l app/Contracts/GameSourceAdapter.php
+          php -l app/Contracts/TrackedGameSourceAdapter.php
+          php -l app/Services/FollowedGameWatchService.php
+          php -l app/Services/XboxTrackedGameSourceAdapter.php
+          php -l app/Services/VideoCommunityService.php
+          php -l app/Http/Controllers/ChannelController.php
           php -l app/Models/GameEvent.php
           php -l app/Models/GameSourceState.php
           php -l app/Observers/GameObserver.php
@@ -75,6 +87,7 @@ jobs:
           php -l database/migrations/2026_09_19_130000_create_game_source_states_table.php
           php -l tests/Feature/GameEventTest.php
           php -l tests/Feature/GameSourceMonitorTest.php
+          php -l tests/Feature/FollowedGameWatchTest.php
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -86,7 +99,7 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
-        run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php
+        run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php tests/Feature/FollowedGameWatchTest.php
 
       - name: Set up Node
         uses: actions/setup-node@v4
