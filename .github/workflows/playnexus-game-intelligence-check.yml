@@ -15,6 +15,8 @@ on:
       - 'vite.config.js'
       - 'resources/js/app.tsx'
       - 'app/Http/Middleware/HandleInertiaRequests.php'
+      - 'config/inertia.php'
+      - 'tests/Unit/InertiaSsrRoutingTest.php'
       - 'app/Contracts/GameSourceAdapter.php'
       - 'tests/Feature/FollowedGameWatchTest.php'
       - 'resources/js/Pages/Channels/Show.tsx'
@@ -57,6 +59,8 @@ on:
       - 'vite.config.js'
       - 'resources/js/app.tsx'
       - 'app/Http/Middleware/HandleInertiaRequests.php'
+      - 'config/inertia.php'
+      - 'tests/Unit/InertiaSsrRoutingTest.php'
       - 'app/Contracts/GameSourceAdapter.php'
       - 'app/Contracts/TrackedGameSourceAdapter.php'
       - 'app/Services/FollowedGameWatchService.php'
@@ -120,6 +124,8 @@ jobs:
           php -l app/Http/Controllers/FeedController.php
           php -l app/Http/Controllers/StudioController.php
           php -l app/Http/Middleware/HandleInertiaRequests.php
+          php -l config/inertia.php
+          php -l tests/Unit/InertiaSsrRoutingTest.php
           php -l routes/console.php
           php -l database/migrations/2026_09_19_120000_create_game_events_table.php
           php -l database/migrations/2026_09_19_130000_create_game_source_states_table.php
@@ -160,4 +166,4 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
-        run: php artisan test tests/Feature/SearchPerformanceSeoTest.php tests/Feature/VideoWatchProgressTest.php tests/Feature/SitemapTest.php
+        run: php artisan test tests/Unit/InertiaSsrRoutingTest.php tests/Feature/SearchPerformanceSeoTest.php tests/Feature/VideoWatchProgressTest.php tests/Feature/SitemapTest.php
