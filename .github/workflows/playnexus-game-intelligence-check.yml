@@ -3,6 +3,8 @@ name: PlayNexus Game Intelligence Check
 on:
   push:
     paths:
+      - 'app/Services/FeedService.php'
+      - 'tests/Feature/FeedTest.php'
       - 'vite.config.js'
       - 'resources/js/app.tsx'
       - 'app/Http/Middleware/HandleInertiaRequests.php'
@@ -36,6 +38,8 @@ on:
       - '.github/workflows/playnexus-game-intelligence-check.yml'
   pull_request:
     paths:
+      - 'app/Services/FeedService.php'
+      - 'tests/Feature/FeedTest.php'
       - 'vite.config.js'
       - 'resources/js/app.tsx'
       - 'app/Http/Middleware/HandleInertiaRequests.php'
@@ -97,6 +101,7 @@ jobs:
           php -l app/Services/GameSourceMonitorService.php
           php -l app/Services/RadarGameSourceAdapter.php
           php -l app/Services/GameRadarService.php
+          php -l app/Services/FeedService.php
           php -l app/Http/Controllers/HomeController.php
           php -l app/Http/Middleware/HandleInertiaRequests.php
           php -l routes/console.php
@@ -105,6 +110,7 @@ jobs:
           php -l tests/Feature/GameEventTest.php
           php -l tests/Feature/GameSourceMonitorTest.php
           php -l tests/Feature/FollowedGameWatchTest.php
+          php -l tests/Feature/FeedTest.php
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -116,7 +122,7 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
-        run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php tests/Feature/FollowedGameWatchTest.php
+        run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php tests/Feature/FollowedGameWatchTest.php tests/Feature/FeedTest.php
 
       - name: Set up Node
         uses: actions/setup-node@v4
