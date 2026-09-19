@@ -1149,7 +1149,12 @@ function PersonalizedHomePanel({
                             <div className="relative min-h-[360px] overflow-hidden rounded-[25px] border border-white/10 bg-slate-950 sm:min-h-[430px]">
                                 {heroPreview ? (
                                     <img
-                                        alt={heroItem?.title ?? focusGame?.name ?? "Nexus Pulse"}
+                                        alt={
+                                            heroEvent?.title ??
+                                            heroItem?.title ??
+                                            focusGame?.name ??
+                                            "Nexus Pulse"
+                                        }
                                         className="absolute inset-0 size-full object-cover"
                                         decoding="async"
                                         fetchPriority="high"
