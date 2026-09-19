@@ -1,0 +1,12 @@
+{
+  "job_id": "2026-09-19-tgs-feed-56-upload",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 56,
+    "slot": "media",
+    "source_url": "https://service.tgs.cesa.or.jp/files/96/tgs2026/news/tgs_official_kv.png",
+    "name": "tokyo-game-show-2026-final-day-cancelled.png",
+    "alt": "Tokyo Game Show 2026؛ لغو روز پایانی نمایشگاه به‌دلیل نزدیک‌شدن طوفان"
+  }
+}
