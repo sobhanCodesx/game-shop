@@ -117,13 +117,18 @@ class GameEventService
 
     public function syncFromProduct(Product $product): ?GameEvent
     {
+        if (! $product->game_id) {
+            return null;
+        }
+
         if (
-            ! $product->game_id
-            || $product->status !== 'published'
+            $product->status !== 'published'
             || $product->visibility !== 'public'
             || ! $product->discount_price
             || $product->discount_price >= $product->price
         ) {
+            $this->expireProductPriceEvents($product);
+
             return null;
         }
 
@@ -146,6 +151,15 @@ class GameEventService
             'expires_at' => $product->expires_at,
             'status' => 'active',
         ]);
+    }
+
+    public function expireFromContent(SocialContent $content): void
+    {
+        GameEvent::query()
+            ->where('source_content_id', $content->id)
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->update(['expires_at' => now()]);
     }
 
     public function upsert(array $attributes): GameEvent
@@ -190,6 +204,7 @@ class GameEventService
         $events = GameEvent::query()
             ->active()
             ->whereIn('game_id', $gameIds->all())
+            ->whereHas('game', fn ($query) => $query->whereIn('status', ['active', 'published']))
             ->where('detected_at', '>=', now()->subDays(120))
             ->with([
                 'game:id,name,slug,cover,background',
@@ -303,6 +318,7 @@ class GameEventService
 
         return [
             'id' => $event->id,
+            'source_content_id' => $event->source_content_id,
             'type' => $event->type,
             'type_label' => $rank['type_label'],
             'title' => $event->title,
@@ -327,6 +343,16 @@ class GameEventService
                 'cover_url' => MediaStorage::url($game->cover),
             ] : null,
         ];
+    }
+
+    private function expireProductPriceEvents(Product $product): void
+    {
+        GameEvent::query()
+            ->where('product_id', $product->id)
+            ->where('type', 'price_drop')
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->update(['expires_at' => now()]);
     }
 
     private function changePayload(GameEvent $event): ?array
