@@ -14,6 +14,7 @@ use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\Studio;
 use App\Services\FeedService;
+use App\Services\GameEventService;
 use App\Services\GameRadarService;
 use App\Services\MediaStorage;
 use App\Services\ProductPriceService;
@@ -27,7 +28,7 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar, UserGamingRelevanceService $relevance): Response
+    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar, UserGamingRelevanceService $relevance, GameEventService $gameEvents): Response
     {
         $settings = [...HomeSettingsController::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])];
         $limit = (int) $settings['products_limit'];
@@ -36,7 +37,7 @@ class HomeController extends Controller
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
         $latestStudios = collect();
         $radarItems = collect($radar->linkedSnapshot()['items'] ?? []);
-        $personalizedHome = $this->personalizedHome($request, $feed, $relevance, $radarItems);
+        $personalizedHome = $this->personalizedHome($request, $feed, $relevance, $gameEvents, $radarItems);
 
         if (Schema::hasTable('studios') && Schema::hasTable('games') && Schema::hasColumn('games', 'studio_id')) {
             $latestStudios = Studio::query()->where('status', 'active')
@@ -332,7 +333,7 @@ class HomeController extends Controller
         ]);
     }
 
-    private function personalizedHome(Request $request, FeedService $feed, UserGamingRelevanceService $relevance, $radarItems): ?array
+    private function personalizedHome(Request $request, FeedService $feed, UserGamingRelevanceService $relevance, GameEventService $gameEvents, $radarItems): ?array
     {
         $user = $request->user();
 
@@ -395,6 +396,7 @@ class HomeController extends Controller
                 'url' => route('channels.show', $game->slug, false),
                 'image_url' => MediaStorage::url($game->cover ?: $game->playlists->first()?->logo),
             ])->values(),
+            'events' => $gameEvents->forProfile($profile, 8),
             'feed' => $feed->smartForProfile($request, $profile, 8),
             'radar' => $matchedRadar,
             'intelligence' => [
