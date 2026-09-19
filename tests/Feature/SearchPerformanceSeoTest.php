@@ -12,6 +12,12 @@ class SearchPerformanceSeoTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
     public function test_home_feed_preview_does_not_serialize_heavy_editorial_body(): void
     {
         SocialContent::query()->create([
