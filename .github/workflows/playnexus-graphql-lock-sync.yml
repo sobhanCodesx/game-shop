@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 0
 
       - name: Update GraphQL dependency lock
-        run: composer update webonyx/graphql-php --with-dependencies --no-install --no-interaction --no-progress
+        run: composer update webonyx/graphql-php --with-dependencies --no-install --no-interaction --no-progress --no-scripts
 
       - name: Commit composer.lock if needed
         shell: bash
