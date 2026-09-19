@@ -43,7 +43,16 @@ export default function FloatingVideoPlayer({
     const dragRef = useRef({ pointerX: 0, pointerY: 0, x: 0, y: 0 });
     const resumeAppliedRef = useRef(false);
     const lastSavedSecondRef = useRef(-1);
+    const neonPlaybackRef = useRef({
+        accumulated: 0,
+        lastMediaTime: null as number | null,
+        fadeStarted: false,
+    });
+    const neonFadeTimeoutRef = useRef<number | null>(null);
     const [hasStarted, setHasStarted] = useState(false);
+    const [neonState, setNeonState] = useState<
+        "idle" | "active" | "fading" | "hidden"
+    >("idle");
     const [isFloating, setIsFloating] = useState(false);
     const [isClosed, setIsClosed] = useState(false);
     const [playbackError, setPlaybackError] = useState(false);
@@ -58,7 +67,24 @@ export default function FloatingVideoPlayer({
     useEffect(() => {
         resumeAppliedRef.current = false;
         lastSavedSecondRef.current = -1;
+        neonPlaybackRef.current = {
+            accumulated: 0,
+            lastMediaTime: null,
+            fadeStarted: false,
+        };
+        if (neonFadeTimeoutRef.current !== null) {
+            window.clearTimeout(neonFadeTimeoutRef.current);
+            neonFadeTimeoutRef.current = null;
+        }
+        setNeonState("idle");
         setCanResume(false);
+
+        return () => {
+            if (neonFadeTimeoutRef.current !== null) {
+                window.clearTimeout(neonFadeTimeoutRef.current);
+                neonFadeTimeoutRef.current = null;
+            }
+        };
     }, [content.id]);
 
     useEffect(() => {
@@ -178,6 +204,36 @@ export default function FloatingVideoPlayer({
         });
     };
 
+    const trackNeonPlayback = () => {
+        const player = playerRef.current;
+        const neon = neonPlaybackRef.current;
+        if (!player || neon.fadeStarted) return;
+
+        const currentTime = Number(player.currentTime || 0);
+        if (!Number.isFinite(currentTime)) return;
+
+        if (neon.lastMediaTime !== null) {
+            const delta = currentTime - neon.lastMediaTime;
+
+            // Count only natural media progression. Large jumps are seeks and
+            // should never let a user skip the ten-second signature moment.
+            if (delta > 0 && delta <= 1.5) {
+                neon.accumulated += delta;
+            }
+        }
+
+        neon.lastMediaTime = currentTime;
+
+        if (neon.accumulated < 10) return;
+
+        neon.fadeStarted = true;
+        setNeonState("fading");
+        neonFadeTimeoutRef.current = window.setTimeout(() => {
+            setNeonState("hidden");
+            neonFadeTimeoutRef.current = null;
+        }, 2400);
+    };
+
     const retry = () => {
         setPlaybackError(false);
         playerRef.current?.startLoading();
@@ -185,7 +241,11 @@ export default function FloatingVideoPlayer({
     };
 
     return (
-        <div className="playnexus-player-shell size-full" ref={shellRef}>
+        <div
+            className="playnexus-player-shell size-full"
+            data-neon-state={neonState}
+            ref={shellRef}
+        >
             <div aria-hidden="true" className="playnexus-player-ambient">
                 <canvas
                     className="playnexus-player-ambient__canvas"
@@ -216,13 +276,35 @@ export default function FloatingVideoPlayer({
                         }}
                         onEnded={() => captureProgress(true, true)}
                         onError={() => setPlaybackError(true)}
-                        onPause={() => captureProgress(true)}
+                        onPause={() => {
+                            neonPlaybackRef.current.lastMediaTime = null;
+                            captureProgress(true);
+                        }}
                         onPlay={() => {
                             setHasStarted(true);
                             setIsClosed(false);
+
+                            if (!neonPlaybackRef.current.fadeStarted) {
+                                neonPlaybackRef.current.lastMediaTime = Number(
+                                    playerRef.current?.currentTime || 0,
+                                );
+                                setNeonState("active");
+                            }
                         }}
-                        onSeeked={() => captureProgress(true)}
+                        onSeeking={() => {
+                            neonPlaybackRef.current.lastMediaTime = null;
+                        }}
+                        onSeeked={() => {
+                            if (!neonPlaybackRef.current.fadeStarted) {
+                                neonPlaybackRef.current.lastMediaTime = Number(
+                                    playerRef.current?.currentTime || 0,
+                                );
+                            }
+                            captureProgress(true);
+                        }}
                         onTimeUpdate={() => {
+                            trackNeonPlayback();
+
                             if (!resumeAppliedRef.current) return;
                             const second = Math.floor(
                                 Number(playerRef.current?.currentTime || 0),
