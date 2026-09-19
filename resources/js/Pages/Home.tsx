@@ -1982,8 +1982,7 @@ function PersonalizedHomePanel({
                         </div>
                     </div>
 
-                    {hasPersonalization &&
-                    mobilePrioritySlides.length > 0 ? (
+                    {mobilePrioritySlides.length > 0 ? (
                         <MobilePriorityCarousel
                             items={mobilePrioritySlides.slice(0, 10)}
                         />
