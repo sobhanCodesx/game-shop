@@ -17,6 +17,11 @@ class XboxTrackedGameSourceAdapter implements TrackedGameSourceAdapter
         return 'xbox_store';
     }
 
+    public function supports(GameSourceState $state): bool
+    {
+        return $this->productId($state) !== null;
+    }
+
     public function fetch(Collection $states): array
     {
         $byProductId = $states
