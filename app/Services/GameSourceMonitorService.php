@@ -37,7 +37,7 @@ class GameSourceMonitorService
         ];
 
         foreach ($adapter->observations($payload) as $observation) {
-            DB::transaction(function () use ($observation, &$stats): void {
+            $result = DB::transaction(function () use ($observation): array {
                 $state = is_array($observation['state'] ?? null) ? $observation['state'] : [];
                 $fingerprint = $this->fingerprint($state);
                 $now = now();
@@ -48,8 +48,6 @@ class GameSourceMonitorService
                     ->where('scope', (string) $observation['scope'])
                     ->lockForUpdate()
                     ->first();
-
-                $stats['observed']++;
 
                 if (! $previous) {
                     GameSourceState::query()->create([
@@ -64,12 +62,11 @@ class GameSourceMonitorService
                         'observed_at' => $now,
                         'changed_at' => null,
                     ]);
-                    $stats['baselines']++;
 
-                    return;
+                    return ['baseline' => 1, 'changed' => 0, 'events' => 0];
                 }
 
-                if (hash_equals($previous->fingerprint, $fingerprint)) {
+                if (hash_equals((string) $previous->fingerprint, $fingerprint)) {
                     $previous->fill([
                         'external_id' => $observation['external_id'] ?? $previous->external_id,
                         'source_url' => $observation['source_url'] ?? $previous->source_url,
@@ -77,12 +74,10 @@ class GameSourceMonitorService
                         'observed_at' => $now,
                     ])->save();
 
-                    return;
+                    return ['baseline' => 0, 'changed' => 0, 'events' => 0];
                 }
 
                 $events = $this->detector->detect($previous, $observation);
-                $stats['changed']++;
-                $stats['events'] += count($events);
 
                 $previous->fill([
                     'external_id' => $observation['external_id'] ?? $previous->external_id,
@@ -93,7 +88,14 @@ class GameSourceMonitorService
                     'observed_at' => $now,
                     'changed_at' => $now,
                 ])->save();
+
+                return ['baseline' => 0, 'changed' => 1, 'events' => count($events)];
             }, 3);
+
+            $stats['observed']++;
+            $stats['baselines'] += $result['baseline'];
+            $stats['changed'] += $result['changed'];
+            $stats['events'] += $result['events'];
         }
 
         return $stats;
