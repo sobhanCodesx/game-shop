@@ -1,8 +1,0 @@
-{
-  "job_id": "gta6-platform-search-20260919",
-  "tool": "search_platforms",
-  "arguments": {
-    "query": "Xbox",
-    "limit": 20
-  }
-}
