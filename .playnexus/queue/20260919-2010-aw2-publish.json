@@ -1,0 +1,8 @@
+{
+  "tool": "set_content_state",
+  "arguments": {
+    "resource": "game",
+    "id": 14,
+    "state": "active"
+  }
+}
