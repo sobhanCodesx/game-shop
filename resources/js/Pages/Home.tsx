@@ -1401,7 +1401,7 @@ function PersonalizedHomePanel({
                     </div>
                 ) : (
                     <div className="relative p-3 sm:p-4 lg:p-5">
-                        <section className="overflow-hidden rounded-[26px] border border-white/10 bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)]">
+                        <section className="pn-neon-panel overflow-hidden rounded-[26px] bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)]">
                             <div className="grid lg:grid-cols-[minmax(0,1.75fr)_minmax(320px,.8fr)]">
                                 <div className="group relative aspect-[16/10] min-h-[330px] overflow-hidden bg-slate-950 sm:aspect-[16/9] sm:min-h-0 lg:aspect-auto lg:min-h-[430px]">
                                     {heroPreview ? (
@@ -1580,17 +1580,26 @@ function PersonalizedHomePanel({
                                                     href={item.url}
                                                     key={item.id}
                                                 >
-                                                    <span className="relative w-[38%] shrink-0 overflow-hidden rounded-[16px] bg-slate-900">
+                                                    <span className="relative w-[42%] shrink-0 overflow-hidden rounded-[16px] bg-[#050914]">
                                                         {preview ? (
-                                                            <img
-                                                                alt={
-                                                                    media?.alt ??
-                                                                    item.title
-                                                                }
-                                                                className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                                                                loading="lazy"
-                                                                src={preview}
-                                                            />
+                                                            <>
+                                                                <img
+                                                                    aria-hidden="true"
+                                                                    alt=""
+                                                                    className="absolute inset-0 size-full scale-110 object-cover opacity-35 blur-xl"
+                                                                    loading="lazy"
+                                                                    src={preview}
+                                                                />
+                                                                <img
+                                                                    alt={
+                                                                        media?.alt ??
+                                                                        item.title
+                                                                    }
+                                                                    className="relative z-[1] size-full object-contain p-1 transition duration-500 group-hover:scale-[1.025]"
+                                                                    loading="lazy"
+                                                                    src={preview}
+                                                                />
+                                                            </>
                                                         ) : (
                                                             <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#151d31,#0b1120)] text-indigo-200/20">
                                                                 <Newspaper
@@ -1698,7 +1707,7 @@ function PersonalizedHomePanel({
                         </section>
 
                         {continuationFeed.length > 0 && (
-                            <section className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.025] p-3 sm:p-4">
+                            <section className="pn-neon-panel mt-4 rounded-[24px] bg-white/[0.025] p-3 sm:p-4">
                                 <div className="mb-3 flex items-center justify-between gap-3 px-1">
                                     <div className="flex items-center gap-2.5">
                                         <span className="grid size-8 place-items-center rounded-xl bg-indigo-400/10 text-indigo-200">
@@ -1749,17 +1758,26 @@ function PersonalizedHomePanel({
                                                 href={item.url}
                                                 key={item.id}
                                             >
-                                                <span className="relative block aspect-[16/8.7] overflow-hidden bg-slate-900">
+                                                <span className="relative block aspect-[16/10] overflow-hidden bg-[#050914]">
                                                     {preview ? (
-                                                        <img
-                                                            alt={
-                                                                media?.alt ??
-                                                                item.title
-                                                            }
-                                                            className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                                                            loading="lazy"
-                                                            src={preview}
-                                                        />
+                                                        <>
+                                                            <img
+                                                                aria-hidden="true"
+                                                                alt=""
+                                                                className="absolute inset-0 size-full scale-110 object-cover opacity-40 blur-2xl"
+                                                                loading="lazy"
+                                                                src={preview}
+                                                            />
+                                                            <img
+                                                                alt={
+                                                                    media?.alt ??
+                                                                    item.title
+                                                                }
+                                                                className="relative z-[1] size-full object-contain p-1.5 transition duration-500 group-hover:scale-[1.025]"
+                                                                loading="lazy"
+                                                                src={preview}
+                                                            />
+                                                        </>
                                                     ) : (
                                                         <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#151d31,#0b1120)] text-indigo-200/20">
                                                             <Newspaper
@@ -1767,8 +1785,8 @@ function PersonalizedHomePanel({
                                                             />
                                                         </span>
                                                     )}
-                                                    <span className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
-                                                    <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-1 text-[8px] font-black text-white/65">
+                                                    <span className="absolute inset-0 z-[2] bg-gradient-to-t from-black/45 via-transparent to-black/5" />
+                                                    <span className="absolute right-2 top-2 z-[3] rounded-full bg-black/60 px-2 py-1 text-[8px] font-black text-white/70">
                                                         {badgeLabel}
                                                     </span>
                                                 </span>
@@ -1791,7 +1809,7 @@ function PersonalizedHomePanel({
                         )}
 
                         {secondaryEvents.length > 0 && (
-                            <div className="mt-4 rounded-[24px] border border-amber-200/10 bg-[linear-gradient(135deg,rgba(245,158,11,.055),rgba(255,255,255,.02))] p-3 sm:p-4">
+                            <div className="pn-neon-panel pn-neon-panel--warm mt-4 rounded-[24px] bg-[linear-gradient(135deg,rgba(245,158,11,.055),rgba(255,255,255,.02))] p-3 sm:p-4">
                                 <div className="mb-3 flex items-end justify-between gap-3 px-1">
                                     <div>
                                         <p className="text-[9px] font-black tracking-[.14em] text-amber-200/65">
@@ -1874,7 +1892,7 @@ function PersonalizedHomePanel({
                         )}
 
                         {data.followed_games.length > 0 && (
-                            <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-3 sm:p-4">
+                            <div className="pn-neon-panel mt-4 rounded-[24px] bg-white/[0.03] p-3 sm:p-4">
                                 <div className="mb-3 flex items-center justify-between gap-3 px-1">
                                     <div>
                                         <h3 className="text-sm font-black">بازی‌های تو</h3>
