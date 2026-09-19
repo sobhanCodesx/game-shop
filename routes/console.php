@@ -31,3 +31,8 @@ Artisan::command('nexus:sync-game-events {--days=90}', function () {
 Schedule::command('nexus:sync-game-radar')
     ->everySixHours()
     ->withoutOverlapping();
+
+
+Schedule::command('nexus:sync-game-events --days=7')
+    ->daily()
+    ->withoutOverlapping();
