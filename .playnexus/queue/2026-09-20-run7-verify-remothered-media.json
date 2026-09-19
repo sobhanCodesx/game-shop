@@ -1,0 +1,5 @@
+{
+  "job_id": "2026-09-20-run7-verify-remothered-media",
+  "tool": "list_content_assets",
+  "arguments": {"resource": "feed", "id": 60}
+}
