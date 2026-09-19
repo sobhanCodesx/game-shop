@@ -65,6 +65,7 @@ class HandleInertiaRequests extends Middleware
     {
         if (
             ! config('inertia.ssr.enabled', true)
+            || is_file(public_path('hot'))
             || $request->is('admin', 'admin/*')
             || (app()->environment('local') && ! config('inertia.ssr.local_enabled', false))
         ) {
