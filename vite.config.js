@@ -4,23 +4,34 @@ import laravel from "laravel-vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig(({ isSsrBuild }) => {
+export default defineConfig(({ command, isSsrBuild }) => {
+    const isBuild = command === "build";
+
     return {
         plugins: [
             laravel({
                 input: "resources/js/app.tsx",
-                ssr: "resources/js/ssr.tsx",
+                // Never register an SSR entry while Vite is serving locally.
+                // This keeps npm run dev strictly client-only.
+                ...(isBuild ? { ssr: "resources/js/ssr.tsx" } : {}),
                 // React/Inertia uses Vite HMR for frontend changes. Disable
                 // Laravel's full-page reload watcher entirely so local file
                 // writes can never create a browser reload loop.
                 refresh: false,
             }),
-            inertia({
-                ssr: {
-                    entry: "resources/js/ssr.tsx",
-                    sourcemap: false,
-                },
-            }),
+            // @inertiajs/vite exposes /__inertia_ssr and warms the SSR module
+            // graph during Vite dev. Only load it for production builds so
+            // local development cannot start or proxy an SSR renderer at all.
+            ...(isBuild
+                ? [
+                      inertia({
+                          ssr: {
+                              entry: "resources/js/ssr.tsx",
+                              sourcemap: false,
+                          },
+                      }),
+                  ]
+                : []),
             react(),
             tailwindcss(),
         ],
