@@ -1,0 +1,12 @@
+{
+  "job_id": "2026-09-19-feed-54-2xko-upload-fixed",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 54,
+    "slot": "media",
+    "source_url": "https://www.riotgames.com/darkroom/1440/c76ca372b9a4ec740058d3e1d6d23697:e4c5de1c86a70170a5b4bdab37dcab35/2xko-16x9-halftones.png",
+    "name": "2xko-development-end-2026.png",
+    "alt": "پایان توسعه فعال بازی 2XKO توسط Riot Games در سال 2026"
+  }
+}
