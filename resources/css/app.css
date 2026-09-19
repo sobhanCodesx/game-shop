@@ -621,7 +621,7 @@ textarea {
 
 /* Desktop composition: asymmetrical on purpose, like fragments of a gaming
    library orbiting the Pulse identity rather than a conventional gallery. */
-.pn-media-cloud__tile:nth-of-type(2) {
+.pn-media-cloud__tile:nth-child(2) {
     top: 17%;
     left: 5%;
     width: 31%;
@@ -631,7 +631,7 @@ textarea {
     --pn-cloud-delay: -3s;
 }
 
-.pn-media-cloud__tile:nth-of-type(3) {
+.pn-media-cloud__tile:nth-child(3) {
     top: 4%;
     left: 31%;
     width: 25%;
@@ -641,7 +641,7 @@ textarea {
     --pn-cloud-delay: -8s;
 }
 
-.pn-media-cloud__tile:nth-of-type(4) {
+.pn-media-cloud__tile:nth-child(4) {
     top: 45%;
     left: 29%;
     width: 28%;
@@ -651,7 +651,7 @@ textarea {
     --pn-cloud-delay: -5s;
 }
 
-.pn-media-cloud__tile:nth-of-type(5) {
+.pn-media-cloud__tile:nth-child(5) {
     top: 10%;
     left: 54%;
     width: 30%;
@@ -661,7 +661,7 @@ textarea {
     --pn-cloud-delay: -10s;
 }
 
-.pn-media-cloud__tile:nth-of-type(6) {
+.pn-media-cloud__tile:nth-child(6) {
     top: 54%;
     left: 58%;
     width: 25%;
@@ -671,7 +671,7 @@ textarea {
     --pn-cloud-delay: -6s;
 }
 
-.pn-media-cloud__tile:nth-of-type(7) {
+.pn-media-cloud__tile:nth-child(7) {
     top: 25%;
     left: 79%;
     width: 19%;
@@ -681,7 +681,7 @@ textarea {
     --pn-cloud-delay: -2s;
 }
 
-.pn-media-cloud__tile:nth-of-type(8) {
+.pn-media-cloud__tile:nth-child(8) {
     top: 4%;
     left: 73%;
     width: 18%;
@@ -749,32 +749,32 @@ textarea {
         animation-duration: 18s;
     }
 
-    .pn-media-cloud__tile:nth-of-type(2) {
+    .pn-media-cloud__tile:nth-child(2) {
         left: 1% !important;
         --pn-cloud-rotate: -3deg;
     }
 
-    .pn-media-cloud__tile:nth-of-type(3) {
+    .pn-media-cloud__tile:nth-child(3) {
         left: 19% !important;
         --pn-cloud-rotate: 2deg;
     }
 
-    .pn-media-cloud__tile:nth-of-type(4) {
+    .pn-media-cloud__tile:nth-child(4) {
         left: 37% !important;
         --pn-cloud-rotate: -2deg;
     }
 
-    .pn-media-cloud__tile:nth-of-type(5) {
+    .pn-media-cloud__tile:nth-child(5) {
         left: 55% !important;
         --pn-cloud-rotate: 2.5deg;
     }
 
-    .pn-media-cloud__tile:nth-of-type(6) {
+    .pn-media-cloud__tile:nth-child(6) {
         left: 73% !important;
         --pn-cloud-rotate: -2deg;
     }
 
-    .pn-media-cloud__tile:nth-of-type(n + 7) {
+    .pn-media-cloud__tile:nth-child(n + 7) {
         display: none;
     }
 
@@ -796,23 +796,23 @@ textarea {
         height: 61% !important;
     }
 
-    .pn-media-cloud__tile:nth-of-type(2) {
+    .pn-media-cloud__tile:nth-child(2) {
         left: -3% !important;
     }
 
-    .pn-media-cloud__tile:nth-of-type(3) {
+    .pn-media-cloud__tile:nth-child(3) {
         left: 18% !important;
     }
 
-    .pn-media-cloud__tile:nth-of-type(4) {
+    .pn-media-cloud__tile:nth-child(4) {
         left: 39% !important;
     }
 
-    .pn-media-cloud__tile:nth-of-type(5) {
+    .pn-media-cloud__tile:nth-child(5) {
         left: 60% !important;
     }
 
-    .pn-media-cloud__tile:nth-of-type(6) {
+    .pn-media-cloud__tile:nth-child(6) {
         left: 81% !important;
     }
 }
