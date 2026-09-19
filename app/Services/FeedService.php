@@ -132,6 +132,52 @@ class FeedService
         return $this->mapItems($contents, $request->user());
     }
 
+    public function smartVideosForProfile(Request $request, array $profile, int $limit = 4): array
+    {
+        $gameIds = array_slice(array_keys($profile['game_scores'] ?? []), 0, 20);
+
+        if ($gameIds === []) {
+            return [];
+        }
+
+        $candidateLimit = max(36, $limit * 10);
+        $candidates = $this->feedQuery()
+            ->where('type', 'video')
+            ->whereIn('game_id', $gameIds)
+            ->where('published_at', '>=', now()->subDays(90))
+            ->latest('published_at')
+            ->latest('id')
+            ->limit($candidateLimit)
+            ->get();
+
+        $ranked = $this->relevance->rankContents($candidates, $profile)->take($limit);
+        $mapped = collect($this->mapItems($ranked->pluck('content'), $request->user()))->keyBy('id');
+
+        return $ranked
+            ->map(function (array $rank) use ($mapped) {
+                /** @var SocialContent $content */
+                $content = $rank['content'];
+                $item = $mapped->get($content->id);
+
+                if (! $item) {
+                    return null;
+                }
+
+                return [
+                    ...$item,
+                    'relevance' => [
+                        'priority' => $rank['priority'],
+                        'reason' => $rank['reason'],
+                        'signal_key' => $rank['signal_key'],
+                        'signal_label' => $rank['signal_label'],
+                    ],
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
     public function smartEditorialForProfile(Request $request, array $profile, int $limit = 8): array
     {
         $gameIds = array_slice(array_keys($profile['game_scores'] ?? []), 0, 20);
