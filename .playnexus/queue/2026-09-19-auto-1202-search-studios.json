@@ -1,8 +1,0 @@
-{
-  "job_id": "20260919-auto-1202-search-studios",
-  "tool": "search_studios",
-  "arguments": {
-    "query": "",
-    "limit": 100
-  }
-}
