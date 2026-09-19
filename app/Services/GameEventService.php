@@ -17,7 +17,12 @@ class GameEventService
 
     public function syncReleaseDateChange(Game $game, ?string $oldDate): ?GameEvent
     {
-        if (! $game->release_date || ! $oldDate || $game->release_date->toDateString() === $oldDate) {
+        if (
+            ! in_array($game->status, ['active', 'published'], true)
+            || ! $game->release_date
+            || ! $oldDate
+            || $game->release_date->toDateString() === $oldDate
+        ) {
             return null;
         }
 
