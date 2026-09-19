@@ -1401,9 +1401,9 @@ function PersonalizedHomePanel({
                     </div>
                 ) : (
                     <div className="relative p-3 sm:p-4 lg:p-5">
-                        <section className="-mx-3 overflow-hidden border-y border-white/10 bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)] sm:-mx-4 lg:-mx-5">
-                            <div className="grid">
-                                <div className="group relative min-h-[360px] overflow-hidden bg-slate-950 sm:min-h-[460px] lg:min-h-[500px]">
+                        <section className="overflow-hidden rounded-[26px] border border-white/10 bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)]">
+                            <div className="grid lg:grid-cols-[minmax(0,1.75fr)_minmax(320px,.8fr)]">
+                                <div className="group relative aspect-[16/10] min-h-[330px] overflow-hidden bg-slate-950 sm:aspect-[16/9] sm:min-h-0 lg:aspect-auto lg:min-h-[430px]">
                                     {heroPreview ? (
                                         <img
                                             alt={
@@ -1535,7 +1535,7 @@ function PersonalizedHomePanel({
                                     </div>
                                 </div>
 
-                                <aside className="flex min-w-0 flex-col border-t border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01))]">
+                                <aside className="flex min-w-0 flex-col border-t border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01))] lg:border-r lg:border-t-0">
                                     <header className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3.5">
                                         <div>
                                             <p className="text-[8px] font-black tracking-[.14em] text-indigo-200/55">
@@ -1550,7 +1550,7 @@ function PersonalizedHomePanel({
                                         </span>
                                     </header>
 
-                                    <div className="grid flex-1 gap-px bg-white/8 sm:grid-cols-2 lg:grid-cols-3">
+                                    <div className="grid flex-1 gap-px bg-white/8 sm:grid-cols-2 lg:grid-cols-1">
                                         {supportingEditorial.map((item) => {
                                             const media = item.media.find(
                                                 (entry) =>
@@ -1721,7 +1721,7 @@ function PersonalizedHomePanel({
                                     </Link>
                                 </div>
 
-                                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                                <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
                                     {continuationFeed.map((item) => {
                                         const media = item.media.find(
                                             (entry) =>
@@ -1745,7 +1745,7 @@ function PersonalizedHomePanel({
 
                                         return (
                                             <Link
-                                                className="group overflow-hidden rounded-[18px] border border-white/8 bg-[#0a1020] transition hover:-translate-y-0.5 hover:border-indigo-300/20"
+                                                className="group w-[78vw] max-w-[310px] shrink-0 snap-start overflow-hidden rounded-[18px] border border-white/8 bg-[#0a1020] transition hover:-translate-y-0.5 hover:border-indigo-300/20 sm:w-[290px]"
                                                 href={item.url}
                                                 key={item.id}
                                             >
