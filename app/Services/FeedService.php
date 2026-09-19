@@ -125,6 +125,40 @@ class FeedService
         return $this->mapItems($contents, $request->user());
     }
 
+    public function latestImportantPreview(Request $request, int $limit = 8): array
+    {
+        $important = $this->homeFeedQuery()
+            ->where(fn (Builder $query) => $query
+                ->where('featured', true)
+                ->orWhereIn('feed_badge', ['breaking', 'news', 'trailer', 'update', 'review']))
+            ->latest('published_at')
+            ->latest('id')
+            ->limit($limit)
+            ->get();
+
+        if ($important->count() < $limit) {
+            $fallback = $this->homeFeedQuery()
+                ->whereNotIn('id', $important->pluck('id'))
+                ->latest('published_at')
+                ->latest('id')
+                ->limit($limit - $important->count())
+                ->get();
+
+            $important = $important->concat($fallback);
+        }
+
+        return $this->mapHomePreviewItems(
+            $important
+                ->sortByDesc(fn (SocialContent $content) => sprintf(
+                    '%s-%020d',
+                    $content->published_at?->format('Y-m-d H:i:s.u') ?? '',
+                    $content->id,
+                ))
+                ->take($limit)
+                ->values(),
+        );
+    }
+
     public function channel(Request $request, Game $game, int $limit = 8): array
     {
         $contents = $this->feedQuery()->whereBelongsTo($game)->latest('published_at')->latest('id')->limit($limit)->get();
@@ -141,7 +175,7 @@ class FeedService
         }
 
         $candidateLimit = max(36, $limit * 10);
-        $candidates = $this->feedQuery()
+        $candidates = $this->homeFeedQuery()
             ->where('type', 'video')
             ->whereIn('game_id', $gameIds)
             ->where('published_at', '>=', now()->subDays(90))
@@ -151,7 +185,7 @@ class FeedService
             ->get();
 
         $ranked = $this->relevance->rankContents($candidates, $profile)->take($limit);
-        $mapped = collect($this->mapItems($ranked->pluck('content'), $request->user()))->keyBy('id');
+        $mapped = collect($this->mapHomePreviewItems($ranked->pluck('content')))->keyBy('id');
 
         return $ranked
             ->map(function (array $rank) use ($mapped) {
@@ -187,7 +221,7 @@ class FeedService
         }
 
         $candidateLimit = max(48, $limit * 10);
-        $candidates = $this->feedQuery()
+        $candidates = $this->homeFeedQuery()
             ->where('type', 'post')
             ->whereNotIn('feed_type', ['video', 'clip', 'trailer'])
             ->whereIn('game_id', $gameIds)
@@ -198,7 +232,7 @@ class FeedService
             ->get();
 
         $ranked = $this->relevance->rankContents($candidates, $profile)->take($limit);
-        $mapped = collect($this->mapItems($ranked->pluck('content'), $request->user()))->keyBy('id');
+        $mapped = collect($this->mapHomePreviewItems($ranked->pluck('content')))->keyBy('id');
 
         return $ranked
             ->map(function (array $rank) use ($mapped) {
@@ -243,7 +277,7 @@ class FeedService
             ->get();
 
         $ranked = $this->relevance->rankContents($candidates, $profile)->take($limit);
-        $mapped = collect($this->mapItems($ranked->pluck('content'), $request->user()))->keyBy('id');
+        $mapped = collect($this->mapHomePreviewItems($ranked->pluck('content')))->keyBy('id');
 
         return $ranked
             ->map(function (array $rank) use ($mapped) {
@@ -384,6 +418,88 @@ class FeedService
                 'title' => $content->relatedContent->title,
                 'url' => route('content.show', ['type' => $content->relatedContent->type === 'short' ? 'shorts' : 'videos', 'content' => $content->relatedContent->slug], false),
             ] : null,
+        ];
+    }
+
+    private function homeFeedQuery(): Builder
+    {
+        return SocialContent::query()
+            ->published()
+            ->whereIn('type', ['post', 'video'])
+            ->with([
+                'game:id,name,slug,cover',
+                'game.playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+                'media',
+            ]);
+    }
+
+    private function mapHomePreviewItems($contents): array
+    {
+        return $contents
+            ->map(fn (SocialContent $content) => $this->homePreviewItem($content))
+            ->values()
+            ->all();
+    }
+
+    private function homePreviewItem(SocialContent $content): array
+    {
+        $isVideo = $content->type === 'video';
+        $media = $content->media->map(fn (SocialContentMedia $media) => [
+            'id' => $media->id,
+            'type' => $media->type,
+            'url' => MediaStorage::url($media->path),
+            'thumbnail' => MediaStorage::url($media->thumbnail),
+            'width' => $media->width,
+            'height' => $media->height,
+            'duration' => $media->duration,
+            'alt' => $media->alt ?: $content->title,
+        ])->values();
+
+        if ($media->isEmpty() && $content->thumbnail) {
+            $media->push([
+                'id' => -$content->id,
+                'type' => $isVideo ? 'video' : 'image',
+                'url' => $isVideo ? MediaStorage::url($content->video_path) : MediaStorage::url($content->thumbnail),
+                'thumbnail' => $isVideo ? MediaStorage::url($content->thumbnail) : null,
+                'width' => null,
+                'height' => null,
+                'duration' => $content->duration,
+                'alt' => $content->title,
+            ]);
+        }
+
+        $isEditorialPost = $content->type === 'post';
+        $authorName = $isEditorialPost
+            ? 'PlayNexus'
+            : ($content->game?->name ?? 'PlayNexus');
+        $channelLogo = ! $isEditorialPost && $content->game
+            ? ($content->game->cover ?: $content->game->playlists->first()?->logo)
+            : null;
+
+        return [
+            'id' => $content->id,
+            'type' => $content->type === 'video' && $content->feed_type === 'post'
+                ? 'video'
+                : (in_array($content->feed_type, self::TYPES, true) ? $content->feed_type : 'post'),
+            'title' => $content->title,
+            'badge' => $content->feed_badge,
+            'url' => $isVideo
+                ? route('content.show', ['type' => 'videos', 'content' => $content->slug], false)
+                : route('posts.show', $content->slug, false),
+            'created_at' => $content->published_at?->toISOString(),
+            'media' => $media,
+            'author' => [
+                'name' => $authorName,
+                'avatar_url' => $channelLogo
+                    ? MediaStorage::url($channelLogo)
+                    : url((string) config('seo.default_image', '/logo.png')),
+                'url' => $isEditorialPost
+                    ? null
+                    : ($content->game ? route('channels.show', $content->game->slug, false) : null),
+            ],
         ];
     }
 
