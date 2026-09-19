@@ -1008,7 +1008,11 @@ function PersonalizedHomePanel({
     userName: string;
 }) {
     const firstName = userName.trim().split(/\s+/)[0] || "گیمر";
-    const heroEvent = data.events[0] ?? null;
+    const heroEvent =
+        data.events.find(
+            (event) =>
+                event.priority === "critical" || event.priority === "high",
+        ) ?? null;
     const structuredContentIds = new Set(
         data.events
             .map((event) => event.source_content_id)
@@ -1018,7 +1022,9 @@ function PersonalizedHomePanel({
         (item) => !structuredContentIds.has(item.id),
     );
     const heroItem = heroEvent ? null : (dedupedFeed[0] ?? null);
-    const secondaryEvents = data.events.slice(1, 5);
+    const secondaryEvents = data.events
+        .filter((event) => event.id !== heroEvent?.id)
+        .slice(0, 4);
     const secondarySignals = dedupedFeed.slice(heroEvent ? 0 : 1, heroEvent ? 4 : 5);
     const focusGame = data.intelligence.focus_game;
     const hasPersonalization =
