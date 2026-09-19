@@ -382,6 +382,13 @@ class HomeController extends Controller
             )
             ->unique(fn (array $item) => mb_strtolower(trim((string) ($item['title'] ?? $item['id'] ?? ''))))
             ->take(8)
+            ->map(fn (array $item) => [
+                'id' => (string) ($item['id'] ?? ''),
+                'title' => (string) ($item['title'] ?? ''),
+                'banner_url' => $item['banner_url'] ?? null,
+                'cover_url' => $item['cover_url'] ?? null,
+                'playnexus_url' => $item['playnexus_url'] ?? null,
+            ])
             ->values();
 
         $focusGame = null;
