@@ -18,6 +18,7 @@ use App\Services\GameRadarService;
 use App\Services\MediaStorage;
 use App\Services\ProductPriceService;
 use App\Services\StorefrontDataService;
+use App\Services\UserGamingRelevanceService;
 use App\Support\Seo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -26,7 +27,7 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar): Response
+    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar, UserGamingRelevanceService $relevance): Response
     {
         $settings = [...HomeSettingsController::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])];
         $limit = (int) $settings['products_limit'];
@@ -35,7 +36,7 @@ class HomeController extends Controller
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
         $latestStudios = collect();
         $radarItems = collect($radar->linkedSnapshot()['items'] ?? []);
-        $personalizedHome = $this->personalizedHome($request, $feed, $radarItems);
+        $personalizedHome = $this->personalizedHome($request, $feed, $relevance, $radarItems);
 
         if (Schema::hasTable('studios') && Schema::hasTable('games') && Schema::hasColumn('games', 'studio_id')) {
             $latestStudios = Studio::query()->where('status', 'active')
@@ -331,7 +332,7 @@ class HomeController extends Controller
         ]);
     }
 
-    private function personalizedHome(Request $request, FeedService $feed, $radarItems): ?array
+    private function personalizedHome(Request $request, FeedService $feed, UserGamingRelevanceService $relevance, $radarItems): ?array
     {
         $user = $request->user();
 
@@ -351,15 +352,40 @@ class HomeController extends Controller
             ->limit(12)
             ->get(['games.id', 'games.name', 'games.slug', 'games.cover']);
 
-        $gameIds = $followedGames->pluck('id')->map(fn ($id) => (int) $id)->values();
-        $gameIdLookup = $gameIds->flip();
+        $profile = $relevance->profile($request, $followedGames);
+        $gameScores = $profile['game_scores'] ?? [];
 
-        $matchedRadar = $gameIds->isEmpty()
+        $followedGames = $followedGames
+            ->sortByDesc(fn (Game $game) => (float) ($gameScores[$game->id] ?? 0))
+            ->values();
+
+        $relevantGameIds = collect(array_keys($gameScores))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->take(16)
+            ->values();
+        $gameIdLookup = $relevantGameIds->flip();
+
+        $matchedRadar = $relevantGameIds->isEmpty()
             ? collect()
             : collect($radarItems)
                 ->filter(fn (array $item) => $gameIdLookup->has((int) ($item['playnexus_game_id'] ?? 0)))
                 ->take(6)
                 ->values();
+
+        $focusGame = null;
+        if ($profile['focus_game_id']) {
+            $focusGame = Game::query()
+                ->whereKey($profile['focus_game_id'])
+                ->whereIn('status', ['active', 'published'])
+                ->with([
+                    'playlists' => fn ($query) => $query
+                        ->publiclyVisible()
+                        ->whereNotNull('logo')
+                        ->select(['id', 'game_id', 'logo', 'sort_order']),
+                ])
+                ->first(['id', 'name', 'slug', 'cover']);
+        }
 
         return [
             'followed_games' => $followedGames->map(fn (Game $game) => [
@@ -369,10 +395,19 @@ class HomeController extends Controller
                 'url' => route('channels.show', $game->slug, false),
                 'image_url' => MediaStorage::url($game->cover ?: $game->playlists->first()?->logo),
             ])->values(),
-            'feed' => $gameIds->isEmpty()
-                ? []
-                : $feed->latestForGames($request, $gameIds->all(), 8),
+            'feed' => $feed->smartForProfile($request, $profile, 8),
             'radar' => $matchedRadar,
+            'intelligence' => [
+                'confidence' => $profile['confidence'],
+                'top_signals' => $profile['top_signals'],
+                'focus_reason' => $profile['focus_reason'],
+                'focus_game' => $focusGame ? [
+                    'id' => $focusGame->id,
+                    'name' => $focusGame->name,
+                    'url' => route('channels.show', $focusGame->slug, false),
+                    'image_url' => MediaStorage::url($focusGame->cover ?: $focusGame->playlists->first()?->logo),
+                ] : null,
+            ],
             'updated_at' => now()->toISOString(),
         ];
     }
