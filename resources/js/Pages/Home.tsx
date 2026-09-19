@@ -372,7 +372,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
     if (!items.length) return null;
 
     return (
-        <section className="relative z-10 mx-auto mt-4 max-w-[1536px] px-4 pb-5 sm:mt-6">
+        <section className="pn-render-zone relative z-10 mx-auto mt-4 max-w-[1536px] px-4 pb-5 sm:mt-6">
             <div className="pn-signature-frame pn-signature-frame--subtle overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_24px_70px_-55px_rgba(79,70,229,.65)]">
                 <div className="flex items-center justify-between gap-3 border-b border-[var(--store-border)] px-4 py-3 sm:px-5">
                     <div className="flex min-w-0 items-center gap-3">
@@ -2171,7 +2171,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
     };
 
     return (
-        <section className="mx-auto max-w-[1536px] px-4 pb-5 pt-2">
+        <section className="pn-render-zone mx-auto max-w-[1536px] px-4 pb-5 pt-2">
             <div className="pn-signature-frame pn-signature-frame--cool relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_-58px_rgba(79,70,229,.8)] sm:p-5">
                 <span
                     aria-hidden="true"
@@ -2448,8 +2448,11 @@ export default function Home({
         if (!root) return;
 
         let settleTimer: number | null = null;
+        let scrollFrame: number | null = null;
 
-        const onScroll = () => {
+        const markScrolling = () => {
+            scrollFrame = null;
+
             if (root.dataset.pnScrolling !== "true") {
                 root.dataset.pnScrolling = "true";
             }
@@ -2461,13 +2464,21 @@ export default function Home({
             settleTimer = window.setTimeout(() => {
                 delete root.dataset.pnScrolling;
                 settleTimer = null;
-            }, 140);
+            }, 110);
+        };
+
+        const onScroll = () => {
+            if (scrollFrame !== null) return;
+            scrollFrame = window.requestAnimationFrame(markScrolling);
         };
 
         window.addEventListener("scroll", onScroll, { passive: true });
 
         return () => {
             window.removeEventListener("scroll", onScroll);
+            if (scrollFrame !== null) {
+                window.cancelAnimationFrame(scrollFrame);
+            }
             if (settleTimer !== null) window.clearTimeout(settleTimer);
             delete root.dataset.pnScrolling;
         };
@@ -2481,6 +2492,9 @@ export default function Home({
             root.querySelectorAll<HTMLImageElement>('img[loading="lazy"]'),
         );
 
+        const preloadMargin =
+            window.innerWidth < 768 ? "520px 0px" : "900px 0px";
+
         const observer = new IntersectionObserver(
             (entries) => {
                 for (const entry of entries) {
@@ -2493,7 +2507,7 @@ export default function Home({
                 }
             },
             {
-                rootMargin: "1400px 0px",
+                rootMargin: preloadMargin,
                 threshold: 0.01,
             },
         );
@@ -2569,14 +2583,14 @@ export default function Home({
                 {(latestFeed.length > 0 || latestStudios.length > 0) && (
                     <section
                         aria-label="تازه‌های فید و استودیو"
-                        className="mx-auto grid max-w-[1536px] gap-4 px-4 pb-4 lg:grid-cols-2"
+                        className="pn-render-zone mx-auto grid max-w-[1536px] gap-4 px-4 pb-4 lg:grid-cols-2"
                     >
                         <LatestFeedRail items={latestFeed} />
                         <LatestStudioRail items={latestStudios} />
                     </section>
                 )}
                 <GameRadarRail items={gameRadar} />
-                <section className="home-slider mx-auto flex max-w-[1536px] snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
+                <section className="pn-render-zone home-slider mx-auto flex max-w-[1536px] snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],
                         [Truck, "ارسال سریع", "تحویل امن سفارش"],
@@ -2604,7 +2618,7 @@ export default function Home({
                 {settings.featured_categories_enabled &&
                     categories.length > 0 && (
                         <section
-                            className="mx-auto max-w-[1536px] scroll-mt-24 px-4 py-10 sm:py-12"
+                            className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-4 py-10 sm:py-12"
                             id="categories"
                         >
                             <div className="pn-signature-frame pn-signature-frame--subtle relative overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:p-6 lg:p-7">
@@ -2777,7 +2791,7 @@ export default function Home({
                     )}
                 {settings.featured_products_enabled && (
                     <section
-                        className="mx-auto max-w-[1536px] scroll-mt-24 px-4 py-10"
+                        className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-4 py-10"
                         id="featured-products"
                     >
                         <div className="mb-6">
@@ -2793,7 +2807,7 @@ export default function Home({
                 )}
                 {settings.latest_products_enabled && (
                     <section
-                        className="mx-auto max-w-[1536px] scroll-mt-36 px-4 py-10"
+                        className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-36 px-4 py-10"
                         id="latest-products"
                     >
                         <div className="mb-6">
@@ -2807,7 +2821,7 @@ export default function Home({
                         <ProductGrid products={latestProducts} />
                     </section>
                 )}
-                <div className="scroll-mt-24" id="community-content">
+                <div className="pn-render-zone scroll-mt-24" id="community-content">
                     {contentSections.map((section) => (
                         <ContentRail key={section.id} section={section} />
                     ))}
