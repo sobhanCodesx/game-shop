@@ -53,6 +53,17 @@ class PlayNexusGraphService
         $result = $execution->toArray(DebugFlag::NONE);
         $elapsedMs = round((hrtime(true) - $startedAt) / 1_000_000, 2);
 
+        $maxResponseBytes = (int) config('content_agent.graphql.max_response_bytes', 2097152);
+        $encodedResult = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (is_string($encodedResult) && strlen($encodedResult) > $maxResponseBytes) {
+            $result = [
+                'data' => null,
+                'errors' => [[
+                    'message' => "GraphQL response exceeded the {$maxResponseBytes}-byte safety limit. Request fewer records or fields.",
+                ]],
+            ];
+        }
+
         $result['extensions'] = [
             'playnexus' => [
                 'schemaVersion' => '1.0.0',
@@ -92,6 +103,7 @@ class PlayNexusGraphService
             'limits' => [
                 'max_query_bytes' => (int) config('content_agent.graphql.max_query_bytes', 24000),
                 'max_variables_bytes' => (int) config('content_agent.graphql.max_variables_bytes', 48000),
+                'max_response_bytes' => (int) config('content_agent.graphql.max_response_bytes', 2097152),
                 'max_depth' => (int) config('content_agent.graphql.max_depth', 10),
                 'max_introspection_depth' => (int) config('content_agent.graphql.max_introspection_depth', 16),
                 'max_complexity' => (int) config('content_agent.graphql.max_complexity', 500),
