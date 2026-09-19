@@ -1,8 +1,0 @@
-{
-  "job_id": "find-gta-20260919",
-  "tool": "search_games",
-  "arguments": {
-    "query": "Grand Theft Auto",
-    "limit": 20
-  }
-}
