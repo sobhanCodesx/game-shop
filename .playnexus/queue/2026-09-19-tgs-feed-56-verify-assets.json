@@ -1,0 +1,5 @@
+{
+  "job_id": "2026-09-19-tgs-feed-56-verify-assets",
+  "tool": "list_content_assets",
+  "arguments": {"resource": "feed", "id": 56}
+}
