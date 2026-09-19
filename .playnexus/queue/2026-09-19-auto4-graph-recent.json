@@ -1,7 +1,0 @@
-{
-  "job_id": "2026-09-19-auto4-graph-recent",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query { feeds(first: 20, orderBy: {column: CREATED_AT, order: DESC}) { data { id title status published_at created_at game { id name } } } games(first: 20, orderBy: {column: UPDATED_AT, order: DESC}) { data { id name } } studios(first: 15, orderBy: {column: UPDATED_AT, order: DESC}) { data { id name } } }"
-  }
-}
