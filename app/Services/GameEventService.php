@@ -82,7 +82,7 @@ class GameEventService
             'new_value' => ['price' => (int) $product->discount_price],
             'detected_at' => now(),
             'effective_at' => now(),
-            'expires_at' => $product->discount_ends_at ?? null,
+            'expires_at' => $product->expires_at,
             'status' => 'active',
         ]);
     }
