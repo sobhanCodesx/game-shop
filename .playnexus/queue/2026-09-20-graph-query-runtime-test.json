@@ -1,0 +1,8 @@
+{
+  "job_id": "20260920-graph-query-runtime-test",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "{ feeds(first: 3, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title status publishedAt game { id name } } pageInfo { total hasMore nextOffset } } }",
+    "variables": {}
+  }
+}
