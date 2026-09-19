@@ -1,0 +1,8 @@
+{
+  "job_id": "20260919-daily-studio-search-remedy",
+  "tool": "search_studios",
+  "arguments": {
+    "query": "Remedy Entertainment",
+    "limit": 20
+  }
+}
