@@ -15,6 +15,67 @@ class GameEventService
         private readonly GameEventImportanceService $importance,
     ) {}
 
+    public function syncReleaseDateChange(\App\Models\Game $game, ?string $oldDate): ?GameEvent
+    {
+        if (! $game->release_date || ! $oldDate || $game->release_date->toDateString() === $oldDate) {
+            return null;
+        }
+
+        $newDate = $game->release_date->toDateString();
+
+        return $this->upsert([
+            'game_id' => $game->id,
+            'type' => 'release_date_changed',
+            'title' => "تاریخ انتشار {$game->name} تغییر کرد",
+            'summary' => 'تاریخ انتشار رسمی این بازی نسبت به اطلاعات قبلی تغییر کرده.',
+            'source_type' => 'catalog',
+            'source_name' => 'PlayNexus Game Database',
+            'source_url' => route('channels.show', $game->slug, false),
+            'dedupe_key' => "game:{$game->id}:release_date_changed:{$oldDate}:{$newDate}",
+            'importance_score' => $this->importance->defaultScore('release_date_changed'),
+            'confidence' => 1,
+            'old_value' => ['release_date' => $oldDate],
+            'new_value' => ['release_date' => $newDate],
+            'detected_at' => now(),
+            'effective_at' => now(),
+            'status' => 'active',
+        ]);
+    }
+
+    public function syncRecentReleases(int $days = 7): int
+    {
+        $count = 0;
+
+        \App\Models\Game::query()
+            ->whereIn('status', ['active', 'published'])
+            ->whereNotNull('release_date')
+            ->whereBetween('release_date', [now()->subDays($days)->toDateString(), now()->toDateString()])
+            ->orderBy('id')
+            ->chunkById(200, function ($games) use (&$count): void {
+                foreach ($games as $game) {
+                    $date = $game->release_date->toDateString();
+                    $this->upsert([
+                        'game_id' => $game->id,
+                        'type' => 'released',
+                        'title' => "{$game->name} منتشر شد",
+                        'summary' => 'تاریخ انتشار ثبت‌شده این بازی فرا رسیده و حالا در Pulse به‌عنوان انتشار جدید شناخته می‌شود.',
+                        'source_type' => 'catalog',
+                        'source_name' => 'PlayNexus Game Database',
+                        'source_url' => route('channels.show', $game->slug, false),
+                        'dedupe_key' => "game:{$game->id}:released:{$date}",
+                        'importance_score' => $this->importance->defaultScore('released'),
+                        'confidence' => 1,
+                        'detected_at' => $game->release_date->copy()->startOfDay(),
+                        'effective_at' => $game->release_date->copy()->startOfDay(),
+                        'status' => 'active',
+                    ]);
+                    $count++;
+                }
+            });
+
+        return $count;
+    }
+
     public function syncFromContent(SocialContent $content): ?GameEvent
     {
         if (! $content->game_id || $content->status !== 'published' || ! $content->published_at?->isPast()) {
@@ -173,6 +234,8 @@ class GameEventService
                     }
                 }
             });
+
+        $count += $this->syncRecentReleases(min(30, $days));
 
         return $count;
     }
