@@ -39,8 +39,8 @@ The graph includes:
 - Games
 - Studios
 - Platforms
-- Products
-- Editorial content (feeds, videos, stories and shorts)
+- Products and Brands
+- Editorial content (feeds, videos, stories and shorts), including attached media and aggregate engagement
 - Collections/playlists
 - Store categories
 - Cached Game Radar data
@@ -151,6 +151,12 @@ curl -X POST "https://playnexus.ir/api/graphql" \
   -d '{"query":"{ graphInfo { name version readOnly entities maxDepth maxComplexity } }"}'
 ```
 
+## Broad private read profile
+
+The production defaults intentionally give the authenticated PlayNexus agent a large read budget. It can traverse deep entity relationships, inspect drafts/inactive records when explicitly filtered, read full editorial bodies, attached media metadata, Brands, aggregate content engagement, Radar, Game Events and Nexus Watch source states.
+
+This does **not** expose raw users, watch histories, email addresses, passwords/hashes, sessions, tokens, environment variables, arbitrary SQL, filesystem access or secrets. The larger read surface remains a typed application graph rather than unrestricted database access.
+
 ## Graph safety model
 
 The Graph is intentionally read-only and bounded:
@@ -238,15 +244,15 @@ PLAYNEXUS_CONTENT_AGENT_ALLOW_UPLOADS=false
 
 PLAYNEXUS_CONTENT_AGENT_GRAPHQL_ENABLED=true
 PLAYNEXUS_CONTENT_AGENT_GRAPHQL_INTROSPECTION=true
-PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_QUERY_BYTES=24000
-PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_VARIABLES_BYTES=48000
-PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_RESPONSE_BYTES=2097152
-PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_DEPTH=10
-PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_INTROSPECTION_DEPTH=16
-PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_COMPLEXITY=500
-PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_FIELDS=250
-PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_PAGE_SIZE=50
-PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_OFFSET=10000
+PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_QUERY_BYTES=48000
+PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_VARIABLES_BYTES=96000
+PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_RESPONSE_BYTES=4194304
+PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_DEPTH=14
+PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_INTROSPECTION_DEPTH=20
+PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_COMPLEXITY=1500
+PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_FIELDS=600
+PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_PAGE_SIZE=100
+PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_OFFSET=50000
 ```
 
 Generate a token on the server:
