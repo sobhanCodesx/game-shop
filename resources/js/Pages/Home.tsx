@@ -2031,7 +2031,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
 
                             return (
                                 <article
-                                    className={`group relative aspect-[4/5] w-[68vw] max-w-[285px] shrink-0 snap-center overflow-hidden rounded-[19px] border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-1 sm:aspect-[16/11] sm:w-[300px] lg:w-full lg:max-w-none ${
+                                    className={`group relative aspect-[4/5] w-[82vw] max-w-[320px] shrink-0 snap-center overflow-hidden rounded-[19px] border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-1 sm:aspect-[16/11] sm:w-[300px] lg:w-full lg:max-w-none ${
                                         index === 0
                                             ? "lg:col-span-6 lg:row-span-2 lg:aspect-auto lg:min-h-[360px]"
                                             : index >= 5
