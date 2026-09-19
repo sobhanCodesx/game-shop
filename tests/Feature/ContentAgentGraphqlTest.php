@@ -209,7 +209,7 @@ GRAPHQL,
         $response->assertOk()
             ->assertJsonPath('data.graphInfo.version', '1.1.0')
             ->assertJsonPath('data.graphInfo.maxDepth', 14)
-            ->assertJsonPath('data.graphInfo.maxComplexity', 1500)
+            ->assertJsonPath('data.graphInfo.maxComplexity', 12000)
             ->assertJsonPath('data.graphInfo.maxFields', 600)
             ->assertJsonPath('data.graphInfo.maxPageSize', 100)
             ->assertJsonFragment(['Brand'])
