@@ -2211,6 +2211,150 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
     );
 }
 
+function CampaignBanner({
+    slides,
+    variant,
+}: {
+    slides: Slide[];
+    variant: "public" | "signed-in";
+}) {
+
+    useEffect(() => {
+        if (slides.length < 2) return;
+
+        const timer = window.setInterval(() => {
+            if (document.visibilityState !== "visible") return;
+            setActiveSlide((current) => (current + 1) % slides.length);
+        }, 6000);
+
+        return () => window.clearInterval(timer);
+    }, [slides.length]);
+
+    useEffect(() => {
+        if (activeSlide < slides.length) return;
+        setActiveSlide(0);
+    }, [activeSlide, slides.length]);
+
+    if (!slides.length) {
+        if (variant === "signed-in") return null;
+
+        return (
+            <div className="storefront-dark-panel flex min-h-[300px] items-center justify-center rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top,#312e81,#020617_65%)] text-center sm:min-h-[360px]">
+                <div>
+                    <Gamepad2 className="mx-auto text-indigo-400" size={62} />
+                    <h2 className="mt-5 text-2xl font-black text-white sm:text-3xl">
+                        دنیای گیمینگ تو از اینجا شروع می‌شود
+                    </h2>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
+            className="group relative touch-pan-y pb-5"
+            onTouchEnd={(event) =>
+                finishSwipe(event.changedTouches[0].clientX)
+            }
+            onTouchStart={(event) => {
+                touchStartX.current = event.touches[0].clientX;
+            }}
+        >
+            <div
+                className={`pn-neon-panel pn-neon-panel--campaign relative w-full overflow-hidden rounded-[24px] bg-[#050914] shadow-[0_26px_80px_-38px_rgba(79,70,229,.7)] ${shellClass}`}
+            >
+                <picture
+                    aria-hidden="true"
+                    className="absolute inset-0 block size-full"
+                >
+                    <source
+                        media="(max-width: 640px)"
+                        srcSet={
+                            slide.mobile_image_url ??
+                            slide.desktop_image_url
+                        }
+                    />
+                    <img
+                        alt=""
+                        className="size-full scale-110 object-cover opacity-40 blur-2xl saturate-125"
+                        decoding="async"
+                        src={slide.desktop_image_url}
+                    />
+                </picture>
+
+                <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,.26),rgba(2,6,23,.04)_34%,rgba(2,6,23,.04)_66%,rgba(2,6,23,.26))]" />
+
+                <picture className="absolute inset-0 z-[1] block size-full">
+                    <source
+                        media="(max-width: 640px)"
+                        srcSet={
+                            slide.mobile_image_url ??
+                            slide.desktop_image_url
+                        }
+                    />
+                    <img
+                        alt={slide.alt || slide.title}
+                        className="size-full object-contain object-center"
+                        decoding="async"
+                        fetchPriority="high"
+                        key={slide.id}
+                        loading="eager"
+                        src={slide.desktop_image_url}
+                    />
+                </picture>
+
+                {safeUrl(slide.button_url) && (
+                    <Link
+                        aria-label={`مشاهده ${slide.title}`}
+                        className="absolute inset-0 z-10 focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-indigo-400"
+                        href={safeUrl(slide.button_url) ?? "/"}
+                    />
+                )}
+
+                {slides.length > 1 && (
+                    <>
+                        <Button
+                            aria-label="اسلاید قبلی"
+                            className="absolute right-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-black/65 sm:right-4 lg:opacity-0 lg:group-hover:opacity-100"
+                            isIconOnly
+                            onPress={() => go(-1)}
+                            size="sm"
+                            variant="ghost"
+                        >
+                            <ChevronRight size={18} />
+                        </Button>
+                        <Button
+                            aria-label="اسلاید بعدی"
+                            className="absolute left-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-black/65 sm:left-4 lg:opacity-0 lg:group-hover:opacity-100"
+                            isIconOnly
+                            onPress={() => go(1)}
+                            size="sm"
+                            variant="ghost"
+                        >
+                            <ChevronLeft size={18} />
+                        </Button>
+                    </>
+                )}
+            </div>
+
+            {slides.length > 1 && (
+                <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-panel)]/95 px-3 py-1.5 shadow-md backdrop-blur-md">
+                    {slides.map((item, index) => (
+                        <button
+                            aria-label={`اسلاید ${index + 1}`}
+                            className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ${index === activeSlide ? "w-7 bg-cyan-300" : "w-1.5 bg-[var(--store-muted)]/35 hover:bg-indigo-400"}`}
+                            key={item.id}
+                            onClick={() => setActiveSlide(index)}
+                            type="button"
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function RailButtons({
     onPrevious,
     onNext,
@@ -2267,24 +2411,6 @@ export default function Home({
     const touchStartX = useRef<number | null>(null);
     const categoryRailRef = useRef<HTMLDivElement>(null);
     const storefrontRootRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        // The campaign carousel is visible for both guests and signed-in
-        // users, so keep rotation active whenever there is more than one slide.
-        if (slides.length < 2) return;
-
-        const timer = window.setInterval(
-            () => setActiveSlide((current) => (current + 1) % slides.length),
-            6000,
-        );
-
-        return () => window.clearInterval(timer);
-    }, [slides.length]);
-
-    useEffect(() => {
-        if (activeSlide < slides.length) return;
-        setActiveSlide(0);
-    }, [activeSlide, slides.length]);
-
     useEffect(() => {
         const motionSurfaces = document.querySelectorAll<HTMLElement>(
             ".pn-signature-frame, .pn-media-cloud",
@@ -2412,89 +2538,12 @@ export default function Home({
                 freshContentAt={storefront.fresh_content_at}
             />
             <main>
-                {auth.user && personalizedHome && slide && (
+                {auth.user && personalizedHome && slides.length > 0 && (
                     <section
                         aria-label="بنرهای PlayNexus"
-                        className="mx-auto w-full max-w-[1460px] px-4 pb-1 pt-5"
+                        className="mx-auto w-full max-w-[1460px] px-4 pb-1 pt-4"
                     >
-                        <div
-                            aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
-                            className="group relative touch-pan-y pb-5"
-                            onTouchEnd={(event) =>
-                                finishSwipe(event.changedTouches[0].clientX)
-                            }
-                            onTouchStart={(event) => {
-                                touchStartX.current = event.touches[0].clientX;
-                            }}
-                        >
-                            <div className="relative aspect-[2.45/1] w-full overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_70px_-34px_rgba(15,23,42,.55)] ring-1 ring-black/5 sm:aspect-[3.25/1] lg:aspect-[4.6/1] lg:rounded-[26px]">
-                                <picture className="absolute inset-0 block size-full">
-                                    <source
-                                        media="(max-width: 640px)"
-                                        srcSet={
-                                            slide.mobile_image_url ??
-                                            slide.desktop_image_url
-                                        }
-                                    />
-                                    <img
-                                        alt={slide.alt || slide.title}
-                                        className="block size-full object-cover object-center"
-                                        decoding="async"
-                                        fetchPriority="high"
-                                        key={slide.id}
-                                        loading="eager"
-                                        src={slide.desktop_image_url}
-                                    />
-                                </picture>
-
-                                {safeUrl(slide.button_url) && (
-                                    <Link
-                                        aria-label={`مشاهده ${slide.title}`}
-                                        className="absolute inset-0 z-10 focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-indigo-400"
-                                        href={safeUrl(slide.button_url) ?? "/"}
-                                    />
-                                )}
-
-                                {slides.length > 1 && (
-                                    <>
-                                        <Button
-                                            aria-label="اسلاید قبلی"
-                                            className="absolute right-3 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white opacity-100 shadow-lg transition hover:scale-105 hover:bg-black/60 sm:right-4 lg:opacity-0 lg:group-hover:opacity-100"
-                                            isIconOnly
-                                            onPress={() => go(-1)}
-                                            size="sm"
-                                            variant="ghost"
-                                        >
-                                            <ChevronRight size={18} />
-                                        </Button>
-                                        <Button
-                                            aria-label="اسلاید بعدی"
-                                            className="absolute left-3 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white opacity-100 shadow-lg transition hover:scale-105 hover:bg-black/60 sm:left-4 lg:opacity-0 lg:group-hover:opacity-100"
-                                            isIconOnly
-                                            onPress={() => go(1)}
-                                            size="sm"
-                                            variant="ghost"
-                                        >
-                                            <ChevronLeft size={18} />
-                                        </Button>
-                                    </>
-                                )}
-                            </div>
-
-                            {slides.length > 1 && (
-                                <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-panel)] px-3 py-1.5 shadow-md">
-                                    {slides.map((item, index) => (
-                                        <button
-                                            aria-label={`اسلاید ${index + 1}`}
-                                            className={`h-1.5 rounded-full transition-all duration-300 ${index === activeSlide ? "w-7 bg-indigo-500" : "w-1.5 bg-[var(--store-muted)]/35 hover:bg-indigo-400"}`}
-                                            key={item.id}
-                                            onClick={() => setActiveSlide(index)}
-                                            type="button"
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        <CampaignBanner slides={slides} variant="signed-in" />
                     </section>
                 )}
                 {auth.user && personalizedHome ? (
@@ -2512,95 +2561,7 @@ export default function Home({
                             {seo.description}
                         </p>
                     </header>
-                    {slide ? (
-                        <div
-                            aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
-                            className="group relative touch-pan-y pb-7 sm:pb-8"
-                            onTouchEnd={(event) =>
-                                finishSwipe(event.changedTouches[0].clientX)
-                            }
-                            onTouchStart={(event) => {
-                                touchStartX.current = event.touches[0].clientX;
-                            }}
-                        >
-                            <div className="relative aspect-[2.15/1] w-full overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_70px_-30px_rgba(15,23,42,.55)] ring-1 ring-black/5 sm:aspect-[2.6/1] lg:aspect-[3.2/1] lg:rounded-[28px]">
-                                <picture className="absolute inset-0 block size-full">
-                                    <source
-                                        media="(max-width: 640px)"
-                                        srcSet={
-                                            slide.mobile_image_url ??
-                                            slide.desktop_image_url
-                                        }
-                                    />
-                                    <img
-                                        alt={slide.alt || slide.title}
-                                        className="block size-full object-cover object-center"
-                                        decoding="async"
-                                        fetchPriority="high"
-                                        key={slide.id}
-                                        loading="eager"
-                                        src={slide.desktop_image_url}
-                                    />
-                                </picture>
-                                {safeUrl(slide.button_url) && (
-                                    <Link
-                                        aria-label={`مشاهده ${slide.title}`}
-                                        className="absolute inset-0 z-10 focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-indigo-400"
-                                        href={safeUrl(slide.button_url) ?? "/"}
-                                    />
-                                )}
-                                {slides.length > 1 && (
-                                    <>
-                                        <Button
-                                            aria-label="اسلاید قبلی"
-                                            className="absolute right-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white opacity-100 shadow-lg transition hover:scale-105 hover:bg-black/55 sm:right-5 lg:opacity-0 lg:group-hover:opacity-100"
-                                            isIconOnly
-                                            onPress={() => go(-1)}
-                                            variant="ghost"
-                                        >
-                                            <ChevronRight size={21} />
-                                        </Button>
-                                        <Button
-                                            aria-label="اسلاید بعدی"
-                                            className="absolute left-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white opacity-100 shadow-lg transition hover:scale-105 hover:bg-black/55 sm:left-5 lg:opacity-0 lg:group-hover:opacity-100"
-                                            isIconOnly
-                                            onPress={() => go(1)}
-                                            variant="ghost"
-                                        >
-                                            <ChevronLeft size={21} />
-                                        </Button>
-                                    </>
-                                )}
-                            </div>
-                            {slides.length > 1 && (
-                                <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-panel)] px-3 py-2 shadow-md">
-                                    {slides.map((item, index) => (
-                                        <button
-                                            aria-label={`اسلاید ${index + 1}`}
-                                            className={`h-1.5 rounded-full transition-all duration-300 ${index === activeSlide ? "w-7 bg-indigo-500" : "w-1.5 bg-[var(--store-muted)]/35 hover:bg-indigo-400"}`}
-                                            key={item.id}
-                                            onClick={() =>
-                                                setActiveSlide(index)
-                                            }
-                                            type="button"
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="storefront-dark-panel flex min-h-[420px] items-center justify-center rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top,#312e81,#020617_65%)] text-center">
-                            <div>
-                                <Gamepad2
-                                    className="mx-auto text-indigo-400"
-                                    size={72}
-                                />
-                                <h2 className="mt-5 text-4xl font-black text-white">
-                                    دنیای گیمینگ تو از اینجا شروع می‌شود
-                                </h2>
-                            </div>
-                        </div>
-                    )}
+                    <CampaignBanner slides={slides} variant="public" />
                 </section>
                 )}
                 <FreshReleases items={freshContent} />
