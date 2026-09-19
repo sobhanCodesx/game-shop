@@ -1,10 +1,12 @@
 import { Avatar, Button } from "@heroui/react";
 import { Link, router, usePage } from "@inertiajs/react";
+import { useState } from "react";
 import {
     CalendarDays,
     ExternalLink,
     Gamepad2,
     ListVideo,
+    LoaderCircle,
     Play,
     Radio,
     Radar,
@@ -97,15 +99,24 @@ export default function ChannelShow({
     storeInfo: StoreInfo | null;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
+    const [watchUpdating, setWatchUpdating] = useState(false);
+
     const subscribe = () => {
+        if (watchUpdating) return;
+
         if (!auth.user)
             return router.visit(
                 `/login?redirect=${encodeURIComponent(window.location.pathname)}`,
             );
+
         router.post(
             `/channels/${channel.slug}/subscription`,
             {},
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onStart: () => setWatchUpdating(true),
+                onFinish: () => setWatchUpdating(false),
+            },
         );
     };
     return (
@@ -182,16 +193,29 @@ export default function ChannelShow({
                                         ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
                                         : ""
                                 }`}
+                                aria-label={
+                                    channel.is_subscribed
+                                        ? `خاموش کردن Nexus Watch برای ${channel.name}`
+                                        : `زیر نظر گرفتن ${channel.name} با Nexus Watch`
+                                }
+                                isDisabled={watchUpdating}
                                 onPress={subscribe}
                                 startContent={
-                                    <Radar
-                                        className={
-                                            channel.is_subscribed
-                                                ? "text-emerald-300"
-                                                : undefined
-                                        }
-                                        size={16}
-                                    />
+                                    watchUpdating ? (
+                                        <LoaderCircle
+                                            className="animate-spin"
+                                            size={16}
+                                        />
+                                    ) : (
+                                        <Radar
+                                            className={
+                                                channel.is_subscribed
+                                                    ? "text-emerald-300"
+                                                    : undefined
+                                            }
+                                            size={16}
+                                        />
+                                    )
                                 }
                                 variant={
                                     channel.is_subscribed
@@ -199,16 +223,22 @@ export default function ChannelShow({
                                         : "primary"
                                 }
                             >
-                                {channel.is_subscribed
-                                    ? "Nexus Watch فعال"
-                                    : "زیر نظر بگیر"}
+                                {watchUpdating
+                                    ? channel.is_subscribed
+                                        ? "در حال خاموش‌کردن…"
+                                        : "در حال فعال‌سازی…"
+                                    : channel.is_subscribed
+                                      ? "Nexus Watch فعال"
+                                      : "زیر نظر بگیر"}
                             </Button>
 
                             {channel.watch.active && (
                                 <div className="mt-2 flex max-w-[260px] items-center justify-center gap-2 rounded-xl border border-emerald-400/10 bg-emerald-400/[0.055] px-3 py-2 text-[9px] font-bold leading-4 text-emerald-300/80 sm:justify-start">
                                     <span className="size-1.5 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.8)]" />
                                     <span>
-                                        تغییرات مهم این بازی رو خود Nexus برات چک می‌کنه
+                                        {channel.watch.mode === "direct"
+                                            ? "پوشش مستقیم منبع رسمی فعاله؛ فقط تغییر مهم رو می‌بینی"
+                                            : "تغییرات مهم این بازی رو خود Nexus برات چک می‌کنه"}
                                     </span>
                                 </div>
                             )}
