@@ -854,7 +854,7 @@ function LatestFeedRail({ items }: { items: HomeFeedPreviewItem[] }) {
                     </p>
                 </div>
                 <Link
-                    className="shrink-0 text-[11px] font-black text-indigo-400 hover:text-indigo-300"
+                    className="shrink-0 text-[10px] font-black text-indigo-400 hover:text-indigo-300 max-[360px]:hidden sm:text-[11px]"
                     href="/feed"
                 >
                     همه فیدها
@@ -959,7 +959,7 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
                     </p>
                 </div>
                 <Link
-                    className="shrink-0 text-[11px] font-black text-violet-400 hover:text-violet-300"
+                    className="shrink-0 text-[10px] font-black text-violet-400 hover:text-violet-300 max-[360px]:hidden sm:text-[11px]"
                     href="/studios"
                 >
                     همه استودیوها
@@ -1536,7 +1536,7 @@ function PersonalizedHomePanel({
                                 </div>
 
                                 <aside className="flex min-w-0 flex-col border-t border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01))] lg:border-r lg:border-t-0">
-                                    <header className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3.5">
+                                    <header className="flex items-center justify-between gap-3 border-b border-white/8 px-3 py-3 sm:px-4 sm:py-3.5">
                                         <div>
                                             <p className="text-[8px] font-black tracking-[.14em] text-indigo-200/55">
                                                 PULSE MIX
@@ -2572,7 +2572,7 @@ export default function Home({
                 ) : (
                 <section className="mx-auto max-w-[1536px] px-3 pt-4 sm:px-4 sm:pt-5">
                     <header className="mb-5 max-w-3xl">
-                        <h1 className="text-2xl font-black leading-tight text-[var(--store-text)] sm:text-3xl">
+                        <h1 className="text-xl font-black leading-7 text-[var(--store-text)] sm:text-3xl">
                             {seo.heading}
                         </h1>
                         <p className="mt-2 text-sm leading-7 text-[var(--store-muted)] sm:text-base">
