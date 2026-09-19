@@ -1084,11 +1084,12 @@ function PersonalizedHomePanel({
     const heroMedia = heroItem?.media.find(
         (entry) => entry.type === "image" || Boolean(entry.thumbnail),
     );
-    const heroPreview = heroItem
-        ? heroMedia?.type === "image"
-            ? heroMedia.url
-            : heroMedia?.thumbnail
-        : focusGame?.image_url;
+    const heroPreview =
+        (heroItem
+            ? heroMedia?.type === "image"
+                ? heroMedia.url
+                : heroMedia?.thumbnail
+            : null) ?? focusGame?.image_url;
     const heroDuration = heroMedia?.duration
         ? durationLabel(heroMedia.duration)
         : null;
@@ -1233,284 +1234,328 @@ function PersonalizedHomePanel({
                     </div>
                 ) : (
                     <div className="relative p-3 sm:p-4 lg:p-5">
-                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,.72fr)] lg:gap-4">
-                            <div className="relative min-h-[360px] overflow-hidden rounded-[25px] border border-white/10 bg-slate-950 sm:min-h-[430px]">
-                                {heroPreview ? (
-                                    <img
-                                        alt={
-                                            heroEvent?.title ??
-                                            heroItem?.title ??
-                                            focusGame?.name ??
-                                            "Nexus Pulse"
-                                        }
-                                        className="absolute inset-0 size-full object-cover"
-                                        decoding="async"
-                                        fetchPriority="high"
-                                        src={heroPreview}
-                                    />
-                                ) : (
-                                    <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] text-indigo-200/60">
-                                        <Gamepad2 size={64} />
-                                    </span>
-                                )}
-                                <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.04),rgba(2,6,23,.32)_45%,rgba(2,6,23,.98)_100%)]" />
-                                <span className="absolute inset-0 bg-[radial-gradient(circle_at_85%_5%,rgba(99,102,241,.24),transparent_40%)]" />
+                        <section className="overflow-hidden rounded-[26px] border border-white/10 bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)]">
+                            <div className="grid lg:grid-cols-[minmax(0,1.62fr)_minmax(320px,.78fr)]">
+                                <div className="group relative min-h-[360px] overflow-hidden bg-slate-950 sm:min-h-[460px] lg:min-h-[500px]">
+                                    {heroPreview ? (
+                                        <img
+                                            alt={
+                                                heroItem?.title ??
+                                                focusGame?.name ??
+                                                "Nexus Pulse"
+                                            }
+                                            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.025]"
+                                            decoding="async"
+                                            fetchPriority="high"
+                                            src={heroPreview}
+                                        />
+                                    ) : (
+                                        <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_70%_15%,#312e81,#020617_72%)] text-indigo-200/45">
+                                            <Gamepad2 size={68} />
+                                        </span>
+                                    )}
 
-                                {heroEvent ? (
-                                    <Link
-                                        aria-label={heroEvent.title}
-                                        className="absolute inset-0 z-10"
-                                        href={heroEvent.url}
-                                    />
-                                ) : heroItem ? (
-                                    <Link
-                                        aria-label={heroItem.title}
-                                        className="absolute inset-0 z-10"
-                                        href={heroItem.url}
-                                    />
-                                ) : focusGame ? (
-                                    <Link
-                                        aria-label={focusGame.name}
-                                        className="absolute inset-0 z-10"
-                                        href={focusGame.url}
-                                    />
-                                ) : null}
+                                    <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.04)_8%,rgba(2,6,23,.16)_38%,rgba(2,6,23,.92)_82%,#020617_100%)]" />
+                                    <span className="absolute inset-0 bg-[radial-gradient(circle_at_82%_8%,rgba(99,102,241,.2),transparent_38%)]" />
 
-                                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-4 sm:p-6">
-                                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                                        {heroEvent ? (
-                                            <>
-                                                <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-slate-950">
-                                                    {priorityLabel(heroEvent.priority)}
+                                    {heroItem ? (
+                                        <Link
+                                            aria-label={heroItem.title}
+                                            className="absolute inset-0 z-10"
+                                            href={heroItem.url}
+                                        />
+                                    ) : focusGame ? (
+                                        <Link
+                                            aria-label={focusGame.name}
+                                            className="absolute inset-0 z-10"
+                                            href={focusGame.url}
+                                        />
+                                    ) : null}
+
+                                    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 sm:p-5">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span
+                                                className={
+                                                    heroIsVideo
+                                                        ? "inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-slate-950 backdrop-blur-md"
+                                                        : "inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] font-black text-white/80 backdrop-blur-md"
+                                                }
+                                            >
+                                                {heroIsVideo ? (
+                                                    <Play
+                                                        fill="currentColor"
+                                                        size={10}
+                                                    />
+                                                ) : (
+                                                    <Newspaper size={10} />
+                                                )}
+                                                {heroIsVideo
+                                                    ? "ویدیوی منتخب"
+                                                    : "منتخب تو"}
+                                            </span>
+
+                                            {heroItem && (
+                                                <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-black text-white/60 backdrop-blur-md">
+                                                    {
+                                                        heroItem.relevance
+                                                            .signal_label
+                                                    }
                                                 </span>
-                                                <span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-2.5 py-1 text-[9px] font-black text-amber-100 backdrop-blur-md">
-                                                    {heroEvent.type_label}
+                                            )}
+
+                                            {heroDuration && (
+                                                <span className="rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[9px] font-black text-white/70 backdrop-blur-md">
+                                                    {heroDuration}
                                                 </span>
-                                                <span className="max-w-[180px] truncate rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur-md">
-                                                    {heroEvent.source_name ?? "NEXUS SIGNAL"}
+                                            )}
+                                        </div>
+
+                                        {focusGame && (
+                                            <span className="hidden max-w-[220px] items-center gap-2 rounded-full border border-white/10 bg-black/30 px-2 py-1.5 text-[9px] font-bold text-white/55 backdrop-blur-md sm:inline-flex">
+                                                {focusGame.image_url && (
+                                                    <img
+                                                        alt={focusGame.name}
+                                                        className="size-5 rounded-full object-cover"
+                                                        src={focusGame.image_url}
+                                                    />
+                                                )}
+                                                <span className="truncate">
+                                                    تمرکز: {focusGame.name}
                                                 </span>
-                                            </>
-                                        ) : heroItem ? (
-                                            <>
-                                                <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-slate-950">
-                                                    {priorityLabel(heroItem.relevance.priority)}
-                                                </span>
-                                                <span className="rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] font-black text-white/75 backdrop-blur-md">
-                                                    {heroItem.relevance.signal_label}
-                                                </span>
-                                            </>
-                                        ) : (
-                                            <span className="rounded-full bg-emerald-300 px-2.5 py-1 text-[9px] font-black text-slate-950">
-                                                چیزی مهم از دست ندادی
                                             </span>
                                         )}
                                     </div>
 
-                                    <p className="mb-1.5 text-[10px] font-black tracking-[.08em] text-indigo-200/75">
-                                        {heroEvent
-                                            ? "NEXUS SIGNAL — الان این مهم‌تره"
-                                            : heroItem
-                                              ? "الان این مهم‌تره"
-                                              : "وضعیت بازی مهم تو"}
-                                    </p>
-                                    <h2 className="max-w-3xl text-xl font-black leading-8 text-white sm:text-3xl sm:leading-[1.35]">
-                                        {heroEvent?.title ??
-                                            heroItem?.title ??
-                                            (focusGame
-                                                ? `فعلاً خبر مهم تازه‌ای برای ${focusGame.name} نداریم`
-                                                : "فعلاً اتفاق مهمی برای تو پیدا نکردیم")}
-                                    </h2>
-
-                                    {heroEvent?.change && (
-                                        <div className="mt-3 flex max-w-2xl flex-wrap items-center gap-2">
-                                            <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-bold text-white/45 backdrop-blur-md">
-                                                {heroEvent.change.label}
-                                            </span>
-                                            <span className="rounded-xl border border-white/10 bg-black/35 px-3 py-1.5 text-[10px] font-black text-white/55 backdrop-blur-md">
-                                                {formatEventChangeValue(
-                                                    heroEvent.change,
-                                                    heroEvent.change.from,
-                                                )}
-                                            </span>
-                                            <span className="text-[10px] font-black text-amber-200/70">
-                                                ←
-                                            </span>
-                                            <span className="rounded-xl border border-emerald-300/15 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-black text-emerald-200 backdrop-blur-md">
-                                                {formatEventChangeValue(
-                                                    heroEvent.change,
-                                                    heroEvent.change.to,
-                                                )}
-                                            </span>
-                                        </div>
+                                    {heroIsVideo && (
+                                        <span className="pointer-events-none absolute left-1/2 top-1/2 z-20 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/35 text-white shadow-[0_18px_55px_rgba(0,0,0,.35)] backdrop-blur-xl transition duration-300 group-hover:scale-105 sm:size-20">
+                                            <Play
+                                                className="translate-x-[-1px]"
+                                                fill="currentColor"
+                                                size={28}
+                                            />
+                                        </span>
                                     )}
 
-                                    <div className="mt-3 flex max-w-2xl items-start gap-2 rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5 text-[10px] leading-5 text-white/60 backdrop-blur-md sm:text-xs">
-                                        <Sparkles
-                                            className="mt-0.5 shrink-0 text-indigo-200"
-                                            size={14}
-                                        />
-                                        <span>
-                                            {heroEvent?.reason ??
-                                                heroItem?.relevance.reason ??
-                                                data.intelligence.focus_reason ??
-                                                "هر وقت اتفاق مهمی برای بازی‌هات بیفته، اول همین‌جا می‌بینیش."}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex min-w-0 flex-col gap-3">
-                                <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.045] p-4 backdrop-blur-sm sm:p-5">
-                                    <span
-                                        aria-hidden="true"
-                                        className="pointer-events-none absolute -left-12 -top-16 size-44 rounded-full bg-indigo-400/10 blur-3xl"
-                                    />
-                                    <div className="relative flex items-start justify-between gap-3">
-                                        <div>
-                                            <p className="text-[9px] font-black tracking-[.16em] text-indigo-200/65">
-                                                NEXUS UNDERSTANDS
-                                            </p>
-                                            <h3 className="mt-1.5 text-base font-black">
-                                                چیزی که الان برات مهم‌تره
-                                            </h3>
-                                        </div>
-                                        <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-indigo-400/10 text-indigo-200">
-                                            <Sparkles size={17} />
-                                        </span>
-                                    </div>
-
-                                    {focusGame ? (
-                                        <Link
-                                            className="group relative mt-4 flex items-center gap-3 overflow-hidden rounded-[19px] border border-white/10 bg-black/20 p-2.5 transition hover:border-indigo-300/30"
-                                            href={focusGame.url}
-                                        >
-                                            <span className="size-16 shrink-0 overflow-hidden rounded-[15px] bg-slate-900">
-                                                {focusGame.image_url ? (
-                                                    <img
-                                                        alt={focusGame.name}
-                                                        className="size-full object-cover transition duration-300 group-hover:scale-105"
-                                                        loading="lazy"
-                                                        src={focusGame.image_url}
-                                                    />
-                                                ) : (
-                                                    <span className="grid size-full place-items-center text-indigo-200/60">
-                                                        <Gamepad2 size={25} />
-                                                    </span>
-                                                )}
-                                            </span>
-                                            <span className="min-w-0">
-                                                <strong className="block truncate text-sm text-white">
-                                                    {focusGame.name}
-                                                </strong>
-                                                <small className="mt-1 block line-clamp-2 text-[10px] leading-5 text-white/45">
-                                                    {data.intelligence.focus_reason ??
-                                                        "بر اساس رفتار و بازی‌های دنبال‌شده‌ات"}
-                                                </small>
-                                            </span>
-                                        </Link>
-                                    ) : (
-                                        <p className="mt-4 text-xs leading-6 text-white/45">
-                                            هنوز سیگنال کافی ندارم؛ با استفاده طبیعی از PlayNexus این بخش خودش دقیق‌تر می‌شه.
+                                    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-4 sm:p-6">
+                                        <p className="mb-2 text-[9px] font-black tracking-[.14em] text-indigo-200/70">
+                                            {heroIsVideo
+                                                ? "WATCH NEXT"
+                                                : "FOR YOU"}
                                         </p>
-                                    )}
+                                        <h2 className="max-w-3xl text-xl font-black leading-8 text-white sm:text-3xl sm:leading-[1.35]">
+                                            {heroItem?.title ??
+                                                (focusGame
+                                                    ? "فعلاً چیز مهم تازه‌ای برای " +
+                                                      focusGame.name +
+                                                      " پیدا نکردم"
+                                                    : "فعلاً چیزی نیست که لازم باشه از دستش ندی")}
+                                        </h2>
+
+                                        {heroItem && (
+                                            <div className="mt-3 flex max-w-2xl items-center gap-2 text-[10px] leading-5 text-white/50 sm:text-xs">
+                                                <Sparkles
+                                                    className="shrink-0 text-indigo-200"
+                                                    size={13}
+                                                />
+                                                <span className="line-clamp-2">
+                                                    {
+                                                        heroItem.relevance
+                                                            .reason
+                                                    }
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
-                                <div className="flex-1 overflow-hidden rounded-[24px] border border-white/10 bg-black/15">
-                                    <header className="flex items-center gap-3 border-b border-white/10 px-4 py-3.5">
-                                        <span className="grid size-9 place-items-center rounded-xl bg-fuchsia-400/10 text-fuchsia-200">
-                                            <Radar size={17} />
-                                        </span>
-                                        <div className="min-w-0 flex-1">
-                                            <h3 className="truncate text-sm font-black">
-                                                Radar برای تو
-                                            </h3>
-                                            <p className="mt-0.5 text-[9px] text-white/40">
-                                                فقط مواردی که به علایقت نزدیک‌اند
+                                <aside className="flex min-w-0 flex-col border-t border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01))] lg:border-r lg:border-t-0">
+                                    <header className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3.5">
+                                        <div>
+                                            <p className="text-[8px] font-black tracking-[.14em] text-indigo-200/55">
+                                                PULSE MIX
                                             </p>
+                                            <h3 className="mt-0.5 text-sm font-black">
+                                                کنار این، این‌ها مهمن
+                                            </h3>
                                         </div>
+                                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[8px] font-black text-white/40">
+                                            بدون تکرار
+                                        </span>
                                     </header>
 
-                                    {radar.length ? (
-                                        <div className="space-y-1.5 p-2.5">
-                                            {radar.map((item) => (
+                                    <div className="flex-1 divide-y divide-white/8">
+                                        {supportingEditorial.map((item) => {
+                                            const media = item.media.find(
+                                                (entry) =>
+                                                    entry.type === "image" ||
+                                                    Boolean(
+                                                        entry.thumbnail,
+                                                    ),
+                                            );
+                                            const preview =
+                                                media?.type === "image"
+                                                    ? media.url
+                                                    : media?.thumbnail;
+                                            const badgeLabel =
+                                                (item.badge &&
+                                                    homeFeedBadgeLabels[
+                                                        item.badge
+                                                    ]) ||
+                                                item.relevance.signal_label ||
+                                                "فید";
+                                            const dateLabel = feedDateLabel(
+                                                item.created_at,
+                                            );
+
+                                            return (
                                                 <Link
-                                                    className="group flex items-center gap-3 rounded-[16px] p-2 transition hover:bg-white/[0.055]"
-                                                    href={item.playnexus_url ?? "/game-radar"}
+                                                    className="group flex min-h-[132px] gap-3 p-3.5 transition hover:bg-white/[0.04]"
+                                                    href={item.url}
                                                     key={item.id}
                                                 >
-                                                    <span className="size-12 shrink-0 overflow-hidden rounded-[12px] bg-slate-900">
-                                                        {item.cover_url || item.banner_url ? (
+                                                    <span className="relative w-[38%] shrink-0 overflow-hidden rounded-[16px] bg-slate-900">
+                                                        {preview ? (
                                                             <img
-                                                                alt={item.title}
-                                                                className="size-full object-cover"
+                                                                alt={
+                                                                    media?.alt ??
+                                                                    item.title
+                                                                }
+                                                                className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.04]"
                                                                 loading="lazy"
-                                                                src={item.cover_url ?? item.banner_url ?? undefined}
+                                                                src={preview}
                                                             />
                                                         ) : (
-                                                            <span className="grid size-full place-items-center text-fuchsia-200/50">
-                                                                <Gamepad2 size={19} />
+                                                            <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#151d31,#0b1120)] text-indigo-200/20">
+                                                                <Newspaper
+                                                                    size={28}
+                                                                />
                                                             </span>
                                                         )}
                                                     </span>
-                                                    <span className="min-w-0 flex-1">
-                                                        <strong className="block truncate text-[11px] text-white">
+
+                                                    <span className="flex min-w-0 flex-1 flex-col justify-center">
+                                                        <span className="mb-2 flex items-center gap-2">
+                                                            <span className="rounded-full bg-white/[0.06] px-2 py-1 text-[8px] font-black text-white/55">
+                                                                {badgeLabel}
+                                                            </span>
+                                                            {dateLabel && (
+                                                                <span className="text-[8px] text-white/25">
+                                                                    {dateLabel}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <strong className="line-clamp-2 text-[12px] font-black leading-5 text-white">
                                                             {item.title}
                                                         </strong>
-                                                        <small className="mt-0.5 block text-[9px] text-white/35">
-                                                            {item.status === "coming"
-                                                                ? "در راه"
-                                                                : "تازه منتشرشده"}
-                                                        </small>
                                                     </span>
-                                                    <ArrowUpLeft
-                                                        className="text-white/25 transition group-hover:text-white/60"
-                                                        size={14}
-                                                    />
                                                 </Link>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="p-5 text-center text-[10px] leading-5 text-white/35">
-                                            فعلاً چیزی در Radar نیست که لازم باشه حواست بهش باشه.
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                                            );
+                                        })}
 
-                        {favoriteFeedItems.length > 0 && (
-                            <section className="mt-4 overflow-hidden rounded-[26px] border border-white/10 bg-[#080d1b] shadow-[0_24px_80px_-56px_rgba(99,102,241,.9)]">
-                                <header className="flex flex-col gap-3 border-b border-white/8 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                                    <div className="flex min-w-0 items-center gap-3">
-                                        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-indigo-400/10 text-indigo-200 ring-1 ring-indigo-300/10">
-                                            <Newspaper size={18} />
+                                        {heroEvent && (
+                                            <Link
+                                                className="group relative block overflow-hidden p-4 transition hover:bg-amber-300/[0.035]"
+                                                href={heroEvent.url}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-amber-300/10 text-amber-200 ring-1 ring-amber-200/10">
+                                                        <Sparkles size={16} />
+                                                    </span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="mb-1.5 flex items-center gap-2">
+                                                            <span className="text-[8px] font-black tracking-[.12em] text-amber-200/65">
+                                                                NEXUS SIGNAL
+                                                            </span>
+                                                            <span className="rounded-full bg-amber-300/10 px-2 py-0.5 text-[8px] font-black text-amber-100/70">
+                                                                {
+                                                                    heroEvent.type_label
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        <strong className="block line-clamp-2 text-[11px] leading-5 text-white/85">
+                                                            {heroEvent.title}
+                                                        </strong>
+
+                                                        {heroEvent.change && (
+                                                            <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[8px] font-bold">
+                                                                <span className="text-white/30">
+                                                                    {formatEventChangeValue(
+                                                                        heroEvent.change,
+                                                                        heroEvent
+                                                                            .change
+                                                                            .from,
+                                                                    )}
+                                                                </span>
+                                                                <span className="text-amber-200/55">
+                                                                    ←
+                                                                </span>
+                                                                <span className="text-emerald-200/75">
+                                                                    {formatEventChangeValue(
+                                                                        heroEvent.change,
+                                                                        heroEvent
+                                                                            .change
+                                                                            .to,
+                                                                    )}
+                                                                </span>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        )}
+
+                                        {supportingEditorial.length === 0 &&
+                                            !heroEvent && (
+                                                <div className="p-5 text-[10px] leading-6 text-white/35">
+                                                    فعلاً چیز مکملی نیست که ارزش
+                                                    تکرار کردن داشته باشه. وقتی
+                                                    محتوای تازه‌ی مرتبط بیاد، این
+                                                    قسمت خودش پر می‌شه.
+                                                </div>
+                                            )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between gap-3 border-t border-white/8 px-4 py-3">
+                                        <span className="text-[9px] text-white/30">
+                                            ویدیو + فید + سیگنال، یک‌جا
                                         </span>
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <h3 className="text-base font-black sm:text-lg">
-                                                    فید منتخب تو
-                                                </h3>
-                                                <span className="rounded-full bg-indigo-400/10 px-2 py-1 text-[8px] font-black text-indigo-100/75">
-                                                    EDITORIAL
-                                                </span>
-                                            </div>
-                                            <p className="mt-1 text-[10px] leading-5 text-white/38 sm:text-[11px]">
-                                                خبر و تحلیل‌هایی که با بازی‌ها و موضوعات مورد علاقه‌ات هم‌خوانی دارن؛ بدون ویدیوهای کانالی.
+                                        <Link
+                                            className="text-[9px] font-black text-indigo-200/65 transition hover:text-indigo-100"
+                                            href="/feed"
+                                        >
+                                            فید کامل
+                                        </Link>
+                                    </div>
+                                </aside>
+                            </div>
+                        </section>
+
+                        {continuationFeed.length > 0 && (
+                            <section className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.025] p-3 sm:p-4">
+                                <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="grid size-8 place-items-center rounded-xl bg-indigo-400/10 text-indigo-200">
+                                            <Newspaper size={14} />
+                                        </span>
+                                        <div>
+                                            <h3 className="text-sm font-black">
+                                                ادامه‌ی فید تو
+                                            </h3>
+                                            <p className="mt-0.5 text-[9px] text-white/30">
+                                                چیزهایی که بالا ندیدی
                                             </p>
                                         </div>
                                     </div>
-
                                     <Link
-                                        className="inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 text-[9px] font-black text-white/65 transition hover:border-indigo-300/20 hover:bg-white/[0.08] hover:text-white sm:self-auto"
+                                        className="text-[9px] font-black text-white/45 transition hover:text-white/75"
                                         href="/feed"
                                     >
-                                        فید کامل
-                                        <ArrowUpLeft size={12} />
+                                        همه فیدها
                                     </Link>
-                                </header>
+                                </div>
 
-                                <div className="grid gap-3 p-3 sm:p-4 lg:grid-cols-12 lg:auto-rows-[188px]">
-                                    {favoriteFeedItems.map((item, index) => {
+                                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                                    {continuationFeed.map((item) => {
                                         const media = item.media.find(
                                             (entry) =>
                                                 entry.type === "image" ||
@@ -1520,9 +1565,6 @@ function PersonalizedHomePanel({
                                             media?.type === "image"
                                                 ? media.url
                                                 : media?.thumbnail;
-                                        const isLead = index === 0;
-                                        const isSide =
-                                            index === 1 || index === 2;
                                         const badgeLabel =
                                             (item.badge &&
                                                 homeFeedBadgeLabels[
@@ -1534,150 +1576,13 @@ function PersonalizedHomePanel({
                                             item.created_at,
                                         );
 
-                                        if (isLead) {
-                                            return (
-                                                <Link
-                                                    className="group relative min-h-[340px] overflow-hidden rounded-[22px] border border-white/10 bg-slate-950 lg:col-span-7 lg:row-span-2 lg:min-h-0"
-                                                    href={item.url}
-                                                    key={item.id}
-                                                >
-                                                    {preview ? (
-                                                        <img
-                                                            alt={
-                                                                media?.alt ??
-                                                                item.title
-                                                            }
-                                                            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.035]"
-                                                            decoding="async"
-                                                            loading="lazy"
-                                                            src={preview}
-                                                        />
-                                                    ) : (
-                                                        <span className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_75%_20%,rgba(99,102,241,.28),transparent_38%),linear-gradient(145deg,#10172c,#070b16_70%)]">
-                                                            <Newspaper
-                                                                className="absolute -bottom-5 -left-3 text-white/[0.035]"
-                                                                size={170}
-                                                            />
-                                                        </span>
-                                                    )}
-
-                                                    <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.04)_15%,rgba(2,6,23,.28)_48%,rgba(2,6,23,.98)_100%)]" />
-
-                                                    <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-                                                        <div className="mb-3 flex flex-wrap items-center gap-2">
-                                                            <span className="rounded-full bg-white px-2.5 py-1 text-[8px] font-black text-slate-950">
-                                                                {badgeLabel}
-                                                            </span>
-                                                            <span className="rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-[8px] font-black text-white/60 backdrop-blur-md">
-                                                                {priorityLabel(
-                                                                    item
-                                                                        .relevance
-                                                                        .priority,
-                                                                )}
-                                                            </span>
-                                                            {dateLabel && (
-                                                                <span className="text-[8px] text-white/40">
-                                                                    {dateLabel}
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        <h4 className="max-w-2xl text-lg font-black leading-8 text-white sm:text-2xl sm:leading-9">
-                                                            {item.title}
-                                                        </h4>
-
-                                                        {item.body && (
-                                                            <p className="mt-2 line-clamp-2 max-w-2xl text-[10px] leading-5 text-white/50 sm:text-[11px]">
-                                                                {item.body}
-                                                            </p>
-                                                        )}
-
-                                                        <div className="mt-3 flex items-center gap-2 text-[9px] text-indigo-100/55">
-                                                            <Sparkles
-                                                                size={11}
-                                                            />
-                                                            <span className="line-clamp-1">
-                                                                {
-                                                                    item
-                                                                        .relevance
-                                                                        .reason
-                                                                }
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </Link>
-                                            );
-                                        }
-
-                                        if (isSide) {
-                                            return (
-                                                <Link
-                                                    className="group relative min-h-[185px] overflow-hidden rounded-[21px] border border-white/10 bg-[#0b1120] transition hover:border-indigo-300/20 lg:col-span-5 lg:min-h-0"
-                                                    href={item.url}
-                                                    key={item.id}
-                                                >
-                                                    <span className="absolute inset-y-0 left-0 w-[42%] overflow-hidden bg-slate-900">
-                                                        {preview ? (
-                                                            <img
-                                                                alt={
-                                                                    media?.alt ??
-                                                                    item.title
-                                                                }
-                                                                className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                                                                loading="lazy"
-                                                                src={preview}
-                                                            />
-                                                        ) : (
-                                                            <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#172036,#0b1120)] text-indigo-200/20">
-                                                                <Newspaper
-                                                                    size={40}
-                                                                />
-                                                            </span>
-                                                        )}
-                                                        <span className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0b1120]" />
-                                                    </span>
-
-                                                    <div className="relative flex h-full w-[62%] flex-col justify-center p-4">
-                                                        <div className="mb-2 flex items-center gap-2">
-                                                            <span className="rounded-full bg-white/[0.07] px-2 py-1 text-[8px] font-black text-white/65">
-                                                                {badgeLabel}
-                                                            </span>
-                                                            {dateLabel && (
-                                                                <span className="text-[8px] text-white/30">
-                                                                    {dateLabel}
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        <strong className="line-clamp-2 text-sm font-black leading-6 text-white">
-                                                            {item.title}
-                                                        </strong>
-
-                                                        {item.body && (
-                                                            <p className="mt-1.5 line-clamp-2 text-[9px] leading-4 text-white/38">
-                                                                {item.body}
-                                                            </p>
-                                                        )}
-
-                                                        <span className="mt-2 flex items-center gap-1.5 text-[8px] font-bold text-indigo-200/45">
-                                                            <span className="size-1 rounded-full bg-indigo-300" />
-                                                            {
-                                                                item.relevance
-                                                                    .signal_label
-                                                            }
-                                                        </span>
-                                                    </div>
-                                                </Link>
-                                            );
-                                        }
-
                                         return (
                                             <Link
-                                                className="group overflow-hidden rounded-[21px] border border-white/10 bg-[#0b1120] transition hover:-translate-y-0.5 hover:border-indigo-300/20 lg:col-span-4 lg:min-h-[230px]"
+                                                className="group overflow-hidden rounded-[18px] border border-white/8 bg-[#0a1020] transition hover:-translate-y-0.5 hover:border-indigo-300/20"
                                                 href={item.url}
                                                 key={item.id}
                                             >
-                                                <span className="relative block aspect-[16/8.5] overflow-hidden bg-slate-900">
+                                                <span className="relative block aspect-[16/8.7] overflow-hidden bg-slate-900">
                                                     {preview ? (
                                                         <img
                                                             alt={
@@ -1689,35 +1594,27 @@ function PersonalizedHomePanel({
                                                             src={preview}
                                                         />
                                                     ) : (
-                                                        <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#172036,#0b1120)] text-indigo-200/20">
+                                                        <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#151d31,#0b1120)] text-indigo-200/20">
                                                             <Newspaper
-                                                                size={36}
+                                                                size={28}
                                                             />
                                                         </span>
                                                     )}
-                                                    <span className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                                                    <span className="absolute right-2.5 top-2.5 rounded-full bg-black/45 px-2 py-1 text-[8px] font-black text-white/70 backdrop-blur-md">
+                                                    <span className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+                                                    <span className="absolute right-2 top-2 rounded-full bg-black/45 px-2 py-1 text-[8px] font-black text-white/65 backdrop-blur-md">
                                                         {badgeLabel}
                                                     </span>
                                                 </span>
 
-                                                <span className="block p-3.5">
-                                                    <strong className="block line-clamp-2 text-xs font-black leading-5 text-white">
+                                                <span className="block p-3">
+                                                    <strong className="block line-clamp-2 min-h-10 text-[11px] font-black leading-5 text-white/90">
                                                         {item.title}
                                                     </strong>
-                                                    <span className="mt-2 flex items-center justify-between gap-2 text-[8px] text-white/30">
-                                                        <span className="line-clamp-1 text-indigo-200/45">
-                                                            {
-                                                                item.relevance
-                                                                    .signal_label
-                                                            }
+                                                    {dateLabel && (
+                                                        <span className="mt-2 block text-[8px] text-white/25">
+                                                            {dateLabel}
                                                         </span>
-                                                        {dateLabel && (
-                                                            <span className="shrink-0">
-                                                                {dateLabel}
-                                                            </span>
-                                                        )}
-                                                    </span>
+                                                    )}
                                                 </span>
                                             </Link>
                                         );
