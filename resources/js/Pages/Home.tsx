@@ -345,7 +345,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
 
     return (
         <section className="relative z-10 mx-auto mt-4 max-w-7xl px-4 pb-5 sm:mt-6">
-            <div className="overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_24px_70px_-55px_rgba(79,70,229,.65)]">
+            <div className="pn-signature-frame pn-signature-frame--subtle overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_24px_70px_-55px_rgba(79,70,229,.65)]">
                 <div className="flex items-center justify-between gap-3 border-b border-[var(--store-border)] px-4 py-3 sm:px-5">
                     <div className="flex min-w-0 items-center gap-3">
                         <span className="relative grid size-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-700 text-white shadow-md shadow-indigo-500/20">
@@ -812,7 +812,7 @@ function LatestFeedRail({ items }: { items: FeedItemData[] }) {
     if (!items.length) return null;
 
     return (
-        <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)]">
+        <section className="pn-signature-frame min-w-0 overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)]">
             <header className="flex items-center gap-3 border-b border-[var(--store-border)] px-4 py-3.5">
                 <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-indigo-500/10 text-indigo-400">
                     <Radio size={19} />
@@ -917,7 +917,7 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
     if (!items.length) return null;
 
     return (
-        <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)]">
+        <section className="pn-signature-frame min-w-0 overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)]">
             <header className="flex items-center gap-3 border-b border-[var(--store-border)] px-4 py-3.5">
                 <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-violet-500/10 text-violet-400">
                     <Factory size={19} />
@@ -1151,7 +1151,7 @@ function PersonalizedHomePanel({
 
     return (
         <section className="mx-auto max-w-7xl px-4 pb-5 pt-5">
-            <div className="relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)]">
+            <div className="pn-signature-frame pn-signature-frame--hero relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)]">
                 <span
                     aria-hidden="true"
                     className="pointer-events-none absolute -right-28 -top-32 size-96 rounded-full bg-indigo-500/20 blur-3xl"
@@ -1987,7 +1987,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
 
     return (
         <section className="mx-auto max-w-7xl px-4 pb-5 pt-2">
-            <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_-58px_rgba(79,70,229,.8)] sm:p-5">
+            <div className="pn-signature-frame pn-signature-frame--cool relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_-58px_rgba(79,70,229,.8)] sm:p-5">
                 <span
                     aria-hidden="true"
                     className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-indigo-500/20 blur-3xl"
@@ -2285,7 +2285,7 @@ export default function Home({
                             className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10 sm:py-12"
                             id="categories"
                         >
-                            <div className="relative overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:p-6 lg:p-7">
+                            <div className="pn-signature-frame pn-signature-frame--subtle relative overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:p-6 lg:p-7">
                                 <span
                                     aria-hidden="true"
                                     className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-indigo-500/10 blur-3xl"
