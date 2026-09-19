@@ -2,6 +2,7 @@
 
 use App\Services\GameEventService;
 use App\Services\GameRadarService;
+use App\Services\GameSourceMonitorService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -20,6 +21,19 @@ Artisan::command('nexus:sync-game-radar', function () {
 
     $this->info("Game Radar synced: {$count} titles (PS5: {$ps5Count}, Xbox: {$xboxCount}).");
 })->purpose('Refresh the cached PlayNexus Game Radar snapshot');
+
+Artisan::command('nexus:detect-game-source-changes', function () {
+    $snapshot = app(GameRadarService::class)->linkedSnapshot();
+    $stats = app(GameSourceMonitorService::class)->observeRadarSnapshot($snapshot);
+
+    $this->info(sprintf(
+        'Game source monitor: %d observed, %d baselines, %d changed, %d events.',
+        $stats['observed'],
+        $stats['baselines'],
+        $stats['changed'],
+        $stats['events'],
+    ));
+})->purpose('Detect trustworthy changes from the cached, linked Game Radar snapshot');
 
 Artisan::command('nexus:sync-game-events {--days=90}', function () {
     $days = max(1, min(365, (int) $this->option('days')));
