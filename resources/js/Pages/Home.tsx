@@ -2218,6 +2218,8 @@ function CampaignBanner({
     slides: Slide[];
     variant: "public" | "signed-in";
 }) {
+    const [activeSlide, setActiveSlide] = useState(0);
+    const touchStartX = useRef<number | null>(null);
 
     useEffect(() => {
         if (slides.length < 2) return;
@@ -2425,8 +2427,6 @@ export default function Home({
 }: Props) {
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
-    const [activeSlide, setActiveSlide] = useState(0);
-    const touchStartX = useRef<number | null>(null);
     const categoryRailRef = useRef<HTMLDivElement>(null);
     const storefrontRootRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
