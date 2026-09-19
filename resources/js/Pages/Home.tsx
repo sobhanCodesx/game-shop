@@ -982,9 +982,9 @@ function PersonalizedHomePanel({
     const radar = data.radar.slice(0, 3);
     const heroMedia = heroItem?.media[0];
     const heroPreview = heroItem
-        ? heroMedia?.type === "image"
-            ? heroMedia.url
-            : heroMedia?.thumbnail
+        ? (heroMedia?.type === "image"
+              ? heroMedia.url
+              : heroMedia?.thumbnail) ?? focusGame?.image_url
         : focusGame?.image_url;
 
     const priorityLabel = (priority?: PersonalizedFeedRelevance["priority"]) =>
@@ -1285,7 +1285,7 @@ function PersonalizedHomePanel({
                                     </Link>
                                 </div>
                                 <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
-                                    {data.followed_games.map((game, index) => (
+                                    {data.followed_games.map((game) => (
                                         <Link
                                             className="group relative aspect-[16/10] w-[185px] shrink-0 snap-start overflow-hidden rounded-[18px] border border-white/10 bg-slate-950 sm:w-[220px]"
                                             href={game.url}
@@ -1304,7 +1304,7 @@ function PersonalizedHomePanel({
                                                 </span>
                                             )}
                                             <span className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-transparent" />
-                                            {index === 0 && (
+                                            {focusGame?.id === game.id && (
                                                 <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[8px] font-black text-slate-950">
                                                     اولویت فعلی
                                                 </span>
