@@ -28,6 +28,14 @@ class SocialContentObserver
         if ($wasPublished && ! $isPublished) {
             app(GameEventService::class)->expireFromContent($content);
         }
+
+        if (
+            $wasPublished
+            && $isPublished
+            && $content->wasChanged(['title', 'excerpt', 'body', 'feed_type', 'feed_badge', 'game_id'])
+        ) {
+            app(GameEventService::class)->refreshFromContent($content);
+        }
     }
 
     private function dispatch(SocialContent $content): void
