@@ -130,6 +130,16 @@ interface PersonalizedMediaCloudItem {
     source: "playnexus" | "radar";
 }
 
+interface MobilePrioritySlide {
+    key: string;
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    url: string;
+    image: string | null;
+    tone: "signal" | "editorial" | "game" | "radar";
+}
+
 interface PersonalizedMediaCloudRadarItem {
     id: string;
     title: string;
@@ -1037,6 +1047,317 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
     );
 }
 
+function MobilePriorityCarousel({
+    items,
+}: {
+    items: MobilePrioritySlide[];
+}) {
+    const [active, setActive] = useState(0);
+    const touchStartX = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (items.length < 2) return;
+
+        const timer = window.setInterval(() => {
+            if (document.visibilityState !== "visible") return;
+            setActive((current) => (current + 1) % items.length);
+        }, 5200);
+
+        return () => window.clearInterval(timer);
+    }, [items.length]);
+
+    useEffect(() => {
+        if (active < items.length) return;
+        setActive(0);
+    }, [active, items.length]);
+
+    if (!items.length) return null;
+
+    const item = items[active];
+    const finishSwipe = (clientX: number) => {
+        if (touchStartX.current === null || items.length < 2) return;
+
+        const distance = clientX - touchStartX.current;
+        touchStartX.current = null;
+        if (Math.abs(distance) < 38) return;
+
+        setActive(
+            (current) =>
+                (current + (distance > 0 ? -1 : 1) + items.length) %
+                items.length,
+        );
+    };
+
+    return (
+        <div
+            className="relative min-w-0"
+            onTouchEnd={(event) =>
+                finishSwipe(event.changedTouches[0].clientX)
+            }
+            onTouchStart={(event) => {
+                touchStartX.current = event.touches[0].clientX;
+            }}
+        >
+            <Link
+                className="pn-mobile-card pn-mobile-card--lead group relative block min-h-[138px] overflow-hidden rounded-[18px] border border-white/8 bg-[#070b14]"
+                href={item.url}
+                key={item.key}
+            >
+                {item.image ? (
+                    <img
+                        alt={item.title}
+                        className="absolute inset-0 size-full object-cover transition duration-500"
+                        decoding="async"
+                        fetchPriority="high"
+                        src={item.image}
+                    />
+                ) : (
+                    <span className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(99,102,241,.35),transparent_36%),linear-gradient(145deg,#0d1328,#05070d)]" />
+                )}
+                <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.04),rgba(2,6,23,.22)_38%,rgba(2,6,23,.92)_100%)]" />
+                <span className="absolute inset-x-0 bottom-0 z-[2] p-3">
+                    <span
+                        className={`mb-1.5 inline-flex rounded-full px-2 py-1 text-[8px] font-black ${
+                            item.tone === "signal"
+                                ? "bg-amber-300/15 text-amber-100"
+                                : item.tone === "game"
+                                  ? "bg-cyan-300/12 text-cyan-100"
+                                  : item.tone === "radar"
+                                    ? "bg-emerald-300/12 text-emerald-100"
+                                    : "bg-indigo-300/12 text-indigo-100"
+                        }`}
+                    >
+                        {item.eyebrow}
+                    </span>
+                    <strong className="block line-clamp-2 text-[12px] font-black leading-5 text-white">
+                        {item.title}
+                    </strong>
+                    <small className="mt-1 block line-clamp-1 text-[8px] text-white/50">
+                        {item.subtitle}
+                    </small>
+                </span>
+            </Link>
+
+            {items.length > 1 && (
+                <div className="absolute bottom-2 left-2 z-[3] flex items-center gap-1 rounded-full bg-black/35 px-1.5 py-1 backdrop-blur-sm">
+                    {items.map((slide, index) => (
+                        <button
+                            aria-label={`خبر مهم ${index + 1}`}
+                            className={`h-1 rounded-full transition-[width,background-color] duration-300 ${
+                                index === active
+                                    ? "w-4 bg-cyan-200"
+                                    : "w-1 bg-white/35"
+                            }`}
+                            key={slide.key}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setActive(index);
+                            }}
+                            type="button"
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function GuestWelcomePanel({
+    seo,
+    latestFeed,
+    gameRadar,
+    channels,
+    freshContent,
+}: {
+    seo: SeoData & { heading: string };
+    latestFeed: HomeFeedPreviewItem[];
+    gameRadar: GameRadarItem[];
+    channels: ChannelItem[];
+    freshContent: FreshItem[];
+}) {
+    const cloudItems: PersonalizedMediaCloudItem[] = [];
+    const seen = new Set<string>();
+
+    const pushCloud = (item: PersonalizedMediaCloudItem | null) => {
+        if (!item?.image_url) return;
+        const key = item.title.toLocaleLowerCase("fa-IR").trim();
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        cloudItems.push(item);
+    };
+
+    latestFeed.forEach((item) => {
+        const media = item.media.find(
+            (entry) => entry.type === "image" || Boolean(entry.thumbnail),
+        );
+        const image =
+            media?.type === "image" ? media.url : media?.thumbnail ?? null;
+        if (!image) return;
+        pushCloud({
+            key: `guest-feed-${item.id}`,
+            title: item.title,
+            image_url: image,
+            url: item.url,
+            source: "playnexus",
+        });
+    });
+
+    freshContent.forEach((item) => {
+        if (!item.image_url) return;
+        pushCloud({
+            key: `guest-fresh-${item.key}`,
+            title: item.title,
+            image_url: item.image_url,
+            url: item.url,
+            source: "playnexus",
+        });
+    });
+
+    gameRadar.forEach((item) => {
+        const image = item.banner_url ?? item.cover_url;
+        if (!image) return;
+        pushCloud({
+            key: `guest-radar-${item.id}`,
+            title: item.title,
+            image_url: image,
+            url: item.playnexus_url ?? "/game-radar",
+            source: "radar",
+        });
+    });
+
+    channels.forEach((channel) => {
+        if (!channel.image_url) return;
+        pushCloud({
+            key: `guest-channel-${channel.id}`,
+            title: channel.name,
+            image_url: channel.image_url,
+            url: channel.url,
+            source: "playnexus",
+        });
+    });
+
+    const mediaCloud = cloudItems.slice(0, 7);
+
+    return (
+        <section className="mx-auto w-full max-w-[1460px] px-3 pb-2 pt-2 sm:px-4 sm:pb-5 sm:pt-4">
+            <div className="pn-signature-frame pn-signature-frame--hero pn-pulse-shell pn-guest-welcome relative overflow-hidden rounded-[22px] border border-indigo-400/20 text-white sm:rounded-[30px]">
+                <header className="pn-pulse-header relative overflow-hidden px-3 py-3 sm:px-6 sm:py-5">
+                    <div className="relative z-10 grid gap-3 sm:gap-5 lg:min-h-[166px] lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-center">
+                        <div className="pn-pulse-copy min-w-0">
+                            <div className="home-slider mb-2 flex max-w-full items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible">
+                                <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-indigo-400/15 text-indigo-200">
+                                    <Sparkles size={16} />
+                                </span>
+                                <span className="shrink-0 text-[9px] font-black tracking-[.16em] text-indigo-200/85">
+                                    NEXUS DISCOVER
+                                </span>
+                                <span className="shrink-0 rounded-full border border-emerald-300/10 bg-emerald-400/10 px-2 py-1 text-[8px] font-black text-emerald-200">
+                                    بدون نیاز به ورود
+                                </span>
+                                <span className="shrink-0 rounded-full border border-cyan-300/10 bg-cyan-400/[0.07] px-2 py-1 text-[8px] font-black text-cyan-100/80">
+                                    تازه‌های گیم در یک نگاه
+                                </span>
+                            </div>
+
+                            <h1 className="text-lg font-black leading-7 sm:text-3xl">
+                                به PlayNexus خوش اومدی
+                            </h1>
+                            <p className="mt-1 line-clamp-2 max-w-2xl text-[11px] leading-5 text-white/50 sm:mt-2 sm:text-sm sm:leading-7">
+                                {seo.description}
+                            </p>
+
+                            <div className="home-slider mt-2 flex max-w-full flex-nowrap gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-3 sm:flex-wrap sm:gap-2 sm:overflow-visible">
+                                {[
+                                    "خبر و تحلیل",
+                                    "رادار بازی",
+                                    "ویدیوهای تازه",
+                                    "فروشگاه گیم",
+                                ].map((label) => (
+                                    <span
+                                        className="shrink-0 rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[8px] font-bold text-white/65 sm:px-3 sm:py-1.5 sm:text-[9px]"
+                                        key={label}
+                                    >
+                                        {label}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        {mediaCloud.length > 0 && (
+                            <div
+                                aria-label="تازه‌های PlayNexus"
+                                className="pn-media-cloud relative z-10 hidden h-[118px] min-w-0 sm:block lg:h-[150px]"
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    className="pn-media-cloud__halo"
+                                />
+                                {mediaCloud.map((item, index) => (
+                                    <Link
+                                        aria-label={item.title}
+                                        className="pn-media-cloud__tile"
+                                        data-source={item.source}
+                                        href={item.url}
+                                        key={item.key}
+                                        title={item.title}
+                                    >
+                                        <img
+                                            alt=""
+                                            className="pn-media-cloud__image"
+                                            decoding="async"
+                                            draggable={false}
+                                            loading={index === 0 ? "eager" : "lazy"}
+                                            src={item.image_url}
+                                        />
+                                        <span className="pn-media-cloud__shade" />
+                                        <span className="pn-media-cloud__source">
+                                            {item.source === "radar"
+                                                ? "RADAR"
+                                                : "NEXUS"}
+                                        </span>
+                                        <span className="pn-media-cloud__title">
+                                            {item.title}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {mediaCloud.length > 0 && (
+                        <div className="home-slider mt-2 flex snap-x gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden">
+                            {mediaCloud.slice(0, 5).map((item) => (
+                                <Link
+                                    className="relative h-14 w-[36vw] min-w-[118px] max-w-[150px] shrink-0 snap-start overflow-hidden rounded-[14px] border border-white/8 bg-slate-950"
+                                    href={item.url}
+                                    key={`mobile-${item.key}`}
+                                >
+                                    <img
+                                        alt=""
+                                        className="absolute inset-0 size-full object-cover"
+                                        loading="lazy"
+                                        src={item.image_url}
+                                    />
+                                    <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+                                    <span className="absolute right-2 top-1.5 rounded-full bg-black/45 px-1.5 py-0.5 text-[6px] font-black tracking-[.08em] text-white/75">
+                                        {item.source === "radar"
+                                            ? "RADAR"
+                                            : "NEXUS"}
+                                    </span>
+                                    <strong className="absolute inset-x-2 bottom-1.5 truncate text-[8px] font-black text-white/90">
+                                        {item.title}
+                                    </strong>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </header>
+            </div>
+        </section>
+    );
+}
+
 function PersonalizedHomePanel({
     data,
     userName,
@@ -1131,40 +1452,101 @@ function PersonalizedHomePanel({
             ? mobileEditorialMedia.url
             : mobileEditorialMedia?.thumbnail ?? null;
     const mobileRadarLead = radar[0] ?? null;
-    const mobileLead = heroEvent
-        ? {
-              eyebrow: heroEvent.type_label,
-              title: heroEvent.title,
-              subtitle:
-                  heroEvent.game?.name ??
-                  heroEvent.reason ??
-                  "سیگنال مهم برای تو",
-              url: heroEvent.url,
-              image: heroEvent.game?.image_url ?? null,
-              tone: "signal" as const,
-          }
-        : mobileEditorial
-          ? {
-                eyebrow:
-                    mobileEditorial.relevance.signal_label || "مهم برای تو",
-                title: mobileEditorial.title,
-                subtitle: mobileEditorial.relevance.reason,
-                url: mobileEditorial.url,
-                image: mobileEditorialPreview,
-                tone: "editorial" as const,
-            }
-          : focusGame
-            ? {
-                  eyebrow: "بازی زیر نظر",
-                  title: focusGame.name,
-                  subtitle:
-                      data.intelligence.focus_reason ??
-                      "Nexus Watch این بازی رو برای تو دنبال می‌کنه.",
-                  url: focusGame.url,
-                  image: focusGame.image_url,
-                  tone: "game" as const,
-              }
-            : null;
+    const mobilePrioritySlides: MobilePrioritySlide[] = [];
+    const mobilePriorityUrls = new Set<string>();
+    const addMobilePriority = (item: MobilePrioritySlide | null) => {
+        if (!item?.url || mobilePriorityUrls.has(item.url)) return;
+        mobilePriorityUrls.add(item.url);
+        mobilePrioritySlides.push(item);
+    };
+
+    if (heroEvent) {
+        addMobilePriority({
+            key: `event-${heroEvent.id}`,
+            eyebrow: heroEvent.type_label,
+            title: heroEvent.title,
+            subtitle:
+                heroEvent.game?.name ??
+                heroEvent.reason ??
+                "سیگنال مهم برای تو",
+            url: heroEvent.url,
+            image:
+                heroEvent.game?.image_url ??
+                heroEvent.game?.cover_url ??
+                null,
+            tone: "signal",
+        });
+    }
+
+    secondaryEvents
+        .filter(
+            (event) =>
+                event.priority === "critical" || event.priority === "high",
+        )
+        .slice(0, 2)
+        .forEach((event) =>
+            addMobilePriority({
+                key: `event-${event.id}`,
+                eyebrow: event.type_label,
+                title: event.title,
+                subtitle:
+                    event.game?.name ??
+                    event.reason ??
+                    "سیگنال مهم برای تو",
+                url: event.url,
+                image:
+                    event.game?.image_url ??
+                    event.game?.cover_url ??
+                    null,
+                tone: "signal",
+            }),
+        );
+
+    if (mobileEditorial) {
+        addMobilePriority({
+            key: `editorial-${mobileEditorial.id}`,
+            eyebrow:
+                mobileEditorial.relevance.signal_label || "مهم برای تو",
+            title: mobileEditorial.title,
+            subtitle: mobileEditorial.relevance.reason,
+            url: mobileEditorial.url,
+            image: mobileEditorialPreview,
+            tone: "editorial",
+        });
+    }
+
+    if (focusGame) {
+        addMobilePriority({
+            key: `focus-${focusGame.id}`,
+            eyebrow: "بازی زیر نظر",
+            title: focusGame.name,
+            subtitle:
+                data.intelligence.focus_reason ??
+                "Nexus Watch این بازی رو برای تو دنبال می‌کنه.",
+            url: focusGame.url,
+            image: focusGame.image_url,
+            tone: "game",
+        });
+    }
+
+    if (mobileRadarLead) {
+        addMobilePriority({
+            key: `radar-${mobileRadarLead.id}`,
+            eyebrow: "رادار بازی",
+            title: mobileRadarLead.title,
+            subtitle:
+                mobileRadarLead.description ??
+                "تازه‌ترین سیگنال Game Radar",
+            url: mobileRadarLead.playnexus_url ?? "/game-radar",
+            image:
+                mobileRadarLead.banner_url ??
+                mobileRadarLead.cover_url ??
+                null,
+            tone: "radar",
+        });
+    }
+
+    const mobileLead = mobilePrioritySlides[0] ?? null;
 
     const formatEventChangeValue = (
         change: PersonalizedGameEvent["change"],
@@ -1453,42 +1835,9 @@ function PersonalizedHomePanel({
 
                     {hasPersonalization && mobileLead ? (
                         <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(104px,.72fr)] gap-2">
-                            <Link
-                                className="pn-mobile-card pn-mobile-card--lead group relative min-h-[138px] overflow-hidden rounded-[18px] border border-white/8 bg-[#070b14]"
-                                href={mobileLead.url}
-                            >
-                                {mobileLead.image ? (
-                                    <img
-                                        alt={mobileLead.title}
-                                        className="absolute inset-0 size-full object-cover"
-                                        decoding="async"
-                                        fetchPriority="high"
-                                        src={mobileLead.image}
-                                    />
-                                ) : (
-                                    <span className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(99,102,241,.35),transparent_36%),linear-gradient(145deg,#0d1328,#05070d)]" />
-                                )}
-                                <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.06),rgba(2,6,23,.25)_38%,rgba(2,6,23,.94)_100%)]" />
-                                <span className="absolute inset-x-0 bottom-0 z-[2] p-3">
-                                    <span
-                                        className={`mb-1.5 inline-flex rounded-full px-2 py-1 text-[8px] font-black ${
-                                            mobileLead.tone === "signal"
-                                                ? "bg-amber-300/15 text-amber-100"
-                                                : mobileLead.tone === "game"
-                                                  ? "bg-cyan-300/12 text-cyan-100"
-                                                  : "bg-indigo-300/12 text-indigo-100"
-                                        }`}
-                                    >
-                                        {mobileLead.eyebrow}
-                                    </span>
-                                    <strong className="block line-clamp-2 text-[12px] font-black leading-5 text-white">
-                                        {mobileLead.title}
-                                    </strong>
-                                    <small className="mt-1 block line-clamp-1 text-[8px] text-white/45">
-                                        {mobileLead.subtitle}
-                                    </small>
-                                </span>
-                            </Link>
+                            <MobilePriorityCarousel
+                                items={mobilePrioritySlides.slice(0, 4)}
+                            />
 
                             <div className="grid grid-rows-2 gap-2">
                                 {showMobileFocusCard && focusGame ? (
@@ -2847,17 +3196,23 @@ export default function Home({
                         userName={auth.user.name}
                     />
                 ) : (
-                <section className="mx-auto max-w-[1536px] px-3 pt-4 sm:px-4 sm:pt-5">
-                    <header className="mb-5 max-w-3xl">
-                        <h1 className="text-xl font-black leading-7 text-[var(--store-text)] sm:text-3xl">
-                            {seo.heading}
-                        </h1>
-                        <p className="mt-2 text-sm leading-7 text-[var(--store-muted)] sm:text-base">
-                            {seo.description}
-                        </p>
-                    </header>
-                    <CampaignBanner slides={slides} variant="public" />
-                </section>
+                    <>
+                        {slides.length > 0 && (
+                            <section className="mx-auto w-full max-w-[1460px] px-3 pb-0 pt-2 sm:px-4 sm:pb-1 sm:pt-4">
+                                <CampaignBanner
+                                    slides={slides}
+                                    variant="public"
+                                />
+                            </section>
+                        )}
+                        <GuestWelcomePanel
+                            channels={channels}
+                            freshContent={freshContent}
+                            gameRadar={gameRadar}
+                            latestFeed={latestFeed}
+                            seo={seo}
+                        />
+                    </>
                 )}
                 <FreshReleases items={freshContent} />
                 <ChannelRail channels={channels} />
