@@ -42,13 +42,17 @@ export default defineConfig(({ isSsrBuild }) => {
             : undefined,
 
         server: {
-            host: "0.0.0.0",
+            // Do not use 0.0.0.0 as the browser-facing Vite URL. The Laravel
+            // Vite plugin writes this URL to public/hot and browsers cannot
+            // request http://0.0.0.0:5173.
+            host: "127.0.0.1",
             port: 5173,
             strictPort: true,
 
-            // Let Vite infer the HMR host from the page URL. Hard-coding
-            // localhost breaks when the app is opened through 127.0.0.1,
-            // a .test domain, LAN IP, or another local hostname.
+            hmr: {
+                host: "127.0.0.1",
+                port: 5173,
+            },
             cors: {
                 origin: ["http://localhost:8000", "http://127.0.0.1:8000"],
             },
