@@ -124,7 +124,7 @@ function VideoPlayer({ content }: { content: WatchContent }) {
                 <span className="playnexus-player-ambient__secondary" />
                 <span className="playnexus-player-ambient__highlight" />
             </div>
-            <div className="playnexus-player-frame absolute inset-0">
+            <div className="playnexus-player-frame absolute inset-0 overflow-hidden rounded-[24px] sm:rounded-[28px] lg:rounded-[32px]">
                 <video
                     className="playnexus-player-native"
                     controls
@@ -358,7 +358,7 @@ function PlaylistPanel({ playlist }: { playlist: PlaylistContext }) {
     const current = playlist.items[currentIndex];
 
     return (
-        <section className="overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm">
+        <section className="overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm sm:rounded-[28px]">
             <div className="flex w-full items-center gap-3 p-2.5 text-right transition hover:bg-[var(--store-accent-soft)] sm:p-3">
                 <button
                     aria-expanded={open}
@@ -750,7 +750,7 @@ export default function Show({
                 <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,840px)_330px] xl:justify-center">
                     <div className="flex min-w-0 flex-col">
                         <div
-                            className={`relative bg-black ${content.video_url ? "overflow-visible" : "overflow-hidden"} ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-xl" : "aspect-video w-full rounded-xl"}`}
+                            className={`relative bg-black ${content.video_url ? "overflow-visible" : "overflow-hidden"} ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-[24px] sm:rounded-[28px]" : "aspect-video w-full rounded-[24px] sm:rounded-[28px] lg:rounded-[32px]"}`}
                         >
                             {content.video_url ? (
                                 <VideoPlayer content={content} />
@@ -880,7 +880,7 @@ export default function Show({
                                 <PlaylistPanel playlist={playlist} />
                             </div>
                         )}
-                        <article className="order-2 mt-5 overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm">
+                        <article className="order-2 mt-5 overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm sm:rounded-[28px]">
                             <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--store-border)] bg-gradient-to-l from-indigo-500/[0.06] to-transparent px-5 py-4 text-xs">
                                 <h2 className="ml-auto text-base font-black text-[var(--store-text)]">
                                     درباره این {typeLabel}
@@ -925,7 +925,7 @@ export default function Show({
 
                         {content.type === "video" && (
                             <section className="order-1 mt-5" id="comments">
-                                <div className="overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm">
+                                <div className="overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm sm:rounded-[28px]">
                                     <div className="flex items-center gap-3 px-4 pt-3.5">
                                         <span className="grid size-8 place-items-center rounded-full bg-indigo-500/10 text-indigo-500">
                                             <MessageCircle size={17} />
