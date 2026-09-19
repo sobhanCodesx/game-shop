@@ -1,5 +1,0 @@
-{
-  "job_id": "2026-09-19-1716-feed-55-assets-check",
-  "tool": "list_content_assets",
-  "arguments": {"resource": "feed", "id": 55}
-}
