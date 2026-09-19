@@ -159,6 +159,7 @@ interface PersonalizedHomeData {
     videos: PersonalizedFeedItem[];
     feed: PersonalizedFeedItem[];
     radar: GameRadarItem[];
+    media_cloud_radar: GameRadarItem[];
     watch: {
         active_games: number;
         direct_games: number;
@@ -1207,7 +1208,7 @@ function PersonalizedHomePanel({
     });
 
     const radarCloud: PersonalizedMediaCloudItem[] = [];
-    data.radar.forEach((item) => {
+    data.media_cloud_radar.forEach((item) => {
         const imageUrl = item.banner_url ?? item.cover_url ?? null;
         if (!imageUrl) return;
 
