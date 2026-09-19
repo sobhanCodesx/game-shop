@@ -1,9 +1,0 @@
-{
-  "job_id": "20260918-daily-fromsoftware-11-publish",
-  "tool": "set_content_state",
-  "arguments": {
-    "resource": "studio",
-    "id": 11,
-    "state": "active"
-  }
-}
