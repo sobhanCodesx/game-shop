@@ -2309,7 +2309,9 @@ export default function Home({
         let settleTimer: number | null = null;
 
         const onScroll = () => {
-            root.dataset.pnScrolling = "true";
+            if (root.dataset.pnScrolling !== "true") {
+                root.dataset.pnScrolling = "true";
+            }
 
             if (settleTimer !== null) {
                 window.clearTimeout(settleTimer);
