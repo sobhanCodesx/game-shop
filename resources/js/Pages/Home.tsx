@@ -111,6 +111,14 @@ interface PersonalizedFocusGame {
     image_url: string | null;
 }
 
+interface PersonalizedMediaCloudItem {
+    key: string;
+    title: string;
+    image_url: string;
+    url: string;
+    source: "playnexus" | "radar";
+}
+
 interface PersonalizedGameEvent {
     id: number;
     source_content_id: number | null;
@@ -1149,6 +1157,96 @@ function PersonalizedHomePanel({
     };
 
 
+    const cloudInternal: PersonalizedMediaCloudItem[] = [];
+    const cloudSeen = new Set<string>();
+
+    const pushCloudItem = (item: PersonalizedMediaCloudItem | null) => {
+        if (!item?.image_url) return;
+        const identity = normalizeTitle(item.title);
+        if (!identity || cloudSeen.has(identity)) return;
+        cloudSeen.add(identity);
+        cloudInternal.push(item);
+    };
+
+    if (focusGame?.image_url) {
+        pushCloudItem({
+            key: `focus-${focusGame.id}`,
+            title: focusGame.name,
+            image_url: focusGame.image_url,
+            url: focusGame.url,
+            source: "playnexus",
+        });
+    }
+
+    data.followed_games.forEach((game) => {
+        if (!game.image_url) return;
+        pushCloudItem({
+            key: `follow-${game.id}`,
+            title: game.name,
+            image_url: game.image_url,
+            url: game.url,
+            source: "playnexus",
+        });
+    });
+
+    [...personalizedVideos, ...editorialFeed].forEach((item) => {
+        const media = item.media.find(
+            (entry) => entry.type === "image" || Boolean(entry.thumbnail),
+        );
+        const imageUrl =
+            media?.type === "image" ? media.url : media?.thumbnail ?? null;
+
+        if (!imageUrl) return;
+        pushCloudItem({
+            key: `content-${item.id}`,
+            title: item.title,
+            image_url: imageUrl,
+            url: item.url,
+            source: "playnexus",
+        });
+    });
+
+    const radarCloud: PersonalizedMediaCloudItem[] = [];
+    data.radar.forEach((item) => {
+        const imageUrl =
+            item.banner_url ??
+            item.cover_url ??
+            item.psn?.image_url ??
+            item.xbox?.image_url ??
+            null;
+        if (!imageUrl) return;
+
+        const identity = normalizeTitle(item.title);
+        if (!identity || cloudSeen.has(identity)) return;
+        cloudSeen.add(identity);
+        radarCloud.push({
+            key: `radar-${item.id}`,
+            title: item.title,
+            image_url: imageUrl,
+            url: item.playnexus_url ?? "/game-radar",
+            source: "radar",
+        });
+    });
+
+    const mediaCloud: PersonalizedMediaCloudItem[] = [];
+    const cloudSize = Math.max(cloudInternal.length, radarCloud.length);
+    for (let index = 0; index < cloudSize; index += 1) {
+        if (cloudInternal[index]) mediaCloud.push(cloudInternal[index]);
+        if (radarCloud[index]) mediaCloud.push(radarCloud[index]);
+        if (mediaCloud.length >= 7) break;
+    }
+
+    if (mediaCloud.length < 7) {
+        [...cloudInternal, ...radarCloud].forEach((item) => {
+            if (
+                mediaCloud.length < 7 &&
+                !mediaCloud.some((cloudItem) => cloudItem.key === item.key)
+            ) {
+                mediaCloud.push(item);
+            }
+        });
+    }
+
     return (
         <section className="mx-auto max-w-7xl px-4 pb-5 pt-5">
             <div className="pn-signature-frame pn-signature-frame--hero relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)]">
@@ -1161,48 +1259,101 @@ function PersonalizedHomePanel({
                     className="pointer-events-none absolute -bottom-48 left-0 size-[30rem] rounded-full bg-fuchsia-500/10 blur-3xl"
                 />
 
-                <header className="relative flex flex-col gap-4 border-b border-white/10 px-4 py-5 sm:px-6 sm:py-6 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <span className="grid size-9 place-items-center rounded-2xl bg-indigo-400/15 text-indigo-200 shadow-[0_0_30px_rgba(129,140,248,.12)]">
-                                <Sparkles size={18} />
-                            </span>
-                            <span className="text-[10px] font-black tracking-[.18em] text-indigo-200/85">
-                                NEXUS PULSE
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/10 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-black text-emerald-200">
-                                <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.9)]" />
-                                {data.intelligence.confidence.label}
-                            </span>
-                            {data.watch.active_games > 0 && (
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/10 bg-cyan-400/[0.07] px-2.5 py-1 text-[9px] font-black text-cyan-100/80">
-                                    <Radar size={11} />
-                                    Nexus Watch • {money.format(data.watch.active_games)} بازی
+                <header className="relative overflow-hidden border-b border-white/10 px-4 py-5 sm:px-6 sm:py-6">
+                    <div className="relative z-10 grid gap-5 lg:min-h-[210px] lg:grid-cols-[minmax(0,.92fr)_minmax(0,1.08fr)] lg:items-center">
+                        <div className="relative z-20 min-w-0 lg:order-2">
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <span className="grid size-9 place-items-center rounded-2xl bg-indigo-400/15 text-indigo-200 shadow-[0_0_30px_rgba(129,140,248,.12)]">
+                                    <Sparkles size={18} />
                                 </span>
+                                <span className="text-[10px] font-black tracking-[.18em] text-indigo-200/85">
+                                    NEXUS PULSE
+                                </span>
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/10 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-black text-emerald-200">
+                                    <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.9)]" />
+                                    {data.intelligence.confidence.label}
+                                </span>
+                                {data.watch.active_games > 0 && (
+                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/10 bg-cyan-400/[0.07] px-2.5 py-1 text-[9px] font-black text-cyan-100/80">
+                                        <Radar size={11} />
+                                        Nexus Watch •{" "}
+                                        {money.format(data.watch.active_games)}{" "}
+                                        بازی
+                                    </span>
+                                )}
+                            </div>
+
+                            <h1 className="text-2xl font-black leading-tight sm:text-3xl">
+                                خوش برگشتی، {firstName}
+                            </h1>
+                            <p className="mt-2 max-w-2xl text-xs leading-6 text-white/50 sm:text-sm sm:leading-7">
+                                {hasPersonalization
+                                    ? "PlayNexus فقط تازه‌ها را نشونت نمی‌ده؛ اول چیزی را می‌آره که احتمالاً الان بیشتر به دردت می‌خوره."
+                                    : "هنوز دارم سلیقه‌ات رو می‌شناسم. چند بازی رو دنبال کن یا با محتواها تعامل داشته باش تا این صفحه کم‌کم مال خودت بشه."}
+                            </p>
+
+                            {data.intelligence.top_signals.length > 0 && (
+                                <div className="mt-3 flex max-w-full flex-wrap gap-2">
+                                    {data.intelligence.top_signals.map(
+                                        (signal) => (
+                                            <span
+                                                className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[9px] font-bold text-white/65 backdrop-blur-sm"
+                                                key={signal.key}
+                                            >
+                                                {signal.label}
+                                            </span>
+                                        ),
+                                    )}
+                                </div>
                             )}
                         </div>
-                        <h1 className="text-2xl font-black leading-tight sm:text-3xl">
-                            خوش برگشتی، {firstName}
-                        </h1>
-                        <p className="mt-2 max-w-2xl text-xs leading-6 text-white/50 sm:text-sm sm:leading-7">
-                            {hasPersonalization
-                                ? "PlayNexus فقط تازه‌ها را نشونت نمی‌ده؛ اول چیزی را می‌آره که احتمالاً الان بیشتر به دردت می‌خوره."
-                                : "هنوز دارم سلیقه‌ات رو می‌شناسم. چند بازی رو دنبال کن یا با محتواها تعامل داشته باش تا این صفحه کم‌کم مال خودت بشه."}
-                        </p>
-                    </div>
 
-                    {data.intelligence.top_signals.length > 0 && (
-                        <div className="flex max-w-full flex-wrap gap-2">
-                            {data.intelligence.top_signals.map((signal) => (
+                        {mediaCloud.length > 0 && (
+                            <div
+                                aria-label="بازی‌ها و مدیای مرتبط با سلیقه تو"
+                                className="pn-media-cloud relative z-10 h-[128px] min-w-0 lg:order-1 lg:h-[190px]"
+                            >
                                 <span
-                                    className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[9px] font-bold text-white/65 backdrop-blur-sm"
-                                    key={signal.key}
-                                >
-                                    {signal.label}
-                                </span>
-                            ))}
-                        </div>
-                    )}
+                                    aria-hidden="true"
+                                    className="pn-media-cloud__halo"
+                                />
+
+                                {mediaCloud.map((item, index) => (
+                                    <Link
+                                        aria-label={item.title}
+                                        className="pn-media-cloud__tile"
+                                        data-source={item.source}
+                                        href={item.url}
+                                        key={item.key}
+                                        style={{
+                                            ["--pn-cloud-index" as string]:
+                                                index,
+                                        }}
+                                        title={item.title}
+                                    >
+                                        <img
+                                            alt=""
+                                            className="pn-media-cloud__image"
+                                            decoding="async"
+                                            loading={
+                                                index < 3 ? "eager" : "lazy"
+                                            }
+                                            src={item.image_url}
+                                        />
+                                        <span className="pn-media-cloud__shade" />
+                                        <span className="pn-media-cloud__source">
+                                            {item.source === "radar"
+                                                ? "RADAR"
+                                                : "NEXUS"}
+                                        </span>
+                                        <span className="pn-media-cloud__title">
+                                            {item.title}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </header>
 
                 {!hasPersonalization ? (
