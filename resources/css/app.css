@@ -378,6 +378,7 @@ textarea {
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     animation: pn-signature-orbit var(--pn-frame-speed) linear infinite;
+    animation-play-state: paused;
     transition:
         opacity 260ms ease,
         filter 260ms ease;
@@ -408,6 +409,10 @@ textarea {
 .pn-signature-frame > * {
     position: relative;
     z-index: 1;
+}
+
+.pn-signature-frame[data-pn-visible="true"]::before {
+    animation-play-state: running;
 }
 
 .pn-signature-frame:hover::before {
@@ -523,11 +528,15 @@ textarea {
         scale(var(--pn-cloud-scale));
     animation: pn-media-cloud-float var(--pn-cloud-duration) ease-in-out
         var(--pn-cloud-delay) infinite alternate;
+    animation-play-state: paused;
     transition:
         border-color 220ms ease,
         box-shadow 220ms ease,
         filter 220ms ease;
-    will-change: transform;
+}
+
+.pn-media-cloud[data-pn-visible="true"] .pn-media-cloud__tile {
+    animation-play-state: running;
 }
 
 .pn-media-cloud__tile::after {
