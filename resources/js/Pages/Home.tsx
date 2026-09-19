@@ -1330,7 +1330,7 @@ function PersonalizedHomePanel({
 
                 <header className="pn-pulse-header relative hidden overflow-hidden border-b border-white/10 px-3 py-3 sm:block sm:px-6 sm:py-6">
                     <div className="relative z-10 grid gap-2 sm:gap-5 lg:min-h-[176px] lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-center">
-                        <div className="relative z-20 min-w-0">
+                        <div className="pn-pulse-copy relative z-20 min-w-0">
                             <div className="home-slider mb-1.5 flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mb-2 sm:flex-wrap sm:gap-2 sm:overflow-visible">
                                 <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-indigo-400/15 text-indigo-200 shadow-[0_0_30px_rgba(129,140,248,.12)] sm:size-9 sm:rounded-2xl">
                                     <Sparkles size={16} className="sm:size-[18px]" />
@@ -1425,7 +1425,7 @@ function PersonalizedHomePanel({
                     </div>
                 </header>
 
-                <div className="pn-mobile-now relative z-10 px-2.5 pb-2.5 pt-2.5 sm:hidden">
+                <div className="pn-mobile-now pn-pulse-mobile-copy relative z-10 px-2.5 pb-2.5 pt-2.5 sm:hidden">
                     <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
                         <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
