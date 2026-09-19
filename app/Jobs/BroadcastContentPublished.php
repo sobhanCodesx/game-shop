@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\User;
 use App\Notifications\ContentPublishedNotification;
+use App\Services\GameEventService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Notification;
@@ -21,7 +22,7 @@ class BroadcastContentPublished implements ShouldQueue
         public readonly int $contentId,
     ) {}
 
-    public function handle(): void
+    public function handle(GameEventService $gameEvents): void
     {
         $content = match ($this->contentType) {
             'product' => Product::query()->with('game:id,name')->find($this->contentId),
@@ -30,6 +31,11 @@ class BroadcastContentPublished implements ShouldQueue
 
         if (! $content || ! $content->game_id || ! $this->isStillPublished($content)) {
             return;
+        }
+        if ($content instanceof Product) {
+            $gameEvents->syncFromProduct($content);
+        } else {
+            $gameEvents->syncFromContent($content);
         }
         if ($content instanceof SocialContent && $content->notify_followers === false) {
             return;
