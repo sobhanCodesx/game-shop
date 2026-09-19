@@ -1,8 +1,0 @@
-{
-  "job_id": "server-smoke-graph-query-20260919",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "{ stats { games activeGames studios products publishedProducts content publishedContent collections publicCollections categories gameEvents activeGameEvents sourceStates } }",
-    "variables": {}
-  }
-}
