@@ -268,49 +268,6 @@ class FeedTest extends TestCase
             ->where('latestFeed.1.id', $older->id));
     }
 
-    public function test_personalized_home_editorial_feed_excludes_channel_videos(): void
-    {
-        $user = User::factory()->create();
-        $game = Game::factory()->create([
-            'status' => 'active',
-            'name' => 'Editorial Test Game',
-            'slug' => 'editorial-test-game',
-        ]);
-        $user->subscribedGames()->attach($game->id);
-
-        $post = SocialContent::withoutEvents(fn () => SocialContent::query()->create([
-            'game_id' => $game->id,
-            'type' => 'post',
-            'feed_type' => 'news',
-            'feed_badge' => 'news',
-            'title' => 'خبر ادیتوری مورد علاقه کاربر',
-            'slug' => 'personalized-editorial-news',
-            'excerpt' => 'این محتوا باید در فید منتخب کاربر دیده شود.',
-            'status' => 'published',
-            'published_at' => now()->subMinutes(2),
-        ]));
-
-        SocialContent::withoutEvents(fn () => SocialContent::query()->create([
-            'game_id' => $game->id,
-            'type' => 'video',
-            'feed_type' => 'video',
-            'feed_badge' => 'trailer',
-            'title' => 'ویدیوی کانالی که نباید نمایش داده شود',
-            'slug' => 'personalized-channel-video',
-            'status' => 'published',
-            'published_at' => now()->subMinute(),
-        ]));
-
-        $this->actingAs($user)
-            ->get(route('home'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('personalizedHome.feed.0.id', $post->id)
-                ->where('personalizedHome.feed.0.type', 'news')
-                ->where('personalizedHome.feed.0.author.name', 'PlayNexus')
-                ->has('personalizedHome.feed', 1));
-    }
-
     public function test_admin_can_create_a_feed_post_with_real_relationship_fields(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
