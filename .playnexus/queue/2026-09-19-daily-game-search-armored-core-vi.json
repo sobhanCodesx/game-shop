@@ -1,0 +1,8 @@
+{
+  "job_id": "20260919-daily-game-search-armored-core-vi",
+  "tool": "search_games",
+  "arguments": {
+    "query": "Armored Core VI Fires of Rubicon",
+    "limit": 20
+  }
+}
