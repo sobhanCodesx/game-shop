@@ -1,8 +1,0 @@
-{
-  "job_id": "gta6-studio-search-20260919",
-  "tool": "search_studios",
-  "arguments": {
-    "query": "Rockstar Games",
-    "limit": 10
-  }
-}
