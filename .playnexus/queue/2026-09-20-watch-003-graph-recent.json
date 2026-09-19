@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-20-watch-003-graph-recent",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query { feeds(first: 20, orderBy: {column: PUBLISHED_AT, order: DESC}) { data { id title status published_at game { id title } studio { id name } } } games(first: 40) { data { id title } } studios(first: 40) { data { id name } } }",
-    "variables": {}
-  }
-}
