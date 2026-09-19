@@ -133,7 +133,7 @@ class PlayNexusGraphGuard
                 }
 
                 $multiplier = $this->fieldMultiplier($selection, $variables);
-                $cost += 1 + ($childCost * $multiplier);
+                $cost += $this->fieldBaseCost($name) + ($childCost * $multiplier);
 
                 continue;
             }
@@ -175,6 +175,16 @@ class PlayNexusGraphGuard
         $metrics['complexity'] += $cost;
 
         return $cost;
+    }
+
+    private function fieldBaseCost(string $name): int
+    {
+        return match ($name) {
+            'body' => 8,
+            'description', 'oldValueJson', 'newValueJson', 'metadataJson', 'stateJson' => 4,
+            'search' => 3,
+            default => 1,
+        };
     }
 
     private function fieldMultiplier(FieldNode $field, array $variables): int
