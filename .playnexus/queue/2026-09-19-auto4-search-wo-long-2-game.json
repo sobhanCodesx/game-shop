@@ -1,0 +1,5 @@
+{
+  "job_id": "20260919-auto4-search-wo-long-2-game",
+  "tool": "search_games",
+  "arguments": {"query": "Wo Long 2", "limit": 20}
+}
