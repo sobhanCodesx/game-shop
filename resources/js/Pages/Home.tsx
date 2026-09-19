@@ -1328,7 +1328,7 @@ function PersonalizedHomePanel({
                     className="pointer-events-none absolute -bottom-48 left-0 size-[30rem] rounded-full bg-[radial-gradient(circle,rgba(217,70,239,.12)_0%,rgba(217,70,239,.06)_40%,transparent_72%)]"
                 />
 
-                <header className="relative hidden overflow-hidden border-b border-white/10 px-3 py-3 sm:block sm:px-6 sm:py-6">
+                <header className="pn-pulse-header relative hidden overflow-hidden border-b border-white/10 px-3 py-3 sm:block sm:px-6 sm:py-6">
                     <div className="relative z-10 grid gap-2 sm:gap-5 lg:min-h-[176px] lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-center">
                         <div className="relative z-20 min-w-0">
                             <div className="home-slider mb-1.5 flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mb-2 sm:flex-wrap sm:gap-2 sm:overflow-visible">
@@ -1812,7 +1812,7 @@ function PersonalizedHomePanel({
                                     </div>
                                 </div>
 
-                                <aside className="flex min-w-0 flex-col border-t border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01))] lg:border-r lg:border-t-0">
+                                <aside className="pn-pulse-aside flex min-w-0 flex-col border-t border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01))] lg:border-r lg:border-t-0">
                                     <header className="flex items-center justify-between gap-3 border-b border-white/8 px-3 py-3 sm:px-4 sm:py-3.5">
                                         <div>
                                             <p className="text-[8px] font-black tracking-[.14em] text-indigo-200/55">
@@ -1853,7 +1853,7 @@ function PersonalizedHomePanel({
 
                                             return (
                                                 <Link
-                                                    className="group flex min-h-[122px] w-[82vw] max-w-[320px] shrink-0 snap-start gap-3 rounded-[16px] bg-[#080d1b] p-3 transition hover:bg-white/[0.04] sm:w-auto sm:max-w-none sm:rounded-none sm:p-3.5"
+                                                    className="pn-pulse-support-card group flex min-h-[122px] w-[82vw] max-w-[320px] shrink-0 snap-start gap-3 rounded-[16px] bg-[#080d1b] p-3 transition hover:bg-white/[0.04] sm:w-auto sm:max-w-none sm:rounded-none sm:p-3.5"
                                                     href={item.url}
                                                     key={item.id}
                                                 >
@@ -1907,7 +1907,7 @@ function PersonalizedHomePanel({
 
                                         {heroEvent && (
                                             <Link
-                                                className="group relative block min-h-[122px] w-[82vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-[16px] bg-[#080d1b] p-3.5 transition hover:bg-amber-300/[0.035] sm:w-auto sm:max-w-none sm:rounded-none sm:p-4"
+                                                className="pn-pulse-support-card pn-pulse-signal-card group relative block min-h-[122px] w-[82vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-[16px] bg-[#080d1b] p-3.5 transition hover:bg-amber-300/[0.035] sm:w-auto sm:max-w-none sm:rounded-none sm:p-4"
                                                 href={heroEvent.url}
                                             >
                                                 <div className="flex items-start gap-3">
@@ -1959,7 +1959,7 @@ function PersonalizedHomePanel({
 
                                         {supportingEditorial.length === 0 &&
                                             !heroEvent && (
-                                                <div className="w-[82vw] max-w-[320px] shrink-0 snap-start rounded-[16px] bg-[#080d1b] p-4 text-[10px] leading-6 text-white/35 sm:w-auto sm:max-w-none sm:rounded-none sm:p-5">
+                                                <div className="pn-pulse-support-card w-[82vw] max-w-[320px] shrink-0 snap-start rounded-[16px] bg-[#080d1b] p-4 text-[10px] leading-6 text-white/35 sm:w-auto sm:max-w-none sm:rounded-none sm:p-5">
                                                     فعلاً چیز مکملی نیست که ارزش
                                                     تکرار کردن داشته باشه. وقتی
                                                     محتوای تازه‌ی مرتبط بیاد، این
@@ -1984,7 +1984,7 @@ function PersonalizedHomePanel({
                         </section>
 
                         {continuationFeed.length > 0 && (
-                            <section className="pn-neon-panel mt-2.5 rounded-[20px] sm:mt-4 sm:rounded-[24px] bg-white/[0.025] p-3 sm:p-4">
+                            <section className="pn-neon-panel pn-pulse-section mt-2.5 rounded-[20px] bg-white/[0.025] p-3 sm:mt-4 sm:rounded-[24px] sm:p-4">
                                 <div className="mb-3 flex items-center justify-between gap-3 px-1">
                                     <div className="flex items-center gap-2.5">
                                         <span className="grid size-8 place-items-center rounded-xl bg-indigo-400/10 text-indigo-200">
@@ -2031,7 +2031,7 @@ function PersonalizedHomePanel({
 
                                         return (
                                             <Link
-                                                className="group w-[calc((100vw-4rem)/2)] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-[16px] border border-white/8 bg-[#0a1020] transition hover:-translate-y-0.5 hover:border-indigo-300/20 sm:w-[290px] sm:max-w-[310px] sm:rounded-[18px]"
+                                                className="pn-pulse-feed-card group w-[calc((100vw-4rem)/2)] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-[16px] border border-white/8 bg-[#0a1020] transition hover:-translate-y-0.5 hover:border-indigo-300/20 sm:w-[290px] sm:max-w-[310px] sm:rounded-[18px]"
                                                 href={item.url}
                                                 key={item.id}
                                             >
@@ -2068,7 +2068,7 @@ function PersonalizedHomePanel({
                                                     </span>
                                                 </span>
 
-                                                <span className="block p-2.5 sm:p-3">
+                                                <span className="pn-pulse-feed-copy block p-2.5 sm:p-3">
                                                     <strong className="block line-clamp-2 min-h-9 text-[10px] font-black leading-[18px] text-white/90 sm:min-h-10 sm:text-[11px] sm:leading-5">
                                                         {item.title}
                                                     </strong>
@@ -2086,7 +2086,7 @@ function PersonalizedHomePanel({
                         )}
 
                         {secondaryEvents.length > 0 && (
-                            <div className="pn-neon-panel pn-neon-panel--warm mt-4 rounded-[24px] bg-[linear-gradient(135deg,rgba(245,158,11,.055),rgba(255,255,255,.02))] p-3 sm:p-4">
+                            <div className="pn-neon-panel pn-neon-panel--warm pn-pulse-section mt-4 rounded-[24px] bg-[linear-gradient(135deg,rgba(245,158,11,.055),rgba(255,255,255,.02))] p-3 sm:p-4">
                                 <div className="mb-3 flex items-end justify-between gap-3 px-1">
                                     <div>
                                         <p className="text-[9px] font-black tracking-[.14em] text-amber-200/65">
@@ -2106,7 +2106,7 @@ function PersonalizedHomePanel({
                                 <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
                                     {secondaryEvents.map((event) => (
                                         <Link
-                                            className="group relative w-[78vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[20px] border border-white/10 bg-slate-950 transition hover:-translate-y-0.5 hover:border-amber-200/25 sm:w-[300px]"
+                                            className="pn-pulse-event-card group relative w-[78vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[20px] border border-white/10 bg-slate-950 transition hover:-translate-y-0.5 hover:border-amber-200/25 sm:w-[300px]"
                                             href={event.url}
                                             key={event.id}
                                         >
@@ -2133,7 +2133,7 @@ function PersonalizedHomePanel({
                                                     </span>
                                                 )}
                                             </span>
-                                            <span className="block p-3">
+                                            <span className="pn-pulse-event-copy block p-3">
                                                 <strong className="block line-clamp-2 min-h-10 text-xs leading-5 text-white">
                                                     {event.title}
                                                 </strong>
@@ -2169,7 +2169,7 @@ function PersonalizedHomePanel({
                         )}
 
                         {data.followed_games.length > 0 && (
-                            <div className="pn-neon-panel mt-2.5 rounded-[20px] sm:mt-4 sm:rounded-[24px] bg-white/[0.03] p-3 sm:p-4">
+                            <div className="pn-neon-panel pn-pulse-section mt-2.5 rounded-[20px] bg-white/[0.03] p-3 sm:mt-4 sm:rounded-[24px] sm:p-4">
                                 <div className="mb-3 flex items-center justify-between gap-3 px-1">
                                     <div>
                                         <h3 className="text-sm font-black">بازی‌های تو</h3>
