@@ -130,6 +130,7 @@ interface PersonalizedGameEvent {
         kind: "date" | "money";
         from: string | number | null;
         to: string | number | null;
+        currency?: string | null;
     } | null;
     detected_at: string | null;
     effective_at: string | null;
@@ -1049,7 +1050,20 @@ function PersonalizedHomePanel({
         if (!change || value === null || value === undefined) return null;
 
         if (change.kind === "money") {
-            return `${money.format(Number(value))} تومان`;
+            const amount = Number(value);
+            if (change.currency === "TOMAN" || !change.currency) {
+                return `${money.format(amount)} تومان`;
+            }
+
+            try {
+                return new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: change.currency,
+                    maximumFractionDigits: 2,
+                }).format(amount);
+            } catch {
+                return `${amount.toLocaleString("en-US")} ${change.currency}`;
+            }
         }
 
         const date = new Date(String(value));
