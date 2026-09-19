@@ -113,6 +113,58 @@ class GameSourceChangeDetector
         array $new,
         array $observation,
     ): array {
+        $events = [];
+        $oldDate = $old['release_date'] ?? null;
+        $newDate = $new['release_date'] ?? null;
+        $releasedNow = ($old['release_phase'] ?? null) === 'coming'
+            && ($new['release_phase'] ?? null) === 'released';
+
+        if (! $releasedNow && $oldDate && $newDate && $oldDate !== $newDate) {
+            $this->expireLiveSourceEvent($game->id, 'release_date_changed', $previous->external_id);
+
+            $events[] = $this->events->upsert([
+                'game_id' => $game->id,
+                'type' => 'release_date_changed',
+                'title' => "تاریخ انتشار {$game->name} در {$observation['source_label']} تغییر کرد",
+                'summary' => 'Nexus Watch تغییر تاریخ انتشار را از دو مشاهده مستقیم همان منبع رسمی تشخیص داده.',
+                'source_type' => 'external_store',
+                'source_name' => $observation['source_label'],
+                'source_url' => $observation['source_url'] ?? null,
+                'external_id' => $previous->external_id,
+                'dedupe_key' => "watch:{$previous->source}:game:{$game->id}:release-date:{$oldDate}:{$newDate}",
+                'importance_score' => $this->importance->defaultScore('release_date_changed'),
+                'confidence' => $observation['confidence'] ?? $previous->confidence,
+                'old_value' => ['release_date' => $oldDate],
+                'new_value' => ['release_date' => $newDate],
+                'metadata' => ['source' => $previous->source, 'watch' => true],
+                'effective_at' => now(),
+                'status' => 'active',
+            ]);
+        }
+
+        if ($releasedNow) {
+            $this->expireLiveSourceEvent($game->id, 'release_date_changed', $previous->external_id);
+
+            $events[] = $this->events->upsert([
+                'game_id' => $game->id,
+                'type' => 'released',
+                'title' => "{$game->name} حالا منتشر شده",
+                'summary' => 'Nexus Watch عبور این بازی از وضعیت «در راه» به «منتشرشده» را در منبع رسمی تشخیص داده.',
+                'source_type' => 'external_store',
+                'source_name' => $observation['source_label'],
+                'source_url' => $observation['source_url'] ?? null,
+                'external_id' => $previous->external_id,
+                'dedupe_key' => "watch:{$previous->source}:game:{$game->id}:released",
+                'importance_score' => $this->importance->defaultScore('released'),
+                'confidence' => $observation['confidence'] ?? $previous->confidence,
+                'old_value' => ['status' => 'coming'],
+                'new_value' => ['status' => 'released'],
+                'metadata' => ['source' => $previous->source, 'watch' => true],
+                'effective_at' => now(),
+                'status' => 'active',
+            ]);
+        }
+
         $oldCurrency = $old['currency'] ?? null;
         $newCurrency = $new['currency'] ?? null;
         $oldPrice = $old['price_amount'] ?? null;
@@ -127,47 +179,48 @@ class GameSourceChangeDetector
         }
 
         if (
-            ! is_string($oldCurrency)
-            || ! is_string($newCurrency)
-            || $oldCurrency === ''
-            || $oldCurrency !== $newCurrency
-            || ! is_numeric($oldPrice)
-            || ! is_numeric($newPrice)
-            || (float) $newPrice >= (float) $oldPrice
+            is_string($oldCurrency)
+            && is_string($newCurrency)
+            && $oldCurrency !== ''
+            && $oldCurrency === $newCurrency
+            && is_numeric($oldPrice)
+            && is_numeric($newPrice)
+            && (float) $newPrice < (float) $oldPrice
         ) {
-            return [];
+            $events[] = $this->events->upsert([
+                'game_id' => $game->id,
+                'type' => 'price_drop',
+                'title' => "قیمت {$game->name} در {$observation['source_label']} کاهش پیدا کرد",
+                'summary' => 'تغییر قیمت از دو مشاهده متوالی همان منبع رسمی تشخیص داده شده.',
+                'source_type' => 'external_store',
+                'source_name' => $observation['source_label'],
+                'source_url' => $observation['source_url'] ?? null,
+                'external_id' => $previous->external_id,
+                'dedupe_key' => sprintf(
+                    'source:%s:game:%d:price-drop:%s:%s:%s',
+                    $previous->source,
+                    $game->id,
+                    $newCurrency,
+                    $this->numberKey((float) $oldPrice),
+                    $this->numberKey((float) $newPrice),
+                ),
+                'importance_score' => $this->importance->defaultScore('price_drop'),
+                'confidence' => $observation['confidence'] ?? $previous->confidence,
+                'old_value' => ['price' => (float) $oldPrice],
+                'new_value' => ['price' => (float) $newPrice],
+                'metadata' => [
+                    'source' => $previous->source,
+                    'currency' => $newCurrency,
+                    'price_raw_before' => $old['price_raw'] ?? null,
+                    'price_raw_after' => $new['price_raw'] ?? null,
+                    'watch' => true,
+                ],
+                'effective_at' => now(),
+                'status' => 'active',
+            ]);
         }
 
-        return [$this->events->upsert([
-            'game_id' => $game->id,
-            'type' => 'price_drop',
-            'title' => "قیمت {$game->name} در {$observation['source_label']} کاهش پیدا کرد",
-            'summary' => 'تغییر قیمت از دو مشاهده متوالی همان منبع رسمی تشخیص داده شده.',
-            'source_type' => 'external_store',
-            'source_name' => $observation['source_label'],
-            'source_url' => $observation['source_url'] ?? null,
-            'external_id' => $previous->external_id,
-            'dedupe_key' => sprintf(
-                'source:%s:game:%d:price-drop:%s:%s:%s',
-                $previous->source,
-                $game->id,
-                $newCurrency,
-                $this->numberKey((float) $oldPrice),
-                $this->numberKey((float) $newPrice),
-            ),
-            'importance_score' => $this->importance->defaultScore('price_drop'),
-            'confidence' => $observation['confidence'] ?? $previous->confidence,
-            'old_value' => ['price' => (float) $oldPrice],
-            'new_value' => ['price' => (float) $newPrice],
-            'metadata' => [
-                'source' => $previous->source,
-                'currency' => $newCurrency,
-                'price_raw_before' => $old['price_raw'] ?? null,
-                'price_raw_after' => $new['price_raw'] ?? null,
-            ],
-            'effective_at' => now(),
-            'status' => 'active',
-        ])];
+        return $events;
     }
 
     private function expireLiveSourceEvent(int $gameId, string $type, ?string $externalId): void
