@@ -142,21 +142,21 @@ export default function StorefrontStories({
         <>
             <section
                 aria-label="استوری‌ها"
-                className="border-b border-[var(--store-border)] bg-[var(--store-header)]/95 shadow-sm shadow-black/5"
+                className="mobile-stories border-b border-[var(--store-border)] bg-[var(--store-header)]/95 shadow-sm shadow-black/5"
             >
-                <div className="scrollbar-none mx-auto flex max-w-7xl gap-3 overflow-x-auto px-4 py-3.5 sm:gap-4">
+                <div className="scrollbar-none mx-auto flex max-w-7xl snap-x snap-proximity gap-2.5 overflow-x-auto px-3 py-3 sm:gap-4 sm:px-4 sm:py-3.5">
                     {stories.map((item, index) => {
                         const seen = seenStories.has(item.id);
                         return (
                             <button
                                 aria-label={`${item.title}${seen ? "، دیده شده" : "، جدید"}`}
-                                className="group w-[70px] shrink-0 text-center"
+                                className="group w-[62px] shrink-0 snap-start text-center sm:w-[70px]"
                                 key={item.id}
                                 onClick={() => setActive(index)}
                                 type="button"
                             >
                                 <span
-                                    className={`relative mx-auto block size-[66px] rounded-full bg-gradient-to-tr p-[3px] transition duration-300 group-hover:scale-105 ${seen ? "from-slate-500 via-slate-600 to-slate-500 opacity-75" : "from-amber-300 via-fuchsia-500 to-violet-600 shadow-lg shadow-fuchsia-500/25 ring-2 ring-fuchsia-500/15"}`}
+                                    className={`relative mx-auto block size-[58px] rounded-full bg-gradient-to-tr p-[3px] transition duration-300 group-hover:scale-105 sm:size-[66px] ${seen ? "from-slate-500 via-slate-600 to-slate-500 opacity-75" : "from-amber-300 via-fuchsia-500 to-violet-600 shadow-lg shadow-fuchsia-500/25 ring-2 ring-fuchsia-500/15"}`}
                                 >
                                     <span className="block size-full overflow-hidden rounded-full border-[3px] border-[var(--store-header)] bg-slate-900">
                                         <StoryThumbnail story={item} />
@@ -168,7 +168,7 @@ export default function StorefrontStories({
                                     )}
                                 </span>
                                 <span
-                                    className={`mt-1.5 block truncate text-[11px] font-bold ${seen ? "text-[var(--store-muted)]" : "text-[var(--store-text)]"}`}
+                                    className={`mt-1.5 block truncate text-[10px] font-bold sm:text-[11px] ${seen ? "text-[var(--store-muted)]" : "text-[var(--store-text)]"}`}
                                 >
                                     {item.title}
                                 </span>
