@@ -82,7 +82,23 @@ interface Props {
     latestFeed: FeedItemData[];
     latestStudios: StudioItem[];
     gameRadar: GameRadarItem[];
+    personalizedHome: PersonalizedHomeData | null;
 }
+interface PersonalizedGame {
+    id: number;
+    name: string;
+    slug: string;
+    url: string;
+    image_url: string | null;
+}
+
+interface PersonalizedHomeData {
+    followed_games: PersonalizedGame[];
+    feed: FeedItemData[];
+    radar: GameRadarItem[];
+    updated_at: string;
+}
+
 interface ChannelItem {
     id: number;
     name: string;
@@ -920,6 +936,271 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
     );
 }
 
+function PersonalizedHomePanel({
+    data,
+    userName,
+}: {
+    data: PersonalizedHomeData;
+    userName: string;
+}) {
+    const firstName = userName.trim().split(/\s+/)[0] || "گیمر";
+    const hasGames = data.followed_games.length > 0;
+    const signals = data.feed.slice(0, 4);
+    const radar = data.radar.slice(0, 4);
+
+    return (
+        <section className="mx-auto max-w-7xl px-4 pb-5 pt-5">
+            <div className="relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#090d1d_0%,#10152c_46%,#15123a_100%)] p-4 text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)] sm:p-6">
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full bg-indigo-500/20 blur-3xl"
+                />
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -bottom-40 left-0 size-96 rounded-full bg-fuchsia-500/10 blur-3xl"
+                />
+
+                <header className="relative flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <div className="mb-2 flex items-center gap-2">
+                            <span className="grid size-9 place-items-center rounded-2xl bg-indigo-400/15 text-indigo-200">
+                                <Sparkles size={18} />
+                            </span>
+                            <span className="text-[10px] font-black tracking-[.18em] text-indigo-200/80">
+                                NEXUS PULSE
+                            </span>
+                            {hasGames && (
+                                <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[9px] font-black text-emerald-300">
+                                    شخصی برای تو
+                                </span>
+                            )}
+                        </div>
+                        <h1 className="text-2xl font-black leading-tight sm:text-3xl">
+                            خوش برگشتی، {firstName}
+                        </h1>
+                        <p className="mt-2 max-w-2xl text-xs leading-6 text-white/55 sm:text-sm sm:leading-7">
+                            {hasGames
+                                ? `PlayNexus بازی‌هایی که دنبال می‌کنی را جمع کرده؛ بدون گشتن، فقط چیزهایی که به تو مربوط‌اند.`
+                                : "هنوز بازی‌ای را دنبال نکردی. چند بازی را Follow کن تا صفحه اصلی به داشبورد شخصی گیمینگت تبدیل شود."}
+                        </p>
+                    </div>
+
+                    {hasGames && (
+                        <div className="flex flex-wrap gap-2">
+                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold text-white/70">
+                                {money.format(data.followed_games.length)} بازی دنبال‌شده
+                            </span>
+                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold text-white/70">
+                                {money.format(data.feed.length + data.radar.length)} اتفاق مرتبط
+                            </span>
+                        </div>
+                    )}
+                </header>
+
+                {!hasGames ? (
+                    <div className="relative mt-5 rounded-[22px] border border-dashed border-white/15 bg-white/[0.035] p-5 sm:p-6">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-3">
+                                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/8 text-indigo-200">
+                                    <Gamepad2 size={23} />
+                                </span>
+                                <div>
+                                    <strong className="text-sm font-black sm:text-base">
+                                        اول بازی‌هات را به PlayNexus معرفی کن
+                                    </strong>
+                                    <p className="mt-1 text-xs leading-6 text-white/45">
+                                        وارد کانال هر بازی شو و دکمه دنبال‌کردن را بزن؛ از دفعه بعد اینجا برای خودت چیده می‌شود.
+                                    </p>
+                                </div>
+                            </div>
+                            <Link
+                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-950 transition hover:scale-[1.02]"
+                                href="/search"
+                            >
+                                پیدا کردن بازی
+                                <ArrowUpLeft size={15} />
+                            </Link>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <div className="relative mt-5">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <div>
+                                    <h2 className="text-sm font-black sm:text-base">
+                                        بازی‌های تو
+                                    </h2>
+                                    <p className="mt-1 text-[10px] text-white/40">
+                                        دسترسی سریع به کانال‌هایی که Follow کردی
+                                    </p>
+                                </div>
+                                <Link
+                                    className="text-[10px] font-black text-indigo-200 hover:text-white"
+                                    href="/feed?tab=following"
+                                >
+                                    فید دنبال‌شده‌ها
+                                </Link>
+                            </div>
+                            <div className="home-slider -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6">
+                                {data.followed_games.map((game) => (
+                                    <Link
+                                        className="group relative aspect-[4/3] w-[170px] shrink-0 snap-start overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.035] sm:w-[210px]"
+                                        href={game.url}
+                                        key={game.id}
+                                    >
+                                        {game.image_url ? (
+                                            <img
+                                                alt={game.name}
+                                                className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.05]"
+                                                loading="lazy"
+                                                src={game.image_url}
+                                            />
+                                        ) : (
+                                            <span className="absolute inset-0 grid place-items-center text-indigo-200/60">
+                                                <Gamepad2 size={36} />
+                                            </span>
+                                        )}
+                                        <span className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
+                                        <strong className="absolute inset-x-3 bottom-3 line-clamp-2 text-xs font-black leading-5 text-white">
+                                            {game.name}
+                                        </strong>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="relative mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,.65fr)]">
+                            <div className="overflow-hidden rounded-[24px] border border-white/10 bg-black/15">
+                                <header className="flex items-center gap-3 border-b border-white/10 px-4 py-3.5">
+                                    <span className="grid size-9 place-items-center rounded-xl bg-indigo-400/10 text-indigo-200">
+                                        <Radio size={17} />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <h2 className="truncate text-sm font-black">
+                                            اتفاق‌های تازه برای بازی‌های تو
+                                        </h2>
+                                        <p className="mt-0.5 text-[10px] text-white/40">
+                                            خبر، ویدیو و آپدیت مرتبط با Followهای تو
+                                        </p>
+                                    </div>
+                                    <Link
+                                        className="text-[10px] font-black text-indigo-200 hover:text-white"
+                                        href="/feed?tab=following"
+                                    >
+                                        مشاهده همه
+                                    </Link>
+                                </header>
+
+                                {signals.length ? (
+                                    <div className="grid gap-2 p-3 sm:grid-cols-2">
+                                        {signals.map((item) => {
+                                            const media = item.media[0];
+                                            const preview =
+                                                media?.type === "image"
+                                                    ? media.url
+                                                    : media?.thumbnail;
+                                            return (
+                                                <Link
+                                                    className="group flex min-w-0 gap-3 rounded-[18px] border border-white/8 bg-white/[0.035] p-2.5 transition hover:border-indigo-300/30 hover:bg-white/[0.055]"
+                                                    href={item.url}
+                                                    key={item.id}
+                                                >
+                                                    <span className="relative size-20 shrink-0 overflow-hidden rounded-[14px] bg-slate-900">
+                                                        {preview ? (
+                                                            <img
+                                                                alt={media?.alt ?? item.title}
+                                                                className="size-full object-cover transition duration-300 group-hover:scale-105"
+                                                                loading="lazy"
+                                                                src={preview}
+                                                            />
+                                                        ) : (
+                                                            <span className="grid size-full place-items-center text-indigo-300/60">
+                                                                <Radio size={24} />
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <span className="min-w-0 flex-1 py-1">
+                                                        <small className="block truncate text-[9px] font-bold text-indigo-200/70">
+                                                            {item.author.name}
+                                                        </small>
+                                                        <strong className="mt-1 block line-clamp-2 text-xs leading-5 text-white">
+                                                            {item.title}
+                                                        </strong>
+                                                    </span>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="p-6 text-center text-xs leading-6 text-white/40">
+                                        فعلاً اتفاق تازه‌ای برای بازی‌های دنبال‌شده‌ات نداریم؛ وقتی چیزی منتشر شود همین‌جا می‌آید.
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="overflow-hidden rounded-[24px] border border-white/10 bg-black/15">
+                                <header className="flex items-center gap-3 border-b border-white/10 px-4 py-3.5">
+                                    <span className="grid size-9 place-items-center rounded-xl bg-fuchsia-400/10 text-fuchsia-200">
+                                        <Radar size={17} />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <h2 className="truncate text-sm font-black">
+                                            Radar بازی‌های تو
+                                        </h2>
+                                        <p className="mt-0.5 text-[10px] text-white/40">
+                                            موارد مرتبطی که Game Radar پیدا کرده
+                                        </p>
+                                    </div>
+                                </header>
+                                {radar.length ? (
+                                    <div className="space-y-2 p-3">
+                                        {radar.map((item) => (
+                                            <Link
+                                                className="group flex items-center gap-3 rounded-[18px] border border-white/8 bg-white/[0.035] p-2.5 transition hover:border-fuchsia-300/30"
+                                                href={item.playnexus_url ?? "/game-radar"}
+                                                key={item.id}
+                                            >
+                                                <span className="size-14 shrink-0 overflow-hidden rounded-[13px] bg-slate-900">
+                                                    {item.cover_url || item.banner_url ? (
+                                                        <img
+                                                            alt={item.title}
+                                                            className="size-full object-cover"
+                                                            loading="lazy"
+                                                            src={item.cover_url ?? item.banner_url ?? undefined}
+                                                        />
+                                                    ) : (
+                                                        <span className="grid size-full place-items-center text-fuchsia-200/50">
+                                                            <Gamepad2 size={22} />
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span className="min-w-0">
+                                                    <strong className="block truncate text-xs text-white">
+                                                        {item.title}
+                                                    </strong>
+                                                    <small className="mt-1 block text-[9px] text-white/40">
+                                                        {item.status === "coming"
+                                                            ? "در راه"
+                                                            : "تازه منتشرشده"}
+                                                    </small>
+                                                </span>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-6 text-center text-xs leading-6 text-white/40">
+                                        فعلاً مورد مرتبطی در Game Radar نیست.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
+        </section>
+    );
+}
+
 function GameRadarRail({ items }: { items: GameRadarItem[] }) {
     const psItems = items
         .filter((item) => item.psn.available)
@@ -1232,6 +1513,7 @@ export default function Home({
     latestFeed,
     latestStudios,
     gameRadar,
+    personalizedHome,
 }: Props) {
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
@@ -1280,6 +1562,12 @@ export default function Home({
                 freshContentAt={storefront.fresh_content_at}
             />
             <main>
+                {auth.user && personalizedHome ? (
+                    <PersonalizedHomePanel
+                        data={personalizedHome}
+                        userName={auth.user.name}
+                    />
+                ) : (
                 <section className="mx-auto max-w-7xl px-4 pt-5">
                     <header className="mb-5 max-w-3xl">
                         <h1 className="text-2xl font-black leading-tight text-[var(--store-text)] sm:text-3xl">
@@ -1379,6 +1667,7 @@ export default function Home({
                         </div>
                     )}
                 </section>
+                )}
                 <FreshReleases items={freshContent} />
                 <ChannelRail channels={channels} />
                 {(latestFeed.length > 0 || latestStudios.length > 0) && (
