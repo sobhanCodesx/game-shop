@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ContentAsset;
 use App\Models\Game;
+use App\Models\GameEvent;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\SocialContent;
@@ -20,6 +21,10 @@ use RuntimeException;
 
 class ContentAgentService
 {
+    public function __construct(
+        private readonly GameEventService $gameEvents,
+    ) {}
+
     private const FEED_BADGES = [
         'breaking', 'news', 'trailer', 'gameplay', 'update', 'rumor', 'review', 'patch_notes',
     ];
@@ -31,6 +36,105 @@ class ContentAgentService
     private const MUTABLE_RESOURCES = [
         'game', 'studio', 'collection', 'feed', 'story', 'video',
     ];
+
+    public function listGameEvents(array $arguments): array
+    {
+        $data = $this->validate($arguments, [
+            'game_id' => ['sometimes', 'nullable', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
+            'type' => ['sometimes', 'nullable', Rule::in(GameEventImportanceService::TYPES)],
+            'status' => ['sometimes', 'nullable', Rule::in(['candidate', 'active', 'dismissed'])],
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'offset' => ['sometimes', 'integer', 'min:0', 'max:10000'],
+        ]);
+
+        $query = GameEvent::query()
+            ->with('game:id,name,slug')
+            ->when(! empty($data['game_id']), fn ($query) => $query->where('game_id', (int) $data['game_id']))
+            ->when(! empty($data['type']), fn ($query) => $query->where('type', $data['type']))
+            ->when(! empty($data['status']), fn ($query) => $query->where('status', $data['status']));
+
+        $total = (clone $query)->count();
+        $limit = (int) ($data['limit'] ?? 20);
+        $offset = (int) ($data['offset'] ?? 0);
+        $items = $query->latest('detected_at')->latest('id')->offset($offset)->limit($limit)->get()
+            ->map(fn (GameEvent $event) => $this->gameEvents->serializeForAgent($event))
+            ->values()
+            ->all();
+
+        return [
+            'items' => $items,
+            'pagination' => [
+                'total' => $total,
+                'limit' => $limit,
+                'offset' => $offset,
+                'has_more' => $offset + count($items) < $total,
+            ],
+        ];
+    }
+
+    public function upsertGameEvent(array $arguments): array
+    {
+        $data = $this->validate($arguments, [
+            'id' => ['sometimes', 'integer', 'min:1', Rule::exists('game_events', 'id')],
+            'game_id' => ['required_without:id', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
+            'type' => ['required_without:id', Rule::in(GameEventImportanceService::TYPES)],
+            'title' => ['required_without:id', 'string', 'max:200'],
+            'summary' => ['sometimes', 'nullable', 'string', 'max:3000'],
+            'source_type' => ['sometimes', 'string', 'max:32'],
+            'source_name' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'source_url' => ['sometimes', 'nullable', 'string', 'max:1000', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($value && ! str_starts_with($value, '/') && ! filter_var($value, FILTER_VALIDATE_URL)) {
+                    $fail('Event source_url must start with / or be a valid absolute URL.');
+                }
+            }],
+            'external_id' => ['sometimes', 'nullable', 'string', 'max:190'],
+            'dedupe_key' => ['sometimes', 'nullable', 'string', 'max:190'],
+            'importance_score' => ['sometimes', 'integer', 'min:0', 'max:100'],
+            'confidence' => ['sometimes', 'numeric', 'min:0', 'max:1'],
+            'old_value' => ['sometimes', 'nullable', 'array'],
+            'new_value' => ['sometimes', 'nullable', 'array'],
+            'metadata' => ['sometimes', 'nullable', 'array'],
+            'detected_at' => ['sometimes', 'date'],
+            'effective_at' => ['sometimes', 'nullable', 'date'],
+            'expires_at' => ['sometimes', 'nullable', 'date'],
+        ]);
+
+        if (! empty($data['id'])) {
+            $event = GameEvent::query()->findOrFail((int) $data['id']);
+            unset($data['id']);
+
+            foreach ($data as $field => $value) {
+                $event->{$field} = $value;
+            }
+            $event->save();
+
+            return $this->gameEvents->serializeForAgent($event->fresh());
+        }
+
+        unset($data['id']);
+        $data['status'] = 'candidate';
+        $event = $this->gameEvents->upsert($data);
+
+        return $this->gameEvents->serializeForAgent($event);
+    }
+
+    public function setGameEventState(array $arguments): array
+    {
+        $data = $this->validate($arguments, [
+            'id' => ['required', 'integer', 'min:1', Rule::exists('game_events', 'id')],
+            'state' => ['required', Rule::in(['candidate', 'active', 'dismissed'])],
+        ]);
+
+        if ($data['state'] === 'active') {
+            $this->ensurePublishingAllowed();
+        }
+
+        $event = GameEvent::query()->findOrFail((int) $data['id']);
+        $event->status = $data['state'];
+        $event->save();
+
+        return $this->gameEvents->serializeForAgent($event->fresh());
+    }
 
     public function searchGames(array $arguments): array
     {
