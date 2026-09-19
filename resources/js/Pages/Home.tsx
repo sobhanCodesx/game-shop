@@ -705,7 +705,7 @@ function ContentRail({ section }: { section: ContentSection }) {
             >
                 {section.items.map((item) => (
                     <Link
-                        className={`block shrink-0 snap-start ${isShort ? "w-[48vw] max-w-[220px] sm:w-[240px]" : "w-[86vw] max-w-[330px] sm:w-[320px]"}`}
+                        className={`block shrink-0 snap-start ${isShort ? "w-[42vw] max-w-[190px] sm:w-[240px]" : isVideo ? "w-[46vw] max-w-[220px] sm:w-[320px]" : "w-[86vw] max-w-[330px] sm:w-[320px]"}`}
                         href={item.url}
                         key={item.id}
                     >
@@ -775,11 +775,11 @@ function ContentRail({ section }: { section: ContentSection }) {
                                     />
                                 )}
                             </div>
-                            <Card.Content className="space-y-2 p-4">
-                                <p className="text-xs font-bold text-indigo-400">
+                            <Card.Content className={`space-y-1.5 ${isVideo ? "p-2.5 sm:p-4" : "p-4"}`}>
+                                <p className={`${isVideo ? "text-[10px] sm:text-xs" : "text-xs"} font-bold text-indigo-400`}>
                                     {item.eyebrow}
                                 </p>
-                                <h3 className="line-clamp-2 min-h-12 font-bold leading-6 text-[var(--store-text)]">
+                                <h3 className={`line-clamp-2 font-bold text-[var(--store-text)] ${isVideo ? "min-h-9 text-[11px] leading-[18px] sm:min-h-12 sm:text-base sm:leading-6" : "min-h-12 leading-6"}`}>
                                     {item.title}
                                 </h3>
                                 {isProduct &&
@@ -1318,7 +1318,7 @@ function PersonalizedHomePanel({
 
     return (
         <section className="mx-auto w-full max-w-[1460px] px-3 pb-2 pt-2 sm:px-4 sm:pb-5 sm:pt-4">
-            <div className="pn-signature-frame pn-signature-frame--hero relative overflow-hidden rounded-[22px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)] sm:rounded-[30px]">
+            <div className="pn-signature-frame pn-signature-frame--hero pn-pulse-shell relative overflow-hidden rounded-[22px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)] sm:rounded-[30px]">
                 <span
                     aria-hidden="true"
                     className="pointer-events-none absolute -right-28 -top-32 size-96 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,.22)_0%,rgba(99,102,241,.10)_38%,transparent_72%)]"
@@ -1454,7 +1454,7 @@ function PersonalizedHomePanel({
                     {hasPersonalization && mobileLead ? (
                         <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(104px,.72fr)] gap-2">
                             <Link
-                                className="group relative min-h-[138px] overflow-hidden rounded-[18px] border border-white/8 bg-[#070b14]"
+                                className="pn-mobile-card pn-mobile-card--lead group relative min-h-[138px] overflow-hidden rounded-[18px] border border-white/8 bg-[#070b14]"
                                 href={mobileLead.url}
                             >
                                 {mobileLead.image ? (
@@ -1493,7 +1493,7 @@ function PersonalizedHomePanel({
                             <div className="grid grid-rows-2 gap-2">
                                 {showMobileFocusCard && focusGame ? (
                                     <Link
-                                        className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={focusGame.url}
                                     >
                                         {focusGame.image_url && (
@@ -1518,7 +1518,7 @@ function PersonalizedHomePanel({
                                 ) : showMobileRadarPrimary &&
                                   mobileRadarLead ? (
                                     <Link
-                                        className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={
                                             mobileRadarLead.playnexus_url ??
                                             "/game-radar"
@@ -1549,7 +1549,7 @@ function PersonalizedHomePanel({
                                         </span>
                                     </Link>
                                 ) : (
-                                    <div className="flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
+                                    <div className="pn-mobile-card flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
                                         <span>
                                             <span className="text-[7px] font-black tracking-[.1em] text-indigo-200/65">
                                                 SIGNALS
@@ -1563,7 +1563,7 @@ function PersonalizedHomePanel({
 
                                 {showMobileVideoCard && heroVideo ? (
                                     <Link
-                                        className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={heroVideo.url}
                                     >
                                         {heroPreview && (
@@ -1596,7 +1596,7 @@ function PersonalizedHomePanel({
                                 ) : !showMobileRadarPrimary &&
                                   mobileRadarLead ? (
                                     <Link
-                                        className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={
                                             mobileRadarLead.playnexus_url ??
                                             "/game-radar"
@@ -1627,7 +1627,7 @@ function PersonalizedHomePanel({
                                         </span>
                                     </Link>
                                 ) : (
-                                    <div className="flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
+                                    <div className="pn-mobile-card flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
                                         <span>
                                             <span className="text-[7px] font-black tracking-[.1em] text-cyan-200/60">
                                                 LIBRARY
@@ -2550,7 +2550,7 @@ function CampaignBanner({
     return (
         <div
             aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
-            className="group relative touch-pan-y pb-5"
+            className="group relative touch-pan-y"
             onTouchEnd={(event) =>
                 finishSwipe(event.changedTouches[0].clientX)
             }
@@ -2592,7 +2592,7 @@ function CampaignBanner({
                     />
                     <img
                         alt={slide.alt || slide.title}
-                        className="block h-auto w-full object-contain object-center sm:size-full"
+                        className="block h-auto w-full scale-[1.035] object-contain object-center sm:size-full sm:scale-100"
                         decoding="async"
                         fetchPriority="high"
                         key={slide.id}
@@ -2636,7 +2636,7 @@ function CampaignBanner({
             </div>
 
             {slides.length > 1 && (
-                <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-panel)]/95 px-3 py-1.5 shadow-md backdrop-blur-md">
+                <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/8 bg-black/45 px-2.5 py-1.5 shadow-md backdrop-blur-md sm:bottom-2.5 sm:gap-2 sm:px-3">
                     {slides.map((item, index) => (
                         <button
                             aria-label={`اسلاید ${index + 1}`}
