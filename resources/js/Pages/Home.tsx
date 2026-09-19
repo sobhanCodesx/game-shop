@@ -705,7 +705,7 @@ function ContentRail({ section }: { section: ContentSection }) {
             >
                 {section.items.map((item) => (
                     <Link
-                        className={`block shrink-0 snap-start ${isShort ? "w-[42vw] max-w-[190px] sm:w-[240px]" : isVideo ? "w-[46vw] max-w-[220px] sm:w-[320px]" : "w-[86vw] max-w-[330px] sm:w-[320px]"}`}
+                        className={`block shrink-0 snap-start ${isShort ? "w-[42vw] max-w-[190px] sm:w-[240px]" : isVideo ? "w-[calc((100vw-3rem)/2)] max-w-[220px] sm:w-[320px]" : "w-[86vw] max-w-[330px] sm:w-[320px]"}`}
                         href={item.url}
                         key={item.id}
                     >
