@@ -326,7 +326,7 @@ function ProductGrid({ products }: { products: StorefrontProduct[] }) {
             >
                 {products.map((product) => (
                     <div
-                        className="w-[calc((100%_-_1rem)/2)] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
+                        className="w-[84vw] max-w-[300px] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
                         key={product.id}
                     >
                         <ProductCard product={product} />
@@ -372,7 +372,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
     if (!items.length) return null;
 
     return (
-        <section className="pn-render-zone relative z-10 mx-auto mt-4 max-w-[1536px] px-4 pb-5 sm:mt-6">
+        <section className="pn-render-zone relative z-10 mx-auto mt-3 max-w-[1536px] px-3 pb-4 sm:mt-6 sm:px-4 sm:pb-5">
             <div className="pn-signature-frame pn-signature-frame--subtle overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_24px_70px_-55px_rgba(79,70,229,.65)]">
                 <div className="flex items-center justify-between gap-3 border-b border-[var(--store-border)] px-4 py-3 sm:px-5">
                     <div className="flex min-w-0 items-center gap-3">
@@ -444,7 +444,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                             : 0;
                         return (
                             <Link
-                                className={`group w-[calc((100%_-_1rem)/2)] shrink-0 snap-start overflow-hidden rounded-[22px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
+                                className={`group w-[86vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[20px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
                                 href={item.url}
                                 key={item.key}
                                 onClick={() =>
@@ -583,7 +583,7 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
         railRef.current?.scrollBy({ left: offset, behavior: "smooth" });
 
     return (
-        <section className="mx-auto min-w-0 max-w-[1536px] px-4 py-6 sm:py-8">
+        <section className="mx-auto min-w-0 max-w-[1536px] px-3 py-5 sm:px-4 sm:py-8">
             <div className="mb-5 flex items-end justify-between gap-4">
                 <div>
                     <p className="text-xs font-black text-indigo-400">
@@ -620,7 +620,7 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
             >
                 {channels.map((channel) => (
                     <Link
-                        className="group w-[calc((100%_-_1rem)/2)] shrink-0 snap-start rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-4 text-center transition duration-300 hover:-translate-y-1 hover:border-indigo-500/70 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[170px]"
+                        className="group w-[42vw] min-w-[145px] max-w-[170px] shrink-0 snap-start rounded-[22px] border border-[var(--store-border)] bg-[var(--store-surface)] p-3.5 text-center transition duration-300 hover:-translate-y-1 hover:border-indigo-500/70 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[170px] sm:p-4"
                         href={channel.url}
                         key={channel.id}
                     >
@@ -667,7 +667,7 @@ function ContentRail({ section }: { section: ContentSection }) {
     const isVideo = ["videos", "shorts"].includes(section.content_type);
 
     return (
-        <section className="mx-auto min-w-0 max-w-[1536px] px-4 py-10">
+        <section className="mx-auto min-w-0 max-w-[1536px] px-3 py-7 sm:px-4 sm:py-10">
             <div className="mb-6 flex items-end justify-between gap-4">
                 <div>
                     <p className="text-sm font-bold text-indigo-400">
@@ -705,7 +705,7 @@ function ContentRail({ section }: { section: ContentSection }) {
             >
                 {section.items.map((item) => (
                     <Link
-                        className={`block w-[calc((100%_-_1rem)/2)] shrink-0 snap-start ${isShort ? "sm:w-[240px]" : "sm:w-[320px]"}`}
+                        className={`block shrink-0 snap-start ${isShort ? "w-[48vw] max-w-[220px] sm:w-[240px]" : "w-[86vw] max-w-[330px] sm:w-[320px]"}`}
                         href={item.url}
                         key={item.id}
                     >
@@ -887,7 +887,7 @@ function LatestFeedRail({ items }: { items: HomeFeedPreviewItem[] }) {
                         media?.type === "image" ? media.url : media?.thumbnail;
                     return (
                         <Link
-                            className="group relative aspect-[16/10] w-[calc((100%_-_1rem)/2)] shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/5 sm:w-[320px]"
+                            className="group relative aspect-[16/10] w-[84vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/5 sm:w-[320px]"
                             href={item.url}
                             key={item.id}
                         >
@@ -988,7 +988,7 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
             >
                 {items.map((studio) => (
                     <Link
-                        className="group relative aspect-[16/10] w-[calc((100%_-_1rem)/2)] shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/5 sm:w-[320px]"
+                        className="group relative aspect-[16/10] w-[84vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/5 sm:w-[320px]"
                         href={studio.url}
                         key={studio.id}
                     >
@@ -1264,7 +1264,7 @@ function PersonalizedHomePanel({
     }
 
     return (
-        <section className="mx-auto w-full max-w-[1460px] px-4 pb-5 pt-4">
+        <section className="mx-auto w-full max-w-[1460px] px-3 pb-4 pt-3 sm:px-4 sm:pb-5 sm:pt-4">
             <div className="pn-signature-frame pn-signature-frame--hero relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)]">
                 <span
                     aria-hidden="true"
@@ -1275,7 +1275,7 @@ function PersonalizedHomePanel({
                     className="pointer-events-none absolute -bottom-48 left-0 size-[30rem] rounded-full bg-[radial-gradient(circle,rgba(217,70,239,.12)_0%,rgba(217,70,239,.06)_40%,transparent_72%)]"
                 />
 
-                <header className="relative overflow-hidden border-b border-white/10 px-4 py-5 sm:px-6 sm:py-6">
+                <header className="relative overflow-hidden border-b border-white/10 px-3.5 py-4 sm:px-6 sm:py-6">
                     <div className="relative z-10 grid gap-5 lg:min-h-[176px] lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-center">
                         <div className="relative z-20 min-w-0">
                             <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -1299,7 +1299,7 @@ function PersonalizedHomePanel({
                                 )}
                             </div>
 
-                            <h1 className="text-2xl font-black leading-tight sm:text-3xl">
+                            <h1 className="text-xl font-black leading-tight sm:text-3xl">
                                 خوش برگشتی، {firstName}
                             </h1>
                             <p className="mt-2 max-w-2xl text-xs leading-6 text-white/50 sm:text-sm sm:leading-7">
@@ -1400,10 +1400,10 @@ function PersonalizedHomePanel({
                         </div>
                     </div>
                 ) : (
-                    <div className="relative p-3 sm:p-4 lg:p-5">
-                        <section className="pn-neon-panel overflow-hidden rounded-[26px] bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)]">
+                    <div className="relative p-2.5 sm:p-4 lg:p-5">
+                        <section className="pn-neon-panel overflow-hidden rounded-[22px] bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)] sm:rounded-[26px]">
                             <div className="grid lg:grid-cols-[minmax(0,1.75fr)_minmax(320px,.8fr)]">
-                                <div className="group relative aspect-[16/10] min-h-[330px] overflow-hidden bg-slate-950 sm:aspect-[16/9] sm:min-h-0 lg:aspect-auto lg:min-h-[430px]">
+                                <div className="group relative aspect-[4/3] min-h-0 overflow-hidden bg-slate-950 sm:aspect-[16/9] lg:aspect-auto lg:min-h-[430px]">
                                     {heroPreview ? (
                                         <img
                                             alt={
@@ -1503,13 +1503,13 @@ function PersonalizedHomePanel({
                                         </span>
                                     )}
 
-                                    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-4 sm:p-6">
+                                    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-3.5 sm:p-6">
                                         <p className="mb-2 text-[9px] font-black tracking-[.14em] text-indigo-200/70">
                                             {heroIsVideo
                                                 ? "WATCH NEXT"
                                                 : "FOR YOU"}
                                         </p>
-                                        <h2 className="max-w-3xl text-xl font-black leading-8 text-white sm:text-3xl sm:leading-[1.35]">
+                                        <h2 className="max-w-3xl text-lg font-black leading-7 text-white sm:text-3xl sm:leading-[1.35]">
                                             {heroItem?.title ??
                                                 (focusGame
                                                     ? "فعلاً چیز مهم تازه‌ای برای " +
@@ -1550,7 +1550,7 @@ function PersonalizedHomePanel({
                                         </span>
                                     </header>
 
-                                    <div className="grid flex-1 gap-px bg-white/8 sm:grid-cols-2 lg:grid-cols-1">
+                                    <div className="home-slider flex flex-1 snap-x snap-mandatory gap-2 overflow-x-auto bg-white/[0.035] p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:gap-px sm:overflow-visible sm:bg-white/8 sm:p-0 lg:grid-cols-1">
                                         {supportingEditorial.map((item) => {
                                             const media = item.media.find(
                                                 (entry) =>
@@ -1576,7 +1576,7 @@ function PersonalizedHomePanel({
 
                                             return (
                                                 <Link
-                                                    className="group flex min-h-[132px] gap-3 bg-[#080d1b] p-3.5 transition hover:bg-white/[0.04]"
+                                                    className="group flex min-h-[122px] w-[82vw] max-w-[320px] shrink-0 snap-start gap-3 rounded-[16px] bg-[#080d1b] p-3 transition hover:bg-white/[0.04] sm:w-auto sm:max-w-none sm:rounded-none sm:p-3.5"
                                                     href={item.url}
                                                     key={item.id}
                                                 >
@@ -2559,7 +2559,7 @@ export default function Home({
                 {auth.user && personalizedHome && slides.length > 0 && (
                     <section
                         aria-label="بنرهای PlayNexus"
-                        className="mx-auto w-full max-w-[1460px] px-4 pb-1 pt-4"
+                        className="mx-auto w-full max-w-[1460px] px-3 pb-1 pt-3 sm:px-4 sm:pt-4"
                     >
                         <CampaignBanner slides={slides} variant="signed-in" />
                     </section>
@@ -2570,7 +2570,7 @@ export default function Home({
                         userName={auth.user.name}
                     />
                 ) : (
-                <section className="mx-auto max-w-[1536px] px-4 pt-5">
+                <section className="mx-auto max-w-[1536px] px-3 pt-4 sm:px-4 sm:pt-5">
                     <header className="mb-5 max-w-3xl">
                         <h1 className="text-2xl font-black leading-tight text-[var(--store-text)] sm:text-3xl">
                             {seo.heading}
@@ -2587,7 +2587,7 @@ export default function Home({
                 {(latestFeed.length > 0 || latestStudios.length > 0) && (
                     <section
                         aria-label="تازه‌های فید و استودیو"
-                        className="pn-render-zone mx-auto grid max-w-[1536px] gap-4 px-4 pb-4 lg:grid-cols-2"
+                        className="pn-render-zone mx-auto grid max-w-[1536px] gap-3 px-3 pb-4 sm:px-4 lg:grid-cols-2 lg:gap-4"
                     >
                         <LatestFeedRail items={latestFeed} />
                         <LatestStudioRail items={latestStudios} />
@@ -2622,7 +2622,7 @@ export default function Home({
                 {settings.featured_categories_enabled &&
                     categories.length > 0 && (
                         <section
-                            className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-4 py-10 sm:py-12"
+                            className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-12"
                             id="categories"
                         >
                             <div className="pn-signature-frame pn-signature-frame--subtle relative overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:p-6 lg:p-7">
@@ -2645,7 +2645,7 @@ export default function Home({
                                                 EXPLORE
                                             </p>
                                         </div>
-                                        <h2 className="text-2xl font-black leading-tight sm:text-3xl">
+                                        <h2 className="text-xl font-black leading-tight sm:text-3xl">
                                             {settings.featured_categories_title}
                                         </h2>
                                         <p className="mt-2 max-w-2xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm sm:leading-7">
@@ -2795,7 +2795,7 @@ export default function Home({
                     )}
                 {settings.featured_products_enabled && (
                     <section
-                        className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-4 py-10"
+                        className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-10"
                         id="featured-products"
                     >
                         <div className="mb-6">
@@ -2811,7 +2811,7 @@ export default function Home({
                 )}
                 {settings.latest_products_enabled && (
                     <section
-                        className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-36 px-4 py-10"
+                        className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-36 px-3 py-7 sm:px-4 sm:py-10"
                         id="latest-products"
                     >
                         <div className="mb-6">
@@ -2831,12 +2831,12 @@ export default function Home({
                     ))}
                 </div>
                 {settings.newsletter_enabled && (
-                    <section className="mx-auto max-w-[1536px] px-4 py-14">
+                    <section className="mx-auto max-w-[1536px] px-3 py-9 sm:px-4 sm:py-14">
                         <Card
                             className="storefront-dark-panel overflow-hidden border border-indigo-500/30 bg-gradient-to-l from-indigo-950 to-slate-900"
                             variant="secondary"
                         >
-                            <Card.Content className="flex flex-col gap-6 p-7 md:flex-row md:items-center md:justify-between md:p-10">
+                            <Card.Content className="flex flex-col gap-5 p-5 sm:p-7 md:flex-row md:items-center md:justify-between md:p-10">
                                 <div>
                                     <h2 className="text-2xl font-black text-white">
                                         {settings.newsletter_title}
@@ -2845,7 +2845,7 @@ export default function Home({
                                         {settings.newsletter_description}
                                     </p>
                                 </div>
-                                <div className="grid w-full min-w-0 max-w-md grid-cols-[minmax(0,1fr)_auto] gap-2">
+                                <div className="grid w-full min-w-0 max-w-md grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                                     <Input
                                         aria-label="ایمیل خبرنامه"
                                         className="min-w-0"
@@ -2854,7 +2854,7 @@ export default function Home({
                                         type="email"
                                     />
                                     <Button
-                                        className="shrink-0"
+                                        className="w-full shrink-0 sm:w-auto"
                                         variant="primary"
                                     >
                                         عضویت
@@ -2869,12 +2869,12 @@ export default function Home({
                 className="scroll-mt-24 border-t border-slate-800 bg-slate-950"
                 id="store-information"
             >
-                <div className="mx-auto flex max-w-[1536px] flex-col gap-4 px-4 py-8 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+                <div className="mx-auto flex max-w-[1536px] flex-col gap-4 px-3 py-8 text-sm text-slate-500 sm:px-4 md:flex-row md:items-center md:justify-between">
                     <p>
                         © {new Date().getFullYear()} PLAY NEXUS — همراه دنیای
                         بازی
                     </p>
-                    <div className="flex gap-5">
+                    <div className="flex flex-wrap gap-x-5 gap-y-2">
                         <Link href="/pages/about">درباره ما</Link>
                         <Link href="/pages/terms">قوانین</Link>
                         <Link href="/support">پشتیبانی</Link>
