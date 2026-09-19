@@ -112,6 +112,7 @@ interface PersonalizedFocusGame {
 
 interface PersonalizedGameEvent {
     id: number;
+    source_content_id: number | null;
     type: string;
     type_label: string;
     title: string;
@@ -1008,9 +1009,17 @@ function PersonalizedHomePanel({
 }) {
     const firstName = userName.trim().split(/\s+/)[0] || "گیمر";
     const heroEvent = data.events[0] ?? null;
-    const heroItem = heroEvent ? null : (data.feed[0] ?? null);
+    const structuredContentIds = new Set(
+        data.events
+            .map((event) => event.source_content_id)
+            .filter((id): id is number => typeof id === "number"),
+    );
+    const dedupedFeed = data.feed.filter(
+        (item) => !structuredContentIds.has(item.id),
+    );
+    const heroItem = heroEvent ? null : (dedupedFeed[0] ?? null);
     const secondaryEvents = data.events.slice(1, 5);
-    const secondarySignals = data.feed.slice(heroEvent ? 0 : 1, heroEvent ? 4 : 5);
+    const secondarySignals = dedupedFeed.slice(heroEvent ? 0 : 1, heroEvent ? 4 : 5);
     const focusGame = data.intelligence.focus_game;
     const hasPersonalization =
         data.followed_games.length > 0 ||
