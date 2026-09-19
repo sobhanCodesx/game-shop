@@ -2252,10 +2252,9 @@ export default function Home({
     const showPublicHero = !auth.user || !personalizedHome;
 
     useEffect(() => {
-        // Authenticated Nexus Pulse replaces the public hero. Keeping the
-        // hidden carousel timer alive would re-render the whole Home every
-        // six seconds for no visible reason and can look like a refresh loop.
-        if (!showPublicHero || slides.length < 2) return;
+        // The campaign carousel is visible for both guests and signed-in
+        // users, so keep rotation active whenever there is more than one slide.
+        if (slides.length < 2) return;
 
         const timer = window.setInterval(
             () => setActiveSlide((current) => (current + 1) % slides.length),
@@ -2263,7 +2262,7 @@ export default function Home({
         );
 
         return () => window.clearInterval(timer);
-    }, [showPublicHero, slides.length]);
+    }, [slides.length]);
 
     useEffect(() => {
         if (activeSlide < slides.length) return;
@@ -2502,6 +2501,107 @@ export default function Home({
                         </div>
                     )}
                 </section>
+                )}
+                {auth.user && personalizedHome && slide && (
+                    <section
+                        aria-label="پیشنهادهای ویژه PlayNexus"
+                        className="mx-auto w-full max-w-[1536px] px-4 pb-3"
+                    >
+                        <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                            <div>
+                                <p className="text-[10px] font-black tracking-[.14em] text-indigo-400">
+                                    PLAYNEXUS PICKS
+                                </p>
+                                <h2 className="mt-0.5 text-sm font-black text-[var(--store-text)] sm:text-base">
+                                    پیشنهادهای ویژه
+                                </h2>
+                            </div>
+                            {slides.length > 1 && (
+                                <span className="text-[9px] font-bold text-[var(--store-muted)]">
+                                    {money.format(activeSlide + 1)} / {money.format(slides.length)}
+                                </span>
+                            )}
+                        </div>
+
+                        <div
+                            aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
+                            className="group relative touch-pan-y pb-6"
+                            onTouchEnd={(event) =>
+                                finishSwipe(event.changedTouches[0].clientX)
+                            }
+                            onTouchStart={(event) => {
+                                touchStartX.current = event.touches[0].clientX;
+                            }}
+                        >
+                            <div className="relative aspect-[2.35/1] w-full overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_70px_-34px_rgba(15,23,42,.55)] ring-1 ring-black/5 sm:aspect-[3/1] lg:aspect-[4.2/1] lg:rounded-[26px]">
+                                <picture className="absolute inset-0 block size-full">
+                                    <source
+                                        media="(max-width: 640px)"
+                                        srcSet={
+                                            slide.mobile_image_url ??
+                                            slide.desktop_image_url
+                                        }
+                                    />
+                                    <img
+                                        alt={slide.alt || slide.title}
+                                        className="block size-full object-cover object-center"
+                                        decoding="async"
+                                        fetchPriority="high"
+                                        key={slide.id}
+                                        loading="eager"
+                                        src={slide.desktop_image_url}
+                                    />
+                                </picture>
+
+                                {safeUrl(slide.button_url) && (
+                                    <Link
+                                        aria-label={`مشاهده ${slide.title}`}
+                                        className="absolute inset-0 z-10 focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-indigo-400"
+                                        href={safeUrl(slide.button_url) ?? "/"}
+                                    />
+                                )}
+
+                                {slides.length > 1 && (
+                                    <>
+                                        <Button
+                                            aria-label="اسلاید قبلی"
+                                            className="absolute right-3 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white opacity-100 shadow-lg transition hover:scale-105 hover:bg-black/60 sm:right-4 lg:opacity-0 lg:group-hover:opacity-100"
+                                            isIconOnly
+                                            onPress={() => go(-1)}
+                                            size="sm"
+                                            variant="ghost"
+                                        >
+                                            <ChevronRight size={18} />
+                                        </Button>
+                                        <Button
+                                            aria-label="اسلاید بعدی"
+                                            className="absolute left-3 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white opacity-100 shadow-lg transition hover:scale-105 hover:bg-black/60 sm:left-4 lg:opacity-0 lg:group-hover:opacity-100"
+                                            isIconOnly
+                                            onPress={() => go(1)}
+                                            size="sm"
+                                            variant="ghost"
+                                        >
+                                            <ChevronLeft size={18} />
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
+
+                            {slides.length > 1 && (
+                                <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-panel)] px-3 py-1.5 shadow-md">
+                                    {slides.map((item, index) => (
+                                        <button
+                                            aria-label={`اسلاید ${index + 1}`}
+                                            className={`h-1.5 rounded-full transition-all duration-300 ${index === activeSlide ? "w-7 bg-indigo-500" : "w-1.5 bg-[var(--store-muted)]/35 hover:bg-indigo-400"}`}
+                                            key={item.id}
+                                            onClick={() => setActiveSlide(index)}
+                                            type="button"
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </section>
                 )}
                 <FreshReleases items={freshContent} />
                 <ChannelRail channels={channels} />
