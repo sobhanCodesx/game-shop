@@ -396,7 +396,7 @@ html[data-storefront-theme="dark"] .storefront-theme select {
     }
 
     .storefront-theme {
-        padding-bottom: env(safe-area-inset-bottom);
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom));
     }
 
     .mobile-top-nav,
@@ -407,6 +407,8 @@ html[data-storefront-theme="dark"] .storefront-theme select {
     }
 
     .mobile-top-nav {
+        min-height: calc(3.5rem + env(safe-area-inset-top));
+        padding-top: max(0.375rem, env(safe-area-inset-top));
         background:
             linear-gradient(180deg, rgb(7 12 23 / 94%), rgb(4 8 16 / 86%));
         box-shadow:
