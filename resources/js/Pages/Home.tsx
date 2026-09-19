@@ -111,7 +111,7 @@ interface PersonalizedFeedRelevance {
     signal_label: string;
 }
 
-type PersonalizedFeedItem = FeedItemData & {
+type PersonalizedFeedItem = HomeFeedPreviewItem & {
     relevance: PersonalizedFeedRelevance;
 };
 
