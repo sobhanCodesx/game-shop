@@ -128,7 +128,9 @@ class FollowedGameWatchService
             'source_count' => $states->count(),
             'direct_source_count' => $states->whereIn('source', $directSources)->count(),
             'source_labels' => $labels->all(),
-            'last_checked_at' => $states->max('observed_at')?->toISOString(),
+            'last_checked_at' => $states
+                ->sortByDesc('observed_at')
+                ->first()?->observed_at?->toISOString(),
         ];
     }
 
