@@ -66,6 +66,54 @@ class GameEventTest extends TestCase
         $this->assertSame('2026-12-05', $event->new_value['release_date'] ?? null);
     }
 
+    public function test_dismissed_event_stays_dismissed_after_a_resync(): void
+    {
+        $game = Game::factory()->create();
+        $content = SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'post',
+            'feed_type' => 'news',
+            'feed_badge' => 'news',
+            'title' => 'خبر مهم تستی',
+            'slug' => 'important-news-dismiss-test',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+
+        $service = app(GameEventService::class);
+        $event = $service->syncFromContent($content);
+        $event->update(['status' => 'dismissed']);
+
+        $service->syncFromContent($content);
+
+        $this->assertSame('dismissed', $event->fresh()->status);
+    }
+
+    public function test_price_drop_event_expires_when_discount_is_removed(): void
+    {
+        $game = Game::factory()->create();
+        $product = \App\Models\Product::withoutEvents(fn () => \App\Models\Product::factory()->create([
+            'game_id' => $game->id,
+            'price' => 2_000_000,
+            'discount_price' => 1_500_000,
+            'status' => 'published',
+            'visibility' => 'public',
+        ]));
+
+        $service = app(GameEventService::class);
+        $event = $service->syncFromProduct($product);
+
+        $this->assertNotNull($event);
+        $this->assertNull($event->expires_at);
+
+        $product->discount_price = null;
+        $product->saveQuietly();
+        $service->syncFromProduct($product->fresh());
+
+        $this->assertNotNull($event->fresh()->expires_at);
+        $this->assertFalse(GameEvent::query()->active()->whereKey($event->id)->exists());
+    }
+
     public function test_user_importance_engine_prioritizes_a_release_date_change_over_generic_news(): void
     {
         $service = app(GameEventImportanceService::class);
