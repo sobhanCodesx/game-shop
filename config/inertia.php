@@ -1,15 +1,14 @@
 <?php
 
 $ssrPort = (int) env('INERTIA_SSR_PORT', 13714);
+$isLocalApp = env('APP_ENV', 'production') === 'local';
 
 return [
     'ssr' => [
-        'enabled' => (bool) env('INERTIA_SSR_ENABLED', true),
-        // Keep local development fast by default. Vite HMR (public/hot)
-        // always disables SSR at request time, regardless of APP_ENV or this
-        // flag, so dev traffic can never leak to a production SSR endpoint.
-        // This flag is only useful for local SSR testing without Vite HMR.
-        'local_enabled' => (bool) env('INERTIA_SSR_LOCAL_ENABLED', false),
+        // SSR is production-only. Even if a local .env was copied from
+        // production with INERTIA_SSR_ENABLED=true, local config resolves to
+        // disabled and HandleInertiaRequests adds a request-level fail-safe.
+        'enabled' => ! $isLocalApp && (bool) env('INERTIA_SSR_ENABLED', true),
         'runtime' => env('INERTIA_SSR_RUNTIME', 'node'),
         'ensure_runtime_exists' => (bool) env('INERTIA_SSR_ENSURE_RUNTIME_EXISTS', true),
         'port' => $ssrPort,
