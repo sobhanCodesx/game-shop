@@ -426,6 +426,20 @@ class FeedService
         return SocialContent::query()
             ->published()
             ->whereIn('type', ['post', 'video'])
+            ->select([
+                'id',
+                'game_id',
+                'type',
+                'feed_type',
+                'feed_badge',
+                'title',
+                'slug',
+                'thumbnail',
+                'video_path',
+                'duration',
+                'featured',
+                'published_at',
+            ])
             ->with([
                 'game:id,name,slug,cover',
                 'game.playlists' => fn ($query) => $query
