@@ -1264,8 +1264,8 @@ function PersonalizedHomePanel({
     }
 
     return (
-        <section className="mx-auto w-full max-w-[1460px] px-3 pb-4 pt-3 sm:px-4 sm:pb-5 sm:pt-4">
-            <div className="pn-signature-frame pn-signature-frame--hero relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)]">
+        <section className="mx-auto w-full max-w-[1460px] px-3 pb-2 pt-2 sm:px-4 sm:pb-5 sm:pt-4">
+            <div className="pn-signature-frame pn-signature-frame--hero relative overflow-hidden rounded-[22px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)] sm:rounded-[30px]">
                 <span
                     aria-hidden="true"
                     className="pointer-events-none absolute -right-28 -top-32 size-96 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,.22)_0%,rgba(99,102,241,.10)_38%,transparent_72%)]"
@@ -1275,22 +1275,22 @@ function PersonalizedHomePanel({
                     className="pointer-events-none absolute -bottom-48 left-0 size-[30rem] rounded-full bg-[radial-gradient(circle,rgba(217,70,239,.12)_0%,rgba(217,70,239,.06)_40%,transparent_72%)]"
                 />
 
-                <header className="relative overflow-hidden border-b border-white/10 px-3.5 py-4 sm:px-6 sm:py-6">
-                    <div className="relative z-10 grid gap-5 lg:min-h-[176px] lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-center">
+                <header className="relative overflow-hidden border-b border-white/10 px-3 py-3 sm:px-6 sm:py-6">
+                    <div className="relative z-10 grid gap-2 sm:gap-5 lg:min-h-[176px] lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-center">
                         <div className="relative z-20 min-w-0">
-                            <div className="mb-2 flex flex-wrap items-center gap-2">
-                                <span className="grid size-9 place-items-center rounded-2xl bg-indigo-400/15 text-indigo-200 shadow-[0_0_30px_rgba(129,140,248,.12)]">
-                                    <Sparkles size={18} />
+                            <div className="home-slider mb-1.5 flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mb-2 sm:flex-wrap sm:gap-2 sm:overflow-visible">
+                                <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-indigo-400/15 text-indigo-200 shadow-[0_0_30px_rgba(129,140,248,.12)] sm:size-9 sm:rounded-2xl">
+                                    <Sparkles size={16} className="sm:size-[18px]" />
                                 </span>
-                                <span className="text-[10px] font-black tracking-[.18em] text-indigo-200/85">
+                                <span className="shrink-0 text-[9px] font-black tracking-[.16em] text-indigo-200/85 sm:text-[10px] sm:tracking-[.18em]">
                                     NEXUS PULSE
                                 </span>
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/10 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-black text-emerald-200">
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-300/10 bg-emerald-400/10 px-2 py-1 text-[8px] font-black text-emerald-200 sm:gap-1.5 sm:px-2.5 sm:text-[9px]">
                                     <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.9)]" />
                                     {data.intelligence.confidence.label}
                                 </span>
                                 {data.watch.active_games > 0 && (
-                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/10 bg-cyan-400/[0.07] px-2.5 py-1 text-[9px] font-black text-cyan-100/80">
+                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-cyan-300/10 bg-cyan-400/[0.07] px-2 py-1 text-[8px] font-black text-cyan-100/80 sm:gap-1.5 sm:px-2.5 sm:text-[9px]">
                                         <Radar size={11} />
                                         Nexus Watch •{" "}
                                         {money.format(data.watch.active_games)}{" "}
@@ -1299,21 +1299,21 @@ function PersonalizedHomePanel({
                                 )}
                             </div>
 
-                            <h1 className="text-xl font-black leading-tight sm:text-3xl">
+                            <h1 className="text-lg font-black leading-7 sm:text-3xl">
                                 خوش برگشتی، {firstName}
                             </h1>
-                            <p className="mt-2 max-w-2xl text-xs leading-6 text-white/50 sm:text-sm sm:leading-7">
+                            <p className="mt-1 line-clamp-2 max-w-2xl text-[11px] leading-5 text-white/50 sm:mt-2 sm:text-sm sm:leading-7">
                                 {hasPersonalization
                                     ? "PlayNexus فقط تازه‌ها را نشونت نمی‌ده؛ اول چیزی را می‌آره که احتمالاً الان بیشتر به دردت می‌خوره."
                                     : "هنوز دارم سلیقه‌ات رو می‌شناسم. چند بازی رو دنبال کن یا با محتواها تعامل داشته باش تا این صفحه کم‌کم مال خودت بشه."}
                             </p>
 
                             {data.intelligence.top_signals.length > 0 && (
-                                <div className="mt-3 flex max-w-full flex-wrap gap-2">
+                                <div className="home-slider mt-2 flex max-w-full flex-nowrap gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-3 sm:flex-wrap sm:gap-2 sm:overflow-visible">
                                     {data.intelligence.top_signals.map(
                                         (signal) => (
                                             <span
-                                                className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[9px] font-bold text-white/65"
+                                                className="shrink-0 rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[8px] font-bold text-white/65 sm:px-3 sm:py-1.5 sm:text-[9px]"
                                                 key={signal.key}
                                             >
                                                 {signal.label}
@@ -1327,7 +1327,7 @@ function PersonalizedHomePanel({
                         {mediaCloud.length > 0 && (
                             <div
                                 aria-label="بازی‌ها و مدیای مرتبط با سلیقه تو"
-                                className="pn-media-cloud relative z-10 h-[118px] min-w-0 lg:h-[160px]"
+                                className="pn-media-cloud relative z-10 hidden h-[118px] min-w-0 sm:block lg:h-[160px]"
                             >
                                 <span
                                     aria-hidden="true"
@@ -2645,7 +2645,7 @@ export default function Home({
                                                 EXPLORE
                                             </p>
                                         </div>
-                                        <h2 className="text-xl font-black leading-tight sm:text-3xl">
+                                        <h2 className="text-lg font-black leading-7 sm:text-3xl">
                                             {settings.featured_categories_title}
                                         </h2>
                                         <p className="mt-2 max-w-2xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm sm:leading-7">
