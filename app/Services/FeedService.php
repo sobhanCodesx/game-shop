@@ -128,6 +128,28 @@ class FeedService
         return $this->mapItems($contents, $request->user());
     }
 
+    public function latestForGames(Request $request, array $gameIds, int $limit = 8): array
+    {
+        $ids = collect($gameIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $contents = $this->feedQuery()
+            ->whereIn('game_id', $ids)
+            ->latest('published_at')
+            ->latest('id')
+            ->limit($limit)
+            ->get();
+
+        return $this->mapItems($contents, $request->user());
+    }
+
     private function item(SocialContent $content, array $liked, array $saved): array
     {
         $isVideo = $content->type === 'video';
