@@ -59,6 +59,31 @@ class InertiaSsrRoutingTest extends TestCase
         }
     }
 
+    public function test_vite_hmr_always_disables_ssr_even_if_environment_is_not_local(): void
+    {
+        config([
+            'inertia.ssr.enabled' => true,
+            'inertia.ssr.local_enabled' => true,
+            'inertia.ssr.paths' => ['/'],
+        ]);
+
+        $hotFile = public_path('hot');
+        $hadHotFile = is_file($hotFile);
+        $originalHotContents = $hadHotFile ? file_get_contents($hotFile) : null;
+
+        file_put_contents($hotFile, 'http://127.0.0.1:5173');
+
+        try {
+            $this->assertFalse($this->middleware()->usesSsr('/'));
+        } finally {
+            if ($hadHotFile) {
+                file_put_contents($hotFile, $originalHotContents ?: '');
+            } else {
+                @unlink($hotFile);
+            }
+        }
+    }
+
     public function test_admin_is_never_rendered_by_ssr(): void
     {
         config([
