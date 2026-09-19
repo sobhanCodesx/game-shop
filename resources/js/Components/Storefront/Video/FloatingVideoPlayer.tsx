@@ -23,6 +23,9 @@ import {
 } from "../../../lib/videoProgress";
 import { useVideoAmbientColors } from "./useVideoAmbientColors";
 
+const NEON_PLAYBACK_SECONDS = 10;
+const NEON_FADE_MS = 2400;
+
 interface VideoSource {
     id: number;
     title: string;
@@ -224,14 +227,14 @@ export default function FloatingVideoPlayer({
 
         neon.lastMediaTime = currentTime;
 
-        if (neon.accumulated < 10) return;
+        if (neon.accumulated < NEON_PLAYBACK_SECONDS) return;
 
         neon.fadeStarted = true;
         setNeonState("fading");
         neonFadeTimeoutRef.current = window.setTimeout(() => {
             setNeonState("hidden");
             neonFadeTimeoutRef.current = null;
-        }, 2400);
+        }, NEON_FADE_MS);
     };
 
     const retry = () => {
