@@ -19,7 +19,7 @@ export default function ContentCard({
         <Link className="group block" href={content.url}>
             <article>
                 <div
-                    className="relative aspect-video overflow-hidden rounded-2xl bg-[var(--store-surface-strong)] shadow-lg ring-1 ring-[var(--store-border)] transition duration-300 group-hover:-translate-y-1 group-hover:ring-indigo-500/60"
+                    className="relative aspect-video overflow-hidden rounded-[22px] bg-[var(--store-surface-strong)] shadow-lg ring-1 ring-[var(--store-border)] transition duration-300 group-hover:-translate-y-1 group-hover:ring-indigo-500/60 sm:rounded-[24px]"
                     data-video-preview-surface={
                         content.type === "video" ? "true" : undefined
                     }

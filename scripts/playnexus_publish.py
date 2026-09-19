@@ -20,6 +20,11 @@ from pathlib import Path
 from typing import Any
 
 MCP_TOOLS = {
+    "describe_playnexus_graph",
+    "query_playnexus_graph",
+    "list_game_events",
+    "upsert_game_event",
+    "set_game_event_state",
     "search_games",
     "search_studios",
     "search_platforms",

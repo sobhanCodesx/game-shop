@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\ContentAgentMediaService;
 use App\Services\ContentAgentService;
 use App\Services\FeedService;
+use App\Services\GraphQL\PlayNexusGraphService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +19,7 @@ class ContentAgentMcpController extends Controller
     private const MODERN_PROTOCOL = '2026-07-28';
     private const LEGACY_PROTOCOL = '2025-11-25';
 
-    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia): Response
+    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, PlayNexusGraphService $graph): Response
     {
         $payload = $request->json()->all();
 
@@ -43,7 +44,7 @@ class ContentAgentMcpController extends Controller
                 'initialize' => $this->rpcResult($id, $this->initializeResult($params)),
                 'server/discover' => $this->rpcResult($id, $this->discoverResult()),
                 'tools/list' => $this->rpcResult($id, $this->toolsListResult()),
-                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia)),
+                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia, $graph)),
                 'ping' => $this->rpcResult($id, new \stdClass()),
                 default => $this->rpcError($id, -32601, 'Method not found.'),
             };
@@ -97,16 +98,25 @@ class ContentAgentMcpController extends Controller
         ];
     }
 
-    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia): array
+    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, PlayNexusGraphService $graph): array
     {
         $name = (string) ($params['name'] ?? '');
         $arguments = is_array($params['arguments'] ?? null) ? $params['arguments'] : [];
 
         $result = match ($name) {
+            'describe_playnexus_graph' => $graph->describe(),
+            'query_playnexus_graph' => $graph->execute(
+                (string) ($arguments['query'] ?? ''),
+                is_array($arguments['variables'] ?? null) ? $arguments['variables'] : [],
+                is_string($arguments['operation_name'] ?? null) ? $arguments['operation_name'] : null,
+            ),
             'search_games' => $contentAgent->searchGames($arguments),
             'search_studios' => $contentAgent->searchStudios($arguments),
             'search_platforms' => $contentAgent->searchPlatforms($arguments),
             'search_collections' => $contentAgent->searchCollections($arguments),
+            'list_game_events' => $contentAgent->listGameEvents($arguments),
+            'upsert_game_event' => $contentAgent->upsertGameEvent($arguments),
+            'set_game_event_state' => $contentAgent->setGameEventState($arguments),
             'select_content' => $contentAgent->selectContent($arguments),
             'get_content' => $contentAgent->getContent($arguments),
             'create_game' => $contentAgent->createGame($arguments),
@@ -183,6 +193,43 @@ class ContentAgentMcpController extends Controller
         ];
 
         return [
+            [
+                'name' => 'describe_playnexus_graph',
+                'description' => 'Discover the read-only PlayNexus Intelligence Graph. Returns SDL, limits, guidance and useful example queries. Use this when you need to understand relationships before querying.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => new \stdClass(),
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'query_playnexus_graph',
+                'description' => 'Run a safe read-only GraphQL query across PlayNexus games, studios, platforms, products, content, collections, categories, Game Events, source states and cached Game Radar. Prefer this for relational discovery/context, then use dedicated MCP action tools for writes.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'query' => [
+                            'type' => 'string',
+                            'minLength' => 1,
+                            'maxLength' => (int) config('content_agent.graphql.max_query_bytes', 24000),
+                            'description' => 'A GraphQL query operation. Mutations/subscriptions are rejected.',
+                        ],
+                        'variables' => [
+                            'type' => 'object',
+                            'additionalProperties' => true,
+                            'description' => 'GraphQL variables object.',
+                        ],
+                        'operation_name' => [
+                            'type' => ['string', 'null'],
+                            'maxLength' => 120,
+                        ],
+                    ],
+                    'required' => ['query'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
             $this->searchTool('search_games', 'Search PlayNexus games before linking or creating content.'),
             $this->searchTool('search_studios', 'Search PlayNexus game studios before linking or creating content.'),
             [
@@ -199,6 +246,72 @@ class ContentAgentMcpController extends Controller
                 'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             $this->searchTool('search_collections', 'Search PlayNexus collections.'),
+            [
+                'name' => 'list_game_events',
+                'description' => 'Read structured PlayNexus Game Events for intelligence workflows. Filter by game, event type or state.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'game_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'type' => ['type' => ['string', 'null'], 'enum' => [
+                            'release_date_changed', 'released', 'major_patch', 'dlc_announced', 'dlc_released',
+                            'subscription_added', 'subscription_leaving', 'price_drop', 'free_weekend',
+                            'major_trailer', 'preload_available', 'server_issue', 'server_restored', 'major_news', null,
+                        ]],
+                        'status' => ['type' => ['string', 'null'], 'enum' => ['candidate', 'active', 'dismissed', null]],
+                        'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20],
+                        'offset' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 10000, 'default' => 0],
+                    ],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'upsert_game_event',
+                'description' => 'Create a structured Game Event as CANDIDATE, or edit an existing Game Event by id. State is intentionally changed separately.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'game_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'type' => ['type' => ['string', 'null'], 'enum' => [
+                            'release_date_changed', 'released', 'major_patch', 'dlc_announced', 'dlc_released',
+                            'subscription_added', 'subscription_leaving', 'price_drop', 'free_weekend',
+                            'major_trailer', 'preload_available', 'server_issue', 'server_restored', 'major_news', null,
+                        ]],
+                        'title' => ['type' => ['string', 'null'], 'maxLength' => 200],
+                        'summary' => ['type' => ['string', 'null'], 'maxLength' => 3000],
+                        'source_type' => ['type' => ['string', 'null'], 'maxLength' => 32],
+                        'source_name' => ['type' => ['string', 'null'], 'maxLength' => 120],
+                        'source_url' => ['type' => ['string', 'null'], 'maxLength' => 1000],
+                        'external_id' => ['type' => ['string', 'null'], 'maxLength' => 190],
+                        'importance_score' => ['type' => ['integer', 'null'], 'minimum' => 0, 'maximum' => 100],
+                        'confidence' => ['type' => ['number', 'null'], 'minimum' => 0, 'maximum' => 1],
+                        'old_value' => ['type' => ['object', 'null'], 'additionalProperties' => true],
+                        'new_value' => ['type' => ['object', 'null'], 'additionalProperties' => true],
+                        'metadata' => ['type' => ['object', 'null'], 'additionalProperties' => true],
+                        'detected_at' => ['type' => ['string', 'null']],
+                        'effective_at' => ['type' => ['string', 'null']],
+                        'expires_at' => ['type' => ['string', 'null']],
+                    ],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'set_game_event_state',
+                'description' => 'Change a Game Event state. Activating an event requires PlayNexus publishing permission.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'state' => ['type' => 'string', 'enum' => ['candidate', 'active', 'dismissed']],
+                    ],
+                    'required' => ['id', 'state'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
             [
                 'name' => 'select_content',
                 'description' => 'Advanced safe SELECT over PlayNexus content resources. Supports search, ids, state/status, game/studio filters, pagination, sorting, and optional soft-deleted records. Does not execute raw SQL.',
@@ -573,15 +686,15 @@ class ContentAgentMcpController extends Controller
 
     private function instructions(): string
     {
-        return 'PlayNexus Content Admin MCP v2.1. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary media/files use the dedicated chunked asset tools; the MCP never fetches arbitrary remote URLs. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+        return 'PlayNexus Content Admin MCP v2.2. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary media/files use the dedicated chunked asset tools; the MCP never fetches arbitrary remote URLs. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
     }
 
     private function serverInfo(): array
     {
         return [
             'name' => 'playnexus-content-agent',
-            'title' => 'PlayNexus Content Admin Agent',
-            'version' => '2.1.0',
+            'title' => 'PlayNexus AI Content & Intelligence Agent',
+            'version' => '3.0.0',
         ];
     }
 

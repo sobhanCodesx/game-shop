@@ -13,6 +13,7 @@ import {
     Clock3,
     PackageOpen,
     Radio,
+    Newspaper,
     Radar,
     CalendarDays,
     ShieldCheck,
@@ -79,10 +80,144 @@ interface Props {
     contentSections: ContentSection[];
     freshContent: FreshItem[];
     channels: ChannelItem[];
-    latestFeed: FeedItemData[];
+    latestFeed: HomeFeedPreviewItem[];
     latestStudios: StudioItem[];
     gameRadar: GameRadarItem[];
+    personalizedHome: PersonalizedHomeData | null;
 }
+interface PersonalizedGame {
+    id: number;
+    name: string;
+    slug: string;
+    url: string;
+    image_url: string | null;
+}
+
+interface HomeFeedPreviewItem {
+    id: number;
+    type: string;
+    title: string;
+    badge: string | null;
+    url: string;
+    created_at: string | null;
+    media: FeedItemData["media"];
+    author: FeedItemData["author"];
+}
+
+interface PersonalizedFeedRelevance {
+    priority: "critical" | "high" | "medium" | "normal";
+    reason: string;
+    signal_key: string;
+    signal_label: string;
+}
+
+type PersonalizedFeedItem = HomeFeedPreviewItem & {
+    relevance: PersonalizedFeedRelevance;
+};
+
+interface PersonalizedFocusGame {
+    id: number;
+    name: string;
+    url: string;
+    image_url: string | null;
+}
+
+interface PersonalizedMediaCloudItem {
+    key: string;
+    title: string;
+    image_url: string;
+    url: string;
+    source: "playnexus" | "radar";
+}
+
+interface MobilePrioritySlide {
+    key: string;
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    url: string;
+    image: string | null;
+    tone:
+        | "signal"
+        | "editorial"
+        | "feed"
+        | "video"
+        | "studio"
+        | "product"
+        | "game"
+        | "radar";
+}
+
+interface PersonalizedMediaCloudRadarItem {
+    id: string;
+    title: string;
+    banner_url: string | null;
+    cover_url: string | null;
+    playnexus_url: string | null;
+}
+
+interface PersonalizedGameEvent {
+    id: number;
+    source_content_id: number | null;
+    type: string;
+    type_label: string;
+    title: string;
+    summary: string | null;
+    importance_score: number;
+    priority: "critical" | "high" | "medium" | "normal";
+    reason: string;
+    source_name: string | null;
+    source_url: string | null;
+    url: string;
+    old_value: Record<string, unknown> | null;
+    new_value: Record<string, unknown> | null;
+    change: {
+        label: string;
+        kind: "date" | "money";
+        from: string | number | null;
+        to: string | number | null;
+        currency?: string | null;
+    } | null;
+    detected_at: string | null;
+    effective_at: string | null;
+    expires_at: string | null;
+    game: {
+        id: number;
+        name: string;
+        url: string;
+        image_url: string | null;
+        cover_url: string | null;
+    } | null;
+}
+
+interface PersonalizedHomeData {
+    followed_games: PersonalizedGame[];
+    events: PersonalizedGameEvent[];
+    videos: PersonalizedFeedItem[];
+    feed: PersonalizedFeedItem[];
+    radar: GameRadarItem[];
+    media_cloud_radar: PersonalizedMediaCloudRadarItem[];
+    watch: {
+        active_games: number;
+        direct_games: number;
+        source_labels: string[];
+        last_checked_at: string | null;
+    };
+    intelligence: {
+        confidence: {
+            key: "learning" | "growing" | "strong";
+            label: string;
+        };
+        top_signals: Array<{
+            key: string;
+            label: string;
+        }>;
+        focus_reason: string | null;
+        focus_game: PersonalizedFocusGame | null;
+    };
+    updated_at: string;
+}
+
 interface ChannelItem {
     id: number;
     name: string;
@@ -158,6 +293,18 @@ interface ContentSection {
 }
 
 const money = new Intl.NumberFormat("fa-IR");
+const homeFreshDateFormatter = new Intl.DateTimeFormat("fa-IR", {
+    day: "numeric",
+    month: "short",
+});
+const gameRadarDateFormatter = new Intl.DateTimeFormat(
+    "fa-IR-u-ca-persian",
+    {
+        month: "short",
+        day: "numeric",
+        timeZone: "Asia/Tehran",
+    },
+);
 const safeUrl = (url: string | null) =>
     url && (/^https?:\/\//.test(url) || url.startsWith("/")) ? url : null;
 const metaToneClasses: Record<string, string> = {
@@ -174,6 +321,51 @@ const homeFeedBadgeLabels: Record<string, string> = {
     trailer: "تریلر",
     update: "آپدیت",
     review: "نقد",
+};
+
+const feedPreviewImage = (item: HomeFeedPreviewItem | PersonalizedFeedItem) => {
+    const media = item.media.find(
+        (entry) => entry.type === "image" || Boolean(entry.thumbnail),
+    );
+
+    return media?.type === "image"
+        ? media.url
+        : media?.thumbnail ?? null;
+};
+
+const mixPrioritySlides = (
+    groups: MobilePrioritySlide[][],
+    limit = 10,
+): MobilePrioritySlide[] => {
+    const queues = groups.map((group) =>
+        group.filter((item) => Boolean(item.image)),
+    );
+    const mixed: MobilePrioritySlide[] = [];
+    const seen = new Set<string>();
+    let cursor = 0;
+
+    while (mixed.length < limit) {
+        let added = false;
+
+        for (const queue of queues) {
+            const item = queue[cursor];
+            if (!item || seen.has(item.url)) continue;
+
+            seen.add(item.url);
+            mixed.push(item);
+            added = true;
+
+            if (mixed.length >= limit) break;
+        }
+
+        if (!added && queues.every((queue) => cursor >= queue.length - 1)) {
+            break;
+        }
+
+        cursor += 1;
+    }
+
+    return mixed;
 };
 
 function ProductGrid({ products }: { products: StorefrontProduct[] }) {
@@ -209,7 +401,7 @@ function ProductGrid({ products }: { products: StorefrontProduct[] }) {
             >
                 {products.map((product) => (
                     <div
-                        className="w-[calc((100%_-_1rem)/2)] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
+                        className="w-[84vw] max-w-[300px] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
                         key={product.id}
                     >
                         <ProductCard product={product} />
@@ -227,26 +419,24 @@ const durationLabel = (seconds?: number | null) =>
 
 const freshSeenKey = "nexus:fresh-content-seen-at";
 const freshDateLabel = (value: string) =>
-    new Date(value).toLocaleDateString("fa-IR", {
-        day: "numeric",
-        month: "short",
-    });
+    homeFreshDateFormatter.format(new Date(value));
 
 function FreshReleases({ items }: { items: FreshItem[] }) {
     const railRef = useRef<HTMLDivElement>(null);
-    const [seenAt] = useState(() =>
-        typeof window === "undefined"
-            ? 0
-            : Number(localStorage.getItem(freshSeenKey) ?? 0),
-    );
+    const [seenAt, setSeenAt] = useState(0);
     const latest = items.length
         ? Math.max(...items.map((item) => Date.parse(item.published_at)))
         : 0;
 
     useEffect(() => {
+        setSeenAt(Number(localStorage.getItem(freshSeenKey) ?? 0));
+    }, []);
+
+    useEffect(() => {
         if (!latest || latest <= seenAt) return;
         const timer = window.setTimeout(() => {
             localStorage.setItem(freshSeenKey, String(latest));
+            setSeenAt(latest);
             window.dispatchEvent(new CustomEvent("fresh-content-seen"));
         }, 5000);
         return () => window.clearTimeout(timer);
@@ -255,8 +445,8 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
     if (!items.length) return null;
 
     return (
-        <section className="relative z-10 mx-auto mt-4 max-w-7xl px-4 pb-5 sm:mt-6">
-            <div className="overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_24px_70px_-55px_rgba(79,70,229,.65)]">
+        <section className="pn-render-zone relative z-10 mx-auto mt-3 max-w-[1536px] px-3 pb-4 sm:mt-6 sm:px-4 sm:pb-5">
+            <div className="pn-signature-frame pn-signature-frame--subtle overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_24px_70px_-55px_rgba(79,70,229,.65)]">
                 <div className="flex items-center justify-between gap-3 border-b border-[var(--store-border)] px-4 py-3 sm:px-5">
                     <div className="flex min-w-0 items-center gap-3">
                         <span className="relative grid size-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-700 text-white shadow-md shadow-indigo-500/20">
@@ -266,7 +456,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
                                 <h2 className="truncate text-lg font-black text-[var(--store-text)] sm:text-xl">
-                                    نبض PLAY NEXUS
+                                    تازه‌های PLAY NEXUS
                                 </h2>
                                 <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black text-emerald-500">
                                     LIVE
@@ -327,21 +517,22 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                             : 0;
                         return (
                             <Link
-                                className={`group w-[calc((100%_-_1rem)/2)] shrink-0 snap-start overflow-hidden rounded-[22px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
+                                className={`group w-[calc((100vw-4rem)/2)] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-[18px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] sm:max-w-[330px] sm:rounded-[20px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
                                 href={item.url}
                                 key={item.key}
-                                onClick={() =>
-                                    latest &&
+                                onClick={() => {
+                                    if (!latest) return;
                                     localStorage.setItem(
                                         freshSeenKey,
                                         String(latest),
-                                    )
-                                }
+                                    );
+                                    setSeenAt(latest);
+                                }}
                             >
                                 <article className="flex h-full flex-col">
-                                    <header className="flex items-center gap-2.5 p-3">
+                                    <header className="flex items-center gap-2 p-2.5 sm:gap-2.5 sm:p-3">
                                         <span
-                                            className={`grid size-9 shrink-0 place-items-center rounded-xl text-white ${video ? "bg-rose-500" : "bg-indigo-600"}`}
+                                            className={`grid size-8 shrink-0 place-items-center rounded-[10px] text-white sm:size-9 sm:rounded-xl ${video ? "bg-rose-500" : "bg-indigo-600"}`}
                                         >
                                             {video ? (
                                                 <Play
@@ -376,6 +567,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                                             <img
                                                 alt={item.title}
                                                 className={`size-full transition duration-500 group-hover:scale-[1.035] ${video ? "object-cover" : "object-contain p-3"}`}
+                                                decoding="async"
                                                 loading="lazy"
                                                 src={item.image_url}
                                             />
@@ -466,13 +658,13 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
         railRef.current?.scrollBy({ left: offset, behavior: "smooth" });
 
     return (
-        <section className="mx-auto min-w-0 max-w-7xl px-4 py-6 sm:py-8">
-            <div className="mb-5 flex items-end justify-between gap-4">
+        <section className="pn-render-zone mx-auto min-w-0 max-w-[1536px] px-3 py-5 sm:px-4 sm:py-8">
+            <div className="mb-4 flex items-end justify-between gap-3 sm:mb-5 sm:gap-4">
                 <div>
                     <p className="text-xs font-black text-indigo-400">
                         کانال‌های PLAY NEXUS
                     </p>
-                    <h2 className="mt-1 text-xl font-black sm:text-2xl">
+                    <h2 className="mt-1 text-lg font-black leading-7 sm:text-2xl">
                         کانال موردعلاقه‌ات را دنبال کن
                     </h2>
                 </div>
@@ -503,7 +695,7 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
             >
                 {channels.map((channel) => (
                     <Link
-                        className="group w-[calc((100%_-_1rem)/2)] shrink-0 snap-start rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-4 text-center transition duration-300 hover:-translate-y-1 hover:border-indigo-500/70 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[170px]"
+                        className="group w-[42vw] min-w-[145px] max-w-[170px] shrink-0 snap-start rounded-[22px] border border-[var(--store-border)] bg-[var(--store-surface)] p-3.5 text-center transition duration-300 hover:-translate-y-1 hover:border-indigo-500/70 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[170px] sm:p-4"
                         href={channel.url}
                         key={channel.id}
                     >
@@ -513,7 +705,8 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
                                     <img
                                         alt={`کانال ${channel.name}`}
                                         className="size-full object-cover transition duration-300 group-hover:scale-110"
-                                        loading="lazy"
+                                        decoding="async"
+                                                loading="lazy"
                                         src={channel.image_url}
                                     />
                                 ) : (
@@ -550,8 +743,8 @@ function ContentRail({ section }: { section: ContentSection }) {
     const isVideo = ["videos", "shorts"].includes(section.content_type);
 
     return (
-        <section className="mx-auto min-w-0 max-w-7xl px-4 py-10">
-            <div className="mb-6 flex items-end justify-between gap-4">
+        <section className="pn-render-zone mx-auto min-w-0 max-w-[1536px] px-3 py-7 sm:px-4 sm:py-10">
+            <div className="mb-4 flex items-end justify-between gap-3 sm:mb-6 sm:gap-4">
                 <div>
                     <p className="text-sm font-bold text-indigo-400">
                         {section.subtitle ??
@@ -559,7 +752,7 @@ function ContentRail({ section }: { section: ContentSection }) {
                                 ? "انتخاب هوشمند فروشگاه"
                                 : "تازه از جامعه گیمرها")}
                     </p>
-                    <h2 className="mt-2 text-2xl font-black md:text-3xl">
+                    <h2 className="mt-1.5 text-xl font-black leading-7 sm:mt-2 sm:text-2xl md:text-3xl">
                         {section.title}
                     </h2>
                 </div>
@@ -588,7 +781,7 @@ function ContentRail({ section }: { section: ContentSection }) {
             >
                 {section.items.map((item) => (
                     <Link
-                        className={`block w-[calc((100%_-_1rem)/2)] shrink-0 snap-start ${isShort ? "sm:w-[240px]" : "sm:w-[320px]"}`}
+                        className={`block shrink-0 snap-start ${isShort ? "w-[42vw] max-w-[190px] sm:w-[240px]" : isVideo ? "w-[calc((100vw-3rem)/2)] max-w-[220px] sm:w-[320px]" : "w-[86vw] max-w-[330px] sm:w-[320px]"}`}
                         href={item.url}
                         key={item.id}
                     >
@@ -603,7 +796,8 @@ function ContentRail({ section }: { section: ContentSection }) {
                                     <img
                                         alt={item.title}
                                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                                        loading="lazy"
+                                        decoding="async"
+                                                loading="lazy"
                                         src={item.image_url}
                                     />
                                 ) : (
@@ -658,11 +852,11 @@ function ContentRail({ section }: { section: ContentSection }) {
                                     />
                                 )}
                             </div>
-                            <Card.Content className="space-y-2 p-4">
-                                <p className="text-xs font-bold text-indigo-400">
+                            <Card.Content className={`space-y-1.5 ${isVideo ? "p-2.5 sm:p-4" : "p-4"}`}>
+                                <p className={`${isVideo ? "text-[10px] sm:text-xs" : "text-xs"} font-bold text-indigo-400`}>
                                     {item.eyebrow}
                                 </p>
-                                <h3 className="line-clamp-2 min-h-12 font-bold leading-6 text-[var(--store-text)]">
+                                <h3 className={`line-clamp-2 font-bold text-[var(--store-text)] ${isVideo ? "min-h-9 text-[11px] leading-[18px] sm:min-h-12 sm:text-base sm:leading-6" : "min-h-12 leading-6"}`}>
                                     {item.title}
                                 </h3>
                                 {isProduct &&
@@ -718,12 +912,12 @@ function ContentRail({ section }: { section: ContentSection }) {
     );
 }
 
-function LatestFeedRail({ items }: { items: FeedItemData[] }) {
+function LatestFeedRail({ items }: { items: HomeFeedPreviewItem[] }) {
     const railRef = useRef<HTMLDivElement>(null);
     if (!items.length) return null;
 
     return (
-        <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)]">
+        <section className="pn-signature-frame min-w-0 overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)]">
             <header className="flex items-center gap-3 border-b border-[var(--store-border)] px-4 py-3.5">
                 <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-indigo-500/10 text-indigo-400">
                     <Radio size={19} />
@@ -737,7 +931,7 @@ function LatestFeedRail({ items }: { items: FeedItemData[] }) {
                     </p>
                 </div>
                 <Link
-                    className="shrink-0 text-[11px] font-black text-indigo-400 hover:text-indigo-300"
+                    className="shrink-0 text-[10px] font-black text-indigo-400 hover:text-indigo-300 max-[360px]:hidden sm:text-[11px]"
                     href="/feed"
                 >
                     همه فیدها
@@ -770,7 +964,7 @@ function LatestFeedRail({ items }: { items: FeedItemData[] }) {
                         media?.type === "image" ? media.url : media?.thumbnail;
                     return (
                         <Link
-                            className="group relative aspect-[16/10] w-[calc((100%_-_1rem)/2)] shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/5 sm:w-[320px]"
+                            className="group relative aspect-[16/10] w-[84vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/5 sm:w-[320px]"
                             href={item.url}
                             key={item.id}
                         >
@@ -778,7 +972,8 @@ function LatestFeedRail({ items }: { items: FeedItemData[] }) {
                                 <img
                                     alt={media?.alt ?? item.title}
                                     className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                                    loading="lazy"
+                                    decoding="async"
+                                                loading="lazy"
                                     src={preview}
                                 />
                             ) : (
@@ -788,7 +983,7 @@ function LatestFeedRail({ items }: { items: FeedItemData[] }) {
                             )}
                             <span className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
                             {item.badge && (
-                                <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[9px] font-black text-white backdrop-blur-md">
+                                <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[9px] font-black text-white">
                                     {homeFeedBadgeLabels[item.badge] ??
                                         item.badge}
                                 </span>
@@ -799,7 +994,8 @@ function LatestFeedRail({ items }: { items: FeedItemData[] }) {
                                         <img
                                             alt={item.author.name}
                                             className="size-full object-cover"
-                                            loading="lazy"
+                                            decoding="async"
+                                                loading="lazy"
                                             src={item.author.avatar_url}
                                         />
                                     ) : (
@@ -828,7 +1024,7 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
     if (!items.length) return null;
 
     return (
-        <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)]">
+        <section className="pn-signature-frame min-w-0 overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)]">
             <header className="flex items-center gap-3 border-b border-[var(--store-border)] px-4 py-3.5">
                 <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-violet-500/10 text-violet-400">
                     <Factory size={19} />
@@ -842,7 +1038,7 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
                     </p>
                 </div>
                 <Link
-                    className="shrink-0 text-[11px] font-black text-violet-400 hover:text-violet-300"
+                    className="shrink-0 text-[10px] font-black text-violet-400 hover:text-violet-300 max-[360px]:hidden sm:text-[11px]"
                     href="/studios"
                 >
                     همه استودیوها
@@ -871,7 +1067,7 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
             >
                 {items.map((studio) => (
                     <Link
-                        className="group relative aspect-[16/10] w-[calc((100%_-_1rem)/2)] shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/5 sm:w-[320px]"
+                        className="group relative aspect-[16/10] w-[84vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/5 sm:w-[320px]"
                         href={studio.url}
                         key={studio.id}
                     >
@@ -879,7 +1075,8 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
                             <img
                                 alt={`پس‌زمینه ${studio.name}`}
                                 className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                                loading="lazy"
+                                decoding="async"
+                                                loading="lazy"
                                 src={studio.background_url}
                             />
                         ) : (
@@ -894,7 +1091,8 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
                                     <img
                                         alt={`لوگوی ${studio.name}`}
                                         className="size-full object-cover"
-                                        loading="lazy"
+                                        decoding="async"
+                                                loading="lazy"
                                         src={studio.logo_url}
                                     />
                                 ) : (
@@ -915,6 +1113,1464 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
                         </span>
                     </Link>
                 ))}
+            </div>
+        </section>
+    );
+}
+
+function MobilePriorityCarousel({
+    items,
+}: {
+    items: MobilePrioritySlide[];
+}) {
+    const [active, setActive] = useState(0);
+    const touchStartX = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (items.length < 2) return;
+
+        const timer = window.setInterval(() => {
+            if (document.visibilityState !== "visible") return;
+            setActive((current) => (current + 1) % items.length);
+        }, 4800);
+
+        return () => window.clearInterval(timer);
+    }, [items.length]);
+
+    useEffect(() => {
+        if (active < items.length) return;
+        setActive(0);
+    }, [active, items.length]);
+
+    useEffect(() => {
+        if (items.length < 2) return;
+
+        const next = items[(active + 1) % items.length];
+        if (!next?.image) return;
+
+        const image = new Image();
+        image.decoding = "async";
+        image.src = next.image;
+    }, [active, items]);
+
+    if (!items.length) return null;
+
+    const item = items[active];
+    const finishSwipe = (clientX: number) => {
+        if (touchStartX.current === null || items.length < 2) return;
+
+        const distance = clientX - touchStartX.current;
+        touchStartX.current = null;
+        if (Math.abs(distance) < 38) return;
+
+        setActive(
+            (current) =>
+                (current + (distance > 0 ? -1 : 1) + items.length) %
+                items.length,
+        );
+    };
+
+    const toneClass =
+        item.tone === "video"
+            ? "bg-rose-300/15 text-rose-100"
+            : item.tone === "studio"
+              ? "bg-violet-300/15 text-violet-100"
+              : item.tone === "product"
+                ? "bg-sky-300/15 text-sky-100"
+                : item.tone === "game"
+                  ? "bg-cyan-300/15 text-cyan-100"
+                  : item.tone === "radar"
+                    ? "bg-emerald-300/15 text-emerald-100"
+                    : item.tone === "signal"
+                      ? "bg-amber-300/15 text-amber-100"
+                      : "bg-indigo-300/15 text-indigo-100";
+
+    return (
+        <div className="pn-stable-slider min-w-0">
+            <div
+                className="relative min-w-0"
+                onTouchEnd={(event) =>
+                    finishSwipe(event.changedTouches[0].clientX)
+                }
+                onTouchStart={(event) => {
+                    touchStartX.current = event.touches[0].clientX;
+                }}
+            >
+                <Link
+                    className="pn-mobile-card pn-mobile-card--lead group relative block aspect-[16/9] min-h-[164px] max-h-[220px] w-full overflow-hidden rounded-[20px] border border-white/8 bg-[#070b14]"
+                    href={item.url}
+                >
+                    {item.image ? (
+                        <img
+                            alt={item.title}
+                            className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                            decoding="async"
+                            fetchPriority="auto"
+                            src={item.image}
+                        />
+                    ) : (
+                        <span className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(99,102,241,.35),transparent_36%),linear-gradient(145deg,#0d1328,#05070d)]" />
+                    )}
+                    <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.02),rgba(2,6,23,.14)_42%,rgba(2,6,23,.92)_100%)]" />
+                    <span className="absolute inset-x-0 bottom-0 z-[2] p-3.5">
+                        <span
+                            className={`mb-1.5 inline-flex rounded-full px-2 py-1 text-[8px] font-black ${toneClass}`}
+                        >
+                            {item.eyebrow}
+                        </span>
+                        <strong className="block line-clamp-2 text-[13px] font-black leading-5 text-white">
+                            {item.title}
+                        </strong>
+                        <small className="mt-1 block line-clamp-1 text-[9px] text-white/55">
+                            {item.subtitle}
+                        </small>
+                    </span>
+                </Link>
+            </div>
+
+            {items.length > 1 && (
+                <div
+                    aria-label="انتخاب محتوای Nexus Now"
+                    className="home-slider mt-2 flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                    {items.slice(0, 10).map((slide, index) => (
+                        <button
+                            aria-label={slide.title}
+                            className={`group/cloud relative h-[48px] w-[68px] shrink-0 snap-start overflow-hidden rounded-[13px] border transition duration-200 ${
+                                index === active
+                                    ? "border-cyan-300/75 ring-2 ring-cyan-300/20"
+                                    : "border-white/8 opacity-70 hover:opacity-100"
+                            }`}
+                            key={`cloud-${slide.key}`}
+                            onClick={() => setActive(index)}
+                            type="button"
+                        >
+                            {slide.image && (
+                                <img
+                                    alt=""
+                                    className="absolute inset-0 size-full object-cover"
+                                    loading="lazy"
+                                    src={slide.image}
+                                />
+                            )}
+                            <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                            <span className="absolute inset-x-1 bottom-1 truncate text-[6px] font-black text-white/90">
+                                {slide.eyebrow}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function GuestWelcomePanel({
+    seo,
+    latestFeed,
+    gameRadar,
+    channels,
+    freshContent,
+    latestStudios,
+    latestProducts,
+}: {
+    seo: SeoData & { heading: string };
+    latestFeed: HomeFeedPreviewItem[];
+    gameRadar: GameRadarItem[];
+    channels: ChannelItem[];
+    freshContent: FreshItem[];
+    latestStudios: StudioItem[];
+    latestProducts: StorefrontProduct[];
+}) {
+    const feedSlides: MobilePrioritySlide[] = latestFeed.slice(0, 3).map(
+        (item) => ({
+            key: `guest-feed-${item.id}`,
+            eyebrow: item.badge || "فید",
+            title: item.title,
+            subtitle: item.author.name,
+            url: item.url,
+            image: feedPreviewImage(item),
+            tone: "feed",
+        }),
+    );
+
+    const videoSlides: MobilePrioritySlide[] = freshContent
+        .filter((item) => item.type === "video")
+        .slice(0, 3)
+        .map((item) => ({
+            key: `guest-video-${item.key}`,
+            eyebrow: "ویدیو",
+            title: item.title,
+            subtitle: item.eyebrow || "ویدیوی تازه PlayNexus",
+            url: item.url,
+            image: item.image_url,
+            tone: "video",
+        }));
+
+    const studioSlides: MobilePrioritySlide[] = latestStudios
+        .slice(0, 3)
+        .map((studio) => ({
+            key: `guest-studio-${studio.id}`,
+            eyebrow: "استودیو",
+            title: studio.name,
+            subtitle: `${money.format(studio.channels_count)} بازی و کانال`,
+            url: studio.url,
+            image: studio.background_url ?? studio.logo_url,
+            tone: "studio",
+        }));
+
+    const gameSlides: MobilePrioritySlide[] = channels.slice(0, 3).map(
+        (channel) => ({
+            key: `guest-game-${channel.id}`,
+            eyebrow: "بازی",
+            title: channel.name,
+            subtitle: `${money.format(channel.videos_count)} ویدیو`,
+            url: channel.url,
+            image: channel.image_url,
+            tone: "game",
+        }),
+    );
+
+    const productSlides: MobilePrioritySlide[] = latestProducts
+        .slice(0, 3)
+        .map((product) => ({
+            key: `guest-product-${product.id}`,
+            eyebrow: "محصول",
+            title: product.title,
+            subtitle: product.category ?? "تازه در فروشگاه PlayNexus",
+            url: product.url,
+            image: product.cover_url,
+            tone: "product",
+        }));
+
+    const radarSlides: MobilePrioritySlide[] = gameRadar.slice(0, 3).map(
+        (item) => ({
+            key: `guest-radar-${item.id}`,
+            eyebrow: "گیم رادار",
+            title: item.title,
+            subtitle: item.description ?? "تازه‌ترین ورودی Game Radar",
+            url: item.playnexus_url ?? "/game-radar",
+            image: item.banner_url ?? item.cover_url,
+            tone: "radar",
+        }),
+    );
+
+    const latestSlides = mixPrioritySlides(
+        [
+            feedSlides,
+            videoSlides,
+            studioSlides,
+            gameSlides,
+            productSlides,
+            radarSlides,
+        ],
+        10,
+    );
+
+    const mediaCloud: PersonalizedMediaCloudItem[] = latestSlides
+        .filter((item) => Boolean(item.image))
+        .slice(0, 7)
+        .map((item) => ({
+            key: `guest-cloud-${item.key}`,
+            title: item.title,
+            image_url: item.image!,
+            url: item.url,
+            source: item.tone === "radar" ? "radar" : "playnexus",
+        }));
+
+    return (
+        <section className="mx-auto w-full max-w-[1460px] px-3 pb-2 pt-2 sm:px-4 sm:pb-5 sm:pt-4">
+            <div className="pn-signature-frame pn-signature-frame--hero pn-pulse-shell pn-guest-welcome relative overflow-hidden rounded-[22px] border border-indigo-400/20 text-white sm:rounded-[30px]">
+                <header className="pn-pulse-header relative overflow-hidden px-3 py-3 sm:px-6 sm:py-5">
+                    <div className="sm:hidden">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                            <div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-[8px] font-black tracking-[.16em] text-cyan-200/70">
+                                        NEXUS DISCOVER
+                                    </span>
+                                    <span className="size-1 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,.7)]" />
+                                </div>
+                                <h1 className="mt-0.5 text-[15px] font-black leading-6 text-white">
+                                    تازه‌های PlayNexus
+                                </h1>
+                            </div>
+                            <span className="rounded-full border border-white/8 bg-white/[0.04] px-2 py-1 text-[8px] font-bold text-white/55">
+                                آخرین ورودی‌ها
+                            </span>
+                        </div>
+
+                        <MobilePriorityCarousel items={latestSlides} />
+                    </div>
+
+                    <div className="relative z-10 hidden gap-5 sm:grid lg:min-h-[166px] lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-center">
+                        <div className="pn-pulse-copy min-w-0">
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-indigo-400/15 text-indigo-200">
+                                    <Sparkles size={18} />
+                                </span>
+                                <span className="text-[10px] font-black tracking-[.18em] text-indigo-200/85">
+                                    NEXUS DISCOVER
+                                </span>
+                                <span className="rounded-full border border-emerald-300/10 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-black text-emerald-200">
+                                    آخرین ورودی‌های سایت
+                                </span>
+                            </div>
+
+                            <h1 className="text-3xl font-black leading-tight">
+                                به PlayNexus خوش اومدی
+                            </h1>
+                            <p className="mt-2 max-w-2xl text-sm leading-7 text-white/50">
+                                {seo.description}
+                            </p>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {[
+                                    "فید",
+                                    "ویدیو",
+                                    "استودیو",
+                                    "بازی",
+                                    "محصول",
+                                    "گیم رادار",
+                                ].map((label) => (
+                                    <span
+                                        className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[9px] font-bold text-white/65"
+                                        key={label}
+                                    >
+                                        {label}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        {mediaCloud.length > 0 && (
+                            <div
+                                aria-label="آخرین آیتم‌های PlayNexus"
+                                className="pn-media-cloud relative z-10 h-[118px] min-w-0 lg:h-[150px]"
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    className="pn-media-cloud__halo"
+                                />
+                                {mediaCloud.map((item, index) => (
+                                    <Link
+                                        aria-label={item.title}
+                                        className="pn-media-cloud__tile"
+                                        data-source={item.source}
+                                        href={item.url}
+                                        key={item.key}
+                                        title={item.title}
+                                    >
+                                        <img
+                                            alt=""
+                                            className="pn-media-cloud__image"
+                                            decoding="async"
+                                            draggable={false}
+                                            loading={index === 0 ? "eager" : "lazy"}
+                                            src={item.image_url}
+                                        />
+                                        <span className="pn-media-cloud__shade" />
+                                        <span className="pn-media-cloud__source">
+                                            {item.source === "radar"
+                                                ? "RADAR"
+                                                : "NEXUS"}
+                                        </span>
+                                        <span className="pn-media-cloud__title">
+                                            {item.title}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </header>
+            </div>
+        </section>
+    );
+}
+
+function PersonalizedHomePanel({
+    data,
+    userName,
+    latestFeed,
+    latestStudios,
+    latestProducts,
+    channels,
+    freshContent,
+    gameRadar,
+}: {
+    data: PersonalizedHomeData;
+    userName: string;
+    latestFeed: HomeFeedPreviewItem[];
+    latestStudios: StudioItem[];
+    latestProducts: StorefrontProduct[];
+    channels: ChannelItem[];
+    freshContent: FreshItem[];
+    gameRadar: GameRadarItem[];
+}) {
+    const firstName = userName.trim().split(/\s+/)[0] || "گیمر";
+    const structuredContentIds = new Set(
+        data.events
+            .map((event) => event.source_content_id)
+            .filter((id): id is number => typeof id === "number"),
+    );
+
+    const normalizeTitle = (value: string) =>
+        value
+            .toLocaleLowerCase("fa-IR")
+            .replace(/[\s\u200c\-_:،,.!?؟]+/g, " ")
+            .trim();
+
+    const uniqueByTitle = (items: PersonalizedFeedItem[]) => {
+        const seen = new Set<string>();
+
+        return items.filter((item) => {
+            const key = normalizeTitle(item.title);
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    };
+
+    const personalizedVideos = uniqueByTitle(data.videos);
+    const editorialFeed = uniqueByTitle(
+        data.feed.filter((item) => !structuredContentIds.has(item.id)),
+    );
+
+    const heroVideo = personalizedVideos[0] ?? null;
+    const heroEditorial = heroVideo ? null : (editorialFeed[0] ?? null);
+    const heroItem = heroVideo ?? heroEditorial;
+    const heroIsVideo = heroItem?.type === "video";
+
+    const supportingEditorial = editorialFeed
+        .filter((item) => item.id !== heroEditorial?.id)
+        .slice(0, 2);
+    const supportingIds = new Set(supportingEditorial.map((item) => item.id));
+    const continuationFeed = editorialFeed
+        .filter(
+            (item) =>
+                item.id !== heroEditorial?.id && !supportingIds.has(item.id),
+        )
+        .slice(0, 4);
+
+    const heroEvent =
+        data.events.find(
+            (event) =>
+                (event.priority === "critical" ||
+                    event.priority === "high") &&
+                event.source_content_id !== heroItem?.id,
+        ) ?? null;
+    const secondaryEvents = data.events
+        .filter((event) => event.id !== heroEvent?.id)
+        .slice(0, 4);
+
+    const focusGame = data.intelligence.focus_game;
+    const hasPersonalization =
+        data.followed_games.length > 0 ||
+        Boolean(focusGame) ||
+        data.events.length > 0 ||
+        data.videos.length > 0 ||
+        data.feed.length > 0;
+    const radar = data.radar.slice(0, 3);
+
+    const heroMedia = heroItem?.media.find(
+        (entry) => entry.type === "image" || Boolean(entry.thumbnail),
+    );
+    const heroPreview =
+        (heroItem
+            ? heroMedia?.type === "image"
+                ? heroMedia.url
+                : heroMedia?.thumbnail
+            : null) ?? focusGame?.image_url;
+    const heroDuration = heroMedia?.duration
+        ? durationLabel(heroMedia.duration)
+        : null;
+
+    const personalizedFeedSlides: MobilePrioritySlide[] = (
+        editorialFeed.length ? editorialFeed : latestFeed
+    )
+        .slice(0, 3)
+        .map((item) => ({
+            key: `feed-${item.id}`,
+            eyebrow:
+                "relevance" in item
+                    ? item.relevance.signal_label || "فید برای تو"
+                    : item.badge || "فید",
+            title: item.title,
+            subtitle:
+                "relevance" in item
+                    ? item.relevance.reason
+                    : item.author.name,
+            url: item.url,
+            image: feedPreviewImage(item),
+            tone: "feed",
+        }));
+
+    const personalizedVideoSource =
+        personalizedVideos.length > 0
+            ? personalizedVideos
+            : freshContent.filter((item) => item.type === "video");
+
+    const personalizedVideoSlides: MobilePrioritySlide[] =
+        personalizedVideoSource.slice(0, 3).map((item) => {
+            if ("media" in item) {
+                return {
+                    key: `video-${item.id}`,
+                    eyebrow: "ویدیو",
+                    title: item.title,
+                    subtitle: item.relevance.reason,
+                    url: item.url,
+                    image: feedPreviewImage(item),
+                    tone: "video",
+                };
+            }
+
+            return {
+                key: `video-${item.key}`,
+                eyebrow: "ویدیو",
+                title: item.title,
+                subtitle: item.eyebrow || "ویدیوی تازه PlayNexus",
+                url: item.url,
+                image: item.image_url,
+                tone: "video",
+            };
+        });
+
+    const studioSlides: MobilePrioritySlide[] = latestStudios
+        .slice(0, 3)
+        .map((studio) => ({
+            key: `studio-${studio.id}`,
+            eyebrow: "استودیو",
+            title: studio.name,
+            subtitle: `${money.format(studio.channels_count)} بازی و کانال`,
+            url: studio.url,
+            image: studio.background_url ?? studio.logo_url,
+            tone: "studio",
+        }));
+
+    const gameCandidates: MobilePrioritySlide[] = [];
+    if (focusGame?.image_url) {
+        gameCandidates.push({
+            key: `focus-${focusGame.id}`,
+            eyebrow: "بازی برای تو",
+            title: focusGame.name,
+            subtitle:
+                data.intelligence.focus_reason ??
+                "بازی‌ای که Nexus Watch برای تو زیر نظر دارد",
+            url: focusGame.url,
+            image: focusGame.image_url,
+            tone: "game",
+        });
+    }
+    data.followed_games.slice(0, 2).forEach((game) => {
+        if (!game.image_url) return;
+        gameCandidates.push({
+            key: `follow-${game.id}`,
+            eyebrow: "بازی",
+            title: game.name,
+            subtitle: "از بازی‌هایی که دنبال می‌کنی",
+            url: game.url,
+            image: game.image_url,
+            tone: "game",
+        });
+    });
+    channels.slice(0, 3).forEach((channel) => {
+        gameCandidates.push({
+            key: `channel-${channel.id}`,
+            eyebrow: "بازی",
+            title: channel.name,
+            subtitle: `${money.format(channel.videos_count)} ویدیو`,
+            url: channel.url,
+            image: channel.image_url,
+            tone: "game",
+        });
+    });
+
+    const productSlides: MobilePrioritySlide[] = latestProducts
+        .slice(0, 3)
+        .map((product) => ({
+            key: `product-${product.id}`,
+            eyebrow: "محصول",
+            title: product.title,
+            subtitle: product.category ?? "تازه در فروشگاه PlayNexus",
+            url: product.url,
+            image: product.cover_url,
+            tone: "product",
+        }));
+
+    const radarSource = data.radar.length > 0 ? data.radar : gameRadar;
+    const radarSlides: MobilePrioritySlide[] = radarSource
+        .slice(0, 3)
+        .map((item) => ({
+            key: `radar-${item.id}`,
+            eyebrow: "گیم رادار",
+            title: item.title,
+            subtitle: item.description ?? "سیگنال تازه Game Radar",
+            url: item.playnexus_url ?? "/game-radar",
+            image: item.banner_url ?? item.cover_url,
+            tone: "radar",
+        }));
+
+    const mobilePrioritySlides = mixPrioritySlides(
+        [
+            personalizedFeedSlides,
+            personalizedVideoSlides,
+            studioSlides,
+            gameCandidates,
+            productSlides,
+            radarSlides,
+        ],
+        10,
+    );
+
+    const formatEventChangeValue = (
+        change: PersonalizedGameEvent["change"],
+        value: string | number | null,
+    ) => {
+        if (!change || value === null || value === undefined) return null;
+
+        if (change.kind === "money") {
+            const amount = Number(value);
+            if (change.currency === "TOMAN" || !change.currency) {
+                return `${money.format(amount)} تومان`;
+            }
+
+            try {
+                return new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: change.currency,
+                    maximumFractionDigits: 2,
+                }).format(amount);
+            } catch {
+                return `${amount.toLocaleString("en-US")} ${change.currency}`;
+            }
+        }
+
+        const date = new Date(String(value));
+        if (Number.isNaN(date.getTime())) return String(value);
+
+        return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            timeZone: "Asia/Tehran",
+        }).format(date);
+    };
+
+    const priorityLabel = (priority?: PersonalizedFeedRelevance["priority"]) =>
+        priority === "critical"
+            ? "خیلی مهم برای تو"
+            : priority === "high"
+              ? "مهم برای تو"
+              : priority === "medium"
+                ? "مرتبط با سلیقه‌ات"
+                : "برای تو";
+
+    const feedDateLabel = (value: string | null) => {
+        if (!value) return "";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+
+        return gameRadarDateFormatter.format(date);
+    };
+
+
+    const cloudInternal: PersonalizedMediaCloudItem[] = [];
+    const cloudSeen = new Set<string>();
+
+    const pushCloudItem = (item: PersonalizedMediaCloudItem | null) => {
+        if (!item?.image_url) return;
+        const identity = normalizeTitle(item.title);
+        if (!identity || cloudSeen.has(identity)) return;
+        cloudSeen.add(identity);
+        cloudInternal.push(item);
+    };
+
+    if (focusGame?.image_url) {
+        pushCloudItem({
+            key: `focus-${focusGame.id}`,
+            title: focusGame.name,
+            image_url: focusGame.image_url,
+            url: focusGame.url,
+            source: "playnexus",
+        });
+    }
+
+    data.followed_games.forEach((game) => {
+        if (!game.image_url) return;
+        pushCloudItem({
+            key: `follow-${game.id}`,
+            title: game.name,
+            image_url: game.image_url,
+            url: game.url,
+            source: "playnexus",
+        });
+    });
+
+    [...personalizedVideos, ...editorialFeed].forEach((item) => {
+        const media = item.media.find(
+            (entry) => entry.type === "image" || Boolean(entry.thumbnail),
+        );
+        const imageUrl =
+            media?.type === "image" ? media.url : media?.thumbnail ?? null;
+
+        if (!imageUrl) return;
+        pushCloudItem({
+            key: `content-${item.id}`,
+            title: item.title,
+            image_url: imageUrl,
+            url: item.url,
+            source: "playnexus",
+        });
+    });
+
+    const radarCloud: PersonalizedMediaCloudItem[] = [];
+    data.media_cloud_radar.forEach((item) => {
+        const imageUrl = item.banner_url ?? item.cover_url ?? null;
+        if (!imageUrl) return;
+
+        const identity = normalizeTitle(item.title);
+        if (!identity || cloudSeen.has(identity)) return;
+        cloudSeen.add(identity);
+        radarCloud.push({
+            key: `radar-${item.id}`,
+            title: item.title,
+            image_url: imageUrl,
+            url: item.playnexus_url ?? "/game-radar",
+            source: "radar",
+        });
+    });
+
+    const mediaCloud: PersonalizedMediaCloudItem[] = [];
+    const cloudSize = Math.max(cloudInternal.length, radarCloud.length);
+    for (let index = 0; index < cloudSize; index += 1) {
+        if (cloudInternal[index]) mediaCloud.push(cloudInternal[index]);
+        if (radarCloud[index]) mediaCloud.push(radarCloud[index]);
+        if (mediaCloud.length >= 7) break;
+    }
+
+    if (mediaCloud.length < 7) {
+        [...cloudInternal, ...radarCloud].forEach((item) => {
+            if (
+                mediaCloud.length < 7 &&
+                !mediaCloud.some((cloudItem) => cloudItem.key === item.key)
+            ) {
+                mediaCloud.push(item);
+            }
+        });
+    }
+
+    return (
+        <section className="mx-auto w-full max-w-[1460px] px-3 pb-2 pt-2 sm:px-4 sm:pb-5 sm:pt-4">
+            <div className="pn-signature-frame pn-signature-frame--hero pn-pulse-shell relative overflow-hidden rounded-[22px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)] sm:rounded-[30px]">
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-28 -top-32 size-96 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,.22)_0%,rgba(99,102,241,.10)_38%,transparent_72%)]"
+                />
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -bottom-48 left-0 size-[30rem] rounded-full bg-[radial-gradient(circle,rgba(217,70,239,.12)_0%,rgba(217,70,239,.06)_40%,transparent_72%)]"
+                />
+
+                <header className="pn-pulse-header relative hidden overflow-hidden border-b border-white/10 px-3 py-3 sm:block sm:px-6 sm:py-6">
+                    <div className="relative z-10 grid gap-2 sm:gap-5 lg:min-h-[176px] lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-center">
+                        <div className="pn-pulse-copy relative z-20 min-w-0">
+                            <div className="home-slider mb-1.5 flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mb-2 sm:flex-wrap sm:gap-2 sm:overflow-visible">
+                                <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-indigo-400/15 text-indigo-200 shadow-[0_0_30px_rgba(129,140,248,.12)] sm:size-9 sm:rounded-2xl">
+                                    <Sparkles size={16} className="sm:size-[18px]" />
+                                </span>
+                                <span className="shrink-0 text-[9px] font-black tracking-[.16em] text-indigo-200/85 sm:text-[10px] sm:tracking-[.18em]">
+                                    NEXUS PULSE
+                                </span>
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-300/10 bg-emerald-400/10 px-2 py-1 text-[8px] font-black text-emerald-200 sm:gap-1.5 sm:px-2.5 sm:text-[9px]">
+                                    <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.9)]" />
+                                    {data.intelligence.confidence.label}
+                                </span>
+                                {data.watch.active_games > 0 && (
+                                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-cyan-300/10 bg-cyan-400/[0.07] px-2 py-1 text-[8px] font-black text-cyan-100/80 sm:gap-1.5 sm:px-2.5 sm:text-[9px]">
+                                        <Radar size={11} />
+                                        Nexus Watch •{" "}
+                                        {money.format(data.watch.active_games)}{" "}
+                                        بازی
+                                    </span>
+                                )}
+                            </div>
+
+                            <h1 className="text-lg font-black leading-7 sm:text-3xl">
+                                خوش برگشتی، {firstName}
+                            </h1>
+                            <p className="mt-1 line-clamp-2 max-w-2xl text-[11px] leading-5 text-white/50 sm:mt-2 sm:text-sm sm:leading-7">
+                                {hasPersonalization
+                                    ? "PlayNexus فقط تازه‌ها را نشونت نمی‌ده؛ اول چیزی را می‌آره که احتمالاً الان بیشتر به دردت می‌خوره."
+                                    : "هنوز دارم سلیقه‌ات رو می‌شناسم. چند بازی رو دنبال کن یا با محتواها تعامل داشته باش تا این صفحه کم‌کم مال خودت بشه."}
+                            </p>
+
+                            {data.intelligence.top_signals.length > 0 && (
+                                <div className="home-slider mt-2 flex max-w-full flex-nowrap gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-3 sm:flex-wrap sm:gap-2 sm:overflow-visible">
+                                    {data.intelligence.top_signals.map(
+                                        (signal) => (
+                                            <span
+                                                className="shrink-0 rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[8px] font-bold text-white/65 sm:px-3 sm:py-1.5 sm:text-[9px]"
+                                                key={signal.key}
+                                            >
+                                                {signal.label}
+                                            </span>
+                                        ),
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {mediaCloud.length > 0 && (
+                            <div
+                                aria-label="بازی‌ها و مدیای مرتبط با سلیقه تو"
+                                className="pn-media-cloud relative z-10 hidden h-[118px] min-w-0 sm:block lg:h-[160px]"
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    className="pn-media-cloud__halo"
+                                />
+
+                                {mediaCloud.map((item, index) => (
+                                    <Link
+                                        aria-label={item.title}
+                                        className="pn-media-cloud__tile"
+                                        data-source={item.source}
+                                        href={item.url}
+                                        key={item.key}
+                                        title={item.title}
+                                    >
+                                        <img
+                                            alt=""
+                                            className="pn-media-cloud__image"
+                                            decoding="async"
+                                            draggable={false}
+                                            fetchPriority={
+                                                index === 0 ? "auto" : "low"
+                                            }
+                                            loading={
+                                                index === 0 ? "eager" : "lazy"
+                                            }
+                                            src={item.image_url}
+                                        />
+                                        <span className="pn-media-cloud__shade" />
+                                        <span className="pn-media-cloud__source">
+                                            {item.source === "radar"
+                                                ? "RADAR"
+                                                : "NEXUS"}
+                                        </span>
+                                        <span className="pn-media-cloud__title">
+                                            {item.title}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </header>
+
+                <div className="pn-mobile-now pn-pulse-mobile-copy relative z-10 px-2.5 pb-1.5 pt-2.5 sm:hidden">
+                    <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[8px] font-black tracking-[.16em] text-cyan-200/70">
+                                    NEXUS NOW
+                                </span>
+                                <span className="size-1 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,.7)]" />
+                            </div>
+                            <h1 className="mt-0.5 truncate text-[15px] font-black leading-6 text-white">
+                                خوش برگشتی، {firstName}
+                            </h1>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                            <span className="rounded-full border border-white/8 bg-white/[0.04] px-2 py-1 text-[8px] font-bold text-white/55">
+                                {data.intelligence.confidence.label}
+                            </span>
+                            {data.watch.active_games > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/10 bg-cyan-300/[0.05] px-2 py-1 text-[8px] font-bold text-cyan-100/70">
+                                    <Radar size={9} />
+                                    {money.format(data.watch.active_games)}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {mobilePrioritySlides.length > 0 ? (
+                        <MobilePriorityCarousel
+                            items={mobilePrioritySlides.slice(0, 10)}
+                        />
+                    ) : (
+                        <p className="rounded-[16px] border border-white/8 bg-white/[0.035] px-3 py-2.5 text-[10px] leading-5 text-white/50">
+                            چند بازی رو دنبال کن یا با محتواها تعامل داشته باش تا Nexus Pulse سریع‌تر سلیقه‌ات رو بشناسه.
+                        </p>
+                    )}
+                </div>
+
+                {!hasPersonalization ? (
+                    <div className="relative p-4 sm:p-6">
+                        <div className="overflow-hidden rounded-[24px] border border-dashed border-white/15 bg-white/[0.035]">
+                            <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                                <div className="flex items-start gap-3">
+                                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/10 text-indigo-200">
+                                        <Gamepad2 size={23} />
+                                    </span>
+                                    <div>
+                                        <strong className="text-sm font-black sm:text-base">
+                                            بذار PlayNexus سلیقه‌ات رو یاد بگیره
+                                        </strong>
+                                        <p className="mt-1 max-w-2xl text-xs leading-6 text-white/45">
+                                            لازم نیست فرم پر کنی. بازی‌ها رو Follow کن، چیزهایی که دوست داری Save یا Like کن و ویدیو ببین؛ بقیه‌ش رو خود Nexus Pulse یاد می‌گیره.
+                                        </p>
+                                    </div>
+                                </div>
+                                <Link
+                                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-950 transition hover:scale-[1.02]"
+                                    href="/search"
+                                >
+                                    پیدا کردن بازی
+                                    <ArrowUpLeft size={15} />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="relative p-2.5 sm:p-4 lg:p-5">
+                        <section className="pn-neon-panel hidden overflow-hidden rounded-[22px] bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)] sm:block sm:rounded-[26px]">
+                            <div className="grid lg:grid-cols-[minmax(0,1.75fr)_minmax(320px,.8fr)]">
+                                <div className="group relative aspect-[4/3] min-h-0 overflow-hidden bg-slate-950 sm:aspect-[16/9] lg:aspect-auto lg:min-h-[430px]">
+                                    {heroPreview ? (
+                                        <img
+                                            alt={
+                                                heroItem?.title ??
+                                                focusGame?.name ??
+                                                "Nexus Pulse"
+                                            }
+                                            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.025]"
+                                            decoding="async"
+                                            fetchPriority="high"
+                                            src={heroPreview}
+                                        />
+                                    ) : (
+                                        <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_70%_15%,#312e81,#020617_72%)] text-indigo-200/45">
+                                            <Gamepad2 size={68} />
+                                        </span>
+                                    )}
+
+                                    <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.04)_8%,rgba(2,6,23,.16)_38%,rgba(2,6,23,.92)_82%,#020617_100%)]" />
+                                    <span className="absolute inset-0 bg-[radial-gradient(circle_at_82%_8%,rgba(99,102,241,.2),transparent_38%)]" />
+
+                                    {heroItem ? (
+                                        <Link
+                                            aria-label={heroItem.title}
+                                            className="absolute inset-0 z-10"
+                                            href={heroItem.url}
+                                        />
+                                    ) : focusGame ? (
+                                        <Link
+                                            aria-label={focusGame.name}
+                                            className="absolute inset-0 z-10"
+                                            href={focusGame.url}
+                                        />
+                                    ) : null}
+
+                                    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 sm:p-5">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span
+                                                className={
+                                                    heroIsVideo
+                                                        ? "inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-slate-950"
+                                                        : "inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] font-black text-white/80"
+                                                }
+                                            >
+                                                {heroIsVideo ? (
+                                                    <Play
+                                                        fill="currentColor"
+                                                        size={10}
+                                                    />
+                                                ) : (
+                                                    <Newspaper size={10} />
+                                                )}
+                                                {heroIsVideo
+                                                    ? "ویدیوی منتخب"
+                                                    : "منتخب تو"}
+                                            </span>
+
+                                            {heroItem && (
+                                                <span className="rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white/60">
+                                                    {
+                                                        heroItem.relevance
+                                                            .signal_label
+                                                    }
+                                                </span>
+                                            )}
+
+                                            {heroDuration && (
+                                                <span className="rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white/70">
+                                                    {heroDuration}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {focusGame && (
+                                            <span className="hidden max-w-[220px] items-center gap-2 rounded-full border border-white/10 bg-black/55 px-2 py-1.5 text-[9px] font-bold text-white/55 sm:inline-flex">
+                                                {focusGame.image_url && (
+                                                    <img
+                                                        alt={focusGame.name}
+                                                        className="size-5 rounded-full object-cover"
+                                                        src={focusGame.image_url}
+                                                    />
+                                                )}
+                                                <span className="truncate">
+                                                    تمرکز: {focusGame.name}
+                                                </span>
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {heroIsVideo && (
+                                        <span className="pointer-events-none absolute left-1/2 top-1/2 z-20 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/50 text-white shadow-[0_18px_55px_rgba(0,0,0,.35)] transition duration-300 group-hover:scale-105 sm:size-20">
+                                            <Play
+                                                className="translate-x-[-1px]"
+                                                fill="currentColor"
+                                                size={28}
+                                            />
+                                        </span>
+                                    )}
+
+                                    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-3.5 sm:p-6">
+                                        <p className="mb-2 text-[9px] font-black tracking-[.14em] text-indigo-200/70">
+                                            {heroIsVideo
+                                                ? "WATCH NEXT"
+                                                : "FOR YOU"}
+                                        </p>
+                                        <h2 className="max-w-3xl text-lg font-black leading-7 text-white sm:text-3xl sm:leading-[1.35]">
+                                            {heroItem?.title ??
+                                                (focusGame
+                                                    ? "فعلاً چیز مهم تازه‌ای برای " +
+                                                      focusGame.name +
+                                                      " پیدا نکردم"
+                                                    : "فعلاً چیزی نیست که لازم باشه از دستش ندی")}
+                                        </h2>
+
+                                        {heroItem && (
+                                            <div className="mt-3 flex max-w-2xl items-center gap-2 text-[10px] leading-5 text-white/50 sm:text-xs">
+                                                <Sparkles
+                                                    className="shrink-0 text-indigo-200"
+                                                    size={13}
+                                                />
+                                                <span className="line-clamp-2">
+                                                    {
+                                                        heroItem.relevance
+                                                            .reason
+                                                    }
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <aside className="pn-pulse-aside flex min-w-0 flex-col border-t border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01))] lg:border-r lg:border-t-0">
+                                    <header className="flex items-center justify-between gap-3 border-b border-white/8 px-3 py-3 sm:px-4 sm:py-3.5">
+                                        <div>
+                                            <p className="text-[8px] font-black tracking-[.14em] text-indigo-200/55">
+                                                PULSE MIX
+                                            </p>
+                                            <h3 className="mt-0.5 text-sm font-black">
+                                                کنار این، این‌ها مهمن
+                                            </h3>
+                                        </div>
+                                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[8px] font-black text-white/40">
+                                            بدون تکرار
+                                        </span>
+                                    </header>
+
+                                    <div className="home-slider flex flex-1 snap-x snap-mandatory gap-2 overflow-x-auto bg-white/[0.035] p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:gap-px sm:overflow-visible sm:bg-white/8 sm:p-0 lg:grid-cols-1">
+                                        {supportingEditorial.map((item) => {
+                                            const media = item.media.find(
+                                                (entry) =>
+                                                    entry.type === "image" ||
+                                                    Boolean(
+                                                        entry.thumbnail,
+                                                    ),
+                                            );
+                                            const preview =
+                                                media?.type === "image"
+                                                    ? media.url
+                                                    : media?.thumbnail;
+                                            const badgeLabel =
+                                                (item.badge &&
+                                                    homeFeedBadgeLabels[
+                                                        item.badge
+                                                    ]) ||
+                                                item.relevance.signal_label ||
+                                                "فید";
+                                            const dateLabel = feedDateLabel(
+                                                item.created_at,
+                                            );
+
+                                            return (
+                                                <Link
+                                                    className="pn-pulse-support-card group flex min-h-[122px] w-[82vw] max-w-[320px] shrink-0 snap-start gap-3 rounded-[16px] bg-[#080d1b] p-3 transition hover:bg-white/[0.04] sm:w-auto sm:max-w-none sm:rounded-none sm:p-3.5"
+                                                    href={item.url}
+                                                    key={item.id}
+                                                >
+                                                    <span className="relative w-[42%] shrink-0 overflow-hidden rounded-[16px] bg-[#050914]">
+                                                        {preview ? (
+                                                            <>
+                                                                <img
+                                                                    aria-hidden="true"
+                                                                    alt=""
+                                                                    className="absolute inset-0 size-full scale-110 object-cover opacity-35 blur-xl"
+                                                                    loading="lazy"
+                                                                    src={preview}
+                                                                />
+                                                                <img
+                                                                    alt={
+                                                                        media?.alt ??
+                                                                        item.title
+                                                                    }
+                                                                    className="relative z-[1] size-full object-contain p-1 transition duration-500 group-hover:scale-[1.025]"
+                                                                    decoding="async"
+                                                loading="lazy"
+                                                                    src={preview}
+                                                                />
+                                                            </>
+                                                        ) : (
+                                                            <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#151d31,#0b1120)] text-indigo-200/20">
+                                                                <Newspaper
+                                                                    size={28}
+                                                                />
+                                                            </span>
+                                                        )}
+                                                    </span>
+
+                                                    <span className="flex min-w-0 flex-1 flex-col justify-center">
+                                                        <span className="mb-2 flex items-center gap-2">
+                                                            <span className="rounded-full bg-white/[0.06] px-2 py-1 text-[8px] font-black text-white/55">
+                                                                {badgeLabel}
+                                                            </span>
+                                                            {dateLabel && (
+                                                                <span className="text-[8px] text-white/25">
+                                                                    {dateLabel}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <strong className="line-clamp-2 text-[12px] font-black leading-5 text-white">
+                                                            {item.title}
+                                                        </strong>
+                                                    </span>
+                                                </Link>
+                                            );
+                                        })}
+
+                                        {heroEvent && (
+                                            <Link
+                                                className="pn-pulse-support-card pn-pulse-signal-card group relative block min-h-[122px] w-[82vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-[16px] bg-[#080d1b] p-3.5 transition hover:bg-amber-300/[0.035] sm:w-auto sm:max-w-none sm:rounded-none sm:p-4"
+                                                href={heroEvent.url}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-amber-300/10 text-amber-200 ring-1 ring-amber-200/10">
+                                                        <Sparkles size={16} />
+                                                    </span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="mb-1.5 flex items-center gap-2">
+                                                            <span className="text-[8px] font-black tracking-[.12em] text-amber-200/65">
+                                                                NEXUS SIGNAL
+                                                            </span>
+                                                            <span className="rounded-full bg-amber-300/10 px-2 py-0.5 text-[8px] font-black text-amber-100/70">
+                                                                {
+                                                                    heroEvent.type_label
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        <strong className="block line-clamp-2 text-[11px] leading-5 text-white/85">
+                                                            {heroEvent.title}
+                                                        </strong>
+
+                                                        {heroEvent.change && (
+                                                            <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[8px] font-bold">
+                                                                <span className="text-white/30">
+                                                                    {formatEventChangeValue(
+                                                                        heroEvent.change,
+                                                                        heroEvent
+                                                                            .change
+                                                                            .from,
+                                                                    )}
+                                                                </span>
+                                                                <span className="text-amber-200/55">
+                                                                    ←
+                                                                </span>
+                                                                <span className="text-emerald-200/75">
+                                                                    {formatEventChangeValue(
+                                                                        heroEvent.change,
+                                                                        heroEvent
+                                                                            .change
+                                                                            .to,
+                                                                    )}
+                                                                </span>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        )}
+
+                                        {supportingEditorial.length === 0 &&
+                                            !heroEvent && (
+                                                <div className="pn-pulse-support-card w-[82vw] max-w-[320px] shrink-0 snap-start rounded-[16px] bg-[#080d1b] p-4 text-[10px] leading-6 text-white/35 sm:w-auto sm:max-w-none sm:rounded-none sm:p-5">
+                                                    فعلاً چیز مکملی نیست که ارزش
+                                                    تکرار کردن داشته باشه. وقتی
+                                                    محتوای تازه‌ی مرتبط بیاد، این
+                                                    قسمت خودش پر می‌شه.
+                                                </div>
+                                            )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between gap-3 border-t border-white/8 px-3 py-2.5 sm:px-4 sm:py-3">
+                                        <span className="text-[9px] text-white/30">
+                                            ویدیو + فید + سیگنال، یک‌جا
+                                        </span>
+                                        <Link
+                                            className="text-[9px] font-black text-indigo-200/65 transition hover:text-indigo-100"
+                                            href="/feed"
+                                        >
+                                            فید کامل
+                                        </Link>
+                                    </div>
+                                </aside>
+                            </div>
+                        </section>
+
+                        {continuationFeed.length > 0 && (
+                            <section className="pn-neon-panel pn-pulse-section mt-2.5 rounded-[20px] bg-white/[0.025] p-3 sm:mt-4 sm:rounded-[24px] sm:p-4">
+                                <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="grid size-8 place-items-center rounded-xl bg-indigo-400/10 text-indigo-200">
+                                            <Newspaper size={14} />
+                                        </span>
+                                        <div>
+                                            <h3 className="text-sm font-black">
+                                                ادامه‌ی فید تو
+                                            </h3>
+                                            <p className="mt-0.5 text-[9px] text-white/30">
+                                                چیزهایی که بالا ندیدی
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        className="text-[9px] font-black text-white/45 transition hover:text-white/75"
+                                        href="/feed"
+                                    >
+                                        همه فیدها
+                                    </Link>
+                                </div>
+
+                                <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
+                                    {continuationFeed.map((item) => {
+                                        const media = item.media.find(
+                                            (entry) =>
+                                                entry.type === "image" ||
+                                                Boolean(entry.thumbnail),
+                                        );
+                                        const preview =
+                                            media?.type === "image"
+                                                ? media.url
+                                                : media?.thumbnail;
+                                        const badgeLabel =
+                                            (item.badge &&
+                                                homeFeedBadgeLabels[
+                                                    item.badge
+                                                ]) ||
+                                            item.relevance.signal_label ||
+                                            "فید";
+                                        const dateLabel = feedDateLabel(
+                                            item.created_at,
+                                        );
+
+                                        return (
+                                            <Link
+                                                className="pn-pulse-feed-card group w-[calc((100vw-4rem)/2)] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-[16px] border border-white/8 bg-[#0a1020] transition hover:-translate-y-0.5 hover:border-indigo-300/20 sm:w-[290px] sm:max-w-[310px] sm:rounded-[18px]"
+                                                href={item.url}
+                                                key={item.id}
+                                            >
+                                                <span className="relative block aspect-[4/3] overflow-hidden bg-[#050914] sm:aspect-[16/10]">
+                                                    {preview ? (
+                                                        <img
+                                                            alt={
+                                                                media?.alt ??
+                                                                item.title
+                                                            }
+                                                            className="relative z-[1] size-full object-contain p-1.5 transition duration-300 group-hover:scale-[1.02]"
+                                                            decoding="async"
+                                                            loading="lazy"
+                                                            src={preview}
+                                                        />
+                                                    ) : (
+                                                        <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#151d31,#0b1120)] text-indigo-200/20">
+                                                            <Newspaper
+                                                                size={28}
+                                                            />
+                                                        </span>
+                                                    )}
+                                                    <span className="absolute inset-0 z-[2] bg-gradient-to-t from-black/45 via-transparent to-black/5" />
+                                                    <span className="absolute right-2 top-2 z-[3] rounded-full bg-black/60 px-2 py-1 text-[8px] font-black text-white/70">
+                                                        {badgeLabel}
+                                                    </span>
+                                                </span>
+
+                                                <span className="pn-pulse-feed-copy block p-2.5 sm:p-3">
+                                                    <strong className="block line-clamp-2 min-h-9 text-[10px] font-black leading-[18px] text-white/90 sm:min-h-10 sm:text-[11px] sm:leading-5">
+                                                        {item.title}
+                                                    </strong>
+                                                    {dateLabel && (
+                                                        <span className="mt-2 block text-[8px] text-white/25">
+                                                            {dateLabel}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        )}
+
+                        {secondaryEvents.length > 0 && (
+                            <div className="pn-neon-panel pn-neon-panel--warm pn-pulse-section mt-4 rounded-[24px] bg-[linear-gradient(135deg,rgba(245,158,11,.055),rgba(255,255,255,.02))] p-3 sm:p-4">
+                                <div className="mb-3 flex items-end justify-between gap-3 px-1">
+                                    <div>
+                                        <p className="text-[9px] font-black tracking-[.14em] text-amber-200/65">
+                                            STRUCTURED SIGNALS
+                                        </p>
+                                        <h3 className="mt-1 text-sm font-black">
+                                            نبض ساختاریافته بازی‌های تو
+                                        </h3>
+                                        <p className="mt-0.5 text-[9px] text-white/35">
+                                            تغییر واقعی، نه صرفاً یک خبر تازه
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[8px] font-black text-white/45">
+                                        {money.format(data.events.length)} سیگنال
+                                    </span>
+                                </div>
+                                <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
+                                    {secondaryEvents.map((event) => (
+                                        <Link
+                                            className="pn-pulse-event-card group relative w-[78vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[20px] border border-white/10 bg-slate-950 transition hover:-translate-y-0.5 hover:border-amber-200/25 sm:w-[300px]"
+                                            href={event.url}
+                                            key={event.id}
+                                        >
+                                            <span className="relative block aspect-[16/9] overflow-hidden">
+                                                {event.game?.image_url ? (
+                                                    <img
+                                                        alt={event.game.name}
+                                                        className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                                                        decoding="async"
+                                                loading="lazy"
+                                                        src={event.game.image_url}
+                                                    />
+                                                ) : (
+                                                    <span className="grid size-full place-items-center bg-[radial-gradient(circle_at_top,#78350f,#020617_72%)] text-amber-200/60">
+                                                        <Sparkles size={30} />
+                                                    </span>
+                                                )}
+                                                <span className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                                                <span className="absolute right-2.5 top-2.5 rounded-full bg-amber-300 px-2 py-1 text-[8px] font-black text-slate-950">
+                                                    {event.type_label}
+                                                </span>
+                                                {event.game && (
+                                                    <span className="absolute bottom-2.5 right-2.5 rounded-full border border-white/10 bg-black/55 px-2 py-1 text-[8px] font-black text-white/75">
+                                                        {event.game.name}
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className="pn-pulse-event-copy block p-3">
+                                                <strong className="block line-clamp-2 min-h-10 text-xs leading-5 text-white">
+                                                    {event.title}
+                                                </strong>
+                                                {event.change && (
+                                                    <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[8px] font-bold">
+                                                        <span className="text-white/35">
+                                                            {formatEventChangeValue(
+                                                                event.change,
+                                                                event.change.from,
+                                                            )}
+                                                        </span>
+                                                        <span className="text-amber-200/60">←</span>
+                                                        <span className="text-emerald-200/80">
+                                                            {formatEventChangeValue(
+                                                                event.change,
+                                                                event.change.to,
+                                                            )}
+                                                        </span>
+                                                    </span>
+                                                )}
+                                                <small className="mt-2 flex items-start gap-1.5 text-[9px] leading-4 text-white/40">
+                                                    <Sparkles
+                                                        className="mt-0.5 shrink-0 text-amber-200/70"
+                                                        size={11}
+                                                    />
+                                                    {event.reason}
+                                                </small>
+                                            </span>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {data.followed_games.length > 0 && (
+                            <div className="pn-neon-panel pn-pulse-section mt-2.5 rounded-[20px] bg-white/[0.03] p-3 sm:mt-4 sm:rounded-[24px] sm:p-4">
+                                <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                                    <div>
+                                        <h3 className="text-sm font-black">بازی‌های تو</h3>
+                                        <p className="mt-0.5 text-[9px] text-white/35">
+                                            Nexus Watch این بازی‌ها رو دنبال می‌کنه؛ ترتیب هم با اهمیت فعلی برای تو تغییر می‌کنه
+                                        </p>
+                                    </div>
+                                    <Link
+                                        className="text-[10px] font-black text-indigo-200 hover:text-white"
+                                        href="/feed?tab=following"
+                                    >
+                                        فید دنبال‌شده‌ها
+                                    </Link>
+                                </div>
+                                <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
+                                    {data.followed_games.map((game) => (
+                                        <Link
+                                            className="group relative aspect-[16/10] w-[185px] shrink-0 snap-start overflow-hidden rounded-[18px] border border-white/10 bg-slate-950 sm:w-[220px]"
+                                            href={game.url}
+                                            key={game.id}
+                                        >
+                                            {game.image_url ? (
+                                                <img
+                                                    alt={game.name}
+                                                    className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.05]"
+                                                    decoding="async"
+                                                loading="lazy"
+                                                    src={game.image_url}
+                                                />
+                                            ) : (
+                                                <span className="absolute inset-0 grid place-items-center text-indigo-200/60">
+                                                    <Gamepad2 size={34} />
+                                                </span>
+                                            )}
+                                            <span className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-transparent" />
+                                            {focusGame?.id === game.id && (
+                                                <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[8px] font-black text-slate-950">
+                                                    اولویت فعلی
+                                                </span>
+                                            )}
+                                            <strong className="absolute inset-x-3 bottom-2.5 line-clamp-2 text-[11px] font-black leading-5 text-white">
+                                                {game.name}
+                                            </strong>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </section>
     );
@@ -1004,7 +2660,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
 
                             return (
                                 <article
-                                    className={`group relative aspect-[4/5] w-[68vw] max-w-[285px] shrink-0 snap-center overflow-hidden rounded-[19px] border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-1 sm:aspect-[16/11] sm:w-[300px] lg:w-full lg:max-w-none ${
+                                    className={`group relative aspect-[4/5] w-[82vw] max-w-[320px] shrink-0 snap-center overflow-hidden rounded-[19px] border border-white/10 bg-slate-900 transition duration-300 hover:-translate-y-1 sm:aspect-[16/11] sm:w-[300px] lg:w-full lg:max-w-none ${
                                         index === 0
                                             ? "lg:col-span-6 lg:row-span-2 lg:aspect-auto lg:min-h-[360px]"
                                             : index >= 5
@@ -1047,7 +2703,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                                     <span className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
 
                                     <span
-                                        className={`pointer-events-none absolute right-2.5 top-2.5 z-20 rounded-full px-2 py-1 text-[8px] font-black backdrop-blur-md ${
+                                        className={`pointer-events-none absolute right-2.5 top-2.5 z-20 rounded-full px-2 py-1 text-[8px] font-black ${
                                             item.status === "coming"
                                                 ? "bg-amber-400/15 text-amber-200"
                                                 : "bg-white/12 text-white/80"
@@ -1059,7 +2715,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                                     </span>
 
                                     {store.price && (
-                                        <span className="pointer-events-none absolute left-2.5 top-2.5 z-20 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white backdrop-blur-md">
+                                        <span className="pointer-events-none absolute left-2.5 top-2.5 z-20 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white">
                                             {store.price}
                                         </span>
                                     )}
@@ -1076,7 +2732,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                                                 {isPs5 ? "PS5" : "Xbox Series X|S"}
                                             </span>
                                             {alsoAvailable && (
-                                                <span className="rounded-full bg-white/10 px-2 py-1 text-[8px] font-bold text-white/65 backdrop-blur-md">
+                                                <span className="rounded-full bg-white/10 px-2 py-1 text-[8px] font-bold text-white/65">
                                                     هر دو Store
                                                 </span>
                                             )}
@@ -1102,7 +2758,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
 
                                     {item.playnexus_url && (
                                         <Link
-                                            className="absolute bottom-2.5 right-2.5 z-30 inline-flex items-center rounded-lg bg-white/90 px-2.5 py-1.5 text-[9px] font-black text-slate-950 shadow-lg backdrop-blur-md transition hover:scale-[1.03]"
+                                            className="absolute bottom-2.5 right-2.5 z-30 inline-flex items-center rounded-lg bg-white/90 px-2.5 py-1.5 text-[9px] font-black text-slate-950 shadow-lg transition hover:scale-[1.03]"
                                             href={item.playnexus_url}
                                         >
                                             صفحه PlayNexus
@@ -1112,7 +2768,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                                     {store.url && (
                                         <a
                                             aria-label={`باز کردن ${item.title} در ${isPs5 ? "PlayStation Store" : "Xbox Store"}`}
-                                            className={`absolute bottom-2.5 left-2.5 z-30 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[9px] font-black shadow-lg backdrop-blur-md transition hover:scale-[1.03] ${
+                                            className={`absolute bottom-2.5 left-2.5 z-30 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[9px] font-black shadow-lg transition hover:scale-[1.03] ${
                                                 isPs5
                                                     ? "bg-sky-400 text-slate-950"
                                                     : "bg-emerald-400 text-slate-950"
@@ -1144,11 +2800,11 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
     };
 
     return (
-        <section className="mx-auto max-w-7xl px-4 pb-5 pt-2">
-            <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_-58px_rgba(79,70,229,.8)] sm:p-5">
+        <section className="pn-render-zone mx-auto max-w-[1536px] px-4 pb-5 pt-2">
+            <div className="pn-signature-frame pn-signature-frame--cool relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_-58px_rgba(79,70,229,.8)] sm:p-5">
                 <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-indigo-500/20 blur-3xl"
+                    className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,.22)_0%,rgba(99,102,241,.10)_38%,transparent_72%)]"
                 />
                 <header className="relative mb-4 flex items-center gap-3">
                     <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white/10 text-indigo-300">
@@ -1181,6 +2837,172 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                 </div>
             </div>
         </section>
+    );
+}
+
+function CampaignBanner({
+    slides,
+    variant,
+}: {
+    slides: Slide[];
+    variant: "public" | "signed-in";
+}) {
+    const [activeSlide, setActiveSlide] = useState(0);
+    const touchStartX = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (slides.length < 2) return;
+
+        const timer = window.setInterval(() => {
+            if (document.visibilityState !== "visible") return;
+            setActiveSlide((current) => (current + 1) % slides.length);
+        }, 6000);
+
+        return () => window.clearInterval(timer);
+    }, [slides.length]);
+
+    useEffect(() => {
+        if (activeSlide < slides.length) return;
+        setActiveSlide(0);
+    }, [activeSlide, slides.length]);
+
+    useEffect(() => {
+        if (slides.length < 2) return;
+
+        const nextSlide = slides[(activeSlide + 1) % slides.length];
+        const source =
+            window.innerWidth <= 640 && nextSlide.mobile_image_url
+                ? nextSlide.mobile_image_url
+                : nextSlide.desktop_image_url;
+
+        const image = new Image();
+        image.decoding = "async";
+        image.src = source;
+    }, [activeSlide, slides]);
+
+    if (!slides.length) {
+        if (variant === "signed-in") return null;
+
+        return (
+            <div className="storefront-dark-panel flex min-h-[300px] items-center justify-center rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top,#312e81,#020617_65%)] text-center sm:min-h-[360px]">
+                <div>
+                    <Gamepad2 className="mx-auto text-indigo-400" size={62} />
+                    <h2 className="mt-5 text-2xl font-black text-white sm:text-3xl">
+                        دنیای گیمینگ تو از اینجا شروع می‌شود
+                    </h2>
+                </div>
+            </div>
+        );
+    }
+
+    const slide = slides[activeSlide];
+    const go = (offset: number) =>
+        setActiveSlide(
+            (current) => (current + offset + slides.length) % slides.length,
+        );
+    const finishSwipe = (clientX: number) => {
+        if (touchStartX.current === null) return;
+
+        const distance = clientX - touchStartX.current;
+        touchStartX.current = null;
+        if (Math.abs(distance) > 45) go(distance > 0 ? -1 : 1);
+    };
+
+    const shellClass =
+        variant === "signed-in"
+            ? "aspect-[2.35/1] sm:aspect-[3/1] lg:aspect-[3.25/1]"
+            : "aspect-[2.35/1] sm:aspect-[2.8/1] lg:aspect-[3.15/1]";
+
+    return (
+        <div
+            aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
+            className="pn-stable-slider group relative touch-pan-y"
+            onTouchEnd={(event) =>
+                finishSwipe(event.changedTouches[0].clientX)
+            }
+            onTouchStart={(event) => {
+                touchStartX.current = event.touches[0].clientX;
+            }}
+        >
+            <div
+                className={`pn-neon-panel pn-neon-panel--campaign relative w-full overflow-hidden rounded-[24px] bg-[#050914] shadow-[0_26px_80px_-38px_rgba(79,70,229,.7)] ${shellClass}`}
+            >
+                <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,.26),rgba(2,6,23,.04)_34%,rgba(2,6,23,.04)_66%,rgba(2,6,23,.26))]" />
+
+                <picture className="absolute inset-0 z-[1] block size-full">
+                    <source
+                        media="(max-width: 640px)"
+                        srcSet={
+                            slide.mobile_image_url ??
+                            slide.desktop_image_url
+                        }
+                    />
+                    <img
+                        alt={slide.alt || slide.title}
+                        className="block size-full scale-[1.015] object-contain object-center sm:scale-100 sm:object-cover lg:object-cover"
+                        decoding="async"
+                        fetchPriority="high"
+                        loading="eager"
+                        src={slide.desktop_image_url}
+                    />
+                </picture>
+
+                {safeUrl(slide.button_url) && (
+                    <Link
+                        aria-label={`مشاهده ${slide.title}`}
+                        className="absolute inset-0 z-10 focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-indigo-400"
+                        href={safeUrl(slide.button_url) ?? "/"}
+                    />
+                )}
+
+                {slides.length > 1 && (
+                    <>
+                        <Button
+                            aria-label="اسلاید قبلی"
+                            className="absolute right-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-black/65 sm:right-4 lg:opacity-0 lg:group-hover:opacity-100"
+                            isIconOnly
+                            onPress={() => go(-1)}
+                            size="sm"
+                            variant="ghost"
+                        >
+                            <ChevronRight size={18} />
+                        </Button>
+                        <Button
+                            aria-label="اسلاید بعدی"
+                            className="absolute left-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-black/65 sm:left-4 lg:opacity-0 lg:group-hover:opacity-100"
+                            isIconOnly
+                            onPress={() => go(1)}
+                            size="sm"
+                            variant="ghost"
+                        >
+                            <ChevronLeft size={18} />
+                        </Button>
+                    </>
+                )}
+            </div>
+
+            {slides.length > 1 && (
+                <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/8 bg-black/45 px-2.5 py-1.5 shadow-md backdrop-blur-md sm:bottom-2.5 sm:gap-2 sm:px-3">
+                    {slides.map((item, index) => (
+                        <button
+                            aria-label={`اسلاید ${index + 1}`}
+                            className={`relative h-1.5 w-7 overflow-hidden rounded-full bg-[var(--store-muted)]/20 transition-colors duration-200 ${index === activeSlide ? "bg-cyan-300/20" : "hover:bg-indigo-400/20"}`}
+                            key={item.id}
+                            onClick={() => setActiveSlide(index)}
+                            type="button"
+                        >
+                            <span
+                                className={`absolute inset-y-0 right-0 rounded-full transition-[width,background-color] duration-300 ${
+                                    index === activeSlide
+                                        ? "w-full bg-cyan-300"
+                                        : "w-1.5 bg-[var(--store-muted)]/35"
+                                }`}
+                            />
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -1232,35 +3054,87 @@ export default function Home({
     latestFeed,
     latestStudios,
     gameRadar,
+    personalizedHome,
 }: Props) {
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
-    const [activeSlide, setActiveSlide] = useState(0);
-    const touchStartX = useRef<number | null>(null);
     const categoryRailRef = useRef<HTMLDivElement>(null);
+    const storefrontRootRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
-        if (slides.length < 2) return;
-        const timer = window.setInterval(
-            () => setActiveSlide((current) => (current + 1) % slides.length),
-            6000,
-        );
-        return () => window.clearInterval(timer);
-    }, [slides.length]);
-    const slide = slides[activeSlide];
-    const go = (offset: number) =>
-        setActiveSlide(
-            (current) => (current + offset + slides.length) % slides.length,
-        );
-    const finishSwipe = (clientX: number) => {
-        if (touchStartX.current === null) return;
+        const motionSurfaces =
+            document.querySelectorAll<HTMLElement>(".pn-media-cloud");
 
-        const distance = clientX - touchStartX.current;
-        touchStartX.current = null;
-        if (Math.abs(distance) > 45) go(distance > 0 ? -1 : 1);
-    };
+        if (motionSurfaces.length === 0) return;
+
+        if (!("IntersectionObserver" in window)) {
+            motionSurfaces.forEach((element) => {
+                element.dataset.pnVisible = "true";
+            });
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                for (const entry of entries) {
+                    (entry.target as HTMLElement).dataset.pnVisible =
+                        entry.isIntersecting ? "true" : "false";
+                }
+            },
+            {
+                rootMargin: "160px 0px",
+                threshold: 0.01,
+            },
+        );
+
+        motionSurfaces.forEach((element) => observer.observe(element));
+
+        return () => observer.disconnect();
+    }, [personalizedHome]);
+
+    useEffect(() => {
+        const root = storefrontRootRef.current;
+        if (!root) return;
+
+        let settleTimer: number | null = null;
+        let scrollFrame: number | null = null;
+
+        const markScrolling = () => {
+            scrollFrame = null;
+
+            if (root.dataset.pnScrolling !== "true") {
+                root.dataset.pnScrolling = "true";
+            }
+
+            if (settleTimer !== null) {
+                window.clearTimeout(settleTimer);
+            }
+
+            settleTimer = window.setTimeout(() => {
+                delete root.dataset.pnScrolling;
+                settleTimer = null;
+            }, 110);
+        };
+
+        const onScroll = () => {
+            if (scrollFrame !== null) return;
+            scrollFrame = window.requestAnimationFrame(markScrolling);
+        };
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener("scroll", onScroll);
+            if (scrollFrame !== null) {
+                window.cancelAnimationFrame(scrollFrame);
+            }
+            if (settleTimer !== null) window.clearTimeout(settleTimer);
+            delete root.dataset.pnScrolling;
+        };
+    }, []);
 
     return (
         <div
+            ref={storefrontRootRef}
             className="storefront-theme min-h-screen w-full max-w-full overflow-x-clip bg-[var(--store-bg)] pb-20 text-[var(--store-text)] transition-colors duration-200 lg:pb-0"
             data-theme={theme}
             dir="rtl"
@@ -1280,118 +3154,59 @@ export default function Home({
                 freshContentAt={storefront.fresh_content_at}
             />
             <main>
-                <section className="mx-auto max-w-7xl px-4 pt-5">
-                    <header className="mb-5 max-w-3xl">
-                        <h1 className="text-2xl font-black leading-tight text-[var(--store-text)] sm:text-3xl">
-                            {seo.heading}
-                        </h1>
-                        <p className="mt-2 text-sm leading-7 text-[var(--store-muted)] sm:text-base">
-                            {seo.description}
-                        </p>
-                    </header>
-                    {slide ? (
-                        <div
-                            aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
-                            className="group relative touch-pan-y pb-7 sm:pb-8"
-                            onTouchEnd={(event) =>
-                                finishSwipe(event.changedTouches[0].clientX)
-                            }
-                            onTouchStart={(event) => {
-                                touchStartX.current = event.touches[0].clientX;
-                            }}
-                        >
-                            <div className="relative aspect-[2.15/1] w-full overflow-hidden rounded-[22px] bg-slate-950 shadow-[0_24px_70px_-30px_rgba(15,23,42,.55)] ring-1 ring-black/5 sm:aspect-[2.6/1] lg:aspect-[3.2/1] lg:rounded-[28px]">
-                                <picture className="absolute inset-0 block size-full">
-                                    <source
-                                        media="(max-width: 640px)"
-                                        srcSet={
-                                            slide.mobile_image_url ??
-                                            slide.desktop_image_url
-                                        }
-                                    />
-                                    <img
-                                        alt={slide.alt || slide.title}
-                                        className="block size-full object-cover object-center"
-                                        decoding="async"
-                                        fetchPriority="high"
-                                        key={slide.id}
-                                        loading="eager"
-                                        src={slide.desktop_image_url}
-                                    />
-                                </picture>
-                                {safeUrl(slide.button_url) && (
-                                    <Link
-                                        aria-label={`مشاهده ${slide.title}`}
-                                        className="absolute inset-0 z-10 focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-indigo-400"
-                                        href={safeUrl(slide.button_url) ?? "/"}
-                                    />
-                                )}
-                                {slides.length > 1 && (
-                                    <>
-                                        <Button
-                                            aria-label="اسلاید قبلی"
-                                            className="absolute right-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 text-white opacity-100 shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/55 sm:right-5 lg:opacity-0 lg:group-hover:opacity-100"
-                                            isIconOnly
-                                            onPress={() => go(-1)}
-                                            variant="ghost"
-                                        >
-                                            <ChevronRight size={21} />
-                                        </Button>
-                                        <Button
-                                            aria-label="اسلاید بعدی"
-                                            className="absolute left-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 text-white opacity-100 shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/55 sm:left-5 lg:opacity-0 lg:group-hover:opacity-100"
-                                            isIconOnly
-                                            onPress={() => go(1)}
-                                            variant="ghost"
-                                        >
-                                            <ChevronLeft size={21} />
-                                        </Button>
-                                    </>
-                                )}
-                            </div>
-                            {slides.length > 1 && (
-                                <div className="absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-panel)] px-3 py-2 shadow-md">
-                                    {slides.map((item, index) => (
-                                        <button
-                                            aria-label={`اسلاید ${index + 1}`}
-                                            className={`h-1.5 rounded-full transition-all duration-300 ${index === activeSlide ? "w-7 bg-indigo-500" : "w-1.5 bg-[var(--store-muted)]/35 hover:bg-indigo-400"}`}
-                                            key={item.id}
-                                            onClick={() =>
-                                                setActiveSlide(index)
-                                            }
-                                            type="button"
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="storefront-dark-panel flex min-h-[420px] items-center justify-center rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top,#312e81,#020617_65%)] text-center">
-                            <div>
-                                <Gamepad2
-                                    className="mx-auto text-indigo-400"
-                                    size={72}
+                {auth.user && personalizedHome && slides.length > 0 && (
+                    <section
+                        aria-label="بنرهای PlayNexus"
+                        className="mx-auto w-full max-w-[1460px] px-3 pb-0 pt-2 sm:px-4 sm:pb-1 sm:pt-4"
+                    >
+                        <CampaignBanner slides={slides} variant="signed-in" />
+                    </section>
+                )}
+                {auth.user && personalizedHome ? (
+                    <PersonalizedHomePanel
+                        channels={channels}
+                        data={personalizedHome}
+                        freshContent={freshContent}
+                        gameRadar={gameRadar}
+                        latestFeed={latestFeed}
+                        latestProducts={latestProducts}
+                        latestStudios={latestStudios}
+                        userName={auth.user.name}
+                    />
+                ) : (
+                    <>
+                        {slides.length > 0 && (
+                            <section className="mx-auto w-full max-w-[1460px] px-3 pb-0 pt-2 sm:px-4 sm:pb-1 sm:pt-4">
+                                <CampaignBanner
+                                    slides={slides}
+                                    variant="public"
                                 />
-                                <h2 className="mt-5 text-4xl font-black text-white">
-                                    دنیای گیمینگ تو از اینجا شروع می‌شود
-                                </h2>
-                            </div>
-                        </div>
-                    )}
-                </section>
+                            </section>
+                        )}
+                        <GuestWelcomePanel
+                            channels={channels}
+                            freshContent={freshContent}
+                            gameRadar={gameRadar}
+                            latestFeed={latestFeed}
+                            latestProducts={latestProducts}
+                            latestStudios={latestStudios}
+                            seo={seo}
+                        />
+                    </>
+                )}
                 <FreshReleases items={freshContent} />
                 <ChannelRail channels={channels} />
                 {(latestFeed.length > 0 || latestStudios.length > 0) && (
                     <section
                         aria-label="تازه‌های فید و استودیو"
-                        className="mx-auto grid max-w-7xl gap-4 px-4 pb-4 lg:grid-cols-2"
+                        className="pn-render-zone mx-auto grid max-w-[1536px] gap-3 px-3 pb-4 sm:px-4 lg:grid-cols-2 lg:gap-4"
                     >
                         <LatestFeedRail items={latestFeed} />
                         <LatestStudioRail items={latestStudios} />
                     </section>
                 )}
                 <GameRadarRail items={gameRadar} />
-                <section className="home-slider mx-auto flex max-w-7xl snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
+                <section className="pn-render-zone home-slider mx-auto flex max-w-[1536px] snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain px-3 py-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-3 sm:px-4 sm:py-8 lg:overflow-hidden">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],
                         [Truck, "ارسال سریع", "تحویل امن سفارش"],
@@ -1399,7 +3214,7 @@ export default function Home({
                         [Sparkles, "پیشنهادهای ویژه", "تخفیف‌های واقعی"],
                     ].map(([Icon, title, text]) => (
                         <div
-                            className="flex w-[calc((100%_-_.75rem)/2)] shrink-0 snap-start items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 lg:w-auto lg:flex-1"
+                            className="flex w-[72vw] max-w-[260px] shrink-0 snap-start items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-3.5 sm:w-[calc((100%_-_.75rem)/2)] sm:max-w-none sm:p-4 lg:w-auto lg:flex-1"
                             key={String(title)}
                         >
                             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-indigo-500/10 text-indigo-400">
@@ -1419,17 +3234,17 @@ export default function Home({
                 {settings.featured_categories_enabled &&
                     categories.length > 0 && (
                         <section
-                            className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10 sm:py-12"
+                            className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-12"
                             id="categories"
                         >
-                            <div className="relative overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:p-6 lg:p-7">
+                            <div className="pn-signature-frame pn-signature-frame--subtle relative overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-3.5 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:rounded-[30px] sm:p-6 lg:p-7">
                                 <span
                                     aria-hidden="true"
-                                    className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-indigo-500/10 blur-3xl"
+                                    className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,.12)_0%,rgba(99,102,241,.05)_42%,transparent_72%)]"
                                 />
                                 <span
                                     aria-hidden="true"
-                                    className="pointer-events-none absolute -bottom-32 left-12 size-72 rounded-full bg-fuchsia-500/10 blur-3xl"
+                                    className="pointer-events-none absolute -bottom-32 left-12 size-72 rounded-full bg-[radial-gradient(circle,rgba(217,70,239,.12)_0%,rgba(217,70,239,.06)_40%,transparent_72%)]"
                                 />
 
                                 <div className="relative mb-5 flex items-end justify-between gap-4 sm:mb-6">
@@ -1442,7 +3257,7 @@ export default function Home({
                                                 EXPLORE
                                             </p>
                                         </div>
-                                        <h2 className="text-2xl font-black leading-tight sm:text-3xl">
+                                        <h2 className="text-lg font-black leading-7 sm:text-3xl">
                                             {settings.featured_categories_title}
                                         </h2>
                                         <p className="mt-2 max-w-2xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm sm:leading-7">
@@ -1515,8 +3330,8 @@ export default function Home({
                                                         className={`absolute inset-0 overflow-hidden bg-gradient-to-br ${fallbackTone}`}
                                                     >
                                                         <span className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:34px_34px]" />
-                                                        <span className="absolute -left-12 -top-16 size-52 rounded-full bg-cyan-400/20 blur-3xl transition duration-700 group-hover:scale-125" />
-                                                        <span className="absolute -bottom-20 -right-16 size-64 rounded-full bg-fuchsia-500/25 blur-3xl transition duration-700 group-hover:scale-125" />
+                                                        <span className="absolute -left-12 -top-16 size-52 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,.20)_0%,rgba(34,211,238,.08)_40%,transparent_72%)] transition duration-700 group-hover:scale-125" />
+                                                        <span className="absolute -bottom-20 -right-16 size-64 rounded-full bg-[radial-gradient(circle,rgba(217,70,239,.24)_0%,rgba(217,70,239,.10)_42%,transparent_72%)] transition duration-700 group-hover:scale-125" />
                                                         <span className="absolute left-5 top-5 flex items-center gap-2 text-[9px] font-black tracking-[.22em] text-white/50 sm:left-6 sm:top-6 sm:text-[10px]">
                                                             <span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,.9)]" />
                                                             {visualMark}
@@ -1525,7 +3340,7 @@ export default function Home({
                                                             NEXUS GAMING
                                                         </span>
                                                         <span className="absolute right-5 top-1/2 -translate-y-1/2 sm:right-8">
-                                                            <span className="relative grid size-28 place-items-center rounded-[30px] border border-white/15 bg-white/10 shadow-[0_24px_80px_rgba(0,0,0,.35)] backdrop-blur-md transition duration-500 group-hover:-translate-y-2 group-hover:rotate-[-3deg] group-hover:scale-105 sm:size-36">
+                                                            <span className="relative grid size-28 place-items-center rounded-[30px] border border-white/15 bg-white/10 shadow-[0_24px_80px_rgba(0,0,0,.35)] transition duration-500 group-hover:-translate-y-2 group-hover:rotate-[-3deg] group-hover:scale-105 sm:size-36">
                                                                 <span className="absolute inset-2 rounded-[24px] border border-white/10" />
                                                                 <Gamepad2
                                                                     className="relative text-white drop-shadow-[0_8px_24px_rgba(255,255,255,.2)]"
@@ -1550,7 +3365,7 @@ export default function Home({
 
                                                 <span className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-black/5" />
                                                 <span className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5">
-                                                    <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-black text-white/75 backdrop-blur-md">
+                                                    <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white/75">
                                                         <Gamepad2 size={12} />
                                                         {money.format(
                                                             category.products_count,
@@ -1592,14 +3407,14 @@ export default function Home({
                     )}
                 {settings.featured_products_enabled && (
                     <section
-                        className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10"
+                        className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-10"
                         id="featured-products"
                     >
                         <div className="mb-6">
                             <p className="text-sm font-bold text-rose-400">
                                 منتخب فروشگاه
                             </p>
-                            <h2 className="mt-2 text-2xl font-black md:text-3xl">
+                            <h2 className="mt-1.5 text-xl font-black leading-7 sm:mt-2 sm:text-2xl md:text-3xl">
                                 {settings.featured_products_title}
                             </h2>
                         </div>
@@ -1608,41 +3423,41 @@ export default function Home({
                 )}
                 {settings.latest_products_enabled && (
                     <section
-                        className="mx-auto max-w-7xl scroll-mt-36 px-4 py-10"
+                        className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-36 px-3 py-7 sm:px-4 sm:py-10"
                         id="latest-products"
                     >
                         <div className="mb-6">
                             <p className="text-sm font-bold text-emerald-400">
                                 همین حالا اضافه شد
                             </p>
-                            <h2 className="mt-2 text-2xl font-black md:text-3xl">
+                            <h2 className="mt-1.5 text-xl font-black leading-7 sm:mt-2 sm:text-2xl md:text-3xl">
                                 {settings.latest_products_title}
                             </h2>
                         </div>
                         <ProductGrid products={latestProducts} />
                     </section>
                 )}
-                <div className="scroll-mt-24" id="community-content">
+                <div className="pn-render-zone scroll-mt-24" id="community-content">
                     {contentSections.map((section) => (
                         <ContentRail key={section.id} section={section} />
                     ))}
                 </div>
                 {settings.newsletter_enabled && (
-                    <section className="mx-auto max-w-7xl px-4 py-14">
+                    <section className="mx-auto max-w-[1536px] px-3 py-8 sm:px-4 sm:py-14">
                         <Card
                             className="storefront-dark-panel overflow-hidden border border-indigo-500/30 bg-gradient-to-l from-indigo-950 to-slate-900"
                             variant="secondary"
                         >
-                            <Card.Content className="flex flex-col gap-6 p-7 md:flex-row md:items-center md:justify-between md:p-10">
+                            <Card.Content className="flex flex-col gap-5 p-5 sm:p-7 md:flex-row md:items-center md:justify-between md:p-10">
                                 <div>
-                                    <h2 className="text-2xl font-black text-white">
+                                    <h2 className="text-xl font-black text-white sm:text-2xl">
                                         {settings.newsletter_title}
                                     </h2>
-                                    <p className="mt-3 max-w-xl leading-7 text-slate-300">
+                                    <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300 sm:mt-3 sm:text-base sm:leading-7">
                                         {settings.newsletter_description}
                                     </p>
                                 </div>
-                                <div className="grid w-full min-w-0 max-w-md grid-cols-[minmax(0,1fr)_auto] gap-2">
+                                <div className="grid w-full min-w-0 max-w-md grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                                     <Input
                                         aria-label="ایمیل خبرنامه"
                                         className="min-w-0"
@@ -1651,7 +3466,7 @@ export default function Home({
                                         type="email"
                                     />
                                     <Button
-                                        className="shrink-0"
+                                        className="w-full shrink-0 sm:w-auto"
                                         variant="primary"
                                     >
                                         عضویت
@@ -1666,12 +3481,12 @@ export default function Home({
                 className="scroll-mt-24 border-t border-slate-800 bg-slate-950"
                 id="store-information"
             >
-                <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+                <div className="mx-auto flex max-w-[1536px] flex-col gap-4 px-3 py-8 text-sm text-slate-500 sm:px-4 md:flex-row md:items-center md:justify-between">
                     <p>
                         © {new Date().getFullYear()} PLAY NEXUS — همراه دنیای
                         بازی
                     </p>
-                    <div className="flex gap-5">
+                    <div className="flex flex-wrap gap-x-5 gap-y-2">
                         <Link href="/pages/about">درباره ما</Link>
                         <Link href="/pages/terms">قوانین</Link>
                         <Link href="/support">پشتیبانی</Link>

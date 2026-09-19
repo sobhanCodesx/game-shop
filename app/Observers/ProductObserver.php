@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Jobs\BroadcastContentPublished;
 use App\Models\Product;
+use App\Services\GameEventService;
 use Illuminate\Support\Carbon;
 
 class ProductObserver
@@ -19,6 +20,10 @@ class ProductObserver
     {
         if (! $this->wasPublished($product) && $this->isPublished($product)) {
             $this->dispatch($product);
+        }
+
+        if ($product->wasChanged(['price', 'discount_price', 'expires_at', 'status', 'visibility'])) {
+            app(GameEventService::class)->syncFromProduct($product);
         }
     }
 

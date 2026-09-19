@@ -2,9 +2,9 @@
 <html class="dark" data-theme="dark" lang="{{ str_replace('_', '-', config('seo.locale', 'fa-IR')) }}" dir="rtl">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <meta name="theme-color" content="#09090b">
+        <meta name="theme-color" content="#020307">
         <script>
             (() => {
                 let theme;
@@ -12,12 +12,18 @@
                     theme = localStorage.getItem('nexus-play-storefront-theme');
                 } catch {}
                 if (theme !== 'light' && theme !== 'dark') {
-                    theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+                    theme = 'dark';
                 }
                 document.documentElement.dataset.storefrontTheme = theme;
             })();
         </script>
         <style>
+            html,
+            body {
+                background: #020307;
+                color-scheme: dark;
+            }
+
             html[data-storefront-theme="light"],
             html[data-storefront-theme="light"] body {
                 background: #f6f7fb;

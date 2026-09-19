@@ -13,6 +13,10 @@ use Illuminate\Database\Eloquent\Collection;
 
 class VideoCommunityService
 {
+    public function __construct(
+        private readonly FollowedGameWatchService $watch,
+    ) {}
+
     /** Attach the published reply tree with a fixed number of queries. */
     public function loadCommentReplies(SocialContent $content, Collection $roots): void
     {
@@ -129,7 +133,7 @@ class VideoCommunityService
 
     public function toggleSubscription(Game $game, User $user): bool
     {
-        return DB::transaction(function () use ($game, $user): bool {
+        $subscribed = DB::transaction(function () use ($game, $user): bool {
             $exists = DB::table('game_subscriptions')
                 ->where('game_id', $game->id)
                 ->where('user_id', $user->id)
@@ -146,5 +150,11 @@ class VideoCommunityService
 
             return true;
         });
+
+        if ($subscribed) {
+            $this->watch->prime($game);
+        }
+
+        return $subscribed;
     }
 }

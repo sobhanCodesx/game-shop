@@ -57,11 +57,7 @@ class FeedController extends Controller
                 ...(data_get($item, 'media.0.type') === 'image' && data_get($item, 'media.0.url')
                     ? ['image' => url(data_get($item, 'media.0.url'))]
                     : []),
-                'author' => [
-                    '@type' => 'Organization',
-                    'name' => data_get($item, 'author.name', $siteName),
-                    ...(data_get($item, 'author.url') ? ['url' => url(data_get($item, 'author.url'))] : []),
-                ],
+                'author' => ['@id' => $organizationId],
             ],
         ])->all();
 
@@ -197,11 +193,7 @@ class FeedController extends Controller
                             'inLanguage' => $locale,
                             'datePublished' => $content->published_at?->toISOString(),
                             'dateModified' => $content->updated_at?->toISOString(),
-                            'author' => [
-                                '@type' => 'Organization',
-                                'name' => $item['author']['name'],
-                                ...($authorUrl ? ['url' => url($authorUrl)] : []),
-                            ],
+                            'author' => ['@id' => $organizationId],
                             'publisher' => ['@id' => $organizationId],
                             ...($image ? ['image' => [[
                                 '@type' => 'ImageObject',

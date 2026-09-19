@@ -223,6 +223,18 @@ class GameRadarService
 
             Cache::put(self::CACHE_KEY, $snapshot, now()->addHours(self::CACHE_HOURS));
 
+            try {
+                $stats = app(GameSourceMonitorService::class)
+                    ->observeRadarSnapshot($this->linkedSnapshot());
+
+                Log::info('Game Radar source intelligence observed', $stats);
+            } catch (Throwable $exception) {
+                // Source intelligence must never make the public Radar refresh fail.
+                Log::warning('Game Radar source intelligence failed', [
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+
             return $snapshot;
         } catch (Throwable $exception) {
             Log::warning('Game Radar refresh failed', [

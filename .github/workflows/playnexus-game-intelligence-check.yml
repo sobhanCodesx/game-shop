@@ -1,0 +1,169 @@
+name: PlayNexus Game Intelligence Check
+
+on:
+  push:
+    paths:
+      - 'app/Http/Controllers/FeedController.php'
+      - 'app/Http/Controllers/StudioController.php'
+      - 'resources/js/Components/Storefront/Navigation/StorefrontPanels.tsx'
+      - 'resources/js/Components/Storefront/Navigation/StorefrontStories.tsx'
+      - 'tests/Feature/SearchPerformanceSeoTest.php'
+      - 'resources/js/Components/Storefront/Video/FloatingVideoPlayer.tsx'
+      - 'resources/css/app.css'
+      - 'app/Services/FeedService.php'
+      - 'tests/Feature/PersonalizedEditorialFeedTest.php'
+      - 'vite.config.js'
+      - 'resources/js/app.tsx'
+      - 'app/Http/Middleware/HandleInertiaRequests.php'
+      - 'config/inertia.php'
+      - 'tests/Unit/InertiaSsrRoutingTest.php'
+      - 'app/Contracts/GameSourceAdapter.php'
+      - 'tests/Feature/FollowedGameWatchTest.php'
+      - 'resources/js/Pages/Channels/Show.tsx'
+      - 'app/Http/Controllers/ChannelController.php'
+      - 'app/Services/VideoCommunityService.php'
+      - 'app/Services/XboxTrackedGameSourceAdapter.php'
+      - 'app/Services/PlayStationTrackedGameSourceAdapter.php'
+      - 'app/Services/FollowedGameWatchService.php'
+      - 'app/Contracts/TrackedGameSourceAdapter.php'
+      - 'app/Models/GameEvent.php'
+      - 'app/Models/GameSourceState.php'
+      - 'app/Observers/GameObserver.php'
+      - 'app/Observers/ProductObserver.php'
+      - 'app/Observers/SocialContentObserver.php'
+      - 'app/Services/GameEventImportanceService.php'
+      - 'app/Services/GameEventService.php'
+      - 'app/Services/GameSourceChangeDetector.php'
+      - 'app/Services/GameSourceMonitorService.php'
+      - 'app/Services/RadarGameSourceAdapter.php'
+      - 'app/Services/GameRadarService.php'
+      - 'app/Http/Controllers/HomeController.php'
+      - 'resources/js/Pages/Home.tsx'
+      - 'routes/console.php'
+      - 'database/migrations/2026_09_19_120000_create_game_events_table.php'
+      - 'database/migrations/2026_09_19_130000_create_game_source_states_table.php'
+      - 'tests/Feature/GameEventTest.php'
+      - 'tests/Feature/GameSourceMonitorTest.php'
+      - '.github/workflows/playnexus-game-intelligence-check.yml'
+  pull_request:
+    paths:
+      - 'app/Http/Controllers/FeedController.php'
+      - 'app/Http/Controllers/StudioController.php'
+      - 'resources/js/Components/Storefront/Navigation/StorefrontPanels.tsx'
+      - 'resources/js/Components/Storefront/Navigation/StorefrontStories.tsx'
+      - 'tests/Feature/SearchPerformanceSeoTest.php'
+      - 'resources/js/Components/Storefront/Video/FloatingVideoPlayer.tsx'
+      - 'resources/css/app.css'
+      - 'app/Services/FeedService.php'
+      - 'tests/Feature/PersonalizedEditorialFeedTest.php'
+      - 'vite.config.js'
+      - 'resources/js/app.tsx'
+      - 'app/Http/Middleware/HandleInertiaRequests.php'
+      - 'config/inertia.php'
+      - 'tests/Unit/InertiaSsrRoutingTest.php'
+      - 'app/Contracts/GameSourceAdapter.php'
+      - 'app/Contracts/TrackedGameSourceAdapter.php'
+      - 'app/Services/FollowedGameWatchService.php'
+      - 'app/Services/XboxTrackedGameSourceAdapter.php'
+      - 'app/Services/PlayStationTrackedGameSourceAdapter.php'
+      - 'app/Services/VideoCommunityService.php'
+      - 'app/Http/Controllers/ChannelController.php'
+      - 'resources/js/Pages/Channels/Show.tsx'
+      - 'tests/Feature/FollowedGameWatchTest.php'
+      - 'app/Models/GameEvent.php'
+      - 'app/Models/GameSourceState.php'
+      - 'app/Observers/GameObserver.php'
+      - 'app/Observers/ProductObserver.php'
+      - 'app/Observers/SocialContentObserver.php'
+      - 'app/Services/GameEventImportanceService.php'
+      - 'app/Services/GameEventService.php'
+      - 'app/Services/GameSourceChangeDetector.php'
+      - 'app/Services/GameSourceMonitorService.php'
+      - 'app/Services/RadarGameSourceAdapter.php'
+      - 'app/Services/GameRadarService.php'
+      - 'app/Http/Controllers/HomeController.php'
+      - 'resources/js/Pages/Home.tsx'
+      - 'routes/console.php'
+      - 'database/migrations/2026_09_19_120000_create_game_events_table.php'
+      - 'database/migrations/2026_09_19_130000_create_game_source_states_table.php'
+      - 'tests/Feature/GameEventTest.php'
+      - 'tests/Feature/GameSourceMonitorTest.php'
+
+permissions:
+  contents: read
+
+jobs:
+  intelligence:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          php -l app/Contracts/GameSourceAdapter.php
+          php -l app/Contracts/TrackedGameSourceAdapter.php
+          php -l app/Services/FollowedGameWatchService.php
+          php -l app/Services/XboxTrackedGameSourceAdapter.php
+          php -l app/Services/PlayStationTrackedGameSourceAdapter.php
+          php -l app/Services/VideoCommunityService.php
+          php -l app/Http/Controllers/ChannelController.php
+          php -l app/Models/GameEvent.php
+          php -l app/Models/GameSourceState.php
+          php -l app/Observers/GameObserver.php
+          php -l app/Observers/ProductObserver.php
+          php -l app/Observers/SocialContentObserver.php
+          php -l app/Services/GameEventImportanceService.php
+          php -l app/Services/GameEventService.php
+          php -l app/Services/GameSourceChangeDetector.php
+          php -l app/Services/GameSourceMonitorService.php
+          php -l app/Services/RadarGameSourceAdapter.php
+          php -l app/Services/GameRadarService.php
+          php -l app/Services/FeedService.php
+          php -l app/Http/Controllers/HomeController.php
+          php -l app/Http/Controllers/FeedController.php
+          php -l app/Http/Controllers/StudioController.php
+          php -l app/Http/Middleware/HandleInertiaRequests.php
+          php -l config/inertia.php
+          php -l tests/Unit/InertiaSsrRoutingTest.php
+          php -l routes/console.php
+          php -l database/migrations/2026_09_19_120000_create_game_events_table.php
+          php -l database/migrations/2026_09_19_130000_create_game_source_states_table.php
+          php -l tests/Feature/GameEventTest.php
+          php -l tests/Feature/GameSourceMonitorTest.php
+          php -l tests/Feature/FollowedGameWatchTest.php
+          php -l tests/Feature/PersonalizedEditorialFeedTest.php
+          php -l tests/Feature/SearchPerformanceSeoTest.php
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run Game Intelligence tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+        run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php tests/Feature/FollowedGameWatchTest.php tests/Feature/PersonalizedEditorialFeedTest.php tests/Feature/SearchPerformanceSeoTest.php
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build client and SSR bundles
+        run: npm run build
+
+      - name: Run storefront regression tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+        run: php artisan test tests/Unit/InertiaSsrRoutingTest.php tests/Feature/SearchPerformanceSeoTest.php tests/Feature/VideoWatchProgressTest.php tests/Feature/SitemapTest.php

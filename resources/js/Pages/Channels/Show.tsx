@@ -1,12 +1,15 @@
 import { Avatar, Button } from "@heroui/react";
 import { Link, router, usePage } from "@inertiajs/react";
+import { useState } from "react";
 import {
     CalendarDays,
     ExternalLink,
     Gamepad2,
     ListVideo,
+    LoaderCircle,
     Play,
     Radio,
+    Radar,
     Store,
     Users,
 } from "lucide-react";
@@ -40,6 +43,14 @@ interface Channel {
     subscribers_count: number;
     videos_count: number;
     is_subscribed: boolean;
+    watch: {
+        active: boolean;
+        mode: "off" | "smart" | "direct";
+        source_count: number;
+        direct_source_count: number;
+        source_labels: string[];
+        last_checked_at: string | null;
+    };
     studio: { name: string; url: string; logo_url: string | null } | null;
 }
 
@@ -88,15 +99,24 @@ export default function ChannelShow({
     storeInfo: StoreInfo | null;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
+    const [watchUpdating, setWatchUpdating] = useState(false);
+
     const subscribe = () => {
+        if (watchUpdating) return;
+
         if (!auth.user)
             return router.visit(
                 `/login?redirect=${encodeURIComponent(window.location.pathname)}`,
             );
+
         router.post(
             `/channels/${channel.slug}/subscription`,
             {},
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onStart: () => setWatchUpdating(true),
+                onFinish: () => setWatchUpdating(false),
+            },
         );
     };
     return (
@@ -149,7 +169,7 @@ export default function ChannelShow({
                                     {channel.subscribers_count.toLocaleString(
                                         "fa-IR",
                                     )}{" "}
-                                    مشترک
+                                    دنبال‌کننده
                                 </span>
                                 <span className="text-indigo-400">•</span>
                                 <span>
@@ -166,15 +186,63 @@ export default function ChannelShow({
                             )}
                             {channel.studio && <Link className="mt-3 inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1.5 text-[11px] font-black text-violet-400 transition hover:bg-violet-500/20" href={channel.studio.url}>{channel.studio.logo_url && <img alt="" className="size-5 rounded-full object-cover" src={channel.studio.logo_url} />}ساخته‌شده توسط {channel.studio.name}</Link>}
                         </div>
-                        <Button
-                            className="w-full shrink-0 font-black sm:w-auto sm:min-w-28"
-                            onPress={subscribe}
-                            variant={
-                                channel.is_subscribed ? "secondary" : "primary"
-                            }
-                        >
-                            {channel.is_subscribed ? "مشترک هستید" : "عضویت"}
-                        </Button>
+                        <div className="w-full shrink-0 sm:w-auto">
+                            <Button
+                                className={`w-full font-black sm:min-w-40 ${
+                                    channel.is_subscribed
+                                        ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                                        : ""
+                                }`}
+                                aria-label={
+                                    channel.is_subscribed
+                                        ? `خاموش کردن Nexus Watch برای ${channel.name}`
+                                        : `زیر نظر گرفتن ${channel.name} با Nexus Watch`
+                                }
+                                isDisabled={watchUpdating}
+                                onPress={subscribe}
+                                startContent={
+                                    watchUpdating ? (
+                                        <LoaderCircle
+                                            className="animate-spin"
+                                            size={16}
+                                        />
+                                    ) : (
+                                        <Radar
+                                            className={
+                                                channel.is_subscribed
+                                                    ? "text-emerald-300"
+                                                    : undefined
+                                            }
+                                            size={16}
+                                        />
+                                    )
+                                }
+                                variant={
+                                    channel.is_subscribed
+                                        ? "secondary"
+                                        : "primary"
+                                }
+                            >
+                                {watchUpdating
+                                    ? channel.is_subscribed
+                                        ? "در حال خاموش‌کردن…"
+                                        : "در حال فعال‌سازی…"
+                                    : channel.is_subscribed
+                                      ? "Nexus Watch فعال"
+                                      : "زیر نظر بگیر"}
+                            </Button>
+
+                            {channel.watch.active && (
+                                <div className="mt-2 flex max-w-[260px] items-center justify-center gap-2 rounded-xl border border-emerald-400/10 bg-emerald-400/[0.055] px-3 py-2 text-[9px] font-bold leading-4 text-emerald-300/80 sm:justify-start">
+                                    <span className="size-1.5 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.8)]" />
+                                    <span>
+                                        {channel.watch.mode === "direct"
+                                            ? "پوشش مستقیم منبع رسمی فعاله؛ فقط تغییر مهم رو می‌بینی"
+                                            : "تغییرات مهم این بازی رو خود Nexus برات چک می‌کنه"}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </section>
                     {storeInfo && (
                         <section
@@ -435,7 +503,7 @@ export default function ChannelShow({
                                     {channel.subscribers_count.toLocaleString(
                                         "fa-IR",
                                     )}{" "}
-                                    مشترک
+                                    دنبال‌کننده
                                 </span>
                                 <span className="flex items-center gap-2">
                                     <Play size={16} />

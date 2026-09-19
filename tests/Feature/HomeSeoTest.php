@@ -17,7 +17,7 @@ class HomeSeoTest extends TestCase
         HomeSetting::query()->create([
             'content' => [
                 'seo_title' => 'فروشگاه گیمینگ تست | PlayNexus',
-                'seo_description' => 'توضیحات واقعی و اختصاصی صفحه اصلی فروشگاه گیمینگ تست.',
+                'seo_description' => 'توضیحات واقعی و اختصاصی صفحه اصلی فروشگاه گیمینگ تست؛ شامل اخبار، ویدیوها، بازی‌ها، استودیوها و تازه‌های دنیای گیمینگ.',
             ],
         ]);
         HomeSlide::query()->create([
@@ -32,7 +32,7 @@ class HomeSeoTest extends TestCase
         $response->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Home')
             ->where('seo.title', 'فروشگاه گیمینگ تست - پلی نکسوس')
-            ->where('seo.description', 'توضیحات واقعی و اختصاصی صفحه اصلی فروشگاه گیمینگ تست.')
+            ->where('seo.description', 'توضیحات واقعی و اختصاصی صفحه اصلی فروشگاه گیمینگ تست؛ شامل اخبار، ویدیوها، بازی‌ها، استودیوها و تازه‌های دنیای گیمینگ.')
             ->where('seo.canonical', 'http://localhost')
             ->where('seo.robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1')
             ->where('seo.image', 'http://localhost/storage/home/slides/seo-banner.jpg')

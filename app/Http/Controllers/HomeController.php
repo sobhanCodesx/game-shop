@@ -14,10 +14,13 @@ use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\Studio;
 use App\Services\FeedService;
+use App\Services\FollowedGameWatchService;
+use App\Services\GameEventService;
 use App\Services\GameRadarService;
 use App\Services\MediaStorage;
 use App\Services\ProductPriceService;
 use App\Services\StorefrontDataService;
+use App\Services\UserGamingRelevanceService;
 use App\Support\Seo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -26,7 +29,7 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar): Response
+    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar, UserGamingRelevanceService $relevance, GameEventService $gameEvents, FollowedGameWatchService $watch): Response
     {
         $settings = [...HomeSettingsController::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])];
         $limit = (int) $settings['products_limit'];
@@ -34,6 +37,8 @@ class HomeController extends Controller
         $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
         $latestStudios = collect();
+        $radarItems = collect($radar->linkedSnapshot()['items'] ?? []);
+        $personalizedHome = $this->personalizedHome($request, $feed, $relevance, $gameEvents, $watch, $radarItems);
 
         if (Schema::hasTable('studios') && Schema::hasTable('games') && Schema::hasColumn('games', 'studio_id')) {
             $latestStudios = Studio::query()->where('status', 'active')
@@ -64,7 +69,11 @@ class HomeController extends Controller
         $socialImage = url((string) ($slides->first()['desktop_image_url'] ?? $logo));
         $socialImageAlt = (string) ($slides->first()['alt'] ?? $slides->first()['title'] ?? "لوگوی {$siteName}");
         $seoTitle = trim((string) ($settings['seo_title'] ?? '')) ?: "فروشگاه بازی و تجهیزات گیمینگ | {$siteName}";
-        $seoDescription = trim((string) ($settings['seo_description'] ?? '')) ?: "خرید بازی، کنسول و تجهیزات گیمینگ با تضمین اصالت و پشتیبانی تخصصی از {$siteName}.";
+        $seoDescription = trim((string) ($settings['seo_description'] ?? ''));
+        if ($seoDescription === '') {
+            $seoDescription = "اخبار، ویدیوها، بازی‌ها، استودیوها و تازه‌های دنیای گیمینگ را در {$siteName} دنبال کنید؛ همراه با فروشگاه تخصصی بازی و تجهیزات گیمینگ.";
+        }
+        $seoDescription = mb_substr($seoDescription, 0, 155);
         $seo = Seo::page([
             'title' => $seoTitle,
             'description' => $seoDescription,
@@ -112,10 +121,11 @@ class HomeController extends Controller
 
         return Inertia::render('Home', [
             ...$seo,
-            'latestFeed' => $feed->latestImportant($request, 8),
+            'personalizedHome' => $personalizedHome,
+            'latestFeed' => $feed->latestImportantPreview($request, 8),
             'latestStudios' => $latestStudios,
-            'gameRadar' => (function () use ($radar) {
-                $items = collect($radar->linkedSnapshot()['items'] ?? []);
+            'gameRadar' => (function () use ($radarItems) {
+                $items = $radarItems;
 
                 $ps5 = $items
                     ->filter(fn (array $item) => ($item['psn']['available'] ?? false) === true)
@@ -326,6 +336,106 @@ class HomeController extends Controller
                     'subscribers_count' => $game->subscribers_count,
                 ]),
         ]);
+    }
+
+    private function personalizedHome(Request $request, FeedService $feed, UserGamingRelevanceService $relevance, GameEventService $gameEvents, FollowedGameWatchService $watch, $radarItems): ?array
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return null;
+        }
+
+        $followedGames = $user->subscribedGames()
+            ->whereIn('games.status', ['active', 'published'])
+            ->with([
+                'playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+            ])
+            ->orderByDesc('game_subscriptions.created_at')
+            ->limit(12)
+            ->get(['games.id', 'games.name', 'games.slug', 'games.cover']);
+
+        $profile = $relevance->profile($request, $followedGames);
+        $gameScores = $profile['game_scores'] ?? [];
+
+        $followedGames = $followedGames
+            ->sortByDesc(fn (Game $game) => (float) ($gameScores[$game->id] ?? 0))
+            ->values();
+
+        $relevantGameIds = collect(array_keys($gameScores))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->take(16)
+            ->values();
+        $gameIdLookup = $relevantGameIds->flip();
+
+        $matchedRadar = $relevantGameIds->isEmpty()
+            ? collect()
+            : collect($radarItems)
+                ->filter(fn (array $item) => $gameIdLookup->has((int) ($item['playnexus_game_id'] ?? 0)))
+                ->take(6)
+                ->values();
+
+        $mediaCloudRadar = $matchedRadar
+            ->concat(
+                collect($radarItems)
+                    ->filter(fn (array $item) => filled($item['banner_url'] ?? null) || filled($item['cover_url'] ?? null))
+            )
+            ->unique(fn (array $item) => mb_strtolower(trim((string) ($item['title'] ?? $item['id'] ?? ''))))
+            ->take(8)
+            ->map(fn (array $item) => [
+                'id' => (string) ($item['id'] ?? ''),
+                'title' => (string) ($item['title'] ?? ''),
+                'banner_url' => $item['banner_url'] ?? null,
+                'cover_url' => $item['cover_url'] ?? null,
+                'playnexus_url' => $item['playnexus_url'] ?? null,
+            ])
+            ->values();
+
+        $focusGame = null;
+        if ($profile['focus_game_id']) {
+            $focusGame = Game::query()
+                ->whereKey($profile['focus_game_id'])
+                ->whereIn('status', ['active', 'published'])
+                ->with([
+                    'playlists' => fn ($query) => $query
+                        ->publiclyVisible()
+                        ->whereNotNull('logo')
+                        ->select(['id', 'game_id', 'logo', 'sort_order']),
+                ])
+                ->first(['id', 'name', 'slug', 'cover']);
+        }
+
+        return [
+            'followed_games' => $followedGames->map(fn (Game $game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'slug' => $game->slug,
+                'url' => route('channels.show', $game->slug, false),
+                'image_url' => MediaStorage::url($game->cover ?: $game->playlists->first()?->logo),
+            ])->values(),
+            'events' => $gameEvents->forProfile($profile, 8),
+            'videos' => $feed->smartVideosForProfile($request, $profile, 4),
+            'feed' => $feed->smartEditorialForProfile($request, $profile, 8),
+            'radar' => $matchedRadar,
+            'media_cloud_radar' => $mediaCloudRadar,
+            'watch' => $watch->summaryForGames($followedGames->pluck('id')),
+            'intelligence' => [
+                'confidence' => $profile['confidence'],
+                'top_signals' => $profile['top_signals'],
+                'focus_reason' => $profile['focus_reason'],
+                'focus_game' => $focusGame ? [
+                    'id' => $focusGame->id,
+                    'name' => $focusGame->name,
+                    'url' => route('channels.show', $focusGame->slug, false),
+                    'image_url' => MediaStorage::url($focusGame->cover ?: $focusGame->playlists->first()?->logo),
+                ] : null,
+            ],
+            'updated_at' => now()->toISOString(),
+        ];
     }
 
     private function navigationCategory(Category $category): array

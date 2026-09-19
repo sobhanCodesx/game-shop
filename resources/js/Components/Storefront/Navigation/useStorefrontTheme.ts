@@ -15,9 +15,10 @@ const initialTheme = (): StorefrontTheme => {
         // Storage may be unavailable in restricted browser contexts.
     }
     if (saved === "light" || saved === "dark") return saved;
-    return window.matchMedia("(prefers-color-scheme: light)").matches
-        ? "light"
-        : "dark";
+
+    // PlayNexus is dark-first by design. System color preference should not
+    // silently switch a first-time visitor to light mode.
+    return "dark";
 };
 
 export function useStorefrontTheme() {

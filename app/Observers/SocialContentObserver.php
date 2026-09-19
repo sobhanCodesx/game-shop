@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Jobs\BroadcastContentPublished;
 use App\Models\SocialContent;
+use App\Services\GameEventService;
 use Illuminate\Support\Carbon;
 
 class SocialContentObserver
@@ -17,14 +18,29 @@ class SocialContentObserver
 
     public function updated(SocialContent $content): void
     {
-        if (! $this->wasPublished($content) && $this->isPublished($content)) {
+        $wasPublished = $this->wasPublished($content);
+        $isPublished = $this->isPublished($content);
+
+        if (! $wasPublished && $isPublished) {
             $this->dispatch($content);
+        }
+
+        if ($wasPublished && ! $isPublished) {
+            app(GameEventService::class)->expireFromContent($content);
+        }
+
+        if (
+            $wasPublished
+            && $isPublished
+            && $content->wasChanged(['title', 'excerpt', 'body', 'feed_type', 'feed_badge', 'game_id'])
+        ) {
+            app(GameEventService::class)->refreshFromContent($content);
         }
     }
 
     private function dispatch(SocialContent $content): void
     {
-        if ($content->game_id && ($content->notify_followers ?? true)) {
+        if ($content->game_id) {
             BroadcastContentPublished::dispatch('social', $content->id)->afterCommit();
         }
     }

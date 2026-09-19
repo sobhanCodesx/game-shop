@@ -59,6 +59,55 @@ class InertiaSsrRoutingTest extends TestCase
         }
     }
 
+    public function test_vite_hmr_always_disables_ssr_even_if_environment_is_not_local(): void
+    {
+        config([
+            'inertia.ssr.enabled' => true,
+            'inertia.ssr.paths' => ['/'],
+        ]);
+
+        $hotFile = public_path('hot');
+        $hadHotFile = is_file($hotFile);
+        $originalHotContents = $hadHotFile ? file_get_contents($hotFile) : null;
+
+        file_put_contents($hotFile, 'http://127.0.0.1:5173');
+
+        try {
+            $this->assertFalse($this->middleware()->usesSsr('/'));
+        } finally {
+            if ($hadHotFile) {
+                file_put_contents($hotFile, $originalHotContents ?: '');
+            } else {
+                @unlink($hotFile);
+            }
+        }
+    }
+
+    public function test_local_hosts_never_use_ssr_even_when_enabled(): void
+    {
+        config([
+            'inertia.ssr.enabled' => true,
+            'inertia.ssr.paths' => ['/'],
+        ]);
+
+        $middleware = $this->middleware();
+
+        foreach ([
+            'http://localhost/',
+            'http://127.0.0.1/',
+            'http://0.0.0.0/',
+            'http://playnexus.test/',
+            'http://playnexus.local/',
+            'http://192.168.1.50/',
+            'http://10.0.0.20/',
+        ] as $url) {
+            $this->assertFalse(
+                $middleware->usesSsrUrl($url),
+                "Expected {$url} to skip SSR.",
+            );
+        }
+    }
+
     public function test_admin_is_never_rendered_by_ssr(): void
     {
         config([
@@ -88,7 +137,14 @@ class InertiaSsrRoutingTest extends TestCase
         {
             public function usesSsr(string $path): bool
             {
-                return $this->shouldUseSsr(Request::create($path));
+                return $this->shouldUseSsr(
+                    Request::create('https://playnexus.ir'.($path === '/' ? '/' : $path)),
+                );
+            }
+
+            public function usesSsrUrl(string $url): bool
+            {
+                return $this->shouldUseSsr(Request::create($url));
             }
         };
     }

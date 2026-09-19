@@ -39,6 +39,14 @@ class HandleInertiaRequests extends Middleware
      */
     public function version(Request $request): ?string
     {
+        // Vite owns asset freshness during local HMR. If a stale production
+        // manifest is still present while public/hot exists, Inertia's normal
+        // manifest hash can disagree with the browser and trigger repeated
+        // 409 hard reloads. Keep production versioning untouched.
+        if (app()->environment('local') && is_file(public_path('hot'))) {
+            return null;
+        }
+
         return parent::version($request);
     }
 
@@ -55,10 +63,18 @@ class HandleInertiaRequests extends Middleware
 
     protected function shouldUseSsr(Request $request): bool
     {
+        // Local development must never talk to an SSR service. Keep this as a
+        // request-level hard stop in addition to config/inertia.php so a stale
+        // config cache, copied production .env, or INERTIA_SSR_URL cannot make
+        // localhost traffic hit the production SSR endpoint.
+        if ($this->isLocalRequest($request)) {
+            return false;
+        }
+
         if (
             ! config('inertia.ssr.enabled', true)
+            || is_file(public_path('hot'))
             || $request->is('admin', 'admin/*')
-            || (app()->environment('local') && ! config('inertia.ssr.local_enabled', false))
         ) {
             return false;
         }
@@ -67,6 +83,40 @@ class HandleInertiaRequests extends Middleware
             if ($request->is($path)) {
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    /**
+     * Local requests are always client-rendered.
+     *
+     * APP_ENV=local is the primary signal. Host checks are an additional
+     * fail-safe for accidentally copied/cached production configuration.
+     */
+    protected function isLocalRequest(Request $request): bool
+    {
+        if (app()->environment('local')) {
+            return true;
+        }
+
+        $host = strtolower($request->getHost());
+
+        if (
+            in_array($host, ['localhost', '127.0.0.1', '0.0.0.0', '::1'], true)
+            || str_ends_with($host, '.localhost')
+            || str_ends_with($host, '.test')
+            || str_ends_with($host, '.local')
+        ) {
+            return true;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return filter_var(
+                $host,
+                FILTER_VALIDATE_IP,
+                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE,
+            ) === false;
         }
 
         return false;

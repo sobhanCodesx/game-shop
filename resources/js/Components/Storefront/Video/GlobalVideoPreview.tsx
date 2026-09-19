@@ -254,6 +254,8 @@ export default function GlobalVideoPreview() {
         const ratios = new Map<Element, number>();
         const observed = new WeakSet<Element>();
         let intersectionObserver: IntersectionObserver | null = null;
+        let mutationObserver: MutationObserver | null = null;
+        let scanFrame: number | null = null;
 
         const updateMobileCandidate = () => {
             if (hoverQuery.matches) return;
@@ -288,7 +290,9 @@ export default function GlobalVideoPreview() {
         };
 
         const scan = () => {
+            scanFrame = null;
             if (hoverQuery.matches) return;
+
             if (!intersectionObserver) {
                 intersectionObserver = new IntersectionObserver(
                     (entries) => {
@@ -317,17 +321,29 @@ export default function GlobalVideoPreview() {
                 });
         };
 
-        scan();
-        const mutationObserver = new MutationObserver(() => {
-            if (
-                activeRef.current &&
-                !activeRef.current.candidate.surface.isConnected
-            ) {
-                stop();
-            }
+        const scheduleScan = () => {
+            if (scanFrame !== null || hoverQuery.matches) return;
+            scanFrame = window.requestAnimationFrame(scan);
+        };
+
+        // Desktop preview is event-delegated and needs no DOM scanning at all.
+        // Mobile needs visibility ratios, so only then observe DOM mutations.
+        if (!hoverQuery.matches) {
             scan();
-        });
-        mutationObserver.observe(document.body, { childList: true, subtree: true });
+            mutationObserver = new MutationObserver(() => {
+                if (
+                    activeRef.current &&
+                    !activeRef.current.candidate.surface.isConnected
+                ) {
+                    stop();
+                }
+                scheduleScan();
+            });
+            mutationObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+            });
+        }
 
         const onVisibility = () => {
             if (document.visibilityState === "hidden") {
@@ -349,7 +365,10 @@ export default function GlobalVideoPreview() {
             document.removeEventListener("pointerout", onPointerOut);
             document.removeEventListener("visibilitychange", onVisibility);
             window.removeEventListener("pagehide", onPageHide);
-            mutationObserver.disconnect();
+            if (scanFrame !== null) {
+                window.cancelAnimationFrame(scanFrame);
+            }
+            mutationObserver?.disconnect();
             intersectionObserver?.disconnect();
         };
     }, []);

@@ -109,32 +109,9 @@ export default function FeedList({
         observer.observe(node);
         return () => observer.disconnect();
     });
-    useEffect(() => {
-        const restore = window.sessionStorage.getItem("playnexus-feed-scroll");
-        if (restore)
-            requestAnimationFrame(() =>
-                window.scrollTo({ top: Number(restore) || 0 }),
-            );
-        let frame = 0;
-        const remember = () => {
-            cancelAnimationFrame(frame);
-            frame = requestAnimationFrame(() =>
-                window.sessionStorage.setItem(
-                    "playnexus-feed-scroll",
-                    String(window.scrollY),
-                ),
-            );
-        };
-        window.addEventListener("scroll", remember, { passive: true });
-        return () => {
-            window.removeEventListener("scroll", remember);
-            cancelAnimationFrame(frame);
-        };
-    }, []);
-
     return (
         <section aria-busy={loading} aria-label="فید بازی" className="min-w-0">
-            <header className="sticky top-16 z-30 border-b border-[var(--store-border)] bg-[var(--store-bg)]/90 px-3 pt-3 backdrop-blur-xl lg:top-36 lg:rounded-3xl lg:border lg:bg-[var(--store-panel)] lg:px-5 lg:pt-4">
+            <header className="pn-feed-toolbar sticky top-16 z-30 border-b border-[var(--store-border)] px-3 pt-3 lg:top-36 lg:rounded-3xl lg:border lg:px-5 lg:pt-4">
                 <div className="flex items-center gap-3 px-1 pb-2">
                     <span className="grid size-9 place-items-center rounded-xl bg-indigo-600 text-white">
                         <Radio size={18} />
@@ -181,7 +158,7 @@ export default function FeedList({
                 ))}
                 {loading && <FeedSkeleton count={state.items.length ? 1 : 3} />}
                 {!loading && !state.items.length && (
-                    <div className="mx-3 rounded-3xl border border-dashed border-[var(--store-border)] bg-[var(--store-panel)] px-6 py-14 text-center sm:mx-0">
+                    <div className="pn-feed-card mx-3 rounded-3xl border border-dashed border-[var(--store-border)] px-6 py-14 text-center sm:mx-0">
                         <Users className="mx-auto text-indigo-400" size={42} />
                         <h2 className="mt-4 font-black">
                             {state.tab === "following"
@@ -247,7 +224,7 @@ function FeedSkeleton({ count }: { count: number }) {
             {Array.from({ length: count }, (_, index) => (
                 <div
                     aria-hidden="true"
-                    className="overflow-hidden border-y border-[var(--store-border)] bg-[var(--store-panel)] sm:rounded-3xl sm:border"
+                    className="pn-feed-card overflow-hidden border-y border-[var(--store-border)] sm:rounded-3xl sm:border"
                     key={index}
                 >
                     <div className="flex items-center gap-3 px-4 py-4 sm:px-5">

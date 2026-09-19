@@ -273,6 +273,7 @@ export default function StorefrontPanels({
                                             {category.image_url ? (
                                                 <img
                                                     alt=""
+                                                    aria-hidden="true"
                                                     className="size-11 shrink-0 rounded-xl object-cover"
                                                     src={category.image_url}
                                                 />
@@ -468,6 +469,7 @@ export default function StorefrontPanels({
                                         {category.image_url ? (
                                             <img
                                                 alt=""
+                                                aria-hidden="true"
                                                 className="size-11 rounded-xl object-cover"
                                                 src={category.image_url}
                                             />
