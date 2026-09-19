@@ -169,7 +169,7 @@ export default function ChannelShow({
                                     {channel.subscribers_count.toLocaleString(
                                         "fa-IR",
                                     )}{" "}
-                                    مشترک
+                                    دنبال‌کننده
                                 </span>
                                 <span className="text-indigo-400">•</span>
                                 <span>
@@ -503,7 +503,7 @@ export default function ChannelShow({
                                     {channel.subscribers_count.toLocaleString(
                                         "fa-IR",
                                     )}{" "}
-                                    مشترک
+                                    دنبال‌کننده
                                 </span>
                                 <span className="flex items-center gap-2">
                                     <Play size={16} />
