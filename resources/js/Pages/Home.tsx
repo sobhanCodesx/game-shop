@@ -1218,8 +1218,8 @@ function PersonalizedHomePanel({
                                                 <span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-2.5 py-1 text-[9px] font-black text-amber-100 backdrop-blur-md">
                                                     {heroEvent.type_label}
                                                 </span>
-                                                <span className="rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur-md">
-                                                    SIGNAL
+                                                <span className="max-w-[180px] truncate rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur-md">
+                                                    {heroEvent.source_name ?? "NEXUS SIGNAL"}
                                                 </span>
                                             </>
                                         ) : heroItem ? (
