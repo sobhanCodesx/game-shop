@@ -1,0 +1,7 @@
+{
+  "job_id": "20260919-main-feed-58-verify-deleted",
+  "tool": "get_feed",
+  "arguments": {
+    "id": 58
+  }
+}
