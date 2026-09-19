@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\BroadcastContentPublished;
 use App\Models\Game;
 use App\Models\GameEvent;
 use App\Models\SocialContent;
@@ -64,6 +65,31 @@ class GameEventTest extends TestCase
         $this->assertSame(96, $event->importance_score);
         $this->assertSame('2026-11-01', $event->old_value['release_date'] ?? null);
         $this->assertSame('2026-12-05', $event->new_value['release_date'] ?? null);
+    }
+
+    public function test_game_event_is_created_even_when_follower_notifications_are_disabled(): void
+    {
+        $game = Game::factory()->create();
+        $content = SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'post',
+            'feed_type' => 'trailer',
+            'feed_badge' => 'trailer',
+            'title' => 'تریلر مهم تستی',
+            'slug' => 'trailer-no-follower-notification-test',
+            'notify_followers' => false,
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+
+        (new BroadcastContentPublished('social', $content->id))->handle();
+
+        $this->assertDatabaseHas('game_events', [
+            'game_id' => $game->id,
+            'source_content_id' => $content->id,
+            'type' => 'major_trailer',
+            'status' => 'active',
+        ]);
     }
 
     public function test_dismissed_event_stays_dismissed_after_a_resync(): void
