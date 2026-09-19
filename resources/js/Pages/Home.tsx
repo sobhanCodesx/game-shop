@@ -905,7 +905,7 @@ function LatestFeedRail({ items }: { items: HomeFeedPreviewItem[] }) {
                             )}
                             <span className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
                             {item.badge && (
-                                <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[9px] font-black text-white backdrop-blur-md">
+                                <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[9px] font-black text-white">
                                     {homeFeedBadgeLabels[item.badge] ??
                                         item.badge}
                                 </span>
@@ -1264,15 +1264,15 @@ function PersonalizedHomePanel({
     }
 
     return (
-        <section className="mx-auto max-w-7xl px-4 pb-5 pt-5">
+        <section className="mx-auto w-full max-w-7xl px-4 pb-5 pt-5">
             <div className="pn-signature-frame pn-signature-frame--hero relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)]">
                 <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -right-28 -top-32 size-96 rounded-full bg-indigo-500/20 blur-3xl"
+                    className="pointer-events-none absolute -right-28 -top-32 size-96 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,.22)_0%,rgba(99,102,241,.10)_38%,transparent_72%)]"
                 />
                 <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -bottom-48 left-0 size-[30rem] rounded-full bg-fuchsia-500/10 blur-3xl"
+                    className="pointer-events-none absolute -bottom-48 left-0 size-[30rem] rounded-full bg-[radial-gradient(circle,rgba(217,70,239,.12)_0%,rgba(217,70,239,.06)_40%,transparent_72%)]"
                 />
 
                 <header className="relative overflow-hidden border-b border-white/10 px-4 py-5 sm:px-6 sm:py-6">
@@ -1313,7 +1313,7 @@ function PersonalizedHomePanel({
                                     {data.intelligence.top_signals.map(
                                         (signal) => (
                                             <span
-                                                className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[9px] font-bold text-white/65 backdrop-blur-sm"
+                                                className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[9px] font-bold text-white/65"
                                                 key={signal.key}
                                             >
                                                 {signal.label}
@@ -1401,8 +1401,8 @@ function PersonalizedHomePanel({
                     </div>
                 ) : (
                     <div className="relative p-3 sm:p-4 lg:p-5">
-                        <section className="overflow-hidden rounded-[26px] border border-white/10 bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)]">
-                            <div className="grid lg:grid-cols-[minmax(0,1.62fr)_minmax(320px,.78fr)]">
+                        <section className="-mx-3 overflow-hidden border-y border-white/10 bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)] sm:-mx-4 lg:-mx-5">
+                            <div className="grid">
                                 <div className="group relative min-h-[360px] overflow-hidden bg-slate-950 sm:min-h-[460px] lg:min-h-[500px]">
                                     {heroPreview ? (
                                         <img
@@ -1444,8 +1444,8 @@ function PersonalizedHomePanel({
                                             <span
                                                 className={
                                                     heroIsVideo
-                                                        ? "inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-slate-950 backdrop-blur-md"
-                                                        : "inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] font-black text-white/80 backdrop-blur-md"
+                                                        ? "inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-slate-950"
+                                                        : "inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] font-black text-white/80"
                                                 }
                                             >
                                                 {heroIsVideo ? (
@@ -1462,7 +1462,7 @@ function PersonalizedHomePanel({
                                             </span>
 
                                             {heroItem && (
-                                                <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-black text-white/60 backdrop-blur-md">
+                                                <span className="rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white/60">
                                                     {
                                                         heroItem.relevance
                                                             .signal_label
@@ -1471,14 +1471,14 @@ function PersonalizedHomePanel({
                                             )}
 
                                             {heroDuration && (
-                                                <span className="rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[9px] font-black text-white/70 backdrop-blur-md">
+                                                <span className="rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white/70">
                                                     {heroDuration}
                                                 </span>
                                             )}
                                         </div>
 
                                         {focusGame && (
-                                            <span className="hidden max-w-[220px] items-center gap-2 rounded-full border border-white/10 bg-black/30 px-2 py-1.5 text-[9px] font-bold text-white/55 backdrop-blur-md sm:inline-flex">
+                                            <span className="hidden max-w-[220px] items-center gap-2 rounded-full border border-white/10 bg-black/55 px-2 py-1.5 text-[9px] font-bold text-white/55 sm:inline-flex">
                                                 {focusGame.image_url && (
                                                     <img
                                                         alt={focusGame.name}
@@ -1494,7 +1494,7 @@ function PersonalizedHomePanel({
                                     </div>
 
                                     {heroIsVideo && (
-                                        <span className="pointer-events-none absolute left-1/2 top-1/2 z-20 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/35 text-white shadow-[0_18px_55px_rgba(0,0,0,.35)] backdrop-blur-xl transition duration-300 group-hover:scale-105 sm:size-20">
+                                        <span className="pointer-events-none absolute left-1/2 top-1/2 z-20 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/50 text-white shadow-[0_18px_55px_rgba(0,0,0,.35)] transition duration-300 group-hover:scale-105 sm:size-20">
                                             <Play
                                                 className="translate-x-[-1px]"
                                                 fill="currentColor"
@@ -1535,7 +1535,7 @@ function PersonalizedHomePanel({
                                     </div>
                                 </div>
 
-                                <aside className="flex min-w-0 flex-col border-t border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01))] lg:border-r lg:border-t-0">
+                                <aside className="flex min-w-0 flex-col border-t border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01))]">
                                     <header className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3.5">
                                         <div>
                                             <p className="text-[8px] font-black tracking-[.14em] text-indigo-200/55">
@@ -1550,7 +1550,7 @@ function PersonalizedHomePanel({
                                         </span>
                                     </header>
 
-                                    <div className="flex-1 divide-y divide-white/8">
+                                    <div className="grid flex-1 gap-px bg-white/8 sm:grid-cols-2 lg:grid-cols-3">
                                         {supportingEditorial.map((item) => {
                                             const media = item.media.find(
                                                 (entry) =>
@@ -1576,7 +1576,7 @@ function PersonalizedHomePanel({
 
                                             return (
                                                 <Link
-                                                    className="group flex min-h-[132px] gap-3 p-3.5 transition hover:bg-white/[0.04]"
+                                                    className="group flex min-h-[132px] gap-3 bg-[#080d1b] p-3.5 transition hover:bg-white/[0.04]"
                                                     href={item.url}
                                                     key={item.id}
                                                 >
@@ -1621,7 +1621,7 @@ function PersonalizedHomePanel({
 
                                         {heroEvent && (
                                             <Link
-                                                className="group relative block overflow-hidden p-4 transition hover:bg-amber-300/[0.035]"
+                                                className="group relative block overflow-hidden bg-[#080d1b] p-4 transition hover:bg-amber-300/[0.035]"
                                                 href={heroEvent.url}
                                             >
                                                 <div className="flex items-start gap-3">
@@ -1673,7 +1673,7 @@ function PersonalizedHomePanel({
 
                                         {supportingEditorial.length === 0 &&
                                             !heroEvent && (
-                                                <div className="p-5 text-[10px] leading-6 text-white/35">
+                                                <div className="bg-[#080d1b] p-5 text-[10px] leading-6 text-white/35">
                                                     فعلاً چیز مکملی نیست که ارزش
                                                     تکرار کردن داشته باشه. وقتی
                                                     محتوای تازه‌ی مرتبط بیاد، این
@@ -1768,7 +1768,7 @@ function PersonalizedHomePanel({
                                                         </span>
                                                     )}
                                                     <span className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
-                                                    <span className="absolute right-2 top-2 rounded-full bg-black/45 px-2 py-1 text-[8px] font-black text-white/65 backdrop-blur-md">
+                                                    <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-1 text-[8px] font-black text-white/65">
                                                         {badgeLabel}
                                                     </span>
                                                 </span>
@@ -1833,7 +1833,7 @@ function PersonalizedHomePanel({
                                                     {event.type_label}
                                                 </span>
                                                 {event.game && (
-                                                    <span className="absolute bottom-2.5 right-2.5 rounded-full border border-white/10 bg-black/45 px-2 py-1 text-[8px] font-black text-white/75 backdrop-blur-md">
+                                                    <span className="absolute bottom-2.5 right-2.5 rounded-full border border-white/10 bg-black/55 px-2 py-1 text-[8px] font-black text-white/75">
                                                         {event.game.name}
                                                     </span>
                                                 )}
@@ -2056,7 +2056,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                                     <span className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
 
                                     <span
-                                        className={`pointer-events-none absolute right-2.5 top-2.5 z-20 rounded-full px-2 py-1 text-[8px] font-black backdrop-blur-md ${
+                                        className={`pointer-events-none absolute right-2.5 top-2.5 z-20 rounded-full px-2 py-1 text-[8px] font-black ${
                                             item.status === "coming"
                                                 ? "bg-amber-400/15 text-amber-200"
                                                 : "bg-white/12 text-white/80"
@@ -2068,7 +2068,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                                     </span>
 
                                     {store.price && (
-                                        <span className="pointer-events-none absolute left-2.5 top-2.5 z-20 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white backdrop-blur-md">
+                                        <span className="pointer-events-none absolute left-2.5 top-2.5 z-20 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white">
                                             {store.price}
                                         </span>
                                     )}
@@ -2085,7 +2085,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                                                 {isPs5 ? "PS5" : "Xbox Series X|S"}
                                             </span>
                                             {alsoAvailable && (
-                                                <span className="rounded-full bg-white/10 px-2 py-1 text-[8px] font-bold text-white/65 backdrop-blur-md">
+                                                <span className="rounded-full bg-white/10 px-2 py-1 text-[8px] font-bold text-white/65">
                                                     هر دو Store
                                                 </span>
                                             )}
@@ -2111,7 +2111,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
 
                                     {item.playnexus_url && (
                                         <Link
-                                            className="absolute bottom-2.5 right-2.5 z-30 inline-flex items-center rounded-lg bg-white/90 px-2.5 py-1.5 text-[9px] font-black text-slate-950 shadow-lg backdrop-blur-md transition hover:scale-[1.03]"
+                                            className="absolute bottom-2.5 right-2.5 z-30 inline-flex items-center rounded-lg bg-white/90 px-2.5 py-1.5 text-[9px] font-black text-slate-950 shadow-lg transition hover:scale-[1.03]"
                                             href={item.playnexus_url}
                                         >
                                             صفحه PlayNexus
@@ -2121,7 +2121,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
                                     {store.url && (
                                         <a
                                             aria-label={`باز کردن ${item.title} در ${isPs5 ? "PlayStation Store" : "Xbox Store"}`}
-                                            className={`absolute bottom-2.5 left-2.5 z-30 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[9px] font-black shadow-lg backdrop-blur-md transition hover:scale-[1.03] ${
+                                            className={`absolute bottom-2.5 left-2.5 z-30 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[9px] font-black shadow-lg transition hover:scale-[1.03] ${
                                                 isPs5
                                                     ? "bg-sky-400 text-slate-950"
                                                     : "bg-emerald-400 text-slate-950"
@@ -2157,7 +2157,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
             <div className="pn-signature-frame pn-signature-frame--cool relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_-58px_rgba(79,70,229,.8)] sm:p-5">
                 <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-indigo-500/20 blur-3xl"
+                    className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,.22)_0%,rgba(99,102,241,.10)_38%,transparent_72%)]"
                 />
                 <header className="relative mb-4 flex items-center gap-3">
                     <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white/10 text-indigo-300">
@@ -2248,6 +2248,7 @@ export default function Home({
     const [activeSlide, setActiveSlide] = useState(0);
     const touchStartX = useRef<number | null>(null);
     const categoryRailRef = useRef<HTMLDivElement>(null);
+    const storefrontRootRef = useRef<HTMLDivElement>(null);
     const showPublicHero = !auth.user || !personalizedHome;
 
     useEffect(() => {
@@ -2301,6 +2302,64 @@ export default function Home({
         return () => observer.disconnect();
     }, [personalizedHome]);
 
+    useEffect(() => {
+        const root = storefrontRootRef.current;
+        if (!root) return;
+
+        let settleTimer: number | null = null;
+
+        const onScroll = () => {
+            root.dataset.pnScrolling = "true";
+
+            if (settleTimer !== null) {
+                window.clearTimeout(settleTimer);
+            }
+
+            settleTimer = window.setTimeout(() => {
+                delete root.dataset.pnScrolling;
+                settleTimer = null;
+            }, 140);
+        };
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener("scroll", onScroll);
+            if (settleTimer !== null) window.clearTimeout(settleTimer);
+            delete root.dataset.pnScrolling;
+        };
+    }, []);
+
+    useEffect(() => {
+        const root = storefrontRootRef.current;
+        if (!root || !("IntersectionObserver" in window)) return;
+
+        const images = Array.from(
+            root.querySelectorAll<HTMLImageElement>('img[loading="lazy"]'),
+        );
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                for (const entry of entries) {
+                    if (!entry.isIntersecting) continue;
+
+                    const image = entry.target as HTMLImageElement;
+                    image.loading = "eager";
+                    image.fetchPriority = "auto";
+                    observer.unobserve(image);
+                }
+            },
+            {
+                rootMargin: "1400px 0px",
+                threshold: 0.01,
+            },
+        );
+
+        images.forEach((image) => observer.observe(image));
+
+        return () => observer.disconnect();
+    }, [personalizedHome]);
+
     const slide = slides[activeSlide];
     const go = (offset: number) =>
         setActiveSlide(
@@ -2316,6 +2375,7 @@ export default function Home({
 
     return (
         <div
+            ref={storefrontRootRef}
             className="storefront-theme min-h-screen w-full max-w-full overflow-x-clip bg-[var(--store-bg)] pb-20 text-[var(--store-text)] transition-colors duration-200 lg:pb-0"
             data-theme={theme}
             dir="rtl"
@@ -2391,7 +2451,7 @@ export default function Home({
                                     <>
                                         <Button
                                             aria-label="اسلاید قبلی"
-                                            className="absolute right-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 text-white opacity-100 shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/55 sm:right-5 lg:opacity-0 lg:group-hover:opacity-100"
+                                            className="absolute right-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white opacity-100 shadow-lg transition hover:scale-105 hover:bg-black/55 sm:right-5 lg:opacity-0 lg:group-hover:opacity-100"
                                             isIconOnly
                                             onPress={() => go(-1)}
                                             variant="ghost"
@@ -2400,7 +2460,7 @@ export default function Home({
                                         </Button>
                                         <Button
                                             aria-label="اسلاید بعدی"
-                                            className="absolute left-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 text-white opacity-100 shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-black/55 sm:left-5 lg:opacity-0 lg:group-hover:opacity-100"
+                                            className="absolute left-3 top-1/2 z-20 size-10 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white opacity-100 shadow-lg transition hover:scale-105 hover:bg-black/55 sm:left-5 lg:opacity-0 lg:group-hover:opacity-100"
                                             isIconOnly
                                             onPress={() => go(1)}
                                             variant="ghost"
@@ -2487,11 +2547,11 @@ export default function Home({
                             <div className="pn-signature-frame pn-signature-frame--subtle relative overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:p-6 lg:p-7">
                                 <span
                                     aria-hidden="true"
-                                    className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-indigo-500/10 blur-3xl"
+                                    className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,.12)_0%,rgba(99,102,241,.05)_42%,transparent_72%)]"
                                 />
                                 <span
                                     aria-hidden="true"
-                                    className="pointer-events-none absolute -bottom-32 left-12 size-72 rounded-full bg-fuchsia-500/10 blur-3xl"
+                                    className="pointer-events-none absolute -bottom-32 left-12 size-72 rounded-full bg-[radial-gradient(circle,rgba(217,70,239,.12)_0%,rgba(217,70,239,.06)_40%,transparent_72%)]"
                                 />
 
                                 <div className="relative mb-5 flex items-end justify-between gap-4 sm:mb-6">
@@ -2577,8 +2637,8 @@ export default function Home({
                                                         className={`absolute inset-0 overflow-hidden bg-gradient-to-br ${fallbackTone}`}
                                                     >
                                                         <span className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:34px_34px]" />
-                                                        <span className="absolute -left-12 -top-16 size-52 rounded-full bg-cyan-400/20 blur-3xl transition duration-700 group-hover:scale-125" />
-                                                        <span className="absolute -bottom-20 -right-16 size-64 rounded-full bg-fuchsia-500/25 blur-3xl transition duration-700 group-hover:scale-125" />
+                                                        <span className="absolute -left-12 -top-16 size-52 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,.20)_0%,rgba(34,211,238,.08)_40%,transparent_72%)] transition duration-700 group-hover:scale-125" />
+                                                        <span className="absolute -bottom-20 -right-16 size-64 rounded-full bg-[radial-gradient(circle,rgba(217,70,239,.24)_0%,rgba(217,70,239,.10)_42%,transparent_72%)] transition duration-700 group-hover:scale-125" />
                                                         <span className="absolute left-5 top-5 flex items-center gap-2 text-[9px] font-black tracking-[.22em] text-white/50 sm:left-6 sm:top-6 sm:text-[10px]">
                                                             <span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,.9)]" />
                                                             {visualMark}
@@ -2587,7 +2647,7 @@ export default function Home({
                                                             NEXUS GAMING
                                                         </span>
                                                         <span className="absolute right-5 top-1/2 -translate-y-1/2 sm:right-8">
-                                                            <span className="relative grid size-28 place-items-center rounded-[30px] border border-white/15 bg-white/10 shadow-[0_24px_80px_rgba(0,0,0,.35)] backdrop-blur-md transition duration-500 group-hover:-translate-y-2 group-hover:rotate-[-3deg] group-hover:scale-105 sm:size-36">
+                                                            <span className="relative grid size-28 place-items-center rounded-[30px] border border-white/15 bg-white/10 shadow-[0_24px_80px_rgba(0,0,0,.35)] transition duration-500 group-hover:-translate-y-2 group-hover:rotate-[-3deg] group-hover:scale-105 sm:size-36">
                                                                 <span className="absolute inset-2 rounded-[24px] border border-white/10" />
                                                                 <Gamepad2
                                                                     className="relative text-white drop-shadow-[0_8px_24px_rgba(255,255,255,.2)]"
@@ -2612,7 +2672,7 @@ export default function Home({
 
                                                 <span className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-black/5" />
                                                 <span className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5">
-                                                    <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-black text-white/75 backdrop-blur-md">
+                                                    <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[9px] font-black text-white/75">
                                                         <Gamepad2 size={12} />
                                                         {money.format(
                                                             category.products_count,
