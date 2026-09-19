@@ -293,10 +293,7 @@ export default function FloatingVideoPlayer({
                             setCanResume(true);
                         }}
                         onEnded={() => {
-                            if (
-                                !neonPlaybackRef.current.fadeStarted &&
-                                neonPlaybackRef.current.accumulated > 0
-                            ) {
+                            if (!neonPlaybackRef.current.fadeStarted) {
                                 beginNeonFade();
                             }
                             captureProgress(true, true);
@@ -307,8 +304,13 @@ export default function FloatingVideoPlayer({
                             setPlaybackError(true);
                         }}
                         onPause={() => {
-                            neonPlaybackRef.current.lastMediaTime = null;
-                            if (!neonPlaybackRef.current.fadeStarted) {
+                            const neon = neonPlaybackRef.current;
+                            const hadPlaybackStarted =
+                                neon.lastMediaTime !== null ||
+                                neon.accumulated > 0;
+                            neon.lastMediaTime = null;
+
+                            if (!neon.fadeStarted && hadPlaybackStarted) {
                                 setNeonState("paused");
                             }
                             captureProgress(true);
