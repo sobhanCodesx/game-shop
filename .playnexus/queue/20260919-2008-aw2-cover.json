@@ -1,0 +1,10 @@
+{
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game",
+    "id": 14,
+    "slot": "cover",
+    "source_url": "https://cdn.prod.website-files.com/64630b03551142e3347ae3da/6492b74f53eef670a1c040af_AlanWake2_00051.webp",
+    "alt": "کاور رسمی بازی Alan Wake 2 ساخته Remedy Entertainment"
+  }
+}
