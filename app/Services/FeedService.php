@@ -141,7 +141,7 @@ class FeedService
         }
 
         $contents = $this->feedQuery()
-            ->whereIn('game_id', $ids)
+            ->whereIn('game_id', $ids->all())
             ->latest('published_at')
             ->latest('id')
             ->limit($limit)
