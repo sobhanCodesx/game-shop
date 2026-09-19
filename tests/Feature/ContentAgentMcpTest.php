@@ -33,6 +33,8 @@ class ContentAgentMcpTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('jsonrpc', '2.0')
             ->assertJsonPath('id', 1)
+            ->assertJsonFragment(['name' => 'describe_playnexus_graph'])
+            ->assertJsonFragment(['name' => 'query_playnexus_graph'])
             ->assertJsonFragment(['name' => 'search_games'])
             ->assertJsonFragment(['name' => 'search_studios'])
             ->assertJsonFragment(['name' => 'search_platforms'])
@@ -61,7 +63,7 @@ class ContentAgentMcpTest extends TestCase
             ->assertJsonFragment(['name' => 'abort_asset_upload'])
             ->assertJsonFragment(['name' => 'list_content_assets'])
             ->assertJsonFragment(['name' => 'remove_content_asset'])
-            ->assertJsonFragment(['version' => '2.2.0']);
+            ->assertJsonFragment(['version' => '3.0.0']);
     }
 
     public function test_mcp_endpoint_supports_modern_discovery(): void
@@ -80,7 +82,7 @@ class ContentAgentMcpTest extends TestCase
             ],
         ])->assertOk()
             ->assertJsonPath('result.supportedVersions.0', '2026-07-28')
-            ->assertJsonFragment(['version' => '2.2.0']);
+            ->assertJsonFragment(['version' => '3.0.0']);
     }
 
     public function test_media_service_accepts_only_manifest_sized_base64_chunks(): void
