@@ -372,7 +372,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
     if (!items.length) return null;
 
     return (
-        <section className="relative z-10 mx-auto mt-4 max-w-7xl px-4 pb-5 sm:mt-6">
+        <section className="relative z-10 mx-auto mt-4 max-w-[1536px] px-4 pb-5 sm:mt-6">
             <div className="pn-signature-frame pn-signature-frame--subtle overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_24px_70px_-55px_rgba(79,70,229,.65)]">
                 <div className="flex items-center justify-between gap-3 border-b border-[var(--store-border)] px-4 py-3 sm:px-5">
                     <div className="flex min-w-0 items-center gap-3">
@@ -583,7 +583,7 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
         railRef.current?.scrollBy({ left: offset, behavior: "smooth" });
 
     return (
-        <section className="mx-auto min-w-0 max-w-7xl px-4 py-6 sm:py-8">
+        <section className="mx-auto min-w-0 max-w-[1536px] px-4 py-6 sm:py-8">
             <div className="mb-5 flex items-end justify-between gap-4">
                 <div>
                     <p className="text-xs font-black text-indigo-400">
@@ -667,7 +667,7 @@ function ContentRail({ section }: { section: ContentSection }) {
     const isVideo = ["videos", "shorts"].includes(section.content_type);
 
     return (
-        <section className="mx-auto min-w-0 max-w-7xl px-4 py-10">
+        <section className="mx-auto min-w-0 max-w-[1536px] px-4 py-10">
             <div className="mb-6 flex items-end justify-between gap-4">
                 <div>
                     <p className="text-sm font-bold text-indigo-400">
@@ -1264,7 +1264,7 @@ function PersonalizedHomePanel({
     }
 
     return (
-        <section className="mx-auto w-full max-w-7xl px-4 pb-5 pt-5">
+        <section className="mx-auto w-full max-w-[1536px] px-4 pb-5 pt-5">
             <div className="pn-signature-frame pn-signature-frame--hero relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)]">
                 <span
                     aria-hidden="true"
@@ -2153,7 +2153,7 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
     };
 
     return (
-        <section className="mx-auto max-w-7xl px-4 pb-5 pt-2">
+        <section className="mx-auto max-w-[1536px] px-4 pb-5 pt-2">
             <div className="pn-signature-frame pn-signature-frame--cool relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_-58px_rgba(79,70,229,.8)] sm:p-5">
                 <span
                     aria-hidden="true"
@@ -2403,7 +2403,7 @@ export default function Home({
                         userName={auth.user.name}
                     />
                 ) : (
-                <section className="mx-auto max-w-7xl px-4 pt-5">
+                <section className="mx-auto max-w-[1536px] px-4 pt-5">
                     <header className="mb-5 max-w-3xl">
                         <h1 className="text-2xl font-black leading-tight text-[var(--store-text)] sm:text-3xl">
                             {seo.heading}
@@ -2508,14 +2508,14 @@ export default function Home({
                 {(latestFeed.length > 0 || latestStudios.length > 0) && (
                     <section
                         aria-label="تازه‌های فید و استودیو"
-                        className="mx-auto grid max-w-7xl gap-4 px-4 pb-4 lg:grid-cols-2"
+                        className="mx-auto grid max-w-[1536px] gap-4 px-4 pb-4 lg:grid-cols-2"
                     >
                         <LatestFeedRail items={latestFeed} />
                         <LatestStudioRail items={latestStudios} />
                     </section>
                 )}
                 <GameRadarRail items={gameRadar} />
-                <section className="home-slider mx-auto flex max-w-7xl snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
+                <section className="home-slider mx-auto flex max-w-[1536px] snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],
                         [Truck, "ارسال سریع", "تحویل امن سفارش"],
@@ -2543,7 +2543,7 @@ export default function Home({
                 {settings.featured_categories_enabled &&
                     categories.length > 0 && (
                         <section
-                            className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10 sm:py-12"
+                            className="mx-auto max-w-[1536px] scroll-mt-24 px-4 py-10 sm:py-12"
                             id="categories"
                         >
                             <div className="pn-signature-frame pn-signature-frame--subtle relative overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:p-6 lg:p-7">
@@ -2716,7 +2716,7 @@ export default function Home({
                     )}
                 {settings.featured_products_enabled && (
                     <section
-                        className="mx-auto max-w-7xl scroll-mt-24 px-4 py-10"
+                        className="mx-auto max-w-[1536px] scroll-mt-24 px-4 py-10"
                         id="featured-products"
                     >
                         <div className="mb-6">
@@ -2732,7 +2732,7 @@ export default function Home({
                 )}
                 {settings.latest_products_enabled && (
                     <section
-                        className="mx-auto max-w-7xl scroll-mt-36 px-4 py-10"
+                        className="mx-auto max-w-[1536px] scroll-mt-36 px-4 py-10"
                         id="latest-products"
                     >
                         <div className="mb-6">
@@ -2752,7 +2752,7 @@ export default function Home({
                     ))}
                 </div>
                 {settings.newsletter_enabled && (
-                    <section className="mx-auto max-w-7xl px-4 py-14">
+                    <section className="mx-auto max-w-[1536px] px-4 py-14">
                         <Card
                             className="storefront-dark-panel overflow-hidden border border-indigo-500/30 bg-gradient-to-l from-indigo-950 to-slate-900"
                             variant="secondary"
@@ -2790,7 +2790,7 @@ export default function Home({
                 className="scroll-mt-24 border-t border-slate-800 bg-slate-950"
                 id="store-information"
             >
-                <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+                <div className="mx-auto flex max-w-[1536px] flex-col gap-4 px-4 py-8 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
                     <p>
                         © {new Date().getFullYear()} PLAY NEXUS — همراه دنیای
                         بازی
