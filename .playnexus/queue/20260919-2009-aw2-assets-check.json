@@ -1,0 +1,7 @@
+{
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "game",
+    "id": 14
+  }
+}
