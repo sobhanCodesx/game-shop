@@ -1,0 +1,8 @@
+{
+  "job_id": "20260919-daily-armored-core-vi-final-verify",
+  "tool": "get_content",
+  "arguments": {
+    "resource": "game",
+    "id": 11
+  }
+}
