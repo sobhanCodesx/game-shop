@@ -45,6 +45,7 @@ class GameEventService
             'new_value' => ['release_date' => $newDate],
             'detected_at' => now(),
             'effective_at' => now(),
+            'expires_at' => null,
             'status' => 'active',
         ]);
     }
