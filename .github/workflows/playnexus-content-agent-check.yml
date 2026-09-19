@@ -3,6 +3,8 @@ name: PlayNexus Content Agent Check
 on:
   push:
     paths:
+      - 'composer.json'
+      - 'composer.lock'
       - 'app/Http/Controllers/Api/ContentAgentMcpController.php'
       - 'app/Http/Middleware/AuthenticateContentAgent.php'
       - 'app/Services/ContentAgentService.php'
@@ -15,6 +17,8 @@ on:
       - '.github/workflows/playnexus-content-agent-check.yml'
   pull_request:
     paths:
+      - 'composer.json'
+      - 'composer.lock'
       - 'app/Http/Controllers/Api/ContentAgentMcpController.php'
       - 'app/Http/Middleware/AuthenticateContentAgent.php'
       - 'app/Services/ContentAgentService.php'
@@ -45,6 +49,8 @@ jobs:
           php -l tests/Feature/ContentAgentMcpTest.php
       - name: Python syntax
         run: python3 -m py_compile scripts/playnexus_publish.py
+      - name: Validate Composer files
+        run: composer validate --no-check-publish
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
       - name: Run content agent feature tests
