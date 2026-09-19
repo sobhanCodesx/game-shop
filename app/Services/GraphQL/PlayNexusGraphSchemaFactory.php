@@ -2,11 +2,13 @@
 
 namespace App\Services\GraphQL;
 
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\SocialContent;
+use App\Models\SocialContentMedia;
 use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use App\Support\MediaStorage;
@@ -19,9 +21,11 @@ class PlayNexusGraphSchemaFactory
     private ?ObjectType $pageInfoType = null;
     private ?ObjectType $gameType = null;
     private ?ObjectType $studioType = null;
+    private ?ObjectType $brandType = null;
     private ?ObjectType $platformType = null;
     private ?ObjectType $productType = null;
     private ?ObjectType $contentType = null;
+    private ?ObjectType $contentMediaType = null;
     private ?ObjectType $collectionType = null;
     private ?ObjectType $categoryType = null;
     private ?ObjectType $radarType = null;
@@ -30,6 +34,7 @@ class PlayNexusGraphSchemaFactory
     private ?ObjectType $storePresenceType = null;
     private ?ObjectType $gameConnectionType = null;
     private ?ObjectType $studioConnectionType = null;
+    private ?ObjectType $brandConnectionType = null;
     private ?ObjectType $platformConnectionType = null;
     private ?ObjectType $productConnectionType = null;
     private ?ObjectType $contentConnectionType = null;
@@ -86,6 +91,18 @@ class PlayNexusGraphSchemaFactory
                         'description' => 'Explore studios.',
                         'args' => $this->entityListArgs(),
                         'resolve' => fn ($root, array $args) => $this->repo->studios($args),
+                    ],
+                    'brand' => [
+                        'type' => $this->brandType(),
+                        'description' => 'Find one store brand by id or slug.',
+                        'args' => $this->singleArgs(),
+                        'resolve' => fn ($root, array $args) => $this->repo->brand($args),
+                    ],
+                    'brands' => [
+                        'type' => Type::nonNull($this->brandConnectionType()),
+                        'description' => 'Explore store brands and their products.',
+                        'args' => $this->entityListArgs(),
+                        'resolve' => fn ($root, array $args) => $this->repo->brands($args),
                     ],
                     'platform' => [
                         'type' => $this->platformType(),
@@ -219,6 +236,8 @@ class PlayNexusGraphSchemaFactory
                 'releaseDate' => ['type' => Type::string(), 'resolve' => fn (Game $game) => $game->release_date?->toDateString()],
                 'coverUrl' => ['type' => Type::string(), 'resolve' => fn (Game $game) => MediaStorage::url($game->cover)],
                 'backgroundUrl' => ['type' => Type::string(), 'resolve' => fn (Game $game) => MediaStorage::url($game->background)],
+                'createdAt' => ['type' => Type::string(), 'resolve' => fn (Game $game) => $game->created_at?->toISOString()],
+                'updatedAt' => ['type' => Type::string(), 'resolve' => fn (Game $game) => $game->updated_at?->toISOString()],
                 'url' => [
                     'type' => Type::string(),
                     'resolve' => fn (Game $game) => in_array($game->status, ['active', 'published'], true)
@@ -290,6 +309,8 @@ class PlayNexusGraphSchemaFactory
                 'website' => Type::string(),
                 'logoUrl' => ['type' => Type::string(), 'resolve' => fn (Studio $studio) => MediaStorage::url($studio->logo)],
                 'backgroundUrl' => ['type' => Type::string(), 'resolve' => fn (Studio $studio) => MediaStorage::url($studio->background)],
+                'createdAt' => ['type' => Type::string(), 'resolve' => fn (Studio $studio) => $studio->created_at?->toISOString()],
+                'updatedAt' => ['type' => Type::string(), 'resolve' => fn (Studio $studio) => $studio->updated_at?->toISOString()],
                 'url' => [
                     'type' => Type::string(),
                     'resolve' => fn (Studio $studio) => $studio->status === 'active'
@@ -313,6 +334,34 @@ class PlayNexusGraphSchemaFactory
                     'type' => Type::nonNull($this->collectionConnectionType()),
                     'args' => $this->collectionListArgs(nested: true),
                     'resolve' => fn (Studio $studio, array $args) => $this->repo->collectionsForStudio($studio, $args),
+                ],
+            ],
+        ]);
+    }
+
+    private function brandType(): ObjectType
+    {
+        return $this->brandType ??= new ObjectType([
+            'name' => 'Brand',
+            'description' => 'Store brand/manufacturer profile connected to PlayNexus products.',
+            'fields' => fn () => [
+                'id' => Type::nonNull(Type::id()),
+                'name' => Type::nonNull(Type::string()),
+                'slug' => Type::nonNull(Type::string()),
+                'status' => Type::string(),
+                'description' => Type::string(),
+                'website' => Type::string(),
+                'logoUrl' => ['type' => Type::string(), 'resolve' => fn (Brand $brand) => MediaStorage::url($brand->logo)],
+                'productCount' => [
+                    'type' => Type::nonNull(Type::int()),
+                    'resolve' => fn (Brand $brand) => (int) ($brand->products_count ?? $brand->products()->count()),
+                ],
+                'createdAt' => ['type' => Type::string(), 'resolve' => fn (Brand $brand) => $brand->created_at?->toISOString()],
+                'updatedAt' => ['type' => Type::string(), 'resolve' => fn (Brand $brand) => $brand->updated_at?->toISOString()],
+                'products' => [
+                    'type' => Type::nonNull($this->productConnectionType()),
+                    'args' => $this->productListArgs(nested: true),
+                    'resolve' => fn (Brand $brand, array $args) => $this->repo->productsForBrand($brand, $args),
                 ],
             ],
         ]);
@@ -378,6 +427,8 @@ class PlayNexusGraphSchemaFactory
                 'releaseDate' => ['type' => Type::string(), 'resolve' => fn (Product $product) => $product->release_date?->toDateString()],
                 'publishedAt' => ['type' => Type::string(), 'resolve' => fn (Product $product) => $product->published_at?->toISOString()],
                 'expiresAt' => ['type' => Type::string(), 'resolve' => fn (Product $product) => $product->expires_at?->toISOString()],
+                'createdAt' => ['type' => Type::string(), 'resolve' => fn (Product $product) => $product->created_at?->toISOString()],
+                'updatedAt' => ['type' => Type::string(), 'resolve' => fn (Product $product) => $product->updated_at?->toISOString()],
                 'url' => [
                     'type' => Type::string(),
                     'resolve' => fn (Product $product) => $product->status === 'published' && $product->visibility === 'public'
@@ -391,6 +442,10 @@ class PlayNexusGraphSchemaFactory
                 'category' => [
                     'type' => $this->categoryType(),
                     'resolve' => fn (Product $product) => $product->relationLoaded('category') ? $product->category : $product->category()->first(),
+                ],
+                'brand' => [
+                    'type' => $this->brandType(),
+                    'resolve' => fn (Product $product) => $product->relationLoaded('brand') ? $product->brand : $product->brand()->first(),
                 ],
                 'platforms' => [
                     'type' => Type::nonNull(Type::listOf(Type::nonNull($this->platformType()))),
@@ -422,9 +477,23 @@ class PlayNexusGraphSchemaFactory
                 'allowComments' => ['type' => Type::nonNull(Type::boolean()), 'resolve' => fn (SocialContent $content) => (bool) $content->allow_comments],
                 'notifyFollowers' => ['type' => Type::nonNull(Type::boolean()), 'resolve' => fn (SocialContent $content) => (bool) $content->notify_followers],
                 'views' => Type::nonNull(Type::int()),
+                'likesCount' => [
+                    'type' => Type::nonNull(Type::int()),
+                    'resolve' => fn (SocialContent $content) => (int) ($content->likes_count ?? $content->reactions()->where('type', 'like')->count()),
+                ],
+                'commentsCount' => [
+                    'type' => Type::nonNull(Type::int()),
+                    'resolve' => fn (SocialContent $content) => (int) ($content->comments_count ?? $content->comments()->where('status', 'published')->count()),
+                ],
+                'savesCount' => [
+                    'type' => Type::nonNull(Type::int()),
+                    'resolve' => fn (SocialContent $content) => (int) ($content->saves_count ?? $content->savedBy()->count()),
+                ],
                 'duration' => Type::int(),
                 'sortOrder' => ['type' => Type::int(), 'resolve' => fn (SocialContent $content) => (int) $content->sort_order],
                 'publishedAt' => ['type' => Type::string(), 'resolve' => fn (SocialContent $content) => $content->published_at?->toISOString()],
+                'createdAt' => ['type' => Type::string(), 'resolve' => fn (SocialContent $content) => $content->created_at?->toISOString()],
+                'updatedAt' => ['type' => Type::string(), 'resolve' => fn (SocialContent $content) => $content->updated_at?->toISOString()],
                 'thumbnailUrl' => ['type' => Type::string(), 'resolve' => fn (SocialContent $content) => MediaStorage::url($content->thumbnail)],
                 'videoUrl' => ['type' => Type::string(), 'resolve' => fn (SocialContent $content) => MediaStorage::url($content->video_path)],
                 'url' => [
@@ -455,12 +524,44 @@ class PlayNexusGraphSchemaFactory
                         ? $content->relatedContent
                         : $content->relatedContent()->first(),
                 ],
+                'media' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull($this->contentMediaType()))),
+                    'resolve' => fn (SocialContent $content) => ($content->relationLoaded('media')
+                        ? $content->media
+                        : $content->media()->get())->all(),
+                ],
                 'playlists' => [
                     'type' => Type::nonNull(Type::listOf(Type::nonNull($this->collectionType()))),
                     'resolve' => fn (SocialContent $content) => ($content->relationLoaded('playlists')
                         ? $content->playlists
                         : $content->playlists()->get())->all(),
                 ],
+            ],
+        ]);
+    }
+
+    private function contentMediaType(): ObjectType
+    {
+        return $this->contentMediaType ??= new ObjectType([
+            'name' => 'ContentMedia',
+            'description' => 'Media asset attached to editorial content.',
+            'fields' => [
+                'id' => Type::nonNull(Type::id()),
+                'type' => Type::nonNull(Type::string()),
+                'url' => [
+                    'type' => Type::string(),
+                    'resolve' => fn (SocialContentMedia $media) => MediaStorage::url($media->path),
+                ],
+                'thumbnailUrl' => [
+                    'type' => Type::string(),
+                    'resolve' => fn (SocialContentMedia $media) => MediaStorage::url($media->thumbnail),
+                ],
+                'mime' => Type::string(),
+                'width' => Type::int(),
+                'height' => Type::int(),
+                'duration' => Type::int(),
+                'alt' => Type::string(),
+                'sortOrder' => ['type' => Type::int(), 'resolve' => fn (SocialContentMedia $media) => (int) $media->sort_order],
             ],
         ]);
     }
@@ -670,6 +771,11 @@ class PlayNexusGraphSchemaFactory
         return $this->studioConnectionType ??= $this->connectionType('StudioConnection', $this->studioType());
     }
 
+    private function brandConnectionType(): ObjectType
+    {
+        return $this->brandConnectionType ??= $this->connectionType('BrandConnection', $this->brandType());
+    }
+
     private function platformConnectionType(): ObjectType
     {
         return $this->platformConnectionType ??= $this->connectionType('PlatformConnection', $this->platformType());
@@ -729,6 +835,7 @@ class PlayNexusGraphSchemaFactory
                 'query' => Type::nonNull(Type::string()),
                 'games' => Type::nonNull(Type::listOf(Type::nonNull($this->gameType()))),
                 'studios' => Type::nonNull(Type::listOf(Type::nonNull($this->studioType()))),
+                'brands' => Type::nonNull(Type::listOf(Type::nonNull($this->brandType()))),
                 'products' => Type::nonNull(Type::listOf(Type::nonNull($this->productType()))),
                 'content' => Type::nonNull(Type::listOf(Type::nonNull($this->contentType()))),
                 'collections' => Type::nonNull(Type::listOf(Type::nonNull($this->collectionType()))),
@@ -744,6 +851,7 @@ class PlayNexusGraphSchemaFactory
                 'games' => Type::nonNull(Type::int()),
                 'activeGames' => Type::nonNull(Type::int()),
                 'studios' => Type::nonNull(Type::int()),
+                'brands' => Type::nonNull(Type::int()),
                 'platforms' => Type::nonNull(Type::int()),
                 'products' => Type::nonNull(Type::int()),
                 'publishedProducts' => Type::nonNull(Type::int()),
@@ -781,14 +889,14 @@ class PlayNexusGraphSchemaFactory
     {
         return [
             'name' => 'PlayNexus Intelligence Graph',
-            'version' => '1.0.0',
+            'version' => '1.1.0',
             'readOnly' => true,
             'introspection' => (bool) config('content_agent.graphql.allow_introspection', true),
-            'entities' => ['Game', 'Studio', 'Platform', 'Product', 'Content', 'Collection', 'Category', 'RadarItem', 'GameEvent', 'GameSourceState'],
-            'maxDepth' => (int) config('content_agent.graphql.max_depth', 10),
-            'maxComplexity' => (int) config('content_agent.graphql.max_complexity', 500),
-            'maxFields' => (int) config('content_agent.graphql.max_fields', 250),
-            'maxPageSize' => (int) config('content_agent.graphql.max_page_size', 50),
+            'entities' => ['Game', 'Studio', 'Brand', 'Platform', 'Product', 'Content', 'ContentMedia', 'Collection', 'Category', 'RadarItem', 'GameEvent', 'GameSourceState'],
+            'maxDepth' => (int) config('content_agent.graphql.max_depth', 14),
+            'maxComplexity' => (int) config('content_agent.graphql.max_complexity', 1500),
+            'maxFields' => (int) config('content_agent.graphql.max_fields', 600),
+            'maxPageSize' => (int) config('content_agent.graphql.max_page_size', 100),
         ];
     }
 
@@ -850,6 +958,7 @@ class PlayNexusGraphSchemaFactory
             ...($nested ? [] : [
                 'gameId' => ['type' => Type::id()],
                 'categoryId' => ['type' => Type::id()],
+                'brandId' => ['type' => Type::id()],
                 'platformId' => ['type' => Type::id()],
             ]),
             'visibility' => ['type' => Type::string()],
