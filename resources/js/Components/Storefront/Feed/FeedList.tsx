@@ -109,29 +109,6 @@ export default function FeedList({
         observer.observe(node);
         return () => observer.disconnect();
     });
-    useEffect(() => {
-        const restore = window.sessionStorage.getItem("playnexus-feed-scroll");
-        if (restore)
-            requestAnimationFrame(() =>
-                window.scrollTo({ top: Number(restore) || 0 }),
-            );
-        let frame = 0;
-        const remember = () => {
-            cancelAnimationFrame(frame);
-            frame = requestAnimationFrame(() =>
-                window.sessionStorage.setItem(
-                    "playnexus-feed-scroll",
-                    String(window.scrollY),
-                ),
-            );
-        };
-        window.addEventListener("scroll", remember, { passive: true });
-        return () => {
-            window.removeEventListener("scroll", remember);
-            cancelAnimationFrame(frame);
-        };
-    }, []);
-
     return (
         <section aria-busy={loading} aria-label="فید بازی" className="min-w-0">
             <header className="pn-feed-toolbar sticky top-16 z-30 border-b border-[var(--store-border)] px-3 pt-3 lg:top-36 lg:rounded-3xl lg:border lg:px-5 lg:pt-4">
