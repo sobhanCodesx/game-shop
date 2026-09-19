@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Brand;
 use App\Models\Game;
+use App\Models\Product;
 use App\Models\Platform;
 use App\Models\SocialContent;
 use App\Models\Studio;
@@ -103,6 +105,126 @@ GRAPHQL,
 
         $this->assertIsInt($response->json('extensions.playnexus.complexity'));
         $this->assertIsInt($response->json('extensions.playnexus.depth'));
+    }
+
+    public function test_private_agent_has_broad_read_access_to_brands_media_and_engagement(): void
+    {
+        config()->set('content_agent.token', 'graph-secret');
+
+        $brand = Brand::factory()->create([
+            'name' => 'Nexus Hardware',
+            'slug' => 'nexus-hardware',
+            'description' => 'Premium gaming hardware brand',
+            'status' => 'active',
+        ]);
+        $product = Product::factory()->create([
+            'brand_id' => $brand->id,
+            'title' => 'Nexus Controller',
+            'slug' => 'nexus-controller',
+            'status' => 'published',
+            'visibility' => 'public',
+        ]);
+
+        $user = User::factory()->create();
+        $content = SocialContent::query()->create([
+            'type' => 'post',
+            'feed_type' => 'review',
+            'title' => 'Nexus Controller Review',
+            'slug' => 'nexus-controller-review',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+        $content->media()->create([
+            'type' => 'image',
+            'path' => 'feed/nexus-controller.webp',
+            'mime' => 'image/webp',
+            'width' => 1600,
+            'height' => 900,
+            'alt' => 'Nexus Controller',
+            'sort_order' => 0,
+        ]);
+        $content->reactions()->create([
+            'user_id' => $user->id,
+            'type' => 'like',
+        ]);
+        $content->comments()->create([
+            'user_id' => $user->id,
+            'body' => 'Great review',
+            'status' => 'published',
+        ]);
+        $content->savedBy()->attach($user->id);
+
+        $response = $this->withToken('graph-secret')->postJson('/api/graphql', [
+            'query' => <<<'GRAPHQL'
+query BroadRead($brandSlug: String!, $contentSlug: String!) {
+  graphInfo {
+    version
+    entities
+    maxDepth
+    maxComplexity
+    maxFields
+    maxPageSize
+  }
+  brand(slug: $brandSlug) {
+    name
+    productCount
+    products(first: 10) {
+      nodes {
+        id
+        title
+        brand { id name }
+      }
+      pageInfo { total hasMore }
+    }
+  }
+  content(slug: $contentSlug, type: "post") {
+    id
+    title
+    likesCount
+    commentsCount
+    savesCount
+    media {
+      id
+      type
+      url
+      mime
+      width
+      height
+      alt
+      sortOrder
+    }
+  }
+  search(query: "Nexus", first: 10) {
+    brands { id name }
+    products { id title brand { id name } }
+  }
+}
+GRAPHQL,
+            'variables' => [
+                'brandSlug' => $brand->slug,
+                'contentSlug' => $content->slug,
+            ],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.graphInfo.version', '1.1.0')
+            ->assertJsonPath('data.graphInfo.maxDepth', 14)
+            ->assertJsonPath('data.graphInfo.maxComplexity', 1500)
+            ->assertJsonPath('data.graphInfo.maxFields', 600)
+            ->assertJsonPath('data.graphInfo.maxPageSize', 100)
+            ->assertJsonFragment(['Brand'])
+            ->assertJsonFragment(['ContentMedia'])
+            ->assertJsonPath('data.brand.name', 'Nexus Hardware')
+            ->assertJsonPath('data.brand.productCount', 1)
+            ->assertJsonPath('data.brand.products.nodes.0.title', $product->title)
+            ->assertJsonPath('data.brand.products.nodes.0.brand.name', 'Nexus Hardware')
+            ->assertJsonPath('data.content.likesCount', 1)
+            ->assertJsonPath('data.content.commentsCount', 1)
+            ->assertJsonPath('data.content.savesCount', 1)
+            ->assertJsonPath('data.content.media.0.type', 'image')
+            ->assertJsonPath('data.content.media.0.url', 'http://localhost/storage/feed/nexus-controller.webp')
+            ->assertJsonPath('data.content.media.0.width', 1600)
+            ->assertJsonPath('data.search.brands.0.name', 'Nexus Hardware');
     }
 
     public function test_graphql_supports_schema_introspection_for_ai_discovery(): void
