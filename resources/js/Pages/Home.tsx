@@ -1307,6 +1307,15 @@ function PersonalizedHomePanel({
         });
     }
 
+    const showMobileFocusCard = Boolean(
+        focusGame && mobileLead?.url !== focusGame.url,
+    );
+    const showMobileRadarPrimary =
+        !showMobileFocusCard && Boolean(mobileRadarLead);
+    const showMobileVideoCard = Boolean(
+        heroVideo && mobileLead?.url !== heroVideo.url,
+    );
+
     return (
         <section className="mx-auto w-full max-w-[1460px] px-3 pb-2 pt-2 sm:px-4 sm:pb-5 sm:pt-4">
             <div className="pn-signature-frame pn-signature-frame--hero relative overflow-hidden rounded-[22px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)] sm:rounded-[30px]">
@@ -1481,8 +1490,8 @@ function PersonalizedHomePanel({
                                 </span>
                             </Link>
 
-                            <div className="grid gap-2">
-                                {focusGame && (
+                            <div className="grid grid-rows-2 gap-2">
+                                {showMobileFocusCard && focusGame ? (
                                     <Link
                                         className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={focusGame.url}
@@ -1506,41 +1515,14 @@ function PersonalizedHomePanel({
                                             </strong>
                                         </span>
                                     </Link>
-                                )}
-
-                                {heroVideo ? (
+                                ) : showMobileRadarPrimary &&
+                                  mobileRadarLead ? (
                                     <Link
                                         className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
-                                        href={heroVideo.url}
-                                    >
-                                        {heroPreview && (
-                                            <img
-                                                alt=""
-                                                aria-hidden="true"
-                                                className="absolute inset-0 size-full object-cover opacity-28"
-                                                loading="lazy"
-                                                src={heroPreview}
-                                            />
-                                        )}
-                                        <span className="absolute inset-0 bg-gradient-to-l from-[#070b14]/95 via-[#070b14]/78 to-[#070b14]/48" />
-                                        <span className="relative z-[1] flex h-full items-center gap-2">
-                                            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-slate-950">
-                                                <Play fill="currentColor" size={12} />
-                                            </span>
-                                            <span className="min-w-0">
-                                                <span className="text-[7px] font-black tracking-[.1em] text-rose-200/70">
-                                                    WATCH NEXT
-                                                </span>
-                                                <strong className="mt-0.5 block line-clamp-2 text-[9px] font-black leading-4 text-white/90">
-                                                    {heroVideo.title}
-                                                </strong>
-                                            </span>
-                                        </span>
-                                    </Link>
-                                ) : mobileRadarLead ? (
-                                    <Link
-                                        className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
-                                        href={mobileRadarLead.playnexus_url ?? "/game-radar"}
+                                        href={
+                                            mobileRadarLead.playnexus_url ??
+                                            "/game-radar"
+                                        }
                                     >
                                         {(mobileRadarLead.banner_url ||
                                             mobileRadarLead.cover_url) && (
@@ -1566,7 +1548,98 @@ function PersonalizedHomePanel({
                                             </strong>
                                         </span>
                                     </Link>
-                                ) : null}
+                                ) : (
+                                    <div className="flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
+                                        <span>
+                                            <span className="text-[7px] font-black tracking-[.1em] text-indigo-200/65">
+                                                SIGNALS
+                                            </span>
+                                            <strong className="mt-0.5 block text-[10px] font-black text-white/90">
+                                                {money.format(data.events.length)} تغییر مهم
+                                            </strong>
+                                        </span>
+                                    </div>
+                                )}
+
+                                {showMobileVideoCard && heroVideo ? (
+                                    <Link
+                                        className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        href={heroVideo.url}
+                                    >
+                                        {heroPreview && (
+                                            <img
+                                                alt=""
+                                                aria-hidden="true"
+                                                className="absolute inset-0 size-full object-cover opacity-28"
+                                                loading="lazy"
+                                                src={heroPreview}
+                                            />
+                                        )}
+                                        <span className="absolute inset-0 bg-gradient-to-l from-[#070b14]/95 via-[#070b14]/78 to-[#070b14]/48" />
+                                        <span className="relative z-[1] flex h-full items-center gap-2">
+                                            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-slate-950">
+                                                <Play
+                                                    fill="currentColor"
+                                                    size={12}
+                                                />
+                                            </span>
+                                            <span className="min-w-0">
+                                                <span className="text-[7px] font-black tracking-[.1em] text-rose-200/70">
+                                                    WATCH NEXT
+                                                </span>
+                                                <strong className="mt-0.5 block line-clamp-2 text-[9px] font-black leading-4 text-white/90">
+                                                    {heroVideo.title}
+                                                </strong>
+                                            </span>
+                                        </span>
+                                    </Link>
+                                ) : !showMobileRadarPrimary &&
+                                  mobileRadarLead ? (
+                                    <Link
+                                        className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        href={
+                                            mobileRadarLead.playnexus_url ??
+                                            "/game-radar"
+                                        }
+                                    >
+                                        {(mobileRadarLead.banner_url ||
+                                            mobileRadarLead.cover_url) && (
+                                            <img
+                                                alt=""
+                                                aria-hidden="true"
+                                                className="absolute inset-0 size-full object-cover opacity-24"
+                                                loading="lazy"
+                                                src={
+                                                    mobileRadarLead.banner_url ??
+                                                    mobileRadarLead.cover_url ??
+                                                    undefined
+                                                }
+                                            />
+                                        )}
+                                        <span className="absolute inset-0 bg-gradient-to-l from-[#070b14]/95 via-[#070b14]/80 to-[#070b14]/52" />
+                                        <span className="relative z-[1] block">
+                                            <span className="text-[7px] font-black tracking-[.1em] text-emerald-200/70">
+                                                RADAR
+                                            </span>
+                                            <strong className="mt-0.5 block line-clamp-2 text-[9px] font-black leading-4 text-white/90">
+                                                {mobileRadarLead.title}
+                                            </strong>
+                                        </span>
+                                    </Link>
+                                ) : (
+                                    <div className="flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
+                                        <span>
+                                            <span className="text-[7px] font-black tracking-[.1em] text-cyan-200/60">
+                                                LIBRARY
+                                            </span>
+                                            <strong className="mt-0.5 block text-[10px] font-black text-white/90">
+                                                {money.format(
+                                                    data.followed_games.length,
+                                                )} بازی زیر نظر
+                                            </strong>
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (
