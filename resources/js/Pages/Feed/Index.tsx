@@ -34,11 +34,11 @@ export default function FeedIndex({
     return (
         <StorefrontLayout>
             <Seo seo={seo} />
-            <main className="storefront-feed mx-auto w-full pb-10 sm:px-4 lg:px-5 lg:pt-6">
+            <main className="storefront-feed pn-feed-page mx-auto w-full pb-10 sm:px-4 lg:px-5 lg:pt-6">
                 <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-5 xl:grid-cols-[240px_minmax(0,1fr)_240px] xl:gap-6">
                     <aside className="hidden min-w-0 lg:sticky lg:top-36 lg:block">
                         <div className="space-y-4">
-                            <section className="overflow-hidden rounded-3xl border border-[var(--store-border)] bg-[var(--store-panel)]">
+                            <section className="pn-feed-card overflow-hidden rounded-3xl border border-[var(--store-border)]">
                                 <div className="border-b border-[var(--store-border)] p-5">
                                     <p className="text-xs font-black text-indigo-400">
                                         PLAY NEXUS
@@ -88,7 +88,7 @@ export default function FeedIndex({
 
                     <aside className="hidden min-w-0 xl:sticky xl:top-36 xl:block">
                         <div>
-                            <section className="rounded-3xl border border-[var(--store-border)] bg-[var(--store-panel)] p-4">
+                            <section className="pn-feed-card rounded-3xl border border-[var(--store-border)] p-4">
                                 <header className="flex items-center gap-2 pb-3">
                                     <Flame
                                         className="text-orange-400"
