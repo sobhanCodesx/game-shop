@@ -201,6 +201,7 @@ class PlayNexusGraphGuard
         $connectionFields = [
             'games', 'studios', 'platforms', 'products', 'contents', 'feeds',
             'videos', 'stories', 'collections', 'categories', 'radar', 'content', 'children',
+            'gameEvents', 'sourceStates', 'events',
         ];
 
         if ($first === null || $first < 1) {
