@@ -1493,7 +1493,7 @@ function PersonalizedHomePanel({
                             <div className="grid grid-rows-2 gap-2">
                                 {showMobileFocusCard && focusGame ? (
                                     <Link
-                                        className="pn-mobile-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card pn-mobile-utility-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={focusGame.url}
                                     >
                                         {focusGame.image_url && (
@@ -1518,7 +1518,7 @@ function PersonalizedHomePanel({
                                 ) : showMobileRadarPrimary &&
                                   mobileRadarLead ? (
                                     <Link
-                                        className="pn-mobile-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card pn-mobile-utility-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={
                                             mobileRadarLead.playnexus_url ??
                                             "/game-radar"
@@ -1549,7 +1549,7 @@ function PersonalizedHomePanel({
                                         </span>
                                     </Link>
                                 ) : (
-                                    <div className="pn-mobile-card flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
+                                    <div className="pn-mobile-card pn-mobile-utility-card flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
                                         <span>
                                             <span className="text-[7px] font-black tracking-[.1em] text-indigo-200/65">
                                                 SIGNALS
@@ -1563,7 +1563,7 @@ function PersonalizedHomePanel({
 
                                 {showMobileVideoCard && heroVideo ? (
                                     <Link
-                                        className="pn-mobile-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card pn-mobile-utility-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={heroVideo.url}
                                     >
                                         {heroPreview && (
@@ -1596,7 +1596,7 @@ function PersonalizedHomePanel({
                                 ) : !showMobileRadarPrimary &&
                                   mobileRadarLead ? (
                                     <Link
-                                        className="pn-mobile-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        className="pn-mobile-card pn-mobile-utility-card relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
                                         href={
                                             mobileRadarLead.playnexus_url ??
                                             "/game-radar"
@@ -1627,7 +1627,7 @@ function PersonalizedHomePanel({
                                         </span>
                                     </Link>
                                 ) : (
-                                    <div className="pn-mobile-card flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
+                                    <div className="pn-mobile-card pn-mobile-utility-card flex min-h-[65px] items-center rounded-[16px] border border-white/8 bg-white/[0.03] p-2.5">
                                         <span>
                                             <span className="text-[7px] font-black tracking-[.1em] text-cyan-200/60">
                                                 LIBRARY
