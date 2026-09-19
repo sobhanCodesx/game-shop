@@ -115,8 +115,24 @@ class RadarGameSourceAdapter implements GameSourceAdapter
 
     private function externalId(string $source, mixed $url, int $gameId): string
     {
-        $identity = is_string($url) && $url !== '' ? $url : (string) $gameId;
+        if (is_string($url) && $url !== '') {
+            $path = parse_url($url, PHP_URL_PATH);
 
-        return $source.':'.sha1($identity);
+            if (is_string($path)) {
+                $value = trim((string) basename($path));
+
+                if ($value !== '') {
+                    if ($source === 'xbox_store') {
+                        return 'xbox:'.$value;
+                    }
+
+                    if ($source === 'playstation_store') {
+                        return 'psn:'.rawurldecode($value);
+                    }
+                }
+            }
+        }
+
+        return $source.':game:'.$gameId;
     }
 }
