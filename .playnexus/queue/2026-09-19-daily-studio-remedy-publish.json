@@ -1,9 +1,0 @@
-{
-  "job_id": "20260919-daily-remedy-12-publish",
-  "tool": "set_content_state",
-  "arguments": {
-    "resource": "studio",
-    "id": 12,
-    "state": "active"
-  }
-}
