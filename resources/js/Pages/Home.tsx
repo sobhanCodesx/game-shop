@@ -119,6 +119,14 @@ interface PersonalizedMediaCloudItem {
     source: "playnexus" | "radar";
 }
 
+interface PersonalizedMediaCloudRadarItem {
+    id: string;
+    title: string;
+    banner_url: string | null;
+    cover_url: string | null;
+    playnexus_url: string | null;
+}
+
 interface PersonalizedGameEvent {
     id: number;
     source_content_id: number | null;
@@ -159,7 +167,7 @@ interface PersonalizedHomeData {
     videos: PersonalizedFeedItem[];
     feed: PersonalizedFeedItem[];
     radar: GameRadarItem[];
-    media_cloud_radar: GameRadarItem[];
+    media_cloud_radar: PersonalizedMediaCloudRadarItem[];
     watch: {
         active_games: number;
         direct_games: number;
@@ -1327,8 +1335,12 @@ function PersonalizedHomePanel({
                                             alt=""
                                             className="pn-media-cloud__image"
                                             decoding="async"
+                                            draggable={false}
+                                            fetchPriority={
+                                                index === 0 ? "auto" : "low"
+                                            }
                                             loading={
-                                                index < 3 ? "eager" : "lazy"
+                                                index === 0 ? "eager" : "lazy"
                                             }
                                             src={item.image_url}
                                         />
@@ -2244,6 +2256,38 @@ export default function Home({
         if (activeSlide < slides.length) return;
         setActiveSlide(0);
     }, [activeSlide, slides.length]);
+
+    useEffect(() => {
+        const motionSurfaces = document.querySelectorAll<HTMLElement>(
+            ".pn-signature-frame, .pn-media-cloud",
+        );
+
+        if (motionSurfaces.length === 0) return;
+
+        if (!("IntersectionObserver" in window)) {
+            motionSurfaces.forEach((element) => {
+                element.dataset.pnVisible = "true";
+            });
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                for (const entry of entries) {
+                    (entry.target as HTMLElement).dataset.pnVisible =
+                        entry.isIntersecting ? "true" : "false";
+                }
+            },
+            {
+                rootMargin: "160px 0px",
+                threshold: 0.01,
+            },
+        );
+
+        motionSurfaces.forEach((element) => observer.observe(element));
+
+        return () => observer.disconnect();
+    }, [personalizedHome]);
 
     const slide = slides[activeSlide];
     const go = (offset: number) =>
