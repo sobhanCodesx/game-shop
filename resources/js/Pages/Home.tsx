@@ -1416,7 +1416,7 @@ function PersonalizedHomePanel({
                     </div>
                 </header>
 
-                <div className="relative z-10 px-2.5 pb-2.5 pt-2.5 sm:hidden">
+                <div className="pn-mobile-now relative z-10 px-2.5 pb-2.5 pt-2.5 sm:hidden">
                     <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
                         <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
