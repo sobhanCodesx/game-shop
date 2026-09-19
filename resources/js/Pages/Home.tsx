@@ -1061,7 +1061,7 @@ function MobilePriorityCarousel({
         const timer = window.setInterval(() => {
             if (document.visibilityState !== "visible") return;
             setActive((current) => (current + 1) % items.length);
-        }, 5200);
+        }, 4600);
 
         return () => window.clearInterval(timer);
     }, [items.length]);
@@ -1090,7 +1090,7 @@ function MobilePriorityCarousel({
 
     return (
         <div
-            className="relative min-w-0"
+            className="relative h-full min-w-0"
             onTouchEnd={(event) =>
                 finishSwipe(event.changedTouches[0].clientX)
             }
@@ -1099,7 +1099,7 @@ function MobilePriorityCarousel({
             }}
         >
             <Link
-                className="pn-mobile-card pn-mobile-card--lead group relative block min-h-[138px] overflow-hidden rounded-[18px] border border-white/8 bg-[#070b14]"
+                className="pn-mobile-card pn-mobile-card--lead group relative block h-full min-h-[138px] overflow-hidden rounded-[18px] border border-white/8 bg-[#070b14]"
                 href={item.url}
                 key={item.key}
             >
@@ -1401,7 +1401,7 @@ function PersonalizedHomePanel({
 
     const supportingEditorial = editorialFeed
         .filter((item) => item.id !== heroEditorial?.id)
-        .slice(0, 2);
+        .slice(0, 1);
     const supportingIds = new Set(supportingEditorial.map((item) => item.id));
     const continuationFeed = editorialFeed
         .filter(
@@ -1455,7 +1455,14 @@ function PersonalizedHomePanel({
     const mobilePrioritySlides: MobilePrioritySlide[] = [];
     const mobilePriorityUrls = new Set<string>();
     const addMobilePriority = (item: MobilePrioritySlide | null) => {
-        if (!item?.url || mobilePriorityUrls.has(item.url)) return;
+        if (
+            mobilePrioritySlides.length >= 5 ||
+            !item?.url ||
+            mobilePriorityUrls.has(item.url)
+        ) {
+            return;
+        }
+
         mobilePriorityUrls.add(item.url);
         mobilePrioritySlides.push(item);
     };
@@ -1515,6 +1522,24 @@ function PersonalizedHomePanel({
         });
     }
 
+    editorialFeed.slice(1, 3).forEach((item) => {
+        const media = item.media.find(
+            (entry) => entry.type === "image" || Boolean(entry.thumbnail),
+        );
+        const image =
+            media?.type === "image" ? media.url : media?.thumbnail ?? null;
+
+        addMobilePriority({
+            key: `editorial-${item.id}`,
+            eyebrow: item.relevance.signal_label || "پیشنهاد مهم",
+            title: item.title,
+            subtitle: item.relevance.reason,
+            url: item.url,
+            image,
+            tone: "editorial",
+        });
+    });
+
     if (focusGame) {
         addMobilePriority({
             key: `focus-${focusGame.id}`,
@@ -1529,22 +1554,19 @@ function PersonalizedHomePanel({
         });
     }
 
-    if (mobileRadarLead) {
+    radar.forEach((item) => {
         addMobilePriority({
-            key: `radar-${mobileRadarLead.id}`,
+            key: `radar-${item.id}`,
             eyebrow: "رادار بازی",
-            title: mobileRadarLead.title,
+            title: item.title,
             subtitle:
-                mobileRadarLead.description ??
+                item.description ??
                 "تازه‌ترین سیگنال Game Radar",
-            url: mobileRadarLead.playnexus_url ?? "/game-radar",
-            image:
-                mobileRadarLead.banner_url ??
-                mobileRadarLead.cover_url ??
-                null,
+            url: item.playnexus_url ?? "/game-radar",
+            image: item.banner_url ?? item.cover_url ?? null,
             tone: "radar",
         });
-    }
+    });
 
     const mobileLead = mobilePrioritySlides[0] ?? null;
 
@@ -1807,7 +1829,7 @@ function PersonalizedHomePanel({
                     </div>
                 </header>
 
-                <div className="pn-mobile-now pn-pulse-mobile-copy relative z-10 px-2.5 pb-2.5 pt-2.5 sm:hidden">
+                <div className="pn-mobile-now pn-pulse-mobile-copy relative z-10 px-2.5 pb-1.5 pt-2.5 sm:hidden">
                     <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
                         <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
@@ -1834,9 +1856,9 @@ function PersonalizedHomePanel({
                     </div>
 
                     {hasPersonalization && mobileLead ? (
-                        <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(104px,.72fr)] gap-2">
+                        <div className="grid items-stretch grid-cols-[minmax(0,1.5fr)_minmax(104px,.72fr)] gap-2">
                             <MobilePriorityCarousel
-                                items={mobilePrioritySlides.slice(0, 4)}
+                                items={mobilePrioritySlides.slice(0, 5)}
                             />
 
                             <div className="grid grid-rows-2 gap-2">
