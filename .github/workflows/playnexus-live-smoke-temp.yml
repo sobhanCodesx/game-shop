@@ -50,4 +50,4 @@ jobs:
             asset_url="https://playnexus.ir$asset"
           fi
           echo "Checking asset: $asset_url"
-          curl --fail --silent --show-error --location --range 0-64 "$asset_url" >/dev/null
+          curl --fail --silent --show-error --location --max-time 20 --output /dev/null "$asset_url"
