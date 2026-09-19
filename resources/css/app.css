@@ -1,8 +1,12 @@
-@import "tailwindcss";
+/*
+ * Keep Tailwind's dev scanner tightly scoped. Automatic source discovery can
+ * walk PHP, generated views, queue payloads, docs and other project files that
+ * never contain frontend classes, which slows Vite cold starts on Windows.
+ */
+@import "tailwindcss" source(none);
 @import "@heroui/styles";
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.{js,ts,jsx,tsx}';
 
