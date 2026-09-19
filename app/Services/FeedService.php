@@ -132,6 +132,53 @@ class FeedService
         return $this->mapItems($contents, $request->user());
     }
 
+    public function smartEditorialForProfile(Request $request, array $profile, int $limit = 8): array
+    {
+        $gameIds = array_slice(array_keys($profile['game_scores'] ?? []), 0, 20);
+
+        if ($gameIds === []) {
+            return [];
+        }
+
+        $candidateLimit = max(48, $limit * 10);
+        $candidates = $this->feedQuery()
+            ->where('type', 'post')
+            ->whereNotIn('feed_type', ['video', 'clip', 'trailer'])
+            ->whereIn('game_id', $gameIds)
+            ->where('published_at', '>=', now()->subDays(90))
+            ->latest('published_at')
+            ->latest('id')
+            ->limit($candidateLimit)
+            ->get();
+
+        $ranked = $this->relevance->rankContents($candidates, $profile)->take($limit);
+        $mapped = collect($this->mapItems($ranked->pluck('content'), $request->user()))->keyBy('id');
+
+        return $ranked
+            ->map(function (array $rank) use ($mapped) {
+                /** @var SocialContent $content */
+                $content = $rank['content'];
+                $item = $mapped->get($content->id);
+
+                if (! $item) {
+                    return null;
+                }
+
+                return [
+                    ...$item,
+                    'relevance' => [
+                        'priority' => $rank['priority'],
+                        'reason' => $rank['reason'],
+                        'signal_key' => $rank['signal_key'],
+                        'signal_label' => $rank['signal_label'],
+                    ],
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
     public function smartForProfile(Request $request, array $profile, int $limit = 8): array
     {
         $gameIds = array_slice(array_keys($profile['game_scores'] ?? []), 0, 16);
@@ -241,8 +288,11 @@ class FeedService
             }
         }
 
-        $authorName = $content->game?->name ?? 'PlayNexus';
-        $channelLogo = $content->game
+        $isEditorialPost = $content->type === 'post';
+        $authorName = $isEditorialPost
+            ? 'PlayNexus'
+            : ($content->game?->name ?? 'PlayNexus');
+        $channelLogo = ! $isEditorialPost && $content->game
             ? ($content->game->cover ?: $content->game->playlists->first()?->logo)
             : null;
         $authorAvatar = $channelLogo
@@ -267,7 +317,9 @@ class FeedService
             'author' => [
                 'name' => $authorName,
                 'avatar_url' => $authorAvatar,
-                'url' => $content->game ? route('channels.show', $content->game->slug, false) : null,
+                'url' => $isEditorialPost
+                    ? null
+                    : ($content->game ? route('channels.show', $content->game->slug, false) : null),
             ],
             'likes_count' => (int) $content->likes_count,
             'comments_count' => (int) $content->comments_count,
