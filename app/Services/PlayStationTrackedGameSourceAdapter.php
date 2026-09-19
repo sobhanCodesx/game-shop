@@ -83,13 +83,14 @@ class PlayStationTrackedGameSourceAdapter implements TrackedGameSourceAdapter
                     'external_id' => 'psn-product:'.$productId,
                     'source_url' => $state->source_url,
                     'confidence' => 0.99,
+                    'watch_direct' => true,
                     'state' => [
                         ...$previous,
                         'available' => true,
-                        'release_date' => $releaseDate,
-                        'release_phase' => $releaseDate && now()->startOfDay()->lt(Carbon::parse($releaseDate))
-                            ? 'coming'
-                            : 'released',
+                        'release_date' => $releaseDate ?? ($previous['release_date'] ?? null),
+                        'release_phase' => $releaseDate
+                            ? (now()->startOfDay()->lt(Carbon::parse($releaseDate)) ? 'coming' : 'released')
+                            : ($previous['release_phase'] ?? null),
                         'platforms' => array_values(array_filter(
                             (array) ($product['platforms'] ?? $previous['platforms'] ?? []),
                             'is_string',
