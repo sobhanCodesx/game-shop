@@ -1,0 +1,12 @@
+{
+  "job_id": "2026-09-19-1715-lollipop2-feed-55-media",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 55,
+    "slot": "media",
+    "source_url": "https://blog.ja.playstation.com/tachyon/sites/7/2026/09/7f54d9acb90c242d28b42a919d9227df9cf1d51e.jpg",
+    "name": "lollipop-chainsaw-2-back2back.jpg",
+    "alt": "معرفی بازی Lollipop Chainsaw 2 Back2Back برای پلی استیشن 5"
+  }
+}
