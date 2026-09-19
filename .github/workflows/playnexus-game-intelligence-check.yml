@@ -3,6 +3,7 @@ name: PlayNexus Game Intelligence Check
 on:
   push:
     paths:
+      - 'resources/css/app.css'
       - 'app/Services/FeedService.php'
       - 'tests/Feature/PersonalizedEditorialFeedTest.php'
       - 'vite.config.js'
@@ -38,6 +39,7 @@ on:
       - '.github/workflows/playnexus-game-intelligence-check.yml'
   pull_request:
     paths:
+      - 'resources/css/app.css'
       - 'app/Services/FeedService.php'
       - 'tests/Feature/PersonalizedEditorialFeedTest.php'
       - 'vite.config.js'
