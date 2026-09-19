@@ -186,6 +186,7 @@ query BroadRead($brandSlug: String!, $contentSlug: String!) {
     media {
       id
       type
+      path
       url
       mime
       width
@@ -222,7 +223,7 @@ GRAPHQL,
             ->assertJsonPath('data.content.commentsCount', 1)
             ->assertJsonPath('data.content.savesCount', 1)
             ->assertJsonPath('data.content.media.0.type', 'image')
-            ->assertJsonPath('data.content.media.0.url', 'http://localhost/storage/feed/nexus-controller.webp')
+            ->assertJsonPath('data.content.media.0.path', 'feed/nexus-controller.webp')
             ->assertJsonPath('data.content.media.0.width', 1600)
             ->assertJsonPath('data.search.brands.0.name', 'Nexus Hardware');
     }
