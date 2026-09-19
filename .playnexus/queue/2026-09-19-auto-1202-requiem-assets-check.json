@@ -1,0 +1,8 @@
+{
+  "job_id": "20260919-auto-1202-requiem-assets-check",
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "game",
+    "id": 12
+  }
+}
