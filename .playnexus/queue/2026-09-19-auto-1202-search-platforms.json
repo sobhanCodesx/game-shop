@@ -1,0 +1,8 @@
+{
+  "job_id": "20260919-auto-1202-search-platforms",
+  "tool": "search_platforms",
+  "arguments": {
+    "query": "",
+    "limit": 100
+  }
+}
