@@ -1,0 +1,65 @@
+name: PlayNexus Intelligence Graph Check
+
+on:
+  push:
+    paths:
+      - 'composer.json'
+      - 'composer.lock'
+      - 'app/Http/Controllers/Api/ContentAgentGraphqlController.php'
+      - 'app/Http/Controllers/Api/ContentAgentMcpController.php'
+      - 'app/Models/Game.php'
+      - 'app/Services/GraphQL/**'
+      - 'config/content_agent.php'
+      - 'routes/api.php'
+      - 'tests/Feature/ContentAgentGraphqlTest.php'
+      - 'tests/Feature/ContentAgentMcpTest.php'
+      - '.github/workflows/playnexus-graphql-check.yml'
+  pull_request:
+    paths:
+      - 'composer.json'
+      - 'composer.lock'
+      - 'app/Http/Controllers/Api/ContentAgentGraphqlController.php'
+      - 'app/Http/Controllers/Api/ContentAgentMcpController.php'
+      - 'app/Models/Game.php'
+      - 'app/Services/GraphQL/**'
+      - 'config/content_agent.php'
+      - 'routes/api.php'
+      - 'tests/Feature/ContentAgentGraphqlTest.php'
+      - 'tests/Feature/ContentAgentMcpTest.php'
+
+permissions:
+  contents: read
+
+jobs:
+  graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          php -l app/Http/Controllers/Api/ContentAgentGraphqlController.php
+          php -l app/Http/Controllers/Api/ContentAgentMcpController.php
+          php -l app/Services/GraphQL/PlayNexusGraphGuard.php
+          php -l app/Services/GraphQL/PlayNexusGraphRepository.php
+          php -l app/Services/GraphQL/PlayNexusGraphSchemaFactory.php
+          php -l app/Services/GraphQL/PlayNexusGraphService.php
+          php -l config/content_agent.php
+          php -l routes/api.php
+          php -l tests/Feature/ContentAgentGraphqlTest.php
+          php -l tests/Feature/ContentAgentMcpTest.php
+
+      - name: Validate Composer files
+        run: composer validate --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run Intelligence Graph tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+        run: php artisan test tests/Feature/ContentAgentGraphqlTest.php tests/Feature/ContentAgentMcpTest.php
