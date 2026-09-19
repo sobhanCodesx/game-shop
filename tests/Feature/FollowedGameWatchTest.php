@@ -83,6 +83,113 @@ class FollowedGameWatchTest extends TestCase
         $this->assertEquals(49.99, $event->new_value['price'] ?? null);
     }
 
+    public function test_followed_playstation_game_is_watched_after_it_leaves_radar(): void
+    {
+        $game = Game::factory()->create();
+        $user = User::factory()->create();
+        $game->subscribers()->attach($user->id);
+
+        GameSourceState::query()->create([
+            'game_id' => $game->id,
+            'source' => 'playstation_store',
+            'scope' => 'store',
+            'external_id' => 'psn-product:UP0001-PPSA12345_00-PLAYNEXUSTEST000',
+            'source_url' => 'https://store.playstation.com/es-cr/product/UP0001-PPSA12345_00-PLAYNEXUSTEST000',
+            'confidence' => .99,
+            'fingerprint' => hash('sha256', 'ps-coming-baseline'),
+            'state' => [
+                'available' => true,
+                'release_date' => '2026-12-01',
+                'release_phase' => 'coming',
+                'price_raw' => null,
+                'price_amount' => null,
+                'currency' => null,
+                'platforms' => ['PS5'],
+            ],
+            'observed_at' => now()->subHours(6),
+        ]);
+
+        Http::fake([
+            'https://web.np.playstation.com/*' => Http::response([
+                'data' => [
+                    'productRetrieve' => [
+                        'id' => 'UP0001-PPSA12345_00-PLAYNEXUSTEST000',
+                        'name' => $game->name,
+                        'platforms' => ['PS5'],
+                        'releaseDate' => '2026-09-01T00:00:00Z',
+                    ],
+                ],
+            ]),
+        ]);
+
+        $stats = app(FollowedGameWatchService::class)->sync();
+
+        $this->assertSame(1, $stats['games']);
+        $this->assertSame(1, $stats['sources']);
+        $this->assertSame(1, $stats['events']);
+        Http::assertSentCount(1);
+
+        $event = GameEvent::query()
+            ->where('game_id', $game->id)
+            ->where('type', 'released')
+            ->first();
+
+        $this->assertNotNull($event);
+        $this->assertSame('PlayStation Store', $event->source_name);
+        $this->assertTrue((bool) ($event->metadata['watch'] ?? false));
+    }
+
+    public function test_sparse_playstation_response_does_not_fake_a_release(): void
+    {
+        $game = Game::factory()->create();
+        $user = User::factory()->create();
+        $game->subscribers()->attach($user->id);
+
+        $state = GameSourceState::query()->create([
+            'game_id' => $game->id,
+            'source' => 'playstation_store',
+            'scope' => 'store',
+            'external_id' => 'psn-product:UP0001-PPSA54321_00-SPARSETEST000000',
+            'source_url' => 'https://store.playstation.com/es-cr/product/UP0001-PPSA54321_00-SPARSETEST000000',
+            'confidence' => .99,
+            'fingerprint' => hash('sha256', 'ps-sparse-baseline'),
+            'state' => [
+                'available' => true,
+                'release_date' => '2026-12-20',
+                'release_phase' => 'coming',
+                'platforms' => ['PS5'],
+            ],
+            'observed_at' => now()->subHours(6),
+        ]);
+
+        Http::fake([
+            'https://web.np.playstation.com/*' => Http::response([
+                'data' => [
+                    'productRetrieve' => [
+                        'id' => 'UP0001-PPSA54321_00-SPARSETEST000000',
+                        'name' => $game->name,
+                        'platforms' => ['PS5'],
+                        'releaseDate' => null,
+                    ],
+                ],
+            ]),
+        ]);
+
+        $stats = app(FollowedGameWatchService::class)->sync();
+
+        $this->assertSame(0, $stats['events']);
+        $this->assertFalse(
+            GameEvent::query()
+                ->where('game_id', $game->id)
+                ->where('type', 'released')
+                ->exists(),
+        );
+
+        $freshState = $state->fresh();
+        $this->assertSame('2026-12-20', $freshState->state['release_date'] ?? null);
+        $this->assertSame('coming', $freshState->state['release_phase'] ?? null);
+    }
+
     public function test_unfollowed_games_are_not_directly_polled(): void
     {
         $game = Game::factory()->create();
