@@ -1713,8 +1713,6 @@ function PersonalizedHomePanel({
                                 </div>
                             </div>
                         )}
-
-                        )}
                     </div>
                 )}
             </div>
