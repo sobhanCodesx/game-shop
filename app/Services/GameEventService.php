@@ -23,6 +23,13 @@ class GameEventService
 
         $newDate = $game->release_date->toDateString();
 
+        GameEvent::query()
+            ->where('game_id', $game->id)
+            ->where('type', 'release_date_changed')
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->update(['expires_at' => now()]);
+
         return $this->upsert([
             'game_id' => $game->id,
             'type' => 'release_date_changed',
@@ -107,12 +114,20 @@ class GameEventService
             'confidence' => 0.98,
             'detected_at' => $content->published_at,
             'effective_at' => $content->published_at,
+            'expires_at' => null,
             'metadata' => [
                 'feed_type' => $content->feed_type,
                 'feed_badge' => $content->feed_badge,
             ],
             'status' => 'active',
         ]);
+    }
+
+    public function refreshFromContent(SocialContent $content): ?GameEvent
+    {
+        $this->expireFromContent($content);
+
+        return $this->syncFromContent($content);
     }
 
     public function syncFromProduct(Product $product): ?GameEvent
@@ -131,6 +146,8 @@ class GameEventService
 
             return null;
         }
+
+        $this->expireProductPriceEvents($product);
 
         return $this->upsert([
             'game_id' => $product->game_id,
