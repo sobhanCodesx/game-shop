@@ -80,6 +80,12 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run Game Intelligence tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
         run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php
 
       - name: Set up Node
