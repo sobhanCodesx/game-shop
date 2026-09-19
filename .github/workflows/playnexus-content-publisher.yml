@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - chatgpt_dev
+      - main
     paths:
       - '.playnexus/queue/*.json'
   workflow_dispatch:
@@ -106,7 +107,7 @@ jobs:
             python3 scripts/playnexus_publish.py "$job"
 
             # Record the exact blob that was successfully processed. Cleanup will
-            # only remove the job if that exact blob is still on chatgpt_dev.
+            # only remove the job if that exact blob is still on the active publisher branch.
             blob_sha="$(git rev-parse "HEAD:$job")"
             printf '%s\t%s\n' "$job" "$blob_sha" >> /tmp/playnexus-processed.txt
           done < /tmp/playnexus-jobs.txt
@@ -125,9 +126,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          target_branch="${GITHUB_REF_NAME}"
+          if [[ "$target_branch" != "chatgpt_dev" && "$target_branch" != "main" ]]; then
+            echo "::error::Unsupported publisher branch: $target_branch"
+            exit 1
+          fi
+
           apply_cleanup() {
-            git fetch origin chatgpt_dev
-            git checkout -B chatgpt_dev origin/chatgpt_dev
+            git fetch origin "$target_branch"
+            git checkout -B "$target_branch" "origin/$target_branch"
 
             while IFS=$'\t' read -r job processed_sha; do
               [[ -n "$job" && -n "$processed_sha" ]] || continue
@@ -156,7 +163,7 @@ jobs:
 
           git commit -m "chore(playnexus): cleanup processed queue jobs"
 
-          if git push origin HEAD:chatgpt_dev; then
+          if git push origin "HEAD:$target_branch"; then
             echo "Processed PlayNexus queue jobs cleaned successfully."
             exit 0
           fi
@@ -172,6 +179,6 @@ jobs:
 
           git commit -m "chore(playnexus): cleanup processed queue jobs"
 
-          if ! git push origin HEAD:chatgpt_dev; then
+          if ! git push origin "HEAD:$target_branch"; then
             echo "::warning::Published content succeeded, but queue cleanup could not be pushed. The JSON jobs were left in Git for a later cleanup."
           fi
