@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-19-auto-search-game-2xko",
+  "tool": "search_games",
+  "arguments": {
+    "query": "2XKO",
+    "limit": 10
+  }
+}
