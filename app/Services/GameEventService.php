@@ -157,6 +157,18 @@ class GameEventService
         $attributes['status'] ??= 'candidate';
         $attributes['dedupe_key'] ??= $this->dedupeKey($attributes);
 
+        $existing = GameEvent::query()
+            ->where('dedupe_key', $attributes['dedupe_key'])
+            ->first();
+
+        if ($existing) {
+            if ($existing->status === 'dismissed') {
+                $attributes['status'] = 'dismissed';
+            } elseif ($existing->status === 'active' && $attributes['status'] === 'candidate') {
+                $attributes['status'] = 'active';
+            }
+        }
+
         return GameEvent::query()->updateOrCreate(
             ['dedupe_key' => $attributes['dedupe_key']],
             $attributes,
