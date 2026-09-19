@@ -101,6 +101,33 @@ class GameSourceMonitorTest extends TestCase
         $this->assertEquals(49.99, $event->new_value['price'] ?? null);
     }
 
+    public function test_external_price_drop_expires_when_price_rises_again(): void
+    {
+        $game = Game::factory()->create();
+        $monitor = app(GameSourceMonitorService::class);
+
+        $monitor->observeRadarSnapshot(
+            $this->snapshot($game, status: 'new', releaseDate: '2026-09-01', xboxPrice: '$69.99'),
+        );
+        $monitor->observeRadarSnapshot(
+            $this->snapshot($game, status: 'new', releaseDate: '2026-09-01', xboxPrice: '$49.99'),
+        );
+
+        $event = GameEvent::query()
+            ->where('game_id', $game->id)
+            ->where('type', 'price_drop')
+            ->firstOrFail();
+
+        $this->assertTrue(GameEvent::query()->active()->whereKey($event->id)->exists());
+
+        $monitor->observeRadarSnapshot(
+            $this->snapshot($game, status: 'new', releaseDate: '2026-09-01', xboxPrice: '$69.99'),
+        );
+
+        $this->assertNotNull($event->fresh()->expires_at);
+        $this->assertFalse(GameEvent::query()->active()->whereKey($event->id)->exists());
+    }
+
     public function test_missing_from_a_later_radar_window_is_not_treated_as_store_removal(): void
     {
         $game = Game::factory()->create();
