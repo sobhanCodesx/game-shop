@@ -1,0 +1,8 @@
+{
+  "job_id": "graphql-context-20260919-2114",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query PlayNexusContextTest {\n  search(query: \"Assassin's Creed Shadows\", first: 5) {\n    query\n    games {\n      id\n      name\n      slug\n      status\n      studio { id name slug }\n      platforms { id name slug }\n      productCount\n      videoCount\n    }\n    studios {\n      id\n      name\n      slug\n      status\n      gameCount\n    }\n    products {\n      id\n      title\n      slug\n      status\n      visibility\n      price\n      game { id name slug }\n      platforms { id name slug }\n    }\n    content {\n      id\n      type\n      title\n      slug\n      status\n      game { id name slug }\n      relatedProduct { id title slug }\n    }\n  }\n}",
+    "operation_name": "PlayNexusContextTest"
+  }
+}
