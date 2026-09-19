@@ -293,6 +293,18 @@ interface ContentSection {
 }
 
 const money = new Intl.NumberFormat("fa-IR");
+const homeFreshDateFormatter = new Intl.DateTimeFormat("fa-IR", {
+    day: "numeric",
+    month: "short",
+});
+const gameRadarDateFormatter = new Intl.DateTimeFormat(
+    "fa-IR-u-ca-persian",
+    {
+        month: "short",
+        day: "numeric",
+        timeZone: "Asia/Tehran",
+    },
+);
 const safeUrl = (url: string | null) =>
     url && (/^https?:\/\//.test(url) || url.startsWith("/")) ? url : null;
 const metaToneClasses: Record<string, string> = {
@@ -407,10 +419,7 @@ const durationLabel = (seconds?: number | null) =>
 
 const freshSeenKey = "nexus:fresh-content-seen-at";
 const freshDateLabel = (value: string) =>
-    new Date(value).toLocaleDateString("fa-IR", {
-        day: "numeric",
-        month: "short",
-    });
+    homeFreshDateFormatter.format(new Date(value));
 
 function FreshReleases({ items }: { items: FreshItem[] }) {
     const railRef = useRef<HTMLDivElement>(null);
@@ -647,7 +656,7 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
         railRef.current?.scrollBy({ left: offset, behavior: "smooth" });
 
     return (
-        <section className="mx-auto min-w-0 max-w-[1536px] px-3 py-5 sm:px-4 sm:py-8">
+        <section className="pn-render-zone mx-auto min-w-0 max-w-[1536px] px-3 py-5 sm:px-4 sm:py-8">
             <div className="mb-4 flex items-end justify-between gap-3 sm:mb-5 sm:gap-4">
                 <div>
                     <p className="text-xs font-black text-indigo-400">
@@ -732,7 +741,7 @@ function ContentRail({ section }: { section: ContentSection }) {
     const isVideo = ["videos", "shorts"].includes(section.content_type);
 
     return (
-        <section className="mx-auto min-w-0 max-w-[1536px] px-3 py-7 sm:px-4 sm:py-10">
+        <section className="pn-render-zone mx-auto min-w-0 max-w-[1536px] px-3 py-7 sm:px-4 sm:py-10">
             <div className="mb-4 flex items-end justify-between gap-3 sm:mb-6 sm:gap-4">
                 <div>
                     <p className="text-sm font-bold text-indigo-400">
@@ -1195,7 +1204,7 @@ function MobilePriorityCarousel({
                             alt={item.title}
                             className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.02]"
                             decoding="async"
-                            fetchPriority="high"
+                            fetchPriority="auto"
                             src={item.image}
                         />
                     ) : (
@@ -1761,11 +1770,7 @@ function PersonalizedHomePanel({
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return "";
 
-        return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-            month: "short",
-            day: "numeric",
-            timeZone: "Asia/Tehran",
-        }).format(date);
+        return gameRadarDateFormatter.format(date);
     };
 
 
