@@ -92,10 +92,40 @@ interface PersonalizedGame {
     image_url: string | null;
 }
 
+interface PersonalizedFeedRelevance {
+    priority: "critical" | "high" | "medium" | "normal";
+    reason: string;
+    signal_key: string;
+    signal_label: string;
+}
+
+type PersonalizedFeedItem = FeedItemData & {
+    relevance: PersonalizedFeedRelevance;
+};
+
+interface PersonalizedFocusGame {
+    id: number;
+    name: string;
+    url: string;
+    image_url: string | null;
+}
+
 interface PersonalizedHomeData {
     followed_games: PersonalizedGame[];
-    feed: FeedItemData[];
+    feed: PersonalizedFeedItem[];
     radar: GameRadarItem[];
+    intelligence: {
+        confidence: {
+            key: "learning" | "growing" | "strong";
+            label: string;
+        };
+        top_signals: Array<{
+            key: string;
+            label: string;
+        }>;
+        focus_reason: string | null;
+        focus_game: PersonalizedFocusGame | null;
+    };
     updated_at: string;
 }
 
@@ -944,257 +974,419 @@ function PersonalizedHomePanel({
     userName: string;
 }) {
     const firstName = userName.trim().split(/\s+/)[0] || "گیمر";
-    const hasGames = data.followed_games.length > 0;
-    const signals = data.feed.slice(0, 4);
-    const radar = data.radar.slice(0, 4);
+    const heroItem = data.feed[0] ?? null;
+    const secondarySignals = data.feed.slice(1, 5);
+    const focusGame = data.intelligence.focus_game;
+    const hasPersonalization =
+        data.followed_games.length > 0 || Boolean(focusGame) || data.feed.length > 0;
+    const radar = data.radar.slice(0, 3);
+    const heroMedia = heroItem?.media[0];
+    const heroPreview = heroItem
+        ? heroMedia?.type === "image"
+            ? heroMedia.url
+            : heroMedia?.thumbnail
+        : focusGame?.image_url;
+
+    const priorityLabel = (priority?: PersonalizedFeedRelevance["priority"]) =>
+        priority === "critical"
+            ? "خیلی مهم برای تو"
+            : priority === "high"
+              ? "مهم برای تو"
+              : priority === "medium"
+                ? "مرتبط با سلیقه‌ات"
+                : "برای تو";
 
     return (
         <section className="mx-auto max-w-7xl px-4 pb-5 pt-5">
-            <div className="relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#090d1d_0%,#10152c_46%,#15123a_100%)] p-4 text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)] sm:p-6">
+            <div className="relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)]">
                 <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full bg-indigo-500/20 blur-3xl"
+                    className="pointer-events-none absolute -right-28 -top-32 size-96 rounded-full bg-indigo-500/20 blur-3xl"
                 />
                 <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -bottom-40 left-0 size-96 rounded-full bg-fuchsia-500/10 blur-3xl"
+                    className="pointer-events-none absolute -bottom-48 left-0 size-[30rem] rounded-full bg-fuchsia-500/10 blur-3xl"
                 />
 
-                <header className="relative flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <div className="mb-2 flex items-center gap-2">
-                            <span className="grid size-9 place-items-center rounded-2xl bg-indigo-400/15 text-indigo-200">
+                <header className="relative flex flex-col gap-4 border-b border-white/10 px-4 py-5 sm:px-6 sm:py-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <span className="grid size-9 place-items-center rounded-2xl bg-indigo-400/15 text-indigo-200 shadow-[0_0_30px_rgba(129,140,248,.12)]">
                                 <Sparkles size={18} />
                             </span>
-                            <span className="text-[10px] font-black tracking-[.18em] text-indigo-200/80">
+                            <span className="text-[10px] font-black tracking-[.18em] text-indigo-200/85">
                                 NEXUS PULSE
                             </span>
-                            {hasGames && (
-                                <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[9px] font-black text-emerald-300">
-                                    شخصی برای تو
-                                </span>
-                            )}
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/10 bg-emerald-400/10 px-2.5 py-1 text-[9px] font-black text-emerald-200">
+                                <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.9)]" />
+                                {data.intelligence.confidence.label}
+                            </span>
                         </div>
                         <h1 className="text-2xl font-black leading-tight sm:text-3xl">
                             خوش برگشتی، {firstName}
                         </h1>
-                        <p className="mt-2 max-w-2xl text-xs leading-6 text-white/55 sm:text-sm sm:leading-7">
-                            {hasGames
-                                ? `PlayNexus بازی‌هایی که دنبال می‌کنی را جمع کرده؛ بدون گشتن، فقط چیزهایی که به تو مربوط‌اند.`
-                                : "هنوز بازی‌ای را دنبال نکردی. چند بازی را Follow کن تا صفحه اصلی به داشبورد شخصی گیمینگت تبدیل شود."}
+                        <p className="mt-2 max-w-2xl text-xs leading-6 text-white/50 sm:text-sm sm:leading-7">
+                            {hasPersonalization
+                                ? "PlayNexus فقط تازه‌ها را نشونت نمی‌ده؛ اول چیزی را می‌آره که احتمالاً الان بیشتر به دردت می‌خوره."
+                                : "هنوز دارم سلیقه‌ات رو می‌شناسم. چند بازی رو دنبال کن یا با محتواها تعامل داشته باش تا این صفحه کم‌کم مال خودت بشه."}
                         </p>
                     </div>
 
-                    {hasGames && (
-                        <div className="flex flex-wrap gap-2">
-                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold text-white/70">
-                                {money.format(data.followed_games.length)} بازی دنبال‌شده
-                            </span>
-                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold text-white/70">
-                                {money.format(data.feed.length + data.radar.length)} اتفاق مرتبط
-                            </span>
+                    {data.intelligence.top_signals.length > 0 && (
+                        <div className="flex max-w-full flex-wrap gap-2">
+                            {data.intelligence.top_signals.map((signal) => (
+                                <span
+                                    className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[9px] font-bold text-white/65 backdrop-blur-sm"
+                                    key={signal.key}
+                                >
+                                    {signal.label}
+                                </span>
+                            ))}
                         </div>
                     )}
                 </header>
 
-                {!hasGames ? (
-                    <div className="relative mt-5 rounded-[22px] border border-dashed border-white/15 bg-white/[0.035] p-5 sm:p-6">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-3">
-                                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/10 text-indigo-200">
-                                    <Gamepad2 size={23} />
-                                </span>
-                                <div>
-                                    <strong className="text-sm font-black sm:text-base">
-                                        اول بازی‌هات را به PlayNexus معرفی کن
-                                    </strong>
-                                    <p className="mt-1 text-xs leading-6 text-white/45">
-                                        وارد کانال هر بازی شو و دکمه دنبال‌کردن را بزن؛ از دفعه بعد اینجا برای خودت چیده می‌شود.
-                                    </p>
+                {!hasPersonalization ? (
+                    <div className="relative p-4 sm:p-6">
+                        <div className="overflow-hidden rounded-[24px] border border-dashed border-white/15 bg-white/[0.035]">
+                            <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                                <div className="flex items-start gap-3">
+                                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/10 text-indigo-200">
+                                        <Gamepad2 size={23} />
+                                    </span>
+                                    <div>
+                                        <strong className="text-sm font-black sm:text-base">
+                                            بذار PlayNexus سلیقه‌ات رو یاد بگیره
+                                        </strong>
+                                        <p className="mt-1 max-w-2xl text-xs leading-6 text-white/45">
+                                            لازم نیست فرم پر کنی. بازی‌ها رو Follow کن، چیزهایی که دوست داری Save یا Like کن و ویدیو ببین؛ بقیه‌ش رو خود Nexus Pulse یاد می‌گیره.
+                                        </p>
+                                    </div>
                                 </div>
+                                <Link
+                                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-950 transition hover:scale-[1.02]"
+                                    href="/search"
+                                >
+                                    پیدا کردن بازی
+                                    <ArrowUpLeft size={15} />
+                                </Link>
                             </div>
-                            <Link
-                                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-950 transition hover:scale-[1.02]"
-                                href="/search"
-                            >
-                                پیدا کردن بازی
-                                <ArrowUpLeft size={15} />
-                            </Link>
                         </div>
                     </div>
                 ) : (
-                    <>
-                        <div className="relative mt-5">
-                            <div className="mb-3 flex items-center justify-between gap-3">
-                                <div>
-                                    <h2 className="text-sm font-black sm:text-base">
-                                        بازی‌های تو
-                                    </h2>
-                                    <p className="mt-1 text-[10px] text-white/40">
-                                        دسترسی سریع به کانال‌هایی که Follow کردی
-                                    </p>
-                                </div>
-                                <Link
-                                    className="text-[10px] font-black text-indigo-200 hover:text-white"
-                                    href="/feed?tab=following"
-                                >
-                                    فید دنبال‌شده‌ها
-                                </Link>
-                            </div>
-                            <div className="home-slider -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6">
-                                {data.followed_games.map((game) => (
+                    <div className="relative p-3 sm:p-4 lg:p-5">
+                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,.72fr)] lg:gap-4">
+                            <div className="relative min-h-[360px] overflow-hidden rounded-[25px] border border-white/10 bg-slate-950 sm:min-h-[430px]">
+                                {heroPreview ? (
+                                    <img
+                                        alt={heroItem?.title ?? focusGame?.name ?? "Nexus Pulse"}
+                                        className="absolute inset-0 size-full object-cover"
+                                        decoding="async"
+                                        fetchPriority="high"
+                                        src={heroPreview}
+                                    />
+                                ) : (
+                                    <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] text-indigo-200/60">
+                                        <Gamepad2 size={64} />
+                                    </span>
+                                )}
+                                <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.04),rgba(2,6,23,.32)_45%,rgba(2,6,23,.98)_100%)]" />
+                                <span className="absolute inset-0 bg-[radial-gradient(circle_at_85%_5%,rgba(99,102,241,.24),transparent_40%)]" />
+
+                                {heroItem ? (
                                     <Link
-                                        className="group relative aspect-[4/3] w-[170px] shrink-0 snap-start overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.035] sm:w-[210px]"
-                                        href={game.url}
-                                        key={game.id}
-                                    >
-                                        {game.image_url ? (
-                                            <img
-                                                alt={game.name}
-                                                className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.05]"
-                                                loading="lazy"
-                                                src={game.image_url}
-                                            />
+                                        aria-label={heroItem.title}
+                                        className="absolute inset-0 z-10"
+                                        href={heroItem.url}
+                                    />
+                                ) : focusGame ? (
+                                    <Link
+                                        aria-label={focusGame.name}
+                                        className="absolute inset-0 z-10"
+                                        href={focusGame.url}
+                                    />
+                                ) : null}
+
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-4 sm:p-6">
+                                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                                        {heroItem ? (
+                                            <>
+                                                <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-slate-950">
+                                                    {priorityLabel(heroItem.relevance.priority)}
+                                                </span>
+                                                <span className="rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] font-black text-white/75 backdrop-blur-md">
+                                                    {heroItem.relevance.signal_label}
+                                                </span>
+                                            </>
                                         ) : (
-                                            <span className="absolute inset-0 grid place-items-center text-indigo-200/60">
-                                                <Gamepad2 size={36} />
+                                            <span className="rounded-full bg-emerald-300 px-2.5 py-1 text-[9px] font-black text-slate-950">
+                                                چیزی مهم از دست ندادی
                                             </span>
                                         )}
-                                        <span className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
-                                        <strong className="absolute inset-x-3 bottom-3 line-clamp-2 text-xs font-black leading-5 text-white">
-                                            {game.name}
-                                        </strong>
-                                    </Link>
-                                ))}
+                                    </div>
+
+                                    <p className="mb-1.5 text-[10px] font-black tracking-[.08em] text-indigo-200/75">
+                                        {heroItem ? "الان این مهم‌تره" : "وضعیت بازی مهم تو"}
+                                    </p>
+                                    <h2 className="max-w-3xl text-xl font-black leading-8 text-white sm:text-3xl sm:leading-[1.35]">
+                                        {heroItem?.title ??
+                                            (focusGame
+                                                ? `فعلاً خبر مهم تازه‌ای برای ${focusGame.name} نداریم`
+                                                : "فعلاً اتفاق مهمی برای تو پیدا نکردیم")}
+                                    </h2>
+
+                                    <div className="mt-3 flex max-w-2xl items-start gap-2 rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5 text-[10px] leading-5 text-white/60 backdrop-blur-md sm:text-xs">
+                                        <Sparkles
+                                            className="mt-0.5 shrink-0 text-indigo-200"
+                                            size={14}
+                                        />
+                                        <span>
+                                            {heroItem?.relevance.reason ??
+                                                data.intelligence.focus_reason ??
+                                                "هر وقت اتفاق مهمی برای بازی‌هات بیفته، اول همین‌جا می‌بینیش."}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex min-w-0 flex-col gap-3">
+                                <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.045] p-4 backdrop-blur-sm sm:p-5">
+                                    <span
+                                        aria-hidden="true"
+                                        className="pointer-events-none absolute -left-12 -top-16 size-44 rounded-full bg-indigo-400/10 blur-3xl"
+                                    />
+                                    <div className="relative flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-[9px] font-black tracking-[.16em] text-indigo-200/65">
+                                                NEXUS UNDERSTANDS
+                                            </p>
+                                            <h3 className="mt-1.5 text-base font-black">
+                                                چیزی که الان برات مهم‌تره
+                                            </h3>
+                                        </div>
+                                        <span className="grid size-9 shrink-0 place-items-center rounded-2xl bg-indigo-400/10 text-indigo-200">
+                                            <Sparkles size={17} />
+                                        </span>
+                                    </div>
+
+                                    {focusGame ? (
+                                        <Link
+                                            className="group relative mt-4 flex items-center gap-3 overflow-hidden rounded-[19px] border border-white/10 bg-black/20 p-2.5 transition hover:border-indigo-300/30"
+                                            href={focusGame.url}
+                                        >
+                                            <span className="size-16 shrink-0 overflow-hidden rounded-[15px] bg-slate-900">
+                                                {focusGame.image_url ? (
+                                                    <img
+                                                        alt={focusGame.name}
+                                                        className="size-full object-cover transition duration-300 group-hover:scale-105"
+                                                        loading="lazy"
+                                                        src={focusGame.image_url}
+                                                    />
+                                                ) : (
+                                                    <span className="grid size-full place-items-center text-indigo-200/60">
+                                                        <Gamepad2 size={25} />
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className="min-w-0">
+                                                <strong className="block truncate text-sm text-white">
+                                                    {focusGame.name}
+                                                </strong>
+                                                <small className="mt-1 block line-clamp-2 text-[10px] leading-5 text-white/45">
+                                                    {data.intelligence.focus_reason ??
+                                                        "بر اساس رفتار و بازی‌های دنبال‌شده‌ات"}
+                                                </small>
+                                            </span>
+                                        </Link>
+                                    ) : (
+                                        <p className="mt-4 text-xs leading-6 text-white/45">
+                                            هنوز سیگنال کافی ندارم؛ با استفاده طبیعی از PlayNexus این بخش خودش دقیق‌تر می‌شه.
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex-1 overflow-hidden rounded-[24px] border border-white/10 bg-black/15">
+                                    <header className="flex items-center gap-3 border-b border-white/10 px-4 py-3.5">
+                                        <span className="grid size-9 place-items-center rounded-xl bg-fuchsia-400/10 text-fuchsia-200">
+                                            <Radar size={17} />
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="truncate text-sm font-black">
+                                                Radar برای تو
+                                            </h3>
+                                            <p className="mt-0.5 text-[9px] text-white/40">
+                                                فقط مواردی که به علایقت نزدیک‌اند
+                                            </p>
+                                        </div>
+                                    </header>
+
+                                    {radar.length ? (
+                                        <div className="space-y-1.5 p-2.5">
+                                            {radar.map((item) => (
+                                                <Link
+                                                    className="group flex items-center gap-3 rounded-[16px] p-2 transition hover:bg-white/[0.055]"
+                                                    href={item.playnexus_url ?? "/game-radar"}
+                                                    key={item.id}
+                                                >
+                                                    <span className="size-12 shrink-0 overflow-hidden rounded-[12px] bg-slate-900">
+                                                        {item.cover_url || item.banner_url ? (
+                                                            <img
+                                                                alt={item.title}
+                                                                className="size-full object-cover"
+                                                                loading="lazy"
+                                                                src={item.cover_url ?? item.banner_url ?? undefined}
+                                                            />
+                                                        ) : (
+                                                            <span className="grid size-full place-items-center text-fuchsia-200/50">
+                                                                <Gamepad2 size={19} />
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <span className="min-w-0 flex-1">
+                                                        <strong className="block truncate text-[11px] text-white">
+                                                            {item.title}
+                                                        </strong>
+                                                        <small className="mt-0.5 block text-[9px] text-white/35">
+                                                            {item.status === "coming"
+                                                                ? "در راه"
+                                                                : "تازه منتشرشده"}
+                                                        </small>
+                                                    </span>
+                                                    <ArrowUpLeft
+                                                        className="text-white/25 transition group-hover:text-white/60"
+                                                        size={14}
+                                                    />
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="p-5 text-center text-[10px] leading-5 text-white/35">
+                                            فعلاً چیزی در Radar نیست که لازم باشه حواست بهش باشه.
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        <div className="relative mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,.65fr)]">
-                            <div className="overflow-hidden rounded-[24px] border border-white/10 bg-black/15">
-                                <header className="flex items-center gap-3 border-b border-white/10 px-4 py-3.5">
-                                    <span className="grid size-9 place-items-center rounded-xl bg-indigo-400/10 text-indigo-200">
-                                        <Radio size={17} />
-                                    </span>
-                                    <div className="min-w-0 flex-1">
-                                        <h2 className="truncate text-sm font-black">
-                                            اتفاق‌های تازه برای بازی‌های تو
-                                        </h2>
-                                        <p className="mt-0.5 text-[10px] text-white/40">
-                                            خبر، ویدیو و آپدیت مرتبط با Followهای تو
+                        {data.followed_games.length > 0 && (
+                            <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-3 sm:p-4">
+                                <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                                    <div>
+                                        <h3 className="text-sm font-black">بازی‌های تو</h3>
+                                        <p className="mt-0.5 text-[9px] text-white/35">
+                                            ترتیب این لیست هم با اهمیت فعلی برای تو تغییر می‌کنه
                                         </p>
                                     </div>
                                     <Link
                                         className="text-[10px] font-black text-indigo-200 hover:text-white"
                                         href="/feed?tab=following"
                                     >
-                                        مشاهده همه
+                                        فید دنبال‌شده‌ها
                                     </Link>
-                                </header>
-
-                                {signals.length ? (
-                                    <div className="grid gap-2 p-3 sm:grid-cols-2">
-                                        {signals.map((item) => {
-                                            const media = item.media[0];
-                                            const preview =
-                                                media?.type === "image"
-                                                    ? media.url
-                                                    : media?.thumbnail;
-                                            return (
-                                                <Link
-                                                    className="group flex min-w-0 gap-3 rounded-[18px] border border-white/10 bg-white/[0.035] p-2.5 transition hover:border-indigo-300/30 hover:bg-white/[0.055]"
-                                                    href={item.url}
-                                                    key={item.id}
-                                                >
-                                                    <span className="relative size-20 shrink-0 overflow-hidden rounded-[14px] bg-slate-900">
-                                                        {preview ? (
-                                                            <img
-                                                                alt={media?.alt ?? item.title}
-                                                                className="size-full object-cover transition duration-300 group-hover:scale-105"
-                                                                loading="lazy"
-                                                                src={preview}
-                                                            />
-                                                        ) : (
-                                                            <span className="grid size-full place-items-center text-indigo-300/60">
-                                                                <Radio size={24} />
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                    <span className="min-w-0 flex-1 py-1">
-                                                        <small className="block truncate text-[9px] font-bold text-indigo-200/70">
-                                                            {item.author.name}
-                                                        </small>
-                                                        <strong className="mt-1 block line-clamp-2 text-xs leading-5 text-white">
-                                                            {item.title}
-                                                        </strong>
-                                                    </span>
-                                                </Link>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="p-6 text-center text-xs leading-6 text-white/40">
-                                        فعلاً اتفاق تازه‌ای برای بازی‌های دنبال‌شده‌ات نداریم؛ وقتی چیزی منتشر شود همین‌جا می‌آید.
-                                    </div>
-                                )}
+                                </div>
+                                <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
+                                    {data.followed_games.map((game, index) => (
+                                        <Link
+                                            className="group relative aspect-[16/10] w-[185px] shrink-0 snap-start overflow-hidden rounded-[18px] border border-white/10 bg-slate-950 sm:w-[220px]"
+                                            href={game.url}
+                                            key={game.id}
+                                        >
+                                            {game.image_url ? (
+                                                <img
+                                                    alt={game.name}
+                                                    className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.05]"
+                                                    loading="lazy"
+                                                    src={game.image_url}
+                                                />
+                                            ) : (
+                                                <span className="absolute inset-0 grid place-items-center text-indigo-200/60">
+                                                    <Gamepad2 size={34} />
+                                                </span>
+                                            )}
+                                            <span className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-transparent" />
+                                            {index === 0 && (
+                                                <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[8px] font-black text-slate-950">
+                                                    اولویت فعلی
+                                                </span>
+                                            )}
+                                            <strong className="absolute inset-x-3 bottom-2.5 line-clamp-2 text-[11px] font-black leading-5 text-white">
+                                                {game.name}
+                                            </strong>
+                                        </Link>
+                                    ))}
+                                </div>
                             </div>
+                        )}
 
-                            <div className="overflow-hidden rounded-[24px] border border-white/10 bg-black/15">
-                                <header className="flex items-center gap-3 border-b border-white/10 px-4 py-3.5">
-                                    <span className="grid size-9 place-items-center rounded-xl bg-fuchsia-400/10 text-fuchsia-200">
-                                        <Radar size={17} />
-                                    </span>
-                                    <div className="min-w-0 flex-1">
-                                        <h2 className="truncate text-sm font-black">
-                                            Radar بازی‌های تو
-                                        </h2>
-                                        <p className="mt-0.5 text-[10px] text-white/40">
-                                            موارد مرتبطی که Game Radar پیدا کرده
+                        {secondarySignals.length > 0 && (
+                            <div className="mt-4">
+                                <div className="mb-3 flex items-end justify-between gap-3 px-1">
+                                    <div>
+                                        <h3 className="text-sm font-black">
+                                            بعد از این، این‌ها ارزش دیدن دارن
+                                        </h3>
+                                        <p className="mt-0.5 text-[9px] text-white/35">
+                                            مرتب‌شده با ترکیب اهمیت خبر و علاقه‌ی تو
                                         </p>
                                     </div>
-                                </header>
-                                {radar.length ? (
-                                    <div className="space-y-2 p-3">
-                                        {radar.map((item) => (
+                                    <Link
+                                        className="text-[10px] font-black text-indigo-200 hover:text-white"
+                                        href="/feed"
+                                    >
+                                        فید کامل
+                                    </Link>
+                                </div>
+                                <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
+                                    {secondarySignals.map((item) => {
+                                        const media = item.media[0];
+                                        const preview =
+                                            media?.type === "image"
+                                                ? media.url
+                                                : media?.thumbnail;
+
+                                        return (
                                             <Link
-                                                className="group flex items-center gap-3 rounded-[18px] border border-white/10 bg-white/[0.035] p-2.5 transition hover:border-fuchsia-300/30"
-                                                href={item.playnexus_url ?? "/game-radar"}
+                                                className="group w-[78vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.035] transition hover:border-indigo-300/25 sm:w-[300px]"
+                                                href={item.url}
                                                 key={item.id}
                                             >
-                                                <span className="size-14 shrink-0 overflow-hidden rounded-[13px] bg-slate-900">
-                                                    {item.cover_url || item.banner_url ? (
+                                                <span className="relative block aspect-[16/9] overflow-hidden bg-slate-950">
+                                                    {preview ? (
                                                         <img
-                                                            alt={item.title}
-                                                            className="size-full object-cover"
+                                                            alt={media?.alt ?? item.title}
+                                                            className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
                                                             loading="lazy"
-                                                            src={item.cover_url ?? item.banner_url ?? undefined}
+                                                            src={preview}
                                                         />
                                                     ) : (
-                                                        <span className="grid size-full place-items-center text-fuchsia-200/50">
-                                                            <Gamepad2 size={22} />
+                                                        <span className="grid size-full place-items-center text-indigo-200/50">
+                                                            <Radio size={30} />
                                                         </span>
                                                     )}
+                                                    <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                                    <span className="absolute right-2.5 top-2.5 rounded-full bg-black/45 px-2 py-1 text-[8px] font-black text-white/75 backdrop-blur-md">
+                                                        {item.relevance.signal_label}
+                                                    </span>
                                                 </span>
-                                                <span className="min-w-0">
-                                                    <strong className="block truncate text-xs text-white">
+                                                <span className="block p-3">
+                                                    <strong className="block line-clamp-2 min-h-10 text-xs leading-5 text-white">
                                                         {item.title}
                                                     </strong>
-                                                    <small className="mt-1 block text-[9px] text-white/40">
-                                                        {item.status === "coming"
-                                                            ? "در راه"
-                                                            : "تازه منتشرشده"}
+                                                    <small className="mt-2 flex items-start gap-1.5 text-[9px] leading-4 text-white/40">
+                                                        <Sparkles
+                                                            className="mt-0.5 shrink-0 text-indigo-200/70"
+                                                            size={11}
+                                                        />
+                                                        {item.relevance.reason}
                                                     </small>
                                                 </span>
                                             </Link>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="p-6 text-center text-xs leading-6 text-white/40">
-                                        فعلاً مورد مرتبطی در Game Radar نیست.
-                                    </div>
-                                )}
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    </>
+                        )}
+                    </div>
                 )}
             </div>
         </section>
