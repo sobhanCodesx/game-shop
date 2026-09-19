@@ -1257,7 +1257,7 @@ function PersonalizedHomePanel({
 
                 <header className="relative overflow-hidden border-b border-white/10 px-4 py-5 sm:px-6 sm:py-6">
                     <div className="relative z-10 grid gap-5 lg:min-h-[210px] lg:grid-cols-[minmax(0,.92fr)_minmax(0,1.08fr)] lg:items-center">
-                        <div className="relative z-20 min-w-0 lg:order-2">
+                        <div className="relative z-20 min-w-0">
                             <div className="mb-2 flex flex-wrap items-center gap-2">
                                 <span className="grid size-9 place-items-center rounded-2xl bg-indigo-400/15 text-indigo-200 shadow-[0_0_30px_rgba(129,140,248,.12)]">
                                     <Sparkles size={18} />
@@ -1307,7 +1307,7 @@ function PersonalizedHomePanel({
                         {mediaCloud.length > 0 && (
                             <div
                                 aria-label="بازی‌ها و مدیای مرتبط با سلیقه تو"
-                                className="pn-media-cloud relative z-10 h-[128px] min-w-0 lg:order-1 lg:h-[190px]"
+                                className="pn-media-cloud relative z-10 h-[128px] min-w-0 lg:h-[190px]"
                             >
                                 <span
                                     aria-hidden="true"
