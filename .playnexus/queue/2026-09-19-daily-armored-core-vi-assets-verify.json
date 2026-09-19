@@ -1,8 +1,0 @@
-{
-  "job_id": "20260919-daily-armored-core-vi-assets-verify",
-  "tool": "list_content_assets",
-  "arguments": {
-    "resource": "game",
-    "id": 11
-  }
-}
