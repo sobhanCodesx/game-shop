@@ -584,12 +584,12 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
 
     return (
         <section className="mx-auto min-w-0 max-w-[1536px] px-3 py-5 sm:px-4 sm:py-8">
-            <div className="mb-5 flex items-end justify-between gap-4">
+            <div className="mb-4 flex items-end justify-between gap-3 sm:mb-5 sm:gap-4">
                 <div>
                     <p className="text-xs font-black text-indigo-400">
                         کانال‌های PLAY NEXUS
                     </p>
-                    <h2 className="mt-1 text-xl font-black sm:text-2xl">
+                    <h2 className="mt-1 text-lg font-black leading-7 sm:text-2xl">
                         کانال موردعلاقه‌ات را دنبال کن
                     </h2>
                 </div>
@@ -668,7 +668,7 @@ function ContentRail({ section }: { section: ContentSection }) {
 
     return (
         <section className="mx-auto min-w-0 max-w-[1536px] px-3 py-7 sm:px-4 sm:py-10">
-            <div className="mb-6 flex items-end justify-between gap-4">
+            <div className="mb-4 flex items-end justify-between gap-3 sm:mb-6 sm:gap-4">
                 <div>
                     <p className="text-sm font-bold text-indigo-400">
                         {section.subtitle ??
@@ -676,7 +676,7 @@ function ContentRail({ section }: { section: ContentSection }) {
                                 ? "انتخاب هوشمند فروشگاه"
                                 : "تازه از جامعه گیمرها")}
                     </p>
-                    <h2 className="mt-2 text-2xl font-black md:text-3xl">
+                    <h2 className="mt-1.5 text-xl font-black leading-7 sm:mt-2 sm:text-2xl md:text-3xl">
                         {section.title}
                     </h2>
                 </div>
@@ -1630,7 +1630,7 @@ function PersonalizedHomePanel({
 
                                         {heroEvent && (
                                             <Link
-                                                className="group relative block overflow-hidden bg-[#080d1b] p-4 transition hover:bg-amber-300/[0.035]"
+                                                className="group relative block min-h-[122px] w-[82vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-[16px] bg-[#080d1b] p-3.5 transition hover:bg-amber-300/[0.035] sm:w-auto sm:max-w-none sm:rounded-none sm:p-4"
                                                 href={heroEvent.url}
                                             >
                                                 <div className="flex items-start gap-3">
@@ -1682,7 +1682,7 @@ function PersonalizedHomePanel({
 
                                         {supportingEditorial.length === 0 &&
                                             !heroEvent && (
-                                                <div className="bg-[#080d1b] p-5 text-[10px] leading-6 text-white/35">
+                                                <div className="w-[82vw] max-w-[320px] shrink-0 snap-start rounded-[16px] bg-[#080d1b] p-4 text-[10px] leading-6 text-white/35 sm:w-auto sm:max-w-none sm:rounded-none sm:p-5">
                                                     فعلاً چیز مکملی نیست که ارزش
                                                     تکرار کردن داشته باشه. وقتی
                                                     محتوای تازه‌ی مرتبط بیاد، این
@@ -1691,7 +1691,7 @@ function PersonalizedHomePanel({
                                             )}
                                     </div>
 
-                                    <div className="flex items-center justify-between gap-3 border-t border-white/8 px-4 py-3">
+                                    <div className="flex items-center justify-between gap-3 border-t border-white/8 px-3 py-2.5 sm:px-4 sm:py-3">
                                         <span className="text-[9px] text-white/30">
                                             ویدیو + فید + سیگنال، یک‌جا
                                         </span>
@@ -2594,7 +2594,7 @@ export default function Home({
                     </section>
                 )}
                 <GameRadarRail items={gameRadar} />
-                <section className="pn-render-zone home-slider mx-auto flex max-w-[1536px] snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 py-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
+                <section className="pn-render-zone home-slider mx-auto flex max-w-[1536px] snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain px-3 py-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-3 sm:px-4 sm:py-8 lg:overflow-hidden">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],
                         [Truck, "ارسال سریع", "تحویل امن سفارش"],
@@ -2602,7 +2602,7 @@ export default function Home({
                         [Sparkles, "پیشنهادهای ویژه", "تخفیف‌های واقعی"],
                     ].map(([Icon, title, text]) => (
                         <div
-                            className="flex w-[calc((100%_-_.75rem)/2)] shrink-0 snap-start items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 lg:w-auto lg:flex-1"
+                            className="flex w-[72vw] max-w-[260px] shrink-0 snap-start items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-3.5 sm:w-[calc((100%_-_.75rem)/2)] sm:max-w-none sm:p-4 lg:w-auto lg:flex-1"
                             key={String(title)}
                         >
                             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-indigo-500/10 text-indigo-400">
@@ -2625,7 +2625,7 @@ export default function Home({
                             className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-12"
                             id="categories"
                         >
-                            <div className="pn-signature-frame pn-signature-frame--subtle relative overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:p-6 lg:p-7">
+                            <div className="pn-signature-frame pn-signature-frame--subtle relative overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-3.5 shadow-[0_28px_90px_-62px_rgba(79,70,229,.7)] sm:rounded-[30px] sm:p-6 lg:p-7">
                                 <span
                                     aria-hidden="true"
                                     className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,.12)_0%,rgba(99,102,241,.05)_42%,transparent_72%)]"
@@ -2802,7 +2802,7 @@ export default function Home({
                             <p className="text-sm font-bold text-rose-400">
                                 منتخب فروشگاه
                             </p>
-                            <h2 className="mt-2 text-2xl font-black md:text-3xl">
+                            <h2 className="mt-1.5 text-xl font-black leading-7 sm:mt-2 sm:text-2xl md:text-3xl">
                                 {settings.featured_products_title}
                             </h2>
                         </div>
@@ -2818,7 +2818,7 @@ export default function Home({
                             <p className="text-sm font-bold text-emerald-400">
                                 همین حالا اضافه شد
                             </p>
-                            <h2 className="mt-2 text-2xl font-black md:text-3xl">
+                            <h2 className="mt-1.5 text-xl font-black leading-7 sm:mt-2 sm:text-2xl md:text-3xl">
                                 {settings.latest_products_title}
                             </h2>
                         </div>
@@ -2831,17 +2831,17 @@ export default function Home({
                     ))}
                 </div>
                 {settings.newsletter_enabled && (
-                    <section className="mx-auto max-w-[1536px] px-3 py-9 sm:px-4 sm:py-14">
+                    <section className="mx-auto max-w-[1536px] px-3 py-8 sm:px-4 sm:py-14">
                         <Card
                             className="storefront-dark-panel overflow-hidden border border-indigo-500/30 bg-gradient-to-l from-indigo-950 to-slate-900"
                             variant="secondary"
                         >
                             <Card.Content className="flex flex-col gap-5 p-5 sm:p-7 md:flex-row md:items-center md:justify-between md:p-10">
                                 <div>
-                                    <h2 className="text-2xl font-black text-white">
+                                    <h2 className="text-xl font-black text-white sm:text-2xl">
                                         {settings.newsletter_title}
                                     </h2>
-                                    <p className="mt-3 max-w-xl leading-7 text-slate-300">
+                                    <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300 sm:mt-3 sm:text-base sm:leading-7">
                                         {settings.newsletter_description}
                                     </p>
                                 </div>
