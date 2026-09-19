@@ -6,6 +6,7 @@ use App\Models\Game;
 use App\Models\SocialContent;
 use App\Models\VideoPlaylist;
 use App\Services\FeedService;
+use App\Services\FollowedGameWatchService;
 use App\Services\GameRadarService;
 use App\Services\MediaStorage;
 use App\Services\StorefrontDataService;
@@ -18,7 +19,7 @@ use Inertia\Response;
 
 class ChannelController extends Controller
 {
-    public function show(Request $request, Game $game, StorefrontDataService $data, FeedService $feed, GameRadarService $radar): Response
+    public function show(Request $request, Game $game, StorefrontDataService $data, FeedService $feed, GameRadarService $radar, FollowedGameWatchService $watch): Response
     {
         $this->ensureVisible($game);
 
@@ -31,6 +32,7 @@ class ChannelController extends Controller
             ->withCount(['videos' => fn ($query) => $query->published()->where('type', 'video')])
             ->orderBy('sort_order')->get()->map(fn (VideoPlaylist $playlist) => $this->playlistData($game, $playlist));
         $channel = $this->channelData($request, $game);
+        $channel['watch'] = $watch->status($game, $channel['is_subscribed']);
         $storeInfo = $radar->storeDataForGame($game);
         $canonical = route('channels.show', $game->slug);
         $description = Str::limit(
