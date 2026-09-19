@@ -148,6 +148,7 @@ interface PersonalizedGameEvent {
 interface PersonalizedHomeData {
     followed_games: PersonalizedGame[];
     events: PersonalizedGameEvent[];
+    videos: PersonalizedFeedItem[];
     feed: PersonalizedFeedItem[];
     radar: GameRadarItem[];
     watch: {
@@ -1016,42 +1017,81 @@ function PersonalizedHomePanel({
     userName: string;
 }) {
     const firstName = userName.trim().split(/\s+/)[0] || "گیمر";
-    const heroEvent =
-        data.events.find(
-            (event) =>
-                event.priority === "critical" || event.priority === "high",
-        ) ?? null;
     const structuredContentIds = new Set(
         data.events
             .map((event) => event.source_content_id)
             .filter((id): id is number => typeof id === "number"),
     );
-    const dedupedFeed = data.feed.filter(
-        (item) => !structuredContentIds.has(item.id),
+
+    const normalizeTitle = (value: string) =>
+        value
+            .toLocaleLowerCase("fa-IR")
+            .replace(/[\s\u200c\-_:،,.!?؟]+/g, " ")
+            .trim();
+
+    const uniqueByTitle = (items: PersonalizedFeedItem[]) => {
+        const seen = new Set<string>();
+
+        return items.filter((item) => {
+            const key = normalizeTitle(item.title);
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    };
+
+    const personalizedVideos = uniqueByTitle(data.videos);
+    const editorialFeed = uniqueByTitle(
+        data.feed.filter((item) => !structuredContentIds.has(item.id)),
     );
-    const heroItem = heroEvent ? null : (dedupedFeed[0] ?? null);
+
+    const heroVideo = personalizedVideos[0] ?? null;
+    const heroEditorial = heroVideo ? null : (editorialFeed[0] ?? null);
+    const heroItem = heroVideo ?? heroEditorial;
+    const heroIsVideo = heroItem?.type === "video";
+
+    const supportingEditorial = editorialFeed
+        .filter((item) => item.id !== heroEditorial?.id)
+        .slice(0, 2);
+    const supportingIds = new Set(supportingEditorial.map((item) => item.id));
+    const continuationFeed = editorialFeed
+        .filter(
+            (item) =>
+                item.id !== heroEditorial?.id && !supportingIds.has(item.id),
+        )
+        .slice(0, 4);
+
+    const heroEvent =
+        data.events.find(
+            (event) =>
+                (event.priority === "critical" ||
+                    event.priority === "high") &&
+                event.source_content_id !== heroItem?.id,
+        ) ?? null;
     const secondaryEvents = data.events
         .filter((event) => event.id !== heroEvent?.id)
         .slice(0, 4);
-    const favoriteFeedItems = dedupedFeed.slice(
-        heroEvent ? 0 : 1,
-        heroEvent ? 6 : 7,
-    );
+
     const focusGame = data.intelligence.focus_game;
     const hasPersonalization =
         data.followed_games.length > 0 ||
         Boolean(focusGame) ||
         data.events.length > 0 ||
+        data.videos.length > 0 ||
         data.feed.length > 0;
     const radar = data.radar.slice(0, 3);
-    const heroMedia = heroItem?.media[0];
-    const heroPreview =
-        heroEvent?.game?.image_url ??
-        (heroItem
-            ? (heroMedia?.type === "image"
-                  ? heroMedia.url
-                  : heroMedia?.thumbnail) ?? focusGame?.image_url
-            : focusGame?.image_url);
+
+    const heroMedia = heroItem?.media.find(
+        (entry) => entry.type === "image" || Boolean(entry.thumbnail),
+    );
+    const heroPreview = heroItem
+        ? heroMedia?.type === "image"
+            ? heroMedia.url
+            : heroMedia?.thumbnail
+        : focusGame?.image_url;
+    const heroDuration = heroMedia?.duration
+        ? durationLabel(heroMedia.duration)
+        : null;
 
     const formatEventChangeValue = (
         change: PersonalizedGameEvent["change"],
