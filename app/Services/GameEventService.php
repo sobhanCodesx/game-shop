@@ -261,6 +261,7 @@ class GameEventService
             'dedupe_key' => $event->dedupe_key,
             'old_value' => $event->old_value,
             'new_value' => $event->new_value,
+            'change' => $this->changePayload($event),
             'metadata' => $event->metadata,
             'detected_at' => $event->detected_at?->toISOString(),
             'effective_at' => $event->effective_at?->toISOString(),
@@ -272,7 +273,9 @@ class GameEventService
     private function serializeForPulse(GameEvent $event, array $rank): array
     {
         $game = $event->game;
-        $url = $event->source_url;
+        $url = $event->source_url && str_starts_with($event->source_url, '/')
+            ? $event->source_url
+            : null;
 
         if (! $url && $event->sourceContent?->status === 'published') {
             $url = $event->sourceContent->type === 'video'
@@ -311,6 +314,25 @@ class GameEventService
                 'cover_url' => MediaStorage::url($game->cover),
             ] : null,
         ];
+    }
+
+    private function changePayload(GameEvent $event): ?array
+    {
+        return match ($event->type) {
+            'release_date_changed' => [
+                'label' => 'تاریخ انتشار',
+                'kind' => 'date',
+                'from' => $event->old_value['release_date'] ?? null,
+                'to' => $event->new_value['release_date'] ?? null,
+            ],
+            'price_drop' => [
+                'label' => 'قیمت',
+                'kind' => 'money',
+                'from' => $event->old_value['price'] ?? null,
+                'to' => $event->new_value['price'] ?? null,
+            ],
+            default => null,
+        };
     }
 
     private function contentEventType(SocialContent $content): ?string
