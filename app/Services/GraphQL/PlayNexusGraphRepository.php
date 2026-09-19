@@ -12,6 +12,8 @@ use App\Models\VideoPlaylist;
 use App\Services\GameRadarService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PlayNexusGraphRepository
 {
@@ -235,6 +237,100 @@ class PlayNexusGraphRepository
         return $this->connection($nodes, $total, $first, $offset);
     }
 
+    public function gameEvents(array $args): array
+    {
+        $first = $this->first($args);
+        $offset = $this->offset($args);
+
+        if (! Schema::hasTable('game_events')) {
+            return $this->connection(collect(), 0, $first, $offset);
+        }
+
+        $query = DB::table('game_events')
+            ->when(isset($args['id']), fn ($q) => $q->where('id', (int) $args['id']))
+            ->when(isset($args['gameId']), fn ($q) => $q->where('game_id', (int) $args['gameId']))
+            ->when(isset($args['type']), fn ($q) => $q->where('type', $args['type']))
+            ->when(isset($args['status']), fn ($q) => $q->where('status', $args['status']))
+            ->when(isset($args['sourceType']), fn ($q) => $q->where('source_type', $args['sourceType']))
+            ->when(isset($args['minImportance']), fn ($q) => $q->where('importance_score', '>=', (int) $args['minImportance']))
+            ->when(isset($args['detectedFrom']), fn ($q) => $q->where('detected_at', '>=', $args['detectedFrom']))
+            ->when(isset($args['detectedTo']), fn ($q) => $q->where('detected_at', '<=', $args['detectedTo']))
+            ->when(isset($args['search']) && trim((string) $args['search']) !== '', function ($q) use ($args) {
+                $term = trim((string) $args['search']);
+
+                $q->where(fn ($inner) => $inner
+                    ->where('title', 'like', "%{$term}%")
+                    ->orWhere('summary', 'like', "%{$term}%"));
+            });
+
+        $total = (clone $query)->count();
+        $sort = in_array(($args['orderBy'] ?? null), ['id', 'importance_score', 'detected_at', 'effective_at', 'created_at'], true)
+            ? $args['orderBy']
+            : 'detected_at';
+        $direction = strtolower((string) ($args['orderDir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $nodes = $query
+            ->orderBy($sort, $direction)
+            ->orderBy('id', $direction)
+            ->offset($offset)
+            ->limit($first)
+            ->get()
+            ->map(fn ($row) => (array) $row);
+
+        return $this->connection($nodes, $total, $first, $offset);
+    }
+
+    public function sourceStates(array $args): array
+    {
+        $first = $this->first($args);
+        $offset = $this->offset($args);
+
+        if (! Schema::hasTable('game_source_states')) {
+            return $this->connection(collect(), 0, $first, $offset);
+        }
+
+        $query = DB::table('game_source_states')
+            ->when(isset($args['id']), fn ($q) => $q->where('id', (int) $args['id']))
+            ->when(isset($args['gameId']), fn ($q) => $q->where('game_id', (int) $args['gameId']))
+            ->when(isset($args['source']), fn ($q) => $q->where('source', $args['source']))
+            ->when(isset($args['scope']), fn ($q) => $q->where('scope', $args['scope']))
+            ->when(isset($args['observedFrom']), fn ($q) => $q->where('observed_at', '>=', $args['observedFrom']))
+            ->when(isset($args['observedTo']), fn ($q) => $q->where('observed_at', '<=', $args['observedTo']));
+
+        $total = (clone $query)->count();
+        $sort = in_array(($args['orderBy'] ?? null), ['id', 'observed_at', 'changed_at', 'created_at'], true)
+            ? $args['orderBy']
+            : 'observed_at';
+        $direction = strtolower((string) ($args['orderDir'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $nodes = $query
+            ->orderBy($sort, $direction)
+            ->orderBy('id', $direction)
+            ->offset($offset)
+            ->limit($first)
+            ->get()
+            ->map(fn ($row) => (array) $row);
+
+        return $this->connection($nodes, $total, $first, $offset);
+    }
+
+    public function eventsForGame(Game $game, array $args): array
+    {
+        $args['gameId'] = $game->id;
+
+        return $this->gameEvents($args);
+    }
+
+    public function sourceStatesForGame(Game $game, array $args): array
+    {
+        $args['gameId'] = $game->id;
+
+        return $this->sourceStates($args);
+    }
+
+    public function gameById(int|string|null $id): ?Game
+    {
+        return $id ? Game::query()->with(['studio', 'platforms'])->find((int) $id) : null;
+    }
+
     public function globalSearch(array $args): array
     {
         $query = trim((string) ($args['query'] ?? ''));
@@ -275,6 +371,9 @@ class PlayNexusGraphRepository
             'collections' => VideoPlaylist::query()->count(),
             'publicCollections' => VideoPlaylist::query()->where('visibility', 'public')->count(),
             'categories' => Category::query()->count(),
+            'gameEvents' => Schema::hasTable('game_events') ? DB::table('game_events')->count() : 0,
+            'activeGameEvents' => Schema::hasTable('game_events') ? DB::table('game_events')->where('status', 'active')->count() : 0,
+            'sourceStates' => Schema::hasTable('game_source_states') ? DB::table('game_source_states')->count() : 0,
         ];
     }
 
