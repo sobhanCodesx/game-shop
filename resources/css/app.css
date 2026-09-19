@@ -1395,6 +1395,46 @@ html[data-storefront-theme="light"] .storefront-theme {
 }
 
 /* PlayNexus cinematic player. Playback stays owned by Vidstack; this layer is visual only. */
+.playnexus-video-stage {
+    position: relative;
+    isolation: isolate;
+    border: 1px solid rgb(129 140 248 / 18%);
+    background:
+        linear-gradient(
+            145deg,
+            rgb(255 255 255 / 3%),
+            rgb(99 102 241 / 5%) 48%,
+            rgb(34 211 238 / 3%)
+        ),
+        #03050a;
+    box-shadow:
+        0 10px 28px rgb(0 0 0 / 18%),
+        0 0 0 1px rgb(99 102 241 / 6%),
+        inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+html[data-storefront-theme="light"] .storefront-theme .playnexus-video-stage {
+    border-color: rgb(99 102 241 / 16%);
+    background:
+        linear-gradient(
+            145deg,
+            rgb(255 255 255 / 92%),
+            rgb(238 242 255 / 82%) 54%,
+            rgb(240 249 255 / 78%)
+        );
+    box-shadow:
+        0 8px 22px rgb(71 85 105 / 8%),
+        0 0 0 1px rgb(99 102 241 / 5%),
+        inset 0 1px 0 rgb(255 255 255 / 92%);
+}
+
+html[data-storefront-theme="light"] .storefront-theme
+    .playnexus-player-shell[data-neon-state="active"]
+    .playnexus-player-frame::before {
+    opacity: 0.88;
+    filter: saturate(1.12) brightness(1.02);
+}
+
 .playnexus-player-shell {
     --pn-ambient-primary: 0 0 0;
     --pn-ambient-secondary: 0 0 0;
@@ -1621,16 +1661,16 @@ html[data-storefront-theme="light"] .storefront-theme {
     z-index: 90;
     inset: 0;
     border-radius: inherit;
-    padding: 1.2px;
+    padding: 1.45px;
     background: conic-gradient(
         from var(--pn-frame-angle),
         rgb(129 140 248 / 0%) 0deg,
         rgb(129 140 248 / 0%) 35deg,
-        rgb(139 92 246 / 34%) 70deg,
-        rgb(168 85 247 / 82%) 101deg,
-        rgb(34 211 238 / 92%) 128deg,
-        rgb(99 102 241 / 56%) 156deg,
-        rgb(99 102 241 / 10%) 190deg,
+        rgb(139 92 246 / 42%) 70deg,
+        rgb(168 85 247 / 92%) 101deg,
+        rgb(34 211 238 / 100%) 128deg,
+        rgb(99 102 241 / 68%) 156deg,
+        rgb(99 102 241 / 14%) 190deg,
         rgb(129 140 248 / 0%) 226deg,
         rgb(129 140 248 / 0%) 360deg
     );
@@ -1645,12 +1685,12 @@ html[data-storefront-theme="light"] .storefront-theme {
 }
 
 .playnexus-player-shell[data-neon-state="active"] .playnexus-player-frame::before {
-    opacity: 0.82;
+    opacity: 0.92;
     animation: pn-signature-orbit 4.8s steps(72, end) infinite;
 }
 
 .playnexus-player-shell[data-neon-state="paused"] .playnexus-player-frame::before {
-    opacity: 0.42;
+    opacity: 0.5;
     animation: pn-signature-orbit 4.8s steps(72, end) infinite;
     animation-play-state: paused;
 }
@@ -1661,8 +1701,9 @@ html[data-storefront-theme="light"] .storefront-theme {
         -34px 24px 90px rgb(var(--pn-ambient-primary) / 20%),
         36px 18px 94px rgb(var(--pn-ambient-secondary) / 17%),
         0 44px 100px rgb(var(--pn-ambient-highlight) / 13%),
-        0 0 0 1px rgb(129 140 248 / 18%),
-        0 0 24px rgb(99 102 241 / 10%);
+        0 0 0 1px rgb(129 140 248 / 24%),
+        0 0 30px rgb(99 102 241 / 14%),
+        0 0 42px rgb(34 211 238 / 6%);
 }
 
 .playnexus-player-shell[data-neon-state="fading"] .playnexus-player-frame::before {
@@ -1701,7 +1742,7 @@ html[data-storefront-theme="light"] .storefront-theme {
 @media (max-width: 640px) {
     .playnexus-player-shell[data-neon-state="active"]
         .playnexus-player-frame::before {
-        opacity: 0.68;
+        opacity: 0.8;
     }
 }
 
