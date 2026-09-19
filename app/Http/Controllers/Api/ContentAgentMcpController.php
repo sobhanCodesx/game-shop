@@ -241,7 +241,6 @@ class ContentAgentMcpController extends Controller
                         'source_name' => ['type' => ['string', 'null'], 'maxLength' => 120],
                         'source_url' => ['type' => ['string', 'null'], 'maxLength' => 1000],
                         'external_id' => ['type' => ['string', 'null'], 'maxLength' => 190],
-                        'dedupe_key' => ['type' => ['string', 'null'], 'maxLength' => 190],
                         'importance_score' => ['type' => ['integer', 'null'], 'minimum' => 0, 'maximum' => 100],
                         'confidence' => ['type' => ['number', 'null'], 'minimum' => 0, 'maximum' => 1],
                         'old_value' => ['type' => ['object', 'null'], 'additionalProperties' => true],
