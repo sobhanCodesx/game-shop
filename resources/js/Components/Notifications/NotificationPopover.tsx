@@ -162,6 +162,7 @@ export default function NotificationPopover({
                     <section
                         ref={panel}
                         className={`
+                        pn-notification-panel
                         fixed
                         inset-x-3
                         top-20
@@ -246,9 +247,11 @@ export default function NotificationPopover({
                                 <button
                                     key={item.id}
                                     type="button"
+                                    data-read={Boolean(item.read_at)}
                                     onClick={() => read(item.id)}
                                     disabled={navigating === item.id}
                                     className={`
+                                        pn-notification-item
                                         mb-1
                                         flex
                                         w-full
