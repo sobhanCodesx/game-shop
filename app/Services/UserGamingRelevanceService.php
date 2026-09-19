@@ -32,7 +32,7 @@ class UserGamingRelevanceService
         $gameScores = [];
         $gameSources = [];
         $signalScores = [];
-        $interactionCount = 0;
+        $interactionCount = min($followedGames->count(), 6) * 2;
 
         foreach ($followedGames as $game) {
             $this->addGameScore($gameScores, $gameSources, (int) $game->id, 60, 'follow');
@@ -209,7 +209,7 @@ class UserGamingRelevanceService
                     : 'بر اساس چیزهایی که بیشتر برات مهم شده';
 
                 if ($signalAffinity >= 12 && isset(self::SIGNAL_LABELS[$signalKey])) {
-                    $reason = 'چون '.self::SIGNAL_LABELS[$signalKey].' بیشتر به سلیقه‌ات نزدیک شده';
+                    $reason = 'چون '.self::SIGNAL_LABELS[$signalKey].' بیشتر با علایقت جور درمیاد';
                 }
 
                 return [
@@ -307,26 +307,27 @@ class UserGamingRelevanceService
         $primary = array_key_first($sources);
 
         return match ($primary) {
-            'save' => 'محتوای این بازی بیشتر برایت ارزش ذخیره‌کردن داشته',
-            'watch' => 'اخیراً بیشتر با محتوای این بازی درگیر بودی',
-            'reaction' => 'تعامل بیشتری با محتوای این بازی داشتی',
-            'view' => 'این بازی این روزها بیشتر توجهت را گرفته',
+            'save' => 'این بازی با چیزهایی که برای بعد نگه می‌داری هم‌خوانی بیشتری دارد',
+            'watch' => 'این بازی با چیزهایی که بیشتر تماشا می‌کنی هم‌خوانی دارد',
+            'reaction' => 'این بازی با تعاملات اخیرت هم‌خوانی بیشتری دارد',
+            'view' => 'این بازی این روزها به علایقت نزدیک‌تر شده',
             default => 'این بازی جزو دنبال‌شده‌های اصلی توست',
         };
     }
 
     private function importanceScore(SocialContent $content): float
     {
-        $badgeScore = match ($content->feed_badge) {
-            'breaking' => 24,
-            'update' => 21,
-            'trailer' => 18,
-            'news' => 16,
-            'review' => 12,
-            default => 7,
+        $signalScore = match ($this->signalKey($content)) {
+            'update' => 20,
+            'trailer' => 17,
+            'news' => 15,
+            'review' => 11,
+            'video' => 8,
+            default => 6,
         };
+        $breakingBoost = $content->feed_badge === 'breaking' ? 8 : 0;
 
-        return $badgeScore + ($content->featured ? 6 : 0);
+        return $signalScore + $breakingBoost + ($content->featured ? 6 : 0);
     }
 
     private function contentRecencyScore(SocialContent $content): float
