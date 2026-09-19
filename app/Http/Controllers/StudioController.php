@@ -87,12 +87,17 @@ class StudioController extends Controller
             ]);
         $canonical = route('studios.show', $studio->slug);
         $plainDescription = RichText::plainText($studio->description);
-        $description = Str::limit($plainDescription ?: "کانال‌ها و بازی‌های استودیو {$studio->name} در PlayNexus.", 160, '…');
+        $description = Str::limit(
+            $plainDescription ?: "معرفی استودیو {$studio->name}، بازی‌های شاخص، تاریخچه و تازه‌ترین محتوای مرتبط در PlayNexus.",
+            148,
+            '…',
+        );
+        $seoTitle = "استودیو {$studio->name} | بازی‌ها، تاریخچه و اخبار";
         $image = url(MediaStorage::url($studio->background ?: $studio->logo) ?: (string) config('seo.default_image', '/logo.png'));
 
         return Inertia::render('Studios/Show', [
             ...Seo::page([
-                'title' => $studio->name,
+                'title' => $seoTitle,
                 'description' => $description,
                 'canonical' => $canonical,
                 'robots' => 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
