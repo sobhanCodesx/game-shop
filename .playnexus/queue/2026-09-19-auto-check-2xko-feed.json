@@ -1,0 +1,11 @@
+{
+  "job_id": "2026-09-19-auto-check-2xko-feed",
+  "tool": "select_content",
+  "arguments": {
+    "resource": "feed",
+    "query": "2XKO توسعه فعال پایان دسامبر 2026 Riot",
+    "limit": 20,
+    "sort_by": "created_at",
+    "sort_direction": "desc"
+  }
+}
