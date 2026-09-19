@@ -32,8 +32,9 @@ jobs:
             code="$(curl --silent --show-error --location --retry 3 --retry-all-errors --output "$file" --write-out '%{http_code}' "https://playnexus.ir$path")"
             echo "$path -> HTTP $code, $(wc -c < "$file") bytes"
             [[ "$code" == "200" ]]
-            grep -Eq 'id="app"[^>]*data-page=' "$file"
-            grep -Eq 'id="app"[^>]*>[^<[:space:]]*<' "$file" || grep -Eq 'id="app"[^>]*>[[:space:]]*<' "$file"
+            grep -q 'id="app"' "$file"
+            grep -q 'data-page=' "$file"
+            grep -q '<main' "$file"
           done
 
       - name: Verify built client asset is reachable
