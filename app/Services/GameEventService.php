@@ -241,6 +241,7 @@ class GameEventService
                     ...$rank,
                 ];
             })
+            ->filter(fn (array $rank) => $rank['score'] >= 54)
             ->sortByDesc('score')
             ->take($limit)
             ->map(fn (array $rank) => $this->serializeForPulse($rank['event'], $rank))
