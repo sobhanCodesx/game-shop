@@ -894,7 +894,7 @@ class PlayNexusGraphSchemaFactory
             'introspection' => (bool) config('content_agent.graphql.allow_introspection', true),
             'entities' => ['Game', 'Studio', 'Brand', 'Platform', 'Product', 'Content', 'ContentMedia', 'Collection', 'Category', 'RadarItem', 'GameEvent', 'GameSourceState'],
             'maxDepth' => (int) config('content_agent.graphql.max_depth', 14),
-            'maxComplexity' => (int) config('content_agent.graphql.max_complexity', 1500),
+            'maxComplexity' => (int) config('content_agent.graphql.max_complexity', 12000),
             'maxFields' => (int) config('content_agent.graphql.max_fields', 600),
             'maxPageSize' => (int) config('content_agent.graphql.max_page_size', 100),
         ];
