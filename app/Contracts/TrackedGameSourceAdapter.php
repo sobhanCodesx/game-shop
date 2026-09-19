@@ -8,6 +8,8 @@ interface TrackedGameSourceAdapter
 {
     public function source(): string;
 
+    public function supports(\App\Models\GameSourceState $state): bool;
+
     /**
      * Fetch fresh observations for already-known source identities.
      *
