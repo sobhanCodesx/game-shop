@@ -1,0 +1,10 @@
+{
+  "job_id": "20260920-low-complexity-relation-test",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query($q: String!) { search(query: $q, first: 5) { games { id name slug status releaseDate } } }",
+    "variables": {
+      "q": "PC Gaming Show"
+    }
+  }
+}
