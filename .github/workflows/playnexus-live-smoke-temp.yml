@@ -1,0 +1,60 @@
+name: PlayNexus Live Smoke Temp
+
+on:
+  push:
+    branches:
+      - feature/nexus-pulse-home
+    paths:
+      - '.github/workflows/playnexus-live-smoke-temp.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check Laravel health
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(curl --fail --silent --show-error --retry 3 --retry-all-errors https://playnexus.ir/up)"
+          printf '%s\n' "$body"
+          [[ -n "$body" ]]
+
+      - name: Verify production SSR HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in / /game-radar /videos /studios; do
+            file="/tmp/playnexus-${path//\//_}.html"
+            code="$(curl --silent --show-error --location --retry 3 --retry-all-errors --output "$file" --write-out '%{http_code}' "https://playnexus.ir$path")"
+            echo "$path -> HTTP $code, $(wc -c < "$file") bytes"
+            [[ "$code" == "200" ]]
+            PAGE="$file" python3 - <<'PY'
+import os, pathlib, re, sys
+text = pathlib.Path(os.environ["PAGE"]).read_text(encoding="utf-8", errors="replace")
+if not re.search(r'<div[^>]+id=["\']app["\'][^>]*data-page=', text):
+    sys.exit("Missing Inertia app/data-page")
+if not re.search(r'<div[^>]+id=["\']app["\'][^>]*>\s*<', text, re.S):
+    sys.exit("Inertia app is empty: SSR markup was not rendered")
+PY
+          done
+
+      - name: Verify built client asset is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location https://playnexus.ir/ -o /tmp/home.html
+          asset="$(python3 - <<'PY'
+import pathlib, re
+text = pathlib.Path('/tmp/home.html').read_text(encoding='utf-8', errors='replace')
+match = re.search(r'(?:src|href)=["\']([^"\']*/build/[^"\']+\.(?:js|css))["\']', text)
+if not match:
+    raise SystemExit('No Vite build asset found in production HTML')
+print(match.group(1))
+PY
+)"
+          echo "Checking asset: $asset"
+          curl --fail --silent --show-error --location --range 0-64 "https://playnexus.ir$asset" >/dev/null
