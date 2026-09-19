@@ -74,7 +74,9 @@ class FollowedGameWatchService
                 ->whereIn('game_id', $gameIds->all())
                 ->where('source', $adapter->source())
                 ->where('scope', 'store')
-                ->get();
+                ->get()
+                ->filter(fn (GameSourceState $state) => $adapter->supports($state))
+                ->values();
 
             if ($states->isEmpty()) {
                 continue;
@@ -112,9 +114,7 @@ class FollowedGameWatchService
             ->where('game_id', $game->id)
             ->get(['source', 'observed_at']);
 
-        $directSources = collect($this->adapters)
-            ->map(fn (TrackedGameSourceAdapter $adapter) => $adapter->source())
-            ->all();
+        $directStates = $this->directStates($states);
 
         $labels = $states
             ->pluck('source')
@@ -125,9 +125,9 @@ class FollowedGameWatchService
 
         return [
             'active' => true,
-            'mode' => $states->whereIn('source', $directSources)->isNotEmpty() ? 'direct' : 'smart',
+            'mode' => $directStates->isNotEmpty() ? 'direct' : 'smart',
             'source_count' => $states->count(),
-            'direct_source_count' => $states->whereIn('source', $directSources)->count(),
+            'direct_source_count' => $directStates->count(),
             'source_labels' => $labels->all(),
             'last_checked_at' => $states
                 ->sortByDesc('observed_at')
@@ -155,14 +155,11 @@ class FollowedGameWatchService
         $states = GameSourceState::query()
             ->whereIn('game_id', $ids->all())
             ->get(['game_id', 'source', 'observed_at']);
-        $directSources = collect($this->adapters)
-            ->map(fn (TrackedGameSourceAdapter $adapter) => $adapter->source())
-            ->all();
+        $directStates = $this->directStates($states);
 
         return [
             'active_games' => $ids->count(),
-            'direct_games' => $states
-                ->whereIn('source', $directSources)
+            'direct_games' => $directStates
                 ->pluck('game_id')
                 ->unique()
                 ->count(),
@@ -177,6 +174,21 @@ class FollowedGameWatchService
                 ->sortByDesc('observed_at')
                 ->first()?->observed_at?->toISOString(),
         ];
+    }
+
+    private function directStates(Collection $states): Collection
+    {
+        return $states
+            ->filter(function (GameSourceState $state): bool {
+                foreach ($this->adapters as $adapter) {
+                    if ($adapter->source() === $state->source && $adapter->supports($state)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            ->values();
     }
 
     private function sourceLabel(string $source): ?string
