@@ -1,7 +1,0 @@
-{
-  "job_id": "server-smoke-game-events-20260919",
-  "tool": "list_game_events",
-  "arguments": {
-    "limit": 1
-  }
-}
