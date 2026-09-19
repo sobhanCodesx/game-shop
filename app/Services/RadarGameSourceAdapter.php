@@ -69,6 +69,8 @@ class RadarGameSourceAdapter implements GameSourceAdapter
                     'confidence' => 0.98,
                     'state' => [
                         'available' => true,
+                        'release_date' => $this->dateValue($item['release_date'] ?? null),
+                        'release_phase' => ($item['status'] ?? null) === 'coming' ? 'coming' : 'released',
                         'price_raw' => $priceRaw,
                         'price_amount' => $currency ? $this->priceAmount($priceRaw) : null,
                         'currency' => $currency,
@@ -127,7 +129,9 @@ class RadarGameSourceAdapter implements GameSourceAdapter
                     }
 
                     if ($source === 'playstation_store') {
-                        return 'psn:'.rawurldecode($value);
+                        $type = str_contains($path, '/concept/') ? 'concept' : 'product';
+
+                        return 'psn-'.$type.':'.rawurldecode($value);
                     }
                 }
             }
