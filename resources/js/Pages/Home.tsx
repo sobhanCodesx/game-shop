@@ -1165,7 +1165,8 @@ function PersonalizedHomePanel({
                 ? "مرتبط با سلیقه‌ات"
                 : "برای تو";
 
-    const feedDateLabel = (value: string) => {
+    const feedDateLabel = (value: string | null) => {
+        if (!value) return "";
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return "";
 
