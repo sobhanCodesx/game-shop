@@ -1,0 +1,13 @@
+{
+  "job_id": "gta6-cover-20260919",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game",
+    "id": 1,
+    "slot": "cover",
+    "source_url": "https://www.rockstargames.com/VI/_next/static/media/Official_Cover_Art_landscape.12.uu2irr.2_a.jpg?akim=1&imdensity=1&imwidth=3840",
+    "name": "gta-6-official-cover.jpg",
+    "mime": "image/jpeg",
+    "alt": "کاور رسمی GTA 6؛ Grand Theft Auto VI از Rockstar Games"
+  }
+}
