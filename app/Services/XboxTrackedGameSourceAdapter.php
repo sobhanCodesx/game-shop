@@ -86,6 +86,7 @@ class XboxTrackedGameSourceAdapter implements TrackedGameSourceAdapter
                         'external_id' => 'xbox:'.$productId,
                         'source_url' => $state->source_url,
                         'confidence' => 0.99,
+                        'watch_direct' => true,
                         'state' => [
                             'available' => true,
                             'release_date' => $releaseDate,
