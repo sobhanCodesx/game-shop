@@ -1,0 +1,95 @@
+name: PlayNexus Game Intelligence Check
+
+on:
+  push:
+    paths:
+      - 'app/Contracts/GameSourceAdapter.php'
+      - 'app/Models/GameEvent.php'
+      - 'app/Models/GameSourceState.php'
+      - 'app/Observers/GameObserver.php'
+      - 'app/Observers/ProductObserver.php'
+      - 'app/Observers/SocialContentObserver.php'
+      - 'app/Services/GameEventImportanceService.php'
+      - 'app/Services/GameEventService.php'
+      - 'app/Services/GameSourceChangeDetector.php'
+      - 'app/Services/GameSourceMonitorService.php'
+      - 'app/Services/RadarGameSourceAdapter.php'
+      - 'app/Services/GameRadarService.php'
+      - 'app/Http/Controllers/HomeController.php'
+      - 'resources/js/Pages/Home.tsx'
+      - 'routes/console.php'
+      - 'database/migrations/2026_09_19_120000_create_game_events_table.php'
+      - 'database/migrations/2026_09_19_130000_create_game_source_states_table.php'
+      - 'tests/Feature/GameEventTest.php'
+      - 'tests/Feature/GameSourceMonitorTest.php'
+      - '.github/workflows/playnexus-game-intelligence-check.yml'
+  pull_request:
+    paths:
+      - 'app/Contracts/GameSourceAdapter.php'
+      - 'app/Models/GameEvent.php'
+      - 'app/Models/GameSourceState.php'
+      - 'app/Observers/GameObserver.php'
+      - 'app/Observers/ProductObserver.php'
+      - 'app/Observers/SocialContentObserver.php'
+      - 'app/Services/GameEventImportanceService.php'
+      - 'app/Services/GameEventService.php'
+      - 'app/Services/GameSourceChangeDetector.php'
+      - 'app/Services/GameSourceMonitorService.php'
+      - 'app/Services/RadarGameSourceAdapter.php'
+      - 'app/Services/GameRadarService.php'
+      - 'app/Http/Controllers/HomeController.php'
+      - 'resources/js/Pages/Home.tsx'
+      - 'routes/console.php'
+      - 'database/migrations/2026_09_19_120000_create_game_events_table.php'
+      - 'database/migrations/2026_09_19_130000_create_game_source_states_table.php'
+      - 'tests/Feature/GameEventTest.php'
+      - 'tests/Feature/GameSourceMonitorTest.php'
+
+permissions:
+  contents: read
+
+jobs:
+  intelligence:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          php -l app/Contracts/GameSourceAdapter.php
+          php -l app/Models/GameEvent.php
+          php -l app/Models/GameSourceState.php
+          php -l app/Observers/GameObserver.php
+          php -l app/Observers/ProductObserver.php
+          php -l app/Observers/SocialContentObserver.php
+          php -l app/Services/GameEventImportanceService.php
+          php -l app/Services/GameEventService.php
+          php -l app/Services/GameSourceChangeDetector.php
+          php -l app/Services/GameSourceMonitorService.php
+          php -l app/Services/RadarGameSourceAdapter.php
+          php -l app/Services/GameRadarService.php
+          php -l app/Http/Controllers/HomeController.php
+          php -l routes/console.php
+          php -l database/migrations/2026_09_19_120000_create_game_events_table.php
+          php -l database/migrations/2026_09_19_130000_create_game_source_states_table.php
+          php -l tests/Feature/GameEventTest.php
+          php -l tests/Feature/GameSourceMonitorTest.php
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run Game Intelligence tests
+        run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build client and SSR bundles
+        run: npm run build
