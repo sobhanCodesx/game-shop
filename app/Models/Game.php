@@ -43,7 +43,17 @@ class Game extends Model
         return $this->hasMany(SocialContent::class)->where('type', 'video');
     }
 
+    public function contents(): HasMany
+    {
+        return $this->hasMany(SocialContent::class);
+    }
+
     public function playlists(): HasMany
+    {
+        return $this->hasMany(VideoPlaylist::class)->orderBy('sort_order');
+    }
+
+    public function collections(): HasMany
     {
         return $this->hasMany(VideoPlaylist::class)->orderBy('sort_order');
     }
