@@ -1,0 +1,12 @@
+{
+  "job_id": "2026-09-20-run7-upload-remothered",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 60,
+    "slot": "media",
+    "source_url": "https://stormindgames.com/wp-content/uploads/2026/09/Deluxe-Edition-Cover-Blog-sito.jpg",
+    "name": "remothered-red-nuns-legacy-deluxe-edition.jpg",
+    "alt": "نسخه Deluxe بازی Remothered Red Nun’s Legacy با آرت‌بوک و موسیقی آکیرا یامائوکا"
+  }
+}
