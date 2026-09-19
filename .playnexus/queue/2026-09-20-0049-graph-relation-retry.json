@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-20-0049-graph-relation-retry",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query($q: String!) { search(query: $q, first: 8) { games { id name slug status releaseDate studio { id name slug } } studios { id name slug status } content { id type title status publishedAt game { id name slug } } products { id title status } } }",
+    "variables": {"q": "PC Gaming Show Tokyo Direct 2026"}
+  }
+}
