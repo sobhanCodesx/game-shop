@@ -1,0 +1,12 @@
+{
+  "job_id": "20260919-daily-studio-remedy-background",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "studio",
+    "query": "Remedy Entertainment",
+    "slot": "background",
+    "source_url": "https://cdn.prod.website-files.com/644a618a8a06cbd6183bfd08/660bbb59b752a9189ffcbc6b_Remedygames_studio_hero_3.jpg",
+    "name": "remedy-entertainment-studio-background.jpg",
+    "alt": "فضای رسمی استودیوی Remedy Entertainment"
+  }
+}
