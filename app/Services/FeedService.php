@@ -429,6 +429,8 @@ class FeedService
             ->select([
                 'id',
                 'game_id',
+                'related_product_id',
+                'related_content_id',
                 'type',
                 'feed_type',
                 'feed_badge',
@@ -447,6 +449,9 @@ class FeedService
                     ->whereNotNull('logo')
                     ->select(['id', 'game_id', 'logo', 'sort_order']),
                 'media',
+                'relatedContent:id,title,thumbnail,video_path,duration',
+                'relatedProduct:id',
+                'relatedProduct.coverMedia',
             ]);
     }
 
@@ -472,17 +477,55 @@ class FeedService
             'alt' => $media->alt ?: $content->title,
         ])->values();
 
-        if ($media->isEmpty() && $content->thumbnail) {
-            $media->push([
-                'id' => -$content->id,
-                'type' => $isVideo ? 'video' : 'image',
-                'url' => $isVideo ? MediaStorage::url($content->video_path) : MediaStorage::url($content->thumbnail),
-                'thumbnail' => $isVideo ? MediaStorage::url($content->thumbnail) : null,
-                'width' => null,
-                'height' => null,
-                'duration' => $content->duration,
-                'alt' => $content->title,
-            ]);
+        if ($media->isEmpty()) {
+            $reference = $content->relatedContent;
+
+            if ($reference?->video_path || ($isVideo && $content->video_path)) {
+                $source = $reference ?: $content;
+                $media->push([
+                    'id' => -$source->id,
+                    'type' => 'video',
+                    'url' => MediaStorage::url($source->video_path),
+                    'thumbnail' => MediaStorage::url($source->thumbnail),
+                    'width' => null,
+                    'height' => null,
+                    'duration' => $source->duration,
+                    'alt' => $source->title,
+                ]);
+            } elseif ($content->thumbnail) {
+                $media->push([
+                    'id' => -$content->id,
+                    'type' => 'image',
+                    'url' => MediaStorage::url($content->thumbnail),
+                    'thumbnail' => null,
+                    'width' => null,
+                    'height' => null,
+                    'duration' => null,
+                    'alt' => $content->title,
+                ]);
+            } elseif ($reference?->thumbnail) {
+                $media->push([
+                    'id' => -$reference->id,
+                    'type' => 'image',
+                    'url' => MediaStorage::url($reference->thumbnail),
+                    'thumbnail' => null,
+                    'width' => null,
+                    'height' => null,
+                    'duration' => null,
+                    'alt' => $reference->title,
+                ]);
+            } elseif ($content->relatedProduct?->coverMedia?->path) {
+                $media->push([
+                    'id' => -$content->relatedProduct->id,
+                    'type' => 'image',
+                    'url' => MediaStorage::url($content->relatedProduct->coverMedia->path),
+                    'thumbnail' => null,
+                    'width' => null,
+                    'height' => null,
+                    'duration' => null,
+                    'alt' => $content->title,
+                ]);
+            }
         }
 
         $isEditorialPost = $content->type === 'post';
