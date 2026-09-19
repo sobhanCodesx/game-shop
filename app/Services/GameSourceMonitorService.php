@@ -25,9 +25,27 @@ class GameSourceMonitorService
     }
 
     /**
+     * @param array<int, array<string, mixed>> $observations
+     * @return array{observed:int,baselines:int,changed:int,events:int}
+     */
+    public function observeObservations(array $observations): array
+    {
+        return $this->observeNormalized($observations);
+    }
+
+    /**
      * @return array{observed:int,baselines:int,changed:int,events:int}
      */
     private function observe(GameSourceAdapter $adapter, array $payload): array
+    {
+        return $this->observeNormalized($adapter->observations($payload));
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $observations
+     * @return array{observed:int,baselines:int,changed:int,events:int}
+     */
+    private function observeNormalized(array $observations): array
     {
         $stats = [
             'observed' => 0,
@@ -36,7 +54,7 @@ class GameSourceMonitorService
             'events' => 0,
         ];
 
-        foreach ($adapter->observations($payload) as $observation) {
+        foreach ($observations as $observation) {
             $result = DB::transaction(function () use ($observation): array {
                 $state = is_array($observation['state'] ?? null) ? $observation['state'] : [];
                 $fingerprint = $this->fingerprint($state);
