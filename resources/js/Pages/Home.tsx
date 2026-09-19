@@ -2267,8 +2267,8 @@ function CampaignBanner({
 
     const shellClass =
         variant === "signed-in"
-            ? "aspect-[16/10] sm:aspect-[3/1] lg:aspect-[3.25/1]"
-            : "aspect-[16/10] sm:aspect-[2.8/1] lg:aspect-[3.15/1]";
+            ? "sm:aspect-[3/1] lg:aspect-[3.25/1]"
+            : "sm:aspect-[2.8/1] lg:aspect-[3.15/1]";
 
     return (
         <div
@@ -2305,7 +2305,7 @@ function CampaignBanner({
 
                 <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,.26),rgba(2,6,23,.04)_34%,rgba(2,6,23,.04)_66%,rgba(2,6,23,.26))]" />
 
-                <picture className="absolute inset-0 z-[1] block size-full">
+                <picture className="relative z-[1] block w-full sm:absolute sm:inset-0 sm:size-full">
                     <source
                         media="(max-width: 640px)"
                         srcSet={
@@ -2315,7 +2315,7 @@ function CampaignBanner({
                     />
                     <img
                         alt={slide.alt || slide.title}
-                        className="size-full object-contain object-center"
+                        className="block h-auto w-full object-contain object-center sm:size-full"
                         decoding="async"
                         fetchPriority="high"
                         key={slide.id}
@@ -2559,7 +2559,7 @@ export default function Home({
                 {auth.user && personalizedHome && slides.length > 0 && (
                     <section
                         aria-label="بنرهای PlayNexus"
-                        className="mx-auto w-full max-w-[1460px] px-3 pb-1 pt-3 sm:px-4 sm:pt-4"
+                        className="mx-auto w-full max-w-[1460px] px-3 pb-0 pt-2 sm:px-4 sm:pb-1 sm:pt-4"
                     >
                         <CampaignBanner slides={slides} variant="signed-in" />
                     </section>
