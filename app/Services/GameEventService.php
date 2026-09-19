@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Game;
 use App\Models\GameEvent;
 use App\Models\Product;
 use App\Models\SocialContent;
 use App\Support\RichText;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class GameEventService
@@ -15,7 +15,7 @@ class GameEventService
         private readonly GameEventImportanceService $importance,
     ) {}
 
-    public function syncReleaseDateChange(\App\Models\Game $game, ?string $oldDate): ?GameEvent
+    public function syncReleaseDateChange(Game $game, ?string $oldDate): ?GameEvent
     {
         if (! $game->release_date || ! $oldDate || $game->release_date->toDateString() === $oldDate) {
             return null;
@@ -46,7 +46,7 @@ class GameEventService
     {
         $count = 0;
 
-        \App\Models\Game::query()
+        Game::query()
             ->whereIn('status', ['active', 'published'])
             ->whereNotNull('release_date')
             ->whereBetween('release_date', [now()->subDays($days)->toDateString(), now()->toDateString()])
@@ -315,6 +315,7 @@ class GameEventService
             'url' => $url,
             'old_value' => $event->old_value,
             'new_value' => $event->new_value,
+            'change' => $this->changePayload($event),
             'detected_at' => $event->detected_at?->toISOString(),
             'effective_at' => $event->effective_at?->toISOString(),
             'expires_at' => $event->expires_at?->toISOString(),
