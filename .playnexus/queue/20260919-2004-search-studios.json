@@ -1,0 +1,7 @@
+{
+  "tool": "search_studios",
+  "arguments": {
+    "query": "",
+    "limit": 100
+  }
+}
