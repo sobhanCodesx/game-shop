@@ -1,5 +1,0 @@
-{
-  "job_id": "2026-09-19-auto20-verify-feed57-media",
-  "tool": "list_content_assets",
-  "arguments": {"resource": "feed", "id": 57}
-}
