@@ -2250,6 +2250,24 @@ function CampaignBanner({
         );
     }
 
+    const slide = slides[activeSlide];
+    const go = (offset: number) =>
+        setActiveSlide(
+            (current) => (current + offset + slides.length) % slides.length,
+        );
+    const finishSwipe = (clientX: number) => {
+        if (touchStartX.current === null) return;
+
+        const distance = clientX - touchStartX.current;
+        touchStartX.current = null;
+        if (Math.abs(distance) > 45) go(distance > 0 ? -1 : 1);
+    };
+
+    const shellClass =
+        variant === "signed-in"
+            ? "aspect-[16/10] sm:aspect-[3/1] lg:aspect-[3.25/1]"
+            : "aspect-[16/10] sm:aspect-[2.8/1] lg:aspect-[3.15/1]";
+
     return (
         <div
             aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
@@ -2516,19 +2534,6 @@ export default function Home({
 
         return () => observer.disconnect();
     }, [personalizedHome]);
-
-    const slide = slides[activeSlide];
-    const go = (offset: number) =>
-        setActiveSlide(
-            (current) => (current + offset + slides.length) % slides.length,
-        );
-    const finishSwipe = (clientX: number) => {
-        if (touchStartX.current === null) return;
-
-        const distance = clientX - touchStartX.current;
-        touchStartX.current = null;
-        if (Math.abs(distance) > 45) go(distance > 0 ? -1 : 1);
-    };
 
     return (
         <div
