@@ -220,6 +220,34 @@ class FollowedGameWatchTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_playstation_concept_only_identity_stays_in_smart_mode(): void
+    {
+        $game = Game::factory()->create();
+
+        GameSourceState::query()->create([
+            'game_id' => $game->id,
+            'source' => 'playstation_store',
+            'scope' => 'store',
+            'external_id' => 'psn-concept:1000123456',
+            'source_url' => 'https://store.playstation.com/es-cr/concept/1000123456',
+            'confidence' => .98,
+            'fingerprint' => hash('sha256', 'concept-only'),
+            'state' => [
+                'available' => true,
+                'release_phase' => 'coming',
+                'platforms' => ['PS5'],
+            ],
+            'observed_at' => now(),
+        ]);
+
+        $status = app(FollowedGameWatchService::class)->status($game, true);
+
+        $this->assertTrue($status['active']);
+        $this->assertSame('smart', $status['mode']);
+        $this->assertSame(0, $status['direct_source_count']);
+        $this->assertContains('PlayStation Store', $status['source_labels']);
+    }
+
     public function test_watch_status_is_active_even_before_an_external_source_identity_is_known(): void
     {
         $game = Game::factory()->create();
