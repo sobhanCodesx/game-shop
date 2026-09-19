@@ -81,6 +81,7 @@ class StudioTest extends TestCase
             ->where('studio.name', 'Pixel Giants')
             ->where('studio.channels_count', 19)
             ->where('seo.canonical', route('studios.show', $studio->slug))
+            ->where('seo.title', 'استودیو Pixel Giants | بازی‌ها، تاریخچه و اخبار - پلی نکسوس')
             ->where('seo.robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1')
             ->where('seo.structuredData.@graph.0.@type', 'Organization')
             ->where('seo.structuredData.@graph.1.@type', 'BreadcrumbList')
