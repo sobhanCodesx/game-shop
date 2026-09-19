@@ -1,0 +1,11 @@
+{
+  "job_id": "2026-09-19-auto20-check-monster-hunter-outlanders",
+  "tool": "select_content",
+  "arguments": {
+    "resource": "feed",
+    "query": "Monster Hunter Outlanders",
+    "limit": 20,
+    "order_by": "created_at",
+    "order_direction": "desc"
+  }
+}
