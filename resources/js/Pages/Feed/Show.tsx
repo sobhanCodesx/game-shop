@@ -567,7 +567,7 @@ function RelatedSection({
     title: string;
 }) {
     return (
-        <section className="mx-3 mt-8 sm:mx-0 sm:mt-9">
+        <section className="pn-feed-related mx-3 mt-8 rounded-[22px] p-3 sm:mx-0 sm:mt-9 sm:p-4">
             <header className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
                 <h2 className="flex items-center gap-2 text-base font-black sm:text-lg">
                     <Icon className="text-indigo-400" size={19} />
@@ -590,7 +590,7 @@ function FeedPreview({ item }: { item: FeedItemData }) {
     const image = media?.type === "image" ? media.url : media?.thumbnail;
 
     return (
-        <article className="overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-panel)]">
+        <article className="pn-feed-card overflow-hidden rounded-2xl border border-[var(--store-border)]">
             <Link className="group block" href={item.url}>
                 <div className="aspect-video overflow-hidden bg-[var(--store-surface)]">
                     {image ? (
