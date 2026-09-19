@@ -265,6 +265,12 @@ textarea {
     }
 }
 
+@media (max-width: 640px) {
+    .pn-render-zone {
+        contain-intrinsic-size: 540px;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .page-transition-loader *,
     .page-transition-loader {
@@ -544,6 +550,15 @@ html[data-storefront-theme="dark"] .storefront-theme select {
         -webkit-tap-highlight-color: transparent;
     }
 
+    .storefront-theme [class*="group-hover:scale"] {
+        transform: none !important;
+        transition-duration: 0ms !important;
+    }
+
+    .storefront-theme img[class*="transition"] {
+        transition-duration: 0ms !important;
+    }
+
     .storefront-theme [class*="hover:-translate-y"],
     .storefront-theme [class*="group-hover:-translate-y"] {
         transform: none !important;
@@ -686,7 +701,7 @@ html[data-storefront-theme="dark"] .storefront-theme select {
 
 .home-slider > * {
     scroll-snap-align: start;
-    scroll-snap-stop: always;
+    scroll-snap-stop: normal;
 }
 
 /* PlayNexus signature frame: bright, static neon designed to stay visible
@@ -912,6 +927,34 @@ html[data-storefront-theme="dark"] .storefront-theme select {
     backdrop-filter: none !important;
 }
 
+.storefront-theme[data-pn-scrolling="true"] .mobile-top-nav,
+.storefront-theme[data-pn-scrolling="true"] .mobile-bottom-nav,
+.storefront-theme[data-pn-scrolling="true"] .mobile-stories {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+.storefront-theme[data-pn-scrolling="true"] .mobile-top-nav,
+.storefront-theme[data-pn-scrolling="true"] .mobile-stories {
+    background: rgb(5 9 17 / 96%);
+}
+
+.storefront-theme[data-pn-scrolling="true"] .mobile-bottom-nav {
+    background: rgb(3 7 14 / 98%);
+}
+
+html[data-storefront-theme="light"]
+    .storefront-theme[data-pn-scrolling="true"]
+    .mobile-top-nav,
+html[data-storefront-theme="light"]
+    .storefront-theme[data-pn-scrolling="true"]
+    .mobile-stories,
+html[data-storefront-theme="light"]
+    .storefront-theme[data-pn-scrolling="true"]
+    .mobile-bottom-nav {
+    background: rgb(250 252 255 / 98%);
+}
+
 .storefront-theme[data-pn-scrolling="true"] main img {
     transition-duration: 0ms !important;
 }
@@ -1059,14 +1102,15 @@ html[data-storefront-theme="dark"] .storefront-theme select {
     right: 0.5rem;
     border: 1px solid rgb(255 255 255 / 10%);
     border-radius: 999px;
-    background: rgb(2 6 23 / 48%);
+    background: rgb(2 6 23 / 68%);
     padding: 0.2rem 0.42rem;
     color: rgb(255 255 255 / 58%);
     font-size: 0.43rem;
     font-weight: 900;
     letter-spacing: 0.11em;
     line-height: 1;
-    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
 }
 
 .pn-media-cloud__tile[data-source="radar"] .pn-media-cloud__source {
