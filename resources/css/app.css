@@ -703,6 +703,19 @@ html[data-storefront-theme="dark"] .storefront-theme select {
     overscroll-behavior-inline: contain;
 }
 
+/* Home auto-sliders keep one fixed geometry. Disabling scroll anchoring here
+   prevents the browser from compensating the page position when an active
+   slide swaps its image/content. */
+.pn-stable-slider {
+    contain: layout;
+    overflow-anchor: none;
+}
+
+.pn-stable-slider img,
+.pn-stable-slider picture {
+    overflow-anchor: none;
+}
+
 .home-slider > * {
     scroll-snap-align: start;
     scroll-snap-stop: normal;
