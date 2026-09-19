@@ -23,7 +23,7 @@ class PlayNexusGraphGuard
             throw new RuntimeException('GraphQL query is required.');
         }
 
-        $maxBytes = (int) config('content_agent.graphql.max_query_bytes', 24000);
+        $maxBytes = (int) config('content_agent.graphql.max_query_bytes', 48000);
         if (strlen($query) > $maxBytes) {
             throw new RuntimeException("GraphQL query is too large. Maximum is {$maxBytes} bytes.");
         }
@@ -65,7 +65,7 @@ class PlayNexusGraphGuard
             );
         }
 
-        $maxFields = (int) config('content_agent.graphql.max_fields', 250);
+        $maxFields = (int) config('content_agent.graphql.max_fields', 600);
         if ($metrics['fields'] > $maxFields) {
             throw new RuntimeException("GraphQL query selects too many fields ({$metrics['fields']}/{$maxFields}).");
         }
@@ -78,14 +78,14 @@ class PlayNexusGraphGuard
             $metrics['introspection']
                 ? 'content_agent.graphql.max_introspection_depth'
                 : 'content_agent.graphql.max_depth',
-            $metrics['introspection'] ? 16 : 10,
+            $metrics['introspection'] ? 20 : 14,
         );
 
         if ($metrics['depth'] > $maxDepth) {
             throw new RuntimeException("GraphQL query is too deep ({$metrics['depth']}/{$maxDepth}).");
         }
 
-        $maxComplexity = (int) config('content_agent.graphql.max_complexity', 500);
+        $maxComplexity = (int) config('content_agent.graphql.max_complexity', 1500);
         if ($metrics['complexity'] > $maxComplexity) {
             throw new RuntimeException("GraphQL query is too complex ({$metrics['complexity']}/{$maxComplexity}).");
         }
@@ -207,9 +207,9 @@ class PlayNexusGraphGuard
             }
         }
 
-        $max = (int) config('content_agent.graphql.max_page_size', 50);
+        $max = (int) config('content_agent.graphql.max_page_size', 100);
         $connectionFields = [
-            'games', 'studios', 'platforms', 'products', 'contents', 'feeds',
+            'games', 'studios', 'platforms', 'brands', 'products', 'contents', 'feeds',
             'videos', 'stories', 'collections', 'categories', 'radar', 'content', 'children',
             'gameEvents', 'sourceStates', 'events',
         ];
