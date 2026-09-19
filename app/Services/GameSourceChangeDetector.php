@@ -118,6 +118,14 @@ class GameSourceChangeDetector
         $oldPrice = $old['price_amount'] ?? null;
         $newPrice = $new['price_amount'] ?? null;
 
+        $priceContextChanged = $oldCurrency !== $newCurrency
+            || (is_numeric($oldPrice) && is_numeric($newPrice) && (float) $oldPrice !== (float) $newPrice)
+            || (is_numeric($oldPrice) xor is_numeric($newPrice));
+
+        if ($priceContextChanged) {
+            $this->expireLiveSourceEvent($game->id, 'price_drop', $previous->external_id);
+        }
+
         if (
             ! is_string($oldCurrency)
             || ! is_string($newCurrency)
@@ -129,8 +137,6 @@ class GameSourceChangeDetector
         ) {
             return [];
         }
-
-        $this->expireLiveSourceEvent($game->id, 'price_drop', $previous->external_id);
 
         return [$this->events->upsert([
             'game_id' => $game->id,
