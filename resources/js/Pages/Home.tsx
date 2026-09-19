@@ -80,7 +80,7 @@ interface Props {
     contentSections: ContentSection[];
     freshContent: FreshItem[];
     channels: ChannelItem[];
-    latestFeed: FeedItemData[];
+    latestFeed: HomeFeedPreviewItem[];
     latestStudios: StudioItem[];
     gameRadar: GameRadarItem[];
     personalizedHome: PersonalizedHomeData | null;
@@ -91,6 +91,17 @@ interface PersonalizedGame {
     slug: string;
     url: string;
     image_url: string | null;
+}
+
+interface HomeFeedPreviewItem {
+    id: number;
+    type: string;
+    title: string;
+    badge: string | null;
+    url: string;
+    created_at: string | null;
+    media: FeedItemData["media"];
+    author: FeedItemData["author"];
 }
 
 interface PersonalizedFeedRelevance {
@@ -824,7 +835,7 @@ function ContentRail({ section }: { section: ContentSection }) {
     );
 }
 
-function LatestFeedRail({ items }: { items: FeedItemData[] }) {
+function LatestFeedRail({ items }: { items: HomeFeedPreviewItem[] }) {
     const railRef = useRef<HTMLDivElement>(null);
     if (!items.length) return null;
 
