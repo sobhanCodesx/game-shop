@@ -1186,7 +1186,7 @@ function MobilePriorityCarousel({
                       : "bg-indigo-300/15 text-indigo-100";
 
     return (
-        <div className="min-w-0">
+        <div className="pn-stable-slider min-w-0">
             <div
                 className="relative min-w-0"
                 onTouchEnd={(event) =>
@@ -1199,7 +1199,6 @@ function MobilePriorityCarousel({
                 <Link
                     className="pn-mobile-card pn-mobile-card--lead group relative block aspect-[16/9] min-h-[164px] max-h-[220px] w-full overflow-hidden rounded-[20px] border border-white/8 bg-[#070b14]"
                     href={item.url}
-                    key={item.key}
                 >
                     {item.image ? (
                         <img
@@ -2911,13 +2910,13 @@ function CampaignBanner({
 
     const shellClass =
         variant === "signed-in"
-            ? "sm:aspect-[3/1] lg:aspect-[3.25/1]"
-            : "sm:aspect-[2.8/1] lg:aspect-[3.15/1]";
+            ? "aspect-[2.35/1] sm:aspect-[3/1] lg:aspect-[3.25/1]"
+            : "aspect-[2.35/1] sm:aspect-[2.8/1] lg:aspect-[3.15/1]";
 
     return (
         <div
             aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
-            className="group relative touch-pan-y"
+            className="pn-stable-slider group relative touch-pan-y"
             onTouchEnd={(event) =>
                 finishSwipe(event.changedTouches[0].clientX)
             }
@@ -2930,7 +2929,7 @@ function CampaignBanner({
             >
                 <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,.26),rgba(2,6,23,.04)_34%,rgba(2,6,23,.04)_66%,rgba(2,6,23,.26))]" />
 
-                <picture className="relative z-[1] block w-full sm:absolute sm:inset-0 sm:size-full">
+                <picture className="absolute inset-0 z-[1] block size-full">
                     <source
                         media="(max-width: 640px)"
                         srcSet={
@@ -2940,7 +2939,7 @@ function CampaignBanner({
                     />
                     <img
                         alt={slide.alt || slide.title}
-                        className="block h-auto w-full scale-[1.035] object-contain object-center sm:size-full sm:scale-100 sm:object-cover lg:object-cover"
+                        className="block size-full scale-[1.015] object-contain object-center sm:scale-100 sm:object-cover lg:object-cover"
                         decoding="async"
                         fetchPriority="high"
                         key={slide.id}
@@ -2988,11 +2987,19 @@ function CampaignBanner({
                     {slides.map((item, index) => (
                         <button
                             aria-label={`اسلاید ${index + 1}`}
-                            className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ${index === activeSlide ? "w-7 bg-cyan-300" : "w-1.5 bg-[var(--store-muted)]/35 hover:bg-indigo-400"}`}
+                            className={`relative h-1.5 w-7 overflow-hidden rounded-full bg-[var(--store-muted)]/20 transition-colors duration-200 ${index === activeSlide ? "bg-cyan-300/20" : "hover:bg-indigo-400/20"}`}
                             key={item.id}
                             onClick={() => setActiveSlide(index)}
                             type="button"
-                        />
+                        >
+                            <span
+                                className={`absolute inset-y-0 right-0 rounded-full transition-[width,background-color] duration-300 ${
+                                    index === activeSlide
+                                        ? "w-full bg-cyan-300"
+                                        : "w-1.5 bg-[var(--store-muted)]/35"
+                                }`}
+                            />
+                        </button>
                     ))}
                 </div>
             )}
