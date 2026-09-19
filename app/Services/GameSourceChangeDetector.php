@@ -116,10 +116,12 @@ class GameSourceChangeDetector
         $events = [];
         $oldDate = $old['release_date'] ?? null;
         $newDate = $new['release_date'] ?? null;
-        $releasedNow = ($old['release_phase'] ?? null) === 'coming'
+        $directWatch = ($observation['watch_direct'] ?? false) === true;
+        $releasedNow = $directWatch
+            && ($old['release_phase'] ?? null) === 'coming'
             && ($new['release_phase'] ?? null) === 'released';
 
-        if (! $releasedNow && $oldDate && $newDate && $oldDate !== $newDate) {
+        if ($directWatch && ! $releasedNow && $oldDate && $newDate && $oldDate !== $newDate) {
             $this->expireLiveSourceEvent($game->id, 'release_date_changed', $previous->external_id);
 
             $events[] = $this->events->upsert([
