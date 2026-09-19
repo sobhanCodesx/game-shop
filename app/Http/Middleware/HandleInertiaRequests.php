@@ -63,11 +63,18 @@ class HandleInertiaRequests extends Middleware
 
     protected function shouldUseSsr(Request $request): bool
     {
+        // Local development must never talk to an SSR service. Keep this as a
+        // request-level hard stop in addition to config/inertia.php so a stale
+        // config cache, copied production .env, or INERTIA_SSR_URL cannot make
+        // localhost traffic hit the production SSR endpoint.
+        if ($this->isLocalRequest($request)) {
+            return false;
+        }
+
         if (
             ! config('inertia.ssr.enabled', true)
             || is_file(public_path('hot'))
             || $request->is('admin', 'admin/*')
-            || (app()->environment('local') && ! config('inertia.ssr.local_enabled', false))
         ) {
             return false;
         }
@@ -79,6 +86,25 @@ class HandleInertiaRequests extends Middleware
         }
 
         return false;
+    }
+
+    /**
+     * Local requests are always client-rendered.
+     *
+     * APP_ENV=local is the primary signal. Host checks are an additional
+     * fail-safe for accidentally copied/cached production configuration.
+     */
+    protected function isLocalRequest(Request $request): bool
+    {
+        if (app()->environment('local')) {
+            return true;
+        }
+
+        $host = strtolower($request->getHost());
+
+        return in_array($host, ['localhost', '127.0.0.1', '0.0.0.0', '::1'], true)
+            || str_ends_with($host, '.localhost')
+            || str_ends_with($host, '.test');
     }
 
     /**
