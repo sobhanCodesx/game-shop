@@ -44,5 +44,10 @@ jobs:
           curl --fail --silent --show-error --location https://playnexus.ir/ -o /tmp/home.html
           asset="$(grep -Eo '(src|href)="[^"]*/build/[^"]+\.(js|css)"' /tmp/home.html | head -1 | sed -E 's/^(src|href)="([^"]+)"/\2/')"
           [[ -n "$asset" ]]
-          echo "Checking asset: $asset"
-          curl --fail --silent --show-error --location --range 0-64 "https://playnexus.ir$asset" >/dev/null
+          if [[ "$asset" == http://* || "$asset" == https://* ]]; then
+            asset_url="$asset"
+          else
+            asset_url="https://playnexus.ir$asset"
+          fi
+          echo "Checking asset: $asset_url"
+          curl --fail --silent --show-error --location --range 0-64 "$asset_url" >/dev/null
