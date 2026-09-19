@@ -3,6 +3,7 @@ name: PlayNexus Game Intelligence Check
 on:
   push:
     paths:
+      - 'resources/js/Components/Storefront/Video/FloatingVideoPlayer.tsx'
       - 'resources/css/app.css'
       - 'app/Services/FeedService.php'
       - 'tests/Feature/PersonalizedEditorialFeedTest.php'
@@ -39,6 +40,7 @@ on:
       - '.github/workflows/playnexus-game-intelligence-check.yml'
   pull_request:
     paths:
+      - 'resources/js/Components/Storefront/Video/FloatingVideoPlayer.tsx'
       - 'resources/css/app.css'
       - 'app/Services/FeedService.php'
       - 'tests/Feature/PersonalizedEditorialFeedTest.php'
