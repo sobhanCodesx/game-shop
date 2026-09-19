@@ -39,6 +39,14 @@ class HandleInertiaRequests extends Middleware
      */
     public function version(Request $request): ?string
     {
+        // Vite owns asset freshness during local HMR. If a stale production
+        // manifest is still present while public/hot exists, Inertia's normal
+        // manifest hash can disagree with the browser and trigger repeated
+        // 409 hard reloads. Keep production versioning untouched.
+        if (app()->environment('local') && is_file(public_path('hot'))) {
+            return null;
+        }
+
         return parent::version($request);
     }
 
