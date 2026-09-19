@@ -32,14 +32,8 @@ jobs:
             code="$(curl --silent --show-error --location --retry 3 --retry-all-errors --output "$file" --write-out '%{http_code}' "https://playnexus.ir$path")"
             echo "$path -> HTTP $code, $(wc -c < "$file") bytes"
             [[ "$code" == "200" ]]
-            PAGE="$file" python3 - <<'PY'
-import os, pathlib, re, sys
-text = pathlib.Path(os.environ["PAGE"]).read_text(encoding="utf-8", errors="replace")
-if not re.search(r'<div[^>]+id=["\']app["\'][^>]*data-page=', text):
-    sys.exit("Missing Inertia app/data-page")
-if not re.search(r'<div[^>]+id=["\']app["\'][^>]*>\s*<', text, re.S):
-    sys.exit("Inertia app is empty: SSR markup was not rendered")
-PY
+            grep -Eq 'id="app"[^>]*data-page=' "$file"
+            grep -Eq 'id="app"[^>]*>[^<[:space:]]*<' "$file" || grep -Eq 'id="app"[^>]*>[[:space:]]*<' "$file"
           done
 
       - name: Verify built client asset is reachable
@@ -47,14 +41,7 @@ PY
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --location https://playnexus.ir/ -o /tmp/home.html
-          asset="$(python3 - <<'PY'
-import pathlib, re
-text = pathlib.Path('/tmp/home.html').read_text(encoding='utf-8', errors='replace')
-match = re.search(r'(?:src|href)=["\']([^"\']*/build/[^"\']+\.(?:js|css))["\']', text)
-if not match:
-    raise SystemExit('No Vite build asset found in production HTML')
-print(match.group(1))
-PY
-)"
+          asset="$(grep -Eo '(src|href)="[^"]*/build/[^"]+\.(js|css)"' /tmp/home.html | head -1 | sed -E 's/^(src|href)="([^"]+)"/\2/')"
+          [[ -n "$asset" ]]
           echo "Checking asset: $asset"
           curl --fail --silent --show-error --location --range 0-64 "https://playnexus.ir$asset" >/dev/null
