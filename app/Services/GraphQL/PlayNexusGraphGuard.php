@@ -198,7 +198,18 @@ class PlayNexusGraphGuard
         }
 
         $max = (int) config('content_agent.graphql.max_page_size', 50);
-        $first = max(1, min($max, $first ?: 1));
+        $connectionFields = [
+            'games', 'studios', 'platforms', 'products', 'contents', 'feeds',
+            'videos', 'stories', 'collections', 'categories', 'radar', 'content', 'children',
+        ];
+
+        if ($first === null || $first < 1) {
+            $first = $name === 'search'
+                ? 8
+                : (in_array($name, $connectionFields, true) ? 20 : 1);
+        }
+
+        $first = max(1, min($max, $first));
 
         if ($name === 'search') {
             return min($max, $first * 5);
