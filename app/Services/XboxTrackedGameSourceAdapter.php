@@ -74,6 +74,9 @@ class XboxTrackedGameSourceAdapter implements TrackedGameSourceAdapter
                     $amount = is_array($price)
                         ? $this->numericPrice($price['ListPrice'] ?? $price['MSRP'] ?? null)
                         : null;
+                    $releaseDate = $this->releaseDate(
+                        data_get($product, 'MarketProperties.0.OriginalReleaseDate'),
+                    );
 
                     $observations[] = [
                         'game_id' => $state->game_id,
@@ -85,6 +88,10 @@ class XboxTrackedGameSourceAdapter implements TrackedGameSourceAdapter
                         'confidence' => 0.99,
                         'state' => [
                             'available' => true,
+                            'release_date' => $releaseDate,
+                            'release_phase' => $releaseDate && now()->startOfDay()->lt(\Illuminate\Support\Carbon::parse($releaseDate))
+                                ? 'coming'
+                                : 'released',
                             'price_raw' => $this->displayPrice($amount, $currency),
                             'price_amount' => $currency ? $amount : null,
                             'currency' => $currency,
@@ -125,6 +132,19 @@ class XboxTrackedGameSourceAdapter implements TrackedGameSourceAdapter
         $value = trim((string) basename($path));
 
         return $value !== '' ? $value : null;
+    }
+
+    private function releaseDate(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse($value)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function numericPrice(mixed $value): ?float
