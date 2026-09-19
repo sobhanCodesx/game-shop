@@ -33,6 +33,13 @@ on:
   pull_request:
     paths:
       - 'app/Contracts/GameSourceAdapter.php'
+      - 'app/Contracts/TrackedGameSourceAdapter.php'
+      - 'app/Services/FollowedGameWatchService.php'
+      - 'app/Services/XboxTrackedGameSourceAdapter.php'
+      - 'app/Services/VideoCommunityService.php'
+      - 'app/Http/Controllers/ChannelController.php'
+      - 'resources/js/Pages/Channels/Show.tsx'
+      - 'tests/Feature/FollowedGameWatchTest.php'
       - 'app/Models/GameEvent.php'
       - 'app/Models/GameSourceState.php'
       - 'app/Observers/GameObserver.php'
