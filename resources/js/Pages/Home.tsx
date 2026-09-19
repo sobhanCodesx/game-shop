@@ -1949,14 +1949,27 @@ export default function Home({
     const [activeSlide, setActiveSlide] = useState(0);
     const touchStartX = useRef<number | null>(null);
     const categoryRailRef = useRef<HTMLDivElement>(null);
+    const showPublicHero = !auth.user || !personalizedHome;
+
     useEffect(() => {
-        if (slides.length < 2) return;
+        // Authenticated Nexus Pulse replaces the public hero. Keeping the
+        // hidden carousel timer alive would re-render the whole Home every
+        // six seconds for no visible reason and can look like a refresh loop.
+        if (!showPublicHero || slides.length < 2) return;
+
         const timer = window.setInterval(
             () => setActiveSlide((current) => (current + 1) % slides.length),
             6000,
         );
+
         return () => window.clearInterval(timer);
-    }, [slides.length]);
+    }, [showPublicHero, slides.length]);
+
+    useEffect(() => {
+        if (activeSlide < slides.length) return;
+        setActiveSlide(0);
+    }, [activeSlide, slides.length]);
+
     const slide = slides[activeSlide];
     const go = (offset: number) =>
         setActiveSlide(
