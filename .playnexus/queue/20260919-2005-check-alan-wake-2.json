@@ -1,0 +1,7 @@
+{
+  "tool": "search_games",
+  "arguments": {
+    "query": "Alan Wake 2",
+    "limit": 20
+  }
+}
