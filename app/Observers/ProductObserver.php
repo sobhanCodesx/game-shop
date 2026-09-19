@@ -22,7 +22,7 @@ class ProductObserver
             $this->dispatch($product);
         }
 
-        if ($this->isPublished($product) && $product->wasChanged(['price', 'discount_price', 'expires_at', 'status', 'visibility'])) {
+        if ($product->wasChanged(['price', 'discount_price', 'expires_at', 'status', 'visibility'])) {
             app(GameEventService::class)->syncFromProduct($product);
         }
     }
