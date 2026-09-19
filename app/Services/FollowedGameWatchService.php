@@ -112,7 +112,7 @@ class FollowedGameWatchService
             ->get(['source', 'observed_at']);
 
         $directSources = collect($this->adapters)
-            ->pluck('source')
+            ->map(fn (TrackedGameSourceAdapter $adapter) => $adapter->source())
             ->all();
 
         $labels = $states
@@ -154,7 +154,9 @@ class FollowedGameWatchService
         $states = GameSourceState::query()
             ->whereIn('game_id', $ids->all())
             ->get(['game_id', 'source', 'observed_at']);
-        $directSources = collect($this->adapters)->pluck('source')->all();
+        $directSources = collect($this->adapters)
+            ->map(fn (TrackedGameSourceAdapter $adapter) => $adapter->source())
+            ->all();
 
         return [
             'active_games' => $ids->count(),
@@ -170,7 +172,9 @@ class FollowedGameWatchService
                 ->filter()
                 ->values()
                 ->all(),
-            'last_checked_at' => $states->max('observed_at')?->toISOString(),
+            'last_checked_at' => $states
+                ->sortByDesc('observed_at')
+                ->first()?->observed_at?->toISOString(),
         ];
     }
 
