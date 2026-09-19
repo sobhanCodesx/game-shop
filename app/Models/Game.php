@@ -48,6 +48,11 @@ class Game extends Model
         return $this->hasMany(VideoPlaylist::class)->orderBy('sort_order');
     }
 
+    public function events(): HasMany
+    {
+        return $this->hasMany(GameEvent::class)->latest('detected_at');
+    }
+
     public function subscribers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'game_subscriptions')->withTimestamps();
