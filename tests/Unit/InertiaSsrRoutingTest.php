@@ -84,6 +84,28 @@ class InertiaSsrRoutingTest extends TestCase
         }
     }
 
+    public function test_local_hosts_never_use_ssr_even_when_enabled(): void
+    {
+        config([
+            'inertia.ssr.enabled' => true,
+            'inertia.ssr.paths' => ['/'],
+        ]);
+
+        $middleware = $this->middleware();
+
+        foreach ([
+            'http://localhost/',
+            'http://127.0.0.1/',
+            'http://0.0.0.0/',
+            'http://playnexus.test/',
+        ] as $url) {
+            $this->assertFalse(
+                $middleware->usesSsrUrl($url),
+                "Expected {$url} to skip SSR.",
+            );
+        }
+    }
+
     public function test_admin_is_never_rendered_by_ssr(): void
     {
         config([
@@ -113,7 +135,14 @@ class InertiaSsrRoutingTest extends TestCase
         {
             public function usesSsr(string $path): bool
             {
-                return $this->shouldUseSsr(Request::create($path));
+                return $this->shouldUseSsr(
+                    Request::create('https://playnexus.ir'.($path === '/' ? '/' : $path)),
+                );
+            }
+
+            public function usesSsrUrl(string $url): bool
+            {
+                return $this->shouldUseSsr(Request::create($url));
             }
         };
     }
