@@ -1,0 +1,7 @@
+{
+  "tool": "search_platforms",
+  "arguments": {
+    "query": "",
+    "limit": 100
+  }
+}
