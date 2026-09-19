@@ -1122,6 +1122,50 @@ function PersonalizedHomePanel({
         ? durationLabel(heroMedia.duration)
         : null;
 
+    const mobileEditorial = editorialFeed[0] ?? null;
+    const mobileEditorialMedia = mobileEditorial?.media.find(
+        (entry) => entry.type === "image" || Boolean(entry.thumbnail),
+    );
+    const mobileEditorialPreview =
+        mobileEditorialMedia?.type === "image"
+            ? mobileEditorialMedia.url
+            : mobileEditorialMedia?.thumbnail ?? null;
+    const mobileRadarLead = radar[0] ?? null;
+    const mobileLead = heroEvent
+        ? {
+              eyebrow: heroEvent.type_label,
+              title: heroEvent.title,
+              subtitle:
+                  heroEvent.game?.name ??
+                  heroEvent.reason ??
+                  "سیگنال مهم برای تو",
+              url: heroEvent.url,
+              image: heroEvent.game?.image_url ?? null,
+              tone: "signal" as const,
+          }
+        : mobileEditorial
+          ? {
+                eyebrow:
+                    mobileEditorial.relevance.signal_label || "مهم برای تو",
+                title: mobileEditorial.title,
+                subtitle: mobileEditorial.relevance.reason,
+                url: mobileEditorial.url,
+                image: mobileEditorialPreview,
+                tone: "editorial" as const,
+            }
+          : focusGame
+            ? {
+                  eyebrow: "بازی زیر نظر",
+                  title: focusGame.name,
+                  subtitle:
+                      data.intelligence.focus_reason ??
+                      "Nexus Watch این بازی رو برای تو دنبال می‌کنه.",
+                  url: focusGame.url,
+                  image: focusGame.image_url,
+                  tone: "game" as const,
+              }
+            : null;
+
     const formatEventChangeValue = (
         change: PersonalizedGameEvent["change"],
         value: string | number | null,
@@ -1275,7 +1319,7 @@ function PersonalizedHomePanel({
                     className="pointer-events-none absolute -bottom-48 left-0 size-[30rem] rounded-full bg-[radial-gradient(circle,rgba(217,70,239,.12)_0%,rgba(217,70,239,.06)_40%,transparent_72%)]"
                 />
 
-                <header className="relative overflow-hidden border-b border-white/10 px-3 py-3 sm:px-6 sm:py-6">
+                <header className="relative hidden overflow-hidden border-b border-white/10 px-3 py-3 sm:block sm:px-6 sm:py-6">
                     <div className="relative z-10 grid gap-2 sm:gap-5 lg:min-h-[176px] lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] lg:items-center">
                         <div className="relative z-20 min-w-0">
                             <div className="home-slider mb-1.5 flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mb-2 sm:flex-wrap sm:gap-2 sm:overflow-visible">
@@ -1372,6 +1416,166 @@ function PersonalizedHomePanel({
                     </div>
                 </header>
 
+                <div className="relative z-10 px-2.5 pb-2.5 pt-2.5 sm:hidden">
+                    <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[8px] font-black tracking-[.16em] text-cyan-200/70">
+                                    NEXUS NOW
+                                </span>
+                                <span className="size-1 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,.7)]" />
+                            </div>
+                            <h1 className="mt-0.5 truncate text-[15px] font-black leading-6 text-white">
+                                خوش برگشتی، {firstName}
+                            </h1>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                            <span className="rounded-full border border-white/8 bg-white/[0.04] px-2 py-1 text-[8px] font-bold text-white/55">
+                                {data.intelligence.confidence.label}
+                            </span>
+                            {data.watch.active_games > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/10 bg-cyan-300/[0.05] px-2 py-1 text-[8px] font-bold text-cyan-100/70">
+                                    <Radar size={9} />
+                                    {money.format(data.watch.active_games)}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {hasPersonalization && mobileLead ? (
+                        <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(104px,.72fr)] gap-2">
+                            <Link
+                                className="group relative min-h-[138px] overflow-hidden rounded-[18px] border border-white/8 bg-[#070b14]"
+                                href={mobileLead.url}
+                            >
+                                {mobileLead.image ? (
+                                    <img
+                                        alt={mobileLead.title}
+                                        className="absolute inset-0 size-full object-cover"
+                                        decoding="async"
+                                        fetchPriority="high"
+                                        src={mobileLead.image}
+                                    />
+                                ) : (
+                                    <span className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(99,102,241,.35),transparent_36%),linear-gradient(145deg,#0d1328,#05070d)]" />
+                                )}
+                                <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.06),rgba(2,6,23,.25)_38%,rgba(2,6,23,.94)_100%)]" />
+                                <span className="absolute inset-x-0 bottom-0 z-[2] p-3">
+                                    <span
+                                        className={`mb-1.5 inline-flex rounded-full px-2 py-1 text-[8px] font-black ${
+                                            mobileLead.tone === "signal"
+                                                ? "bg-amber-300/15 text-amber-100"
+                                                : mobileLead.tone === "game"
+                                                  ? "bg-cyan-300/12 text-cyan-100"
+                                                  : "bg-indigo-300/12 text-indigo-100"
+                                        }`}
+                                    >
+                                        {mobileLead.eyebrow}
+                                    </span>
+                                    <strong className="block line-clamp-2 text-[12px] font-black leading-5 text-white">
+                                        {mobileLead.title}
+                                    </strong>
+                                    <small className="mt-1 block line-clamp-1 text-[8px] text-white/45">
+                                        {mobileLead.subtitle}
+                                    </small>
+                                </span>
+                            </Link>
+
+                            <div className="grid gap-2">
+                                {focusGame && (
+                                    <Link
+                                        className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        href={focusGame.url}
+                                    >
+                                        {focusGame.image_url && (
+                                            <img
+                                                alt=""
+                                                aria-hidden="true"
+                                                className="absolute inset-0 size-full object-cover opacity-18"
+                                                loading="lazy"
+                                                src={focusGame.image_url}
+                                            />
+                                        )}
+                                        <span className="absolute inset-0 bg-gradient-to-l from-[#070b14]/95 via-[#070b14]/82 to-[#070b14]/55" />
+                                        <span className="relative z-[1] block">
+                                            <span className="text-[7px] font-black tracking-[.1em] text-cyan-200/65">
+                                                WATCH
+                                            </span>
+                                            <strong className="mt-0.5 block line-clamp-2 text-[10px] font-black leading-4 text-white/90">
+                                                {focusGame.name}
+                                            </strong>
+                                        </span>
+                                    </Link>
+                                )}
+
+                                {heroVideo ? (
+                                    <Link
+                                        className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        href={heroVideo.url}
+                                    >
+                                        {heroPreview && (
+                                            <img
+                                                alt=""
+                                                aria-hidden="true"
+                                                className="absolute inset-0 size-full object-cover opacity-28"
+                                                loading="lazy"
+                                                src={heroPreview}
+                                            />
+                                        )}
+                                        <span className="absolute inset-0 bg-gradient-to-l from-[#070b14]/95 via-[#070b14]/78 to-[#070b14]/48" />
+                                        <span className="relative z-[1] flex h-full items-center gap-2">
+                                            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-slate-950">
+                                                <Play fill="currentColor" size={12} />
+                                            </span>
+                                            <span className="min-w-0">
+                                                <span className="text-[7px] font-black tracking-[.1em] text-rose-200/70">
+                                                    WATCH NEXT
+                                                </span>
+                                                <strong className="mt-0.5 block line-clamp-2 text-[9px] font-black leading-4 text-white/90">
+                                                    {heroVideo.title}
+                                                </strong>
+                                            </span>
+                                        </span>
+                                    </Link>
+                                ) : mobileRadarLead ? (
+                                    <Link
+                                        className="relative min-h-[65px] overflow-hidden rounded-[16px] border border-white/8 bg-white/[0.035] p-2.5"
+                                        href={mobileRadarLead.playnexus_url ?? "/game-radar"}
+                                    >
+                                        {(mobileRadarLead.banner_url ||
+                                            mobileRadarLead.cover_url) && (
+                                            <img
+                                                alt=""
+                                                aria-hidden="true"
+                                                className="absolute inset-0 size-full object-cover opacity-24"
+                                                loading="lazy"
+                                                src={
+                                                    mobileRadarLead.banner_url ??
+                                                    mobileRadarLead.cover_url ??
+                                                    undefined
+                                                }
+                                            />
+                                        )}
+                                        <span className="absolute inset-0 bg-gradient-to-l from-[#070b14]/95 via-[#070b14]/80 to-[#070b14]/52" />
+                                        <span className="relative z-[1] block">
+                                            <span className="text-[7px] font-black tracking-[.1em] text-emerald-200/70">
+                                                RADAR
+                                            </span>
+                                            <strong className="mt-0.5 block line-clamp-2 text-[9px] font-black leading-4 text-white/90">
+                                                {mobileRadarLead.title}
+                                            </strong>
+                                        </span>
+                                    </Link>
+                                ) : null}
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="rounded-[16px] border border-white/8 bg-white/[0.035] px-3 py-2.5 text-[10px] leading-5 text-white/50">
+                            چند بازی رو دنبال کن یا با محتواها تعامل داشته باش تا Nexus Pulse سریع‌تر سلیقه‌ات رو بشناسه.
+                        </p>
+                    )}
+                </div>
+
                 {!hasPersonalization ? (
                     <div className="relative p-4 sm:p-6">
                         <div className="overflow-hidden rounded-[24px] border border-dashed border-white/15 bg-white/[0.035]">
@@ -1401,7 +1605,7 @@ function PersonalizedHomePanel({
                     </div>
                 ) : (
                     <div className="relative p-2.5 sm:p-4 lg:p-5">
-                        <section className="pn-neon-panel overflow-hidden rounded-[22px] bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)] sm:rounded-[26px]">
+                        <section className="pn-neon-panel hidden overflow-hidden rounded-[22px] bg-[#080d1b] shadow-[0_28px_90px_-62px_rgba(99,102,241,.95)] sm:block sm:rounded-[26px]">
                             <div className="grid lg:grid-cols-[minmax(0,1.75fr)_minmax(320px,.8fr)]">
                                 <div className="group relative aspect-[4/3] min-h-0 overflow-hidden bg-slate-950 sm:aspect-[16/9] lg:aspect-auto lg:min-h-[430px]">
                                     {heroPreview ? (
@@ -1707,7 +1911,7 @@ function PersonalizedHomePanel({
                         </section>
 
                         {continuationFeed.length > 0 && (
-                            <section className="pn-neon-panel mt-4 rounded-[24px] bg-white/[0.025] p-3 sm:p-4">
+                            <section className="pn-neon-panel mt-2.5 rounded-[20px] sm:mt-4 sm:rounded-[24px] bg-white/[0.025] p-3 sm:p-4">
                                 <div className="mb-3 flex items-center justify-between gap-3 px-1">
                                     <div className="flex items-center gap-2.5">
                                         <span className="grid size-8 place-items-center rounded-xl bg-indigo-400/10 text-indigo-200">
@@ -1892,7 +2096,7 @@ function PersonalizedHomePanel({
                         )}
 
                         {data.followed_games.length > 0 && (
-                            <div className="pn-neon-panel mt-4 rounded-[24px] bg-white/[0.03] p-3 sm:p-4">
+                            <div className="pn-neon-panel mt-2.5 rounded-[20px] sm:mt-4 sm:rounded-[24px] bg-white/[0.03] p-3 sm:p-4">
                                 <div className="mb-3 flex items-center justify-between gap-3 px-1">
                                     <div>
                                         <h3 className="text-sm font-black">بازی‌های تو</h3>
