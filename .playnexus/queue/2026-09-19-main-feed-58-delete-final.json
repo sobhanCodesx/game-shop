@@ -1,0 +1,8 @@
+{
+  "job_id": "20260919-main-feed-58-delete-final",
+  "tool": "delete_content",
+  "arguments": {
+    "resource": "feed",
+    "id": 58
+  }
+}
