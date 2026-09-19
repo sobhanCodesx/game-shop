@@ -1,11 +1,11 @@
 {
-  "job_id": "20260919-auto-1202-requiem-cover",
+  "job_id": "20260919-auto-1202-requiem-cover-v2",
   "tool": "upload_asset",
   "arguments": {
     "resource": "game",
     "id": 12,
     "slot": "cover",
-    "source_url": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3764200/library_600x900.jpg",
+    "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3764200/ce5437442768e38eb575f205ab9397d0264017b0/library_600x900.jpg",
     "name": "resident-evil-requiem-cover.jpg",
     "alt": "کاور بازی Resident Evil Requiem ساخته Capcom"
   }
