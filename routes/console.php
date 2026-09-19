@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\FollowedGameWatchService;
 use App\Services\GameEventService;
 use App\Services\GameRadarService;
 use App\Services\GameSourceMonitorService;
@@ -35,6 +36,19 @@ Artisan::command('nexus:detect-game-source-changes', function () {
     ));
 })->purpose('Detect trustworthy changes from the cached, linked Game Radar snapshot');
 
+Artisan::command('nexus:sync-followed-game-watchlist', function () {
+    $stats = app(FollowedGameWatchService::class)->sync();
+
+    $this->info(sprintf(
+        'Nexus Watch: %d games, %d direct sources, %d observations, %d changes, %d events.',
+        $stats['games'],
+        $stats['sources'],
+        $stats['observed'],
+        $stats['changed'],
+        $stats['events'],
+    ));
+})->purpose('Directly monitor known official sources for distinct followed games');
+
 Artisan::command('nexus:sync-game-events {--days=90}', function () {
     $days = max(1, min(365, (int) $this->option('days')));
     $count = app(GameEventService::class)->syncRecentContent($days);
@@ -49,4 +63,9 @@ Schedule::command('nexus:sync-game-radar')
 
 Schedule::command('nexus:sync-game-events --days=7')
     ->daily()
+    ->withoutOverlapping();
+
+
+Schedule::command('nexus:sync-followed-game-watchlist')
+    ->cron('20 */6 * * *')
     ->withoutOverlapping();
