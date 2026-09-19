@@ -88,7 +88,6 @@ class ContentAgentService
                 }
             }],
             'external_id' => ['sometimes', 'nullable', 'string', 'max:190'],
-            'dedupe_key' => ['sometimes', 'nullable', 'string', 'max:190'],
             'importance_score' => ['sometimes', 'integer', 'min:0', 'max:100'],
             'confidence' => ['sometimes', 'numeric', 'min:0', 'max:1'],
             'old_value' => ['sometimes', 'nullable', 'array'],
