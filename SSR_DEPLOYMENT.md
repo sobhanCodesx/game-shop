@@ -4,6 +4,12 @@ SSR is intentionally opt-in. The production bundle and server can be ready
 without rendering any route until its URL pattern is added to
 `config/inertia.php` under `ssr.paths`. Admin routes are always excluded.
 
+Local development is always client-rendered. `APP_ENV=local`, localhost,
+loopback/private IPs, and common local domains such as `.test` and `.local`
+are hard-blocked from SSR at request time. This prevents a copied production
+`INERTIA_SSR_URL` or stale config cache from sending local requests to the
+production SSR service.
+
 ## Requirements
 
 - Node.js 22 or newer on the server
