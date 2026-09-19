@@ -2942,7 +2942,6 @@ function CampaignBanner({
                         className="block size-full scale-[1.015] object-contain object-center sm:scale-100 sm:object-cover lg:object-cover"
                         decoding="async"
                         fetchPriority="high"
-                        key={slide.id}
                         loading="eager"
                         src={slide.desktop_image_url}
                     />
