@@ -13,6 +13,7 @@ import {
     Clock3,
     PackageOpen,
     Radio,
+    Newspaper,
     Radar,
     CalendarDays,
     ShieldCheck,
@@ -1095,6 +1096,18 @@ function PersonalizedHomePanel({
                 ? "مرتبط با سلیقه‌ات"
                 : "برای تو";
 
+    const feedDateLabel = (value: string) => {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+
+        return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+            month: "short",
+            day: "numeric",
+            timeZone: "Asia/Tehran",
+        }).format(date);
+    };
+
+
     return (
         <section className="mx-auto max-w-7xl px-4 pb-5 pt-5">
             <div className="relative overflow-hidden rounded-[30px] border border-indigo-400/20 bg-[linear-gradient(145deg,#070b18_0%,#0d1328_45%,#17123d_100%)] text-white shadow-[0_34px_100px_-58px_rgba(99,102,241,.8)]">
@@ -1426,154 +1439,246 @@ function PersonalizedHomePanel({
                         </div>
 
                         {favoriteFeedItems.length > 0 && (
-                            <section className="mt-4 overflow-hidden rounded-[26px] border border-indigo-300/15 bg-[linear-gradient(135deg,rgba(99,102,241,.10),rgba(255,255,255,.025)_48%,rgba(168,85,247,.06))]">
-                                <header className="flex flex-col gap-3 border-b border-white/10 px-4 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-5">
-                                    <div className="min-w-0">
-                                        <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                                            <span className="grid size-8 place-items-center rounded-xl bg-indigo-400/15 text-indigo-200">
-                                                <Radio size={15} />
-                                            </span>
-                                            <span className="text-[9px] font-black tracking-[.16em] text-indigo-200/70">
-                                                YOUR FEED
-                                            </span>
-                                            <span className="rounded-full border border-indigo-200/10 bg-indigo-400/10 px-2 py-1 text-[8px] font-black text-indigo-100/75">
-                                                شخصی‌سازی‌شده
-                                            </span>
-                                        </div>
-
-                                        <h3 className="text-base font-black sm:text-lg">
-                                            فید برای تو
-                                        </h3>
-                                        <p className="mt-1 max-w-2xl text-[10px] leading-5 text-white/40 sm:text-[11px]">
-                                            خبر، ویدیو و تحلیل‌هایی که با چیزهایی که دنبال می‌کنی و بیشتر می‌بینی هم‌خوانی دارن.
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        {data.intelligence.top_signals
-                                            .slice(0, 2)
-                                            .map((signal) => (
-                                                <span
-                                                    className="hidden rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[8px] font-bold text-white/55 sm:inline-flex"
-                                                    key={signal.key}
-                                                >
-                                                    {signal.label}
+                            <section className="mt-4 overflow-hidden rounded-[26px] border border-white/10 bg-[#080d1b] shadow-[0_24px_80px_-56px_rgba(99,102,241,.9)]">
+                                <header className="flex flex-col gap-3 border-b border-white/8 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-indigo-400/10 text-indigo-200 ring-1 ring-indigo-300/10">
+                                            <Newspaper size={18} />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h3 className="text-base font-black sm:text-lg">
+                                                    فید منتخب تو
+                                                </h3>
+                                                <span className="rounded-full bg-indigo-400/10 px-2 py-1 text-[8px] font-black text-indigo-100/75">
+                                                    EDITORIAL
                                                 </span>
-                                            ))}
-                                        <Link
-                                            className="shrink-0 rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-[9px] font-black text-indigo-100 transition hover:border-indigo-300/25 hover:bg-white/[0.08]"
-                                            href="/feed"
-                                        >
-                                            دیدن فید کامل
-                                        </Link>
+                                            </div>
+                                            <p className="mt-1 text-[10px] leading-5 text-white/38 sm:text-[11px]">
+                                                خبر و تحلیل‌هایی که با بازی‌ها و موضوعات مورد علاقه‌ات هم‌خوانی دارن؛ بدون ویدیوهای کانالی.
+                                            </p>
+                                        </div>
                                     </div>
+
+                                    <Link
+                                        className="inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-full border border-white/10 bg-white/[0.045] px-3 py-2 text-[9px] font-black text-white/65 transition hover:border-indigo-300/20 hover:bg-white/[0.08] hover:text-white sm:self-auto"
+                                        href="/feed"
+                                    >
+                                        فید کامل
+                                        <ArrowUpLeft size={12} />
+                                    </Link>
                                 </header>
 
-                                <div className="home-slider flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-4 lg:grid lg:grid-cols-12 lg:overflow-visible">
+                                <div className="grid gap-3 p-3 sm:p-4 lg:grid-cols-12 lg:auto-rows-[188px]">
                                     {favoriteFeedItems.map((item, index) => {
-                                        const media = item.media[0];
+                                        const media = item.media.find(
+                                            (entry) =>
+                                                entry.type === "image" ||
+                                                Boolean(entry.thumbnail),
+                                        );
                                         const preview =
                                             media?.type === "image"
                                                 ? media.url
                                                 : media?.thumbnail;
-                                        const featured = index === 0;
+                                        const isLead = index === 0;
+                                        const isSide =
+                                            index === 1 || index === 2;
+                                        const badgeLabel =
+                                            (item.badge &&
+                                                homeFeedBadgeLabels[
+                                                    item.badge
+                                                ]) ||
+                                            item.relevance.signal_label ||
+                                            "فید";
+                                        const dateLabel = feedDateLabel(
+                                            item.created_at,
+                                        );
+
+                                        if (isLead) {
+                                            return (
+                                                <Link
+                                                    className="group relative min-h-[340px] overflow-hidden rounded-[22px] border border-white/10 bg-slate-950 lg:col-span-7 lg:row-span-2 lg:min-h-0"
+                                                    href={item.url}
+                                                    key={item.id}
+                                                >
+                                                    {preview ? (
+                                                        <img
+                                                            alt={
+                                                                media?.alt ??
+                                                                item.title
+                                                            }
+                                                            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.035]"
+                                                            decoding="async"
+                                                            loading="lazy"
+                                                            src={preview}
+                                                        />
+                                                    ) : (
+                                                        <span className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_75%_20%,rgba(99,102,241,.28),transparent_38%),linear-gradient(145deg,#10172c,#070b16_70%)]">
+                                                            <Newspaper
+                                                                className="absolute -bottom-5 -left-3 text-white/[0.035]"
+                                                                size={170}
+                                                            />
+                                                        </span>
+                                                    )}
+
+                                                    <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.04)_15%,rgba(2,6,23,.28)_48%,rgba(2,6,23,.98)_100%)]" />
+
+                                                    <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+                                                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                                                            <span className="rounded-full bg-white px-2.5 py-1 text-[8px] font-black text-slate-950">
+                                                                {badgeLabel}
+                                                            </span>
+                                                            <span className="rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-[8px] font-black text-white/60 backdrop-blur-md">
+                                                                {priorityLabel(
+                                                                    item
+                                                                        .relevance
+                                                                        .priority,
+                                                                )}
+                                                            </span>
+                                                            {dateLabel && (
+                                                                <span className="text-[8px] text-white/40">
+                                                                    {dateLabel}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <h4 className="max-w-2xl text-lg font-black leading-8 text-white sm:text-2xl sm:leading-9">
+                                                            {item.title}
+                                                        </h4>
+
+                                                        {item.body && (
+                                                            <p className="mt-2 line-clamp-2 max-w-2xl text-[10px] leading-5 text-white/50 sm:text-[11px]">
+                                                                {item.body}
+                                                            </p>
+                                                        )}
+
+                                                        <div className="mt-3 flex items-center gap-2 text-[9px] text-indigo-100/55">
+                                                            <Sparkles
+                                                                size={11}
+                                                            />
+                                                            <span className="line-clamp-1">
+                                                                {
+                                                                    item
+                                                                        .relevance
+                                                                        .reason
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        }
+
+                                        if (isSide) {
+                                            return (
+                                                <Link
+                                                    className="group relative min-h-[185px] overflow-hidden rounded-[21px] border border-white/10 bg-[#0b1120] transition hover:border-indigo-300/20 lg:col-span-5 lg:min-h-0"
+                                                    href={item.url}
+                                                    key={item.id}
+                                                >
+                                                    <span className="absolute inset-y-0 left-0 w-[42%] overflow-hidden bg-slate-900">
+                                                        {preview ? (
+                                                            <img
+                                                                alt={
+                                                                    media?.alt ??
+                                                                    item.title
+                                                                }
+                                                                className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                                                                loading="lazy"
+                                                                src={preview}
+                                                            />
+                                                        ) : (
+                                                            <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#172036,#0b1120)] text-indigo-200/20">
+                                                                <Newspaper
+                                                                    size={40}
+                                                                />
+                                                            </span>
+                                                        )}
+                                                        <span className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0b1120]" />
+                                                    </span>
+
+                                                    <div className="relative flex h-full w-[62%] flex-col justify-center p-4">
+                                                        <div className="mb-2 flex items-center gap-2">
+                                                            <span className="rounded-full bg-white/[0.07] px-2 py-1 text-[8px] font-black text-white/65">
+                                                                {badgeLabel}
+                                                            </span>
+                                                            {dateLabel && (
+                                                                <span className="text-[8px] text-white/30">
+                                                                    {dateLabel}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <strong className="line-clamp-2 text-sm font-black leading-6 text-white">
+                                                            {item.title}
+                                                        </strong>
+
+                                                        {item.body && (
+                                                            <p className="mt-1.5 line-clamp-2 text-[9px] leading-4 text-white/38">
+                                                                {item.body}
+                                                            </p>
+                                                        )}
+
+                                                        <span className="mt-2 flex items-center gap-1.5 text-[8px] font-bold text-indigo-200/45">
+                                                            <span className="size-1 rounded-full bg-indigo-300" />
+                                                            {
+                                                                item.relevance
+                                                                    .signal_label
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        }
 
                                         return (
                                             <Link
-                                                className={`group relative min-h-[230px] w-[78vw] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[21px] border border-white/10 bg-slate-950 transition duration-300 hover:-translate-y-0.5 hover:border-indigo-300/25 sm:w-[310px] lg:w-full lg:max-w-none ${
-                                                    featured
-                                                        ? "lg:col-span-5 lg:min-h-[320px]"
-                                                        : "lg:col-span-7 lg:min-h-[155px]"
-                                                }`}
+                                                className="group overflow-hidden rounded-[21px] border border-white/10 bg-[#0b1120] transition hover:-translate-y-0.5 hover:border-indigo-300/20 lg:col-span-4 lg:min-h-[230px]"
                                                 href={item.url}
                                                 key={item.id}
                                             >
-                                                {preview ? (
-                                                    <img
-                                                        alt={media?.alt ?? item.title}
-                                                        className={`absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.04] ${
-                                                            featured
-                                                                ? ""
-                                                                : "lg:w-[46%] lg:right-auto"
-                                                        }`}
-                                                        loading="lazy"
-                                                        src={preview}
-                                                    />
-                                                ) : (
-                                                    <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] text-indigo-200/50">
-                                                        <Radio size={34} />
+                                                <span className="relative block aspect-[16/8.5] overflow-hidden bg-slate-900">
+                                                    {preview ? (
+                                                        <img
+                                                            alt={
+                                                                media?.alt ??
+                                                                item.title
+                                                            }
+                                                            className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                                                            loading="lazy"
+                                                            src={preview}
+                                                        />
+                                                    ) : (
+                                                        <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#172036,#0b1120)] text-indigo-200/20">
+                                                            <Newspaper
+                                                                size={36}
+                                                            />
+                                                        </span>
+                                                    )}
+                                                    <span className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                                                    <span className="absolute right-2.5 top-2.5 rounded-full bg-black/45 px-2 py-1 text-[8px] font-black text-white/70 backdrop-blur-md">
+                                                        {badgeLabel}
                                                     </span>
-                                                )}
-
-                                                <span
-                                                    className={`absolute inset-0 ${
-                                                        featured
-                                                            ? "bg-gradient-to-t from-black via-black/35 to-transparent"
-                                                            : "bg-gradient-to-t from-black via-black/40 to-transparent lg:bg-[linear-gradient(90deg,rgba(2,6,23,.98)_0%,rgba(2,6,23,.94)_54%,rgba(2,6,23,.22)_100%)]"
-                                                    }`}
-                                                />
-
-                                                <span className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[8px] font-black text-white/75 backdrop-blur-md">
-                                                    {item.relevance.signal_label}
                                                 </span>
 
-                                                <div
-                                                    className={`absolute inset-x-0 bottom-0 p-3.5 sm:p-4 ${
-                                                        featured
-                                                            ? ""
-                                                            : "lg:bottom-auto lg:left-0 lg:top-0 lg:flex lg:h-full lg:w-[58%] lg:flex-col lg:justify-center"
-                                                    }`}
-                                                >
-                                                    <div className="mb-2 flex items-center gap-2">
-                                                        <span
-                                                            className={`size-1.5 rounded-full ${
-                                                                item.relevance.priority === "critical"
-                                                                    ? "bg-rose-300"
-                                                                    : item.relevance.priority === "high"
-                                                                      ? "bg-amber-300"
-                                                                      : "bg-indigo-300"
-                                                            }`}
-                                                        />
-                                                        <span className="text-[8px] font-black text-white/50">
-                                                            {priorityLabel(
-                                                                item.relevance
-                                                                    .priority,
-                                                            )}
-                                                        </span>
-                                                    </div>
-
-                                                    <strong
-                                                        className={`block line-clamp-2 font-black leading-6 text-white ${
-                                                            featured
-                                                                ? "text-base sm:text-lg"
-                                                                : "text-sm"
-                                                        }`}
-                                                    >
+                                                <span className="block p-3.5">
+                                                    <strong className="block line-clamp-2 text-xs font-black leading-5 text-white">
                                                         {item.title}
                                                     </strong>
-
-                                                    <p className="mt-2 line-clamp-2 text-[9px] leading-5 text-white/45 sm:text-[10px]">
-                                                        {item.relevance.reason}
-                                                    </p>
-
-                                                    <div className="mt-3 flex items-center gap-2 text-[8px] text-white/35">
-                                                        <span>
-                                                            {item.author.name}
+                                                    <span className="mt-2 flex items-center justify-between gap-2 text-[8px] text-white/30">
+                                                        <span className="line-clamp-1 text-indigo-200/45">
+                                                            {
+                                                                item.relevance
+                                                                    .signal_label
+                                                            }
                                                         </span>
-                                                        {typeof item.views ===
-                                                            "number" && (
-                                                            <>
-                                                                <span>•</span>
-                                                                <span>
-                                                                    {money.format(
-                                                                        item.views,
-                                                                    )}{" "}
-                                                                    بازدید
-                                                                </span>
-                                                            </>
+                                                        {dateLabel && (
+                                                            <span className="shrink-0">
+                                                                {dateLabel}
+                                                            </span>
                                                         )}
-                                                    </div>
-                                                </div>
+                                                    </span>
+                                                </span>
                                             </Link>
                                         );
                                     })}
