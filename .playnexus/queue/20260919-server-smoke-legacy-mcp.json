@@ -1,0 +1,8 @@
+{
+  "job_id": "server-smoke-legacy-mcp-20260919",
+  "tool": "search_games",
+  "arguments": {
+    "query": "Days Gone",
+    "limit": 1
+  }
+}
