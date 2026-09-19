@@ -64,12 +64,12 @@ export default function MobileNavigation({
                 (path) => pathname === path || pathname.startsWith(`${path}/`),
             ));
     const itemClass = (active: boolean) =>
-        `relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] font-bold transition max-[360px]:text-[9px] ${active ? "bg-indigo-500/[.08] text-indigo-500" : "text-[var(--store-muted)]"}`;
+        `relative flex min-h-[52px] min-w-0 flex-col items-center justify-center gap-1 rounded-[14px] px-1 text-[10px] font-bold transition max-[360px]:text-[9px] ${active ? "bg-indigo-500/[.10] text-indigo-400" : "text-[var(--store-muted)]"}`;
     return (
         <>
-            <header className="sticky top-0 z-40 flex h-16 min-w-0 items-center gap-1 border-b border-[var(--store-border)] bg-[var(--store-header)] px-3 backdrop-blur-2xl sm:px-4 lg:hidden">
+            <header className="mobile-top-nav sticky top-0 z-40 flex min-h-14 min-w-0 items-center gap-1 border-b border-[var(--store-border)] bg-[var(--store-header)] px-2.5 py-1.5 sm:px-4 lg:hidden">
                 <StorefrontBrand compact />
-                <div className="mr-auto flex min-w-0 shrink-0 items-center gap-0.5 sm:gap-1">
+                <div className="mr-auto flex min-w-0 shrink-0 items-center gap-0 sm:gap-1">
                     {auth.user && <NotificationPopover />}
                     <ThemeToggle onToggle={onToggleTheme} theme={theme} />
                     <Button
@@ -96,7 +96,7 @@ export default function MobileNavigation({
             </header>
             <nav
                 aria-label="ناوبری پایین موبایل"
-                className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--store-border)] bg-[var(--store-bottom-nav)] px-2 pb-[max(.45rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-2xl lg:hidden"
+                className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-[var(--store-border)] bg-[var(--store-bottom-nav)] px-1.5 pb-[max(.4rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden"
             >
                 <div className="mx-auto grid max-w-md grid-cols-5 gap-0.5">
                     <Link
@@ -120,11 +120,11 @@ export default function MobileNavigation({
                     </Link>
                     <Link
                         aria-current={discoverActive ? "page" : undefined}
-                        className={`${itemClass(discoverActive)} -mt-4`}
+                        className={`${itemClass(discoverActive)} -mt-3`}
                         href="/discover"
                     >
                         <span
-                            className={`grid size-11 place-items-center rounded-2xl border transition ${discoverActive ? "border-indigo-500 bg-indigo-600 text-white shadow-lg shadow-indigo-500/25" : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)]"}`}
+                            className={`grid size-10 place-items-center rounded-[14px] border transition ${discoverActive ? "border-indigo-400 bg-indigo-600 text-white shadow-lg shadow-indigo-500/25" : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)]"}`}
                         >
                             <Compass size={20} />
                             {hasFreshContent && (
