@@ -398,7 +398,8 @@ class HomeController extends Controller
                 'image_url' => MediaStorage::url($game->cover ?: $game->playlists->first()?->logo),
             ])->values(),
             'events' => $gameEvents->forProfile($profile, 8),
-            'feed' => $feed->smartEditorialForProfile($request, $profile, 6),
+            'videos' => $feed->smartVideosForProfile($request, $profile, 4),
+            'feed' => $feed->smartEditorialForProfile($request, $profile, 8),
             'radar' => $matchedRadar,
             'watch' => $watch->summaryForGames($followedGames->pluck('id')),
             'intelligence' => [
