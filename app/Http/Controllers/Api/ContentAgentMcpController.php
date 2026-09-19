@@ -107,6 +107,9 @@ class ContentAgentMcpController extends Controller
             'search_studios' => $contentAgent->searchStudios($arguments),
             'search_platforms' => $contentAgent->searchPlatforms($arguments),
             'search_collections' => $contentAgent->searchCollections($arguments),
+            'list_game_events' => $contentAgent->listGameEvents($arguments),
+            'upsert_game_event' => $contentAgent->upsertGameEvent($arguments),
+            'set_game_event_state' => $contentAgent->setGameEventState($arguments),
             'select_content' => $contentAgent->selectContent($arguments),
             'get_content' => $contentAgent->getContent($arguments),
             'create_game' => $contentAgent->createGame($arguments),
@@ -199,6 +202,73 @@ class ContentAgentMcpController extends Controller
                 'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             $this->searchTool('search_collections', 'Search PlayNexus collections.'),
+            [
+                'name' => 'list_game_events',
+                'description' => 'Read structured PlayNexus Game Events for intelligence workflows. Filter by game, event type or state.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'game_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'type' => ['type' => ['string', 'null'], 'enum' => [
+                            'release_date_changed', 'released', 'major_patch', 'dlc_announced', 'dlc_released',
+                            'subscription_added', 'subscription_leaving', 'price_drop', 'free_weekend',
+                            'major_trailer', 'preload_available', 'server_issue', 'server_restored', 'major_news', null,
+                        ]],
+                        'status' => ['type' => ['string', 'null'], 'enum' => ['candidate', 'active', 'dismissed', null]],
+                        'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20],
+                        'offset' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 10000, 'default' => 0],
+                    ],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'upsert_game_event',
+                'description' => 'Create a structured Game Event as CANDIDATE, or edit an existing Game Event by id. State is intentionally changed separately.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'game_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'type' => ['type' => ['string', 'null'], 'enum' => [
+                            'release_date_changed', 'released', 'major_patch', 'dlc_announced', 'dlc_released',
+                            'subscription_added', 'subscription_leaving', 'price_drop', 'free_weekend',
+                            'major_trailer', 'preload_available', 'server_issue', 'server_restored', 'major_news', null,
+                        ]],
+                        'title' => ['type' => ['string', 'null'], 'maxLength' => 200],
+                        'summary' => ['type' => ['string', 'null'], 'maxLength' => 3000],
+                        'source_type' => ['type' => ['string', 'null'], 'maxLength' => 32],
+                        'source_name' => ['type' => ['string', 'null'], 'maxLength' => 120],
+                        'source_url' => ['type' => ['string', 'null'], 'maxLength' => 1000],
+                        'external_id' => ['type' => ['string', 'null'], 'maxLength' => 190],
+                        'dedupe_key' => ['type' => ['string', 'null'], 'maxLength' => 190],
+                        'importance_score' => ['type' => ['integer', 'null'], 'minimum' => 0, 'maximum' => 100],
+                        'confidence' => ['type' => ['number', 'null'], 'minimum' => 0, 'maximum' => 1],
+                        'old_value' => ['type' => ['object', 'null'], 'additionalProperties' => true],
+                        'new_value' => ['type' => ['object', 'null'], 'additionalProperties' => true],
+                        'metadata' => ['type' => ['object', 'null'], 'additionalProperties' => true],
+                        'detected_at' => ['type' => ['string', 'null']],
+                        'effective_at' => ['type' => ['string', 'null']],
+                        'expires_at' => ['type' => ['string', 'null']],
+                    ],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'set_game_event_state',
+                'description' => 'Change a Game Event state. Activating an event requires PlayNexus publishing permission.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'state' => ['type' => 'string', 'enum' => ['candidate', 'active', 'dismissed']],
+                    ],
+                    'required' => ['id', 'state'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
             [
                 'name' => 'select_content',
                 'description' => 'Advanced safe SELECT over PlayNexus content resources. Supports search, ids, state/status, game/studio filters, pagination, sorting, and optional soft-deleted records. Does not execute raw SQL.',
@@ -573,7 +643,7 @@ class ContentAgentMcpController extends Controller
 
     private function instructions(): string
     {
-        return 'PlayNexus Content Admin MCP v2.1. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary media/files use the dedicated chunked asset tools; the MCP never fetches arbitrary remote URLs. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+        return 'PlayNexus Content Admin MCP v2.2. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary media/files use the dedicated chunked asset tools; the MCP never fetches arbitrary remote URLs. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
     }
 
     private function serverInfo(): array
@@ -581,7 +651,7 @@ class ContentAgentMcpController extends Controller
         return [
             'name' => 'playnexus-content-agent',
             'title' => 'PlayNexus Content Admin Agent',
-            'version' => '2.1.0',
+            'version' => '2.2.0',
         ];
     }
 
