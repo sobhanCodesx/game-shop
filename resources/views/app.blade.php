@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <meta name="theme-color" content="#09090b">
+        <meta name="theme-color" content="#020307">
         <script>
             (() => {
                 let theme;
@@ -18,6 +18,12 @@
             })();
         </script>
         <style>
+            html,
+            body {
+                background: #020307;
+                color-scheme: dark;
+            }
+
             html[data-storefront-theme="light"],
             html[data-storefront-theme="light"] body {
                 background: #f6f7fb;
