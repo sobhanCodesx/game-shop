@@ -377,7 +377,7 @@ textarea {
         linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
-    animation: pn-signature-orbit var(--pn-frame-speed) linear infinite;
+    animation: pn-signature-orbit var(--pn-frame-speed) steps(96, end) infinite;
     animation-play-state: paused;
     transition:
         opacity 260ms ease,
@@ -402,7 +402,6 @@ textarea {
             transparent 25%
         );
     opacity: 0.72;
-    filter: blur(13px);
     pointer-events: none;
 }
 
@@ -457,6 +456,26 @@ textarea {
     }
 }
 
+.storefront-theme[data-pn-scrolling="true"] .pn-signature-frame::before,
+.storefront-theme[data-pn-scrolling="true"] .pn-media-cloud__tile,
+.storefront-theme[data-pn-scrolling="true"] .playnexus-player-frame::before {
+    animation-play-state: paused !important;
+}
+
+.storefront-theme[data-pn-scrolling="true"] .pn-signature-frame::after,
+.storefront-theme[data-pn-scrolling="true"] .pn-media-cloud__halo {
+    opacity: 0.28;
+}
+
+.storefront-theme[data-pn-scrolling="true"] main [class*="backdrop-blur"] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+.storefront-theme[data-pn-scrolling="true"] main img {
+    transition-duration: 0ms !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .pn-signature-frame::before {
         animation: none;
@@ -471,20 +490,21 @@ textarea {
     isolation: isolate;
     overflow: hidden;
     border-radius: 1.5rem;
-    -webkit-mask-image: linear-gradient(
+}
+
+.pn-media-cloud::after {
+    content: "";
+    position: absolute;
+    z-index: 20;
+    inset: 0;
+    background: linear-gradient(
         90deg,
-        transparent 0%,
-        #000 8%,
-        #000 92%,
-        transparent 100%
+        rgb(7 11 24 / 78%) 0%,
+        transparent 8%,
+        transparent 92%,
+        rgb(7 11 24 / 78%) 100%
     );
-    mask-image: linear-gradient(
-        90deg,
-        transparent 0%,
-        #000 8%,
-        #000 92%,
-        transparent 100%
-    );
+    pointer-events: none;
 }
 
 .pn-media-cloud__halo {
@@ -496,8 +516,7 @@ textarea {
         radial-gradient(circle at 36% 38%, rgb(99 102 241 / 24%), transparent 34%),
         radial-gradient(circle at 66% 56%, rgb(34 211 238 / 14%), transparent 28%),
         radial-gradient(circle at 52% 46%, rgb(168 85 247 / 16%), transparent 42%);
-    filter: blur(30px);
-    opacity: 0.76;
+    opacity: 0.62;
     pointer-events: none;
 }
 
@@ -733,23 +752,6 @@ textarea {
 }
 
 @media (max-width: 1023px) {
-    .pn-media-cloud {
-        -webkit-mask-image: linear-gradient(
-            90deg,
-            transparent 0%,
-            #000 4%,
-            #000 96%,
-            transparent 100%
-        );
-        mask-image: linear-gradient(
-            90deg,
-            transparent 0%,
-            #000 4%,
-            #000 96%,
-            transparent 100%
-        );
-    }
-
     .pn-media-cloud__tile {
         top: 18% !important;
         width: 24% !important;
@@ -1197,12 +1199,12 @@ html[data-storefront-theme="light"] .storefront-theme {
 
 .playnexus-player-shell[data-neon-state="active"] .playnexus-player-frame::before {
     opacity: 0.82;
-    animation: pn-signature-orbit 4.8s linear infinite;
+    animation: pn-signature-orbit 4.8s steps(72, end) infinite;
 }
 
 .playnexus-player-shell[data-neon-state="paused"] .playnexus-player-frame::before {
     opacity: 0.42;
-    animation: pn-signature-orbit 4.8s linear infinite;
+    animation: pn-signature-orbit 4.8s steps(72, end) infinite;
     animation-play-state: paused;
 }
 
@@ -1218,7 +1220,7 @@ html[data-storefront-theme="light"] .storefront-theme {
 
 .playnexus-player-shell[data-neon-state="fading"] .playnexus-player-frame::before {
     animation:
-        pn-signature-orbit 4.8s linear infinite,
+        pn-signature-orbit 4.8s steps(72, end) infinite,
         pn-video-signature-fade 2.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
