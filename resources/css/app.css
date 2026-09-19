@@ -1200,6 +1200,12 @@ html[data-storefront-theme="light"] .storefront-theme {
     animation: pn-signature-orbit 4.8s linear infinite;
 }
 
+.playnexus-player-shell[data-neon-state="paused"] .playnexus-player-frame::before {
+    opacity: 0.42;
+    animation: pn-signature-orbit 4.8s linear infinite;
+    animation-play-state: paused;
+}
+
 .playnexus-player-shell[data-neon-state="active"] .playnexus-player-frame {
     box-shadow:
         0 30px 85px rgb(0 0 0 / 42%),
