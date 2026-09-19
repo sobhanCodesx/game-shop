@@ -444,7 +444,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                             : 0;
                         return (
                             <Link
-                                className={`group w-[86vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[20px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
+                                className={`group w-[calc((100vw-4rem)/2)] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-[18px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] sm:max-w-[330px] sm:rounded-[20px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
                                 href={item.url}
                                 key={item.key}
                                 onClick={() =>
@@ -456,9 +456,9 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                                 }
                             >
                                 <article className="flex h-full flex-col">
-                                    <header className="flex items-center gap-2.5 p-3">
+                                    <header className="flex items-center gap-2 p-2.5 sm:gap-2.5 sm:p-3">
                                         <span
-                                            className={`grid size-9 shrink-0 place-items-center rounded-xl text-white ${video ? "bg-rose-500" : "bg-indigo-600"}`}
+                                            className={`grid size-8 shrink-0 place-items-center rounded-[10px] text-white sm:size-9 sm:rounded-xl ${video ? "bg-rose-500" : "bg-indigo-600"}`}
                                         >
                                             {video ? (
                                                 <Play
@@ -1500,12 +1500,12 @@ function PersonalizedHomePanel({
                                             <img
                                                 alt=""
                                                 aria-hidden="true"
-                                                className="absolute inset-0 size-full object-cover opacity-18"
+                                                className="absolute inset-0 size-full object-cover opacity-34"
                                                 loading="lazy"
                                                 src={focusGame.image_url}
                                             />
                                         )}
-                                        <span className="absolute inset-0 bg-gradient-to-l from-[#070b14]/95 via-[#070b14]/82 to-[#070b14]/55" />
+                                        <span className="absolute inset-0 bg-gradient-to-l from-[#14223a]/82 via-[#14223a]/52 to-[#14223a]/22" />
                                         <span className="relative z-[1] block">
                                             <span className="text-[7px] font-black tracking-[.1em] text-cyan-200/65">
                                                 WATCH
@@ -1529,7 +1529,7 @@ function PersonalizedHomePanel({
                                             <img
                                                 alt=""
                                                 aria-hidden="true"
-                                                className="absolute inset-0 size-full object-cover opacity-24"
+                                                className="absolute inset-0 size-full object-cover opacity-34"
                                                 loading="lazy"
                                                 src={
                                                     mobileRadarLead.banner_url ??
@@ -1538,7 +1538,7 @@ function PersonalizedHomePanel({
                                                 }
                                             />
                                         )}
-                                        <span className="absolute inset-0 bg-gradient-to-l from-[#070b14]/95 via-[#070b14]/80 to-[#070b14]/52" />
+                                        <span className="absolute inset-0 bg-gradient-to-l from-[#14223a]/82 via-[#14223a]/50 to-[#14223a]/20" />
                                         <span className="relative z-[1] block">
                                             <span className="text-[7px] font-black tracking-[.1em] text-emerald-200/70">
                                                 RADAR
@@ -1570,12 +1570,12 @@ function PersonalizedHomePanel({
                                             <img
                                                 alt=""
                                                 aria-hidden="true"
-                                                className="absolute inset-0 size-full object-cover opacity-28"
+                                                className="absolute inset-0 size-full object-cover opacity-38"
                                                 loading="lazy"
                                                 src={heroPreview}
                                             />
                                         )}
-                                        <span className="absolute inset-0 bg-gradient-to-l from-[#070b14]/95 via-[#070b14]/78 to-[#070b14]/48" />
+                                        <span className="absolute inset-0 bg-gradient-to-l from-[#14223a]/80 via-[#14223a]/48 to-[#14223a]/18" />
                                         <span className="relative z-[1] flex h-full items-center gap-2">
                                             <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-slate-950">
                                                 <Play
@@ -1607,7 +1607,7 @@ function PersonalizedHomePanel({
                                             <img
                                                 alt=""
                                                 aria-hidden="true"
-                                                className="absolute inset-0 size-full object-cover opacity-24"
+                                                className="absolute inset-0 size-full object-cover opacity-34"
                                                 loading="lazy"
                                                 src={
                                                     mobileRadarLead.banner_url ??
@@ -1616,7 +1616,7 @@ function PersonalizedHomePanel({
                                                 }
                                             />
                                         )}
-                                        <span className="absolute inset-0 bg-gradient-to-l from-[#070b14]/95 via-[#070b14]/80 to-[#070b14]/52" />
+                                        <span className="absolute inset-0 bg-gradient-to-l from-[#14223a]/82 via-[#14223a]/50 to-[#14223a]/20" />
                                         <span className="relative z-[1] block">
                                             <span className="text-[7px] font-black tracking-[.1em] text-emerald-200/70">
                                                 RADAR
@@ -2031,11 +2031,11 @@ function PersonalizedHomePanel({
 
                                         return (
                                             <Link
-                                                className="group w-[78vw] max-w-[310px] shrink-0 snap-start overflow-hidden rounded-[18px] border border-white/8 bg-[#0a1020] transition hover:-translate-y-0.5 hover:border-indigo-300/20 sm:w-[290px]"
+                                                className="group w-[calc((100vw-4rem)/2)] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-[16px] border border-white/8 bg-[#0a1020] transition hover:-translate-y-0.5 hover:border-indigo-300/20 sm:w-[290px] sm:max-w-[310px] sm:rounded-[18px]"
                                                 href={item.url}
                                                 key={item.id}
                                             >
-                                                <span className="relative block aspect-[16/10] overflow-hidden bg-[#050914]">
+                                                <span className="relative block aspect-[4/3] overflow-hidden bg-[#050914] sm:aspect-[16/10]">
                                                     {preview ? (
                                                         <>
                                                             <img
@@ -2068,8 +2068,8 @@ function PersonalizedHomePanel({
                                                     </span>
                                                 </span>
 
-                                                <span className="block p-3">
-                                                    <strong className="block line-clamp-2 min-h-10 text-[11px] font-black leading-5 text-white/90">
+                                                <span className="block p-2.5 sm:p-3">
+                                                    <strong className="block line-clamp-2 min-h-9 text-[10px] font-black leading-[18px] text-white/90 sm:min-h-10 sm:text-[11px] sm:leading-5">
                                                         {item.title}
                                                     </strong>
                                                     {dateLabel && (
@@ -2592,7 +2592,7 @@ function CampaignBanner({
                     />
                     <img
                         alt={slide.alt || slide.title}
-                        className="block h-auto w-full scale-[1.035] object-contain object-center sm:size-full sm:scale-100"
+                        className="block h-auto w-full scale-[1.035] object-contain object-center sm:size-full sm:scale-100 sm:object-cover lg:object-cover"
                         decoding="async"
                         fetchPriority="high"
                         key={slide.id}
