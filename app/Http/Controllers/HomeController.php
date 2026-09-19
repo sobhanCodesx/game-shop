@@ -72,8 +72,6 @@ class HomeController extends Controller
         $seoDescription = trim((string) ($settings['seo_description'] ?? ''));
         if ($seoDescription === '') {
             $seoDescription = "اخبار، ویدیوها، بازی‌ها، استودیوها و تازه‌های دنیای گیمینگ را در {$siteName} دنبال کنید؛ همراه با فروشگاه تخصصی بازی و تجهیزات گیمینگ.";
-        } elseif (mb_strlen($seoDescription) < 110) {
-            $seoDescription = trim($seoDescription.' اخبار، ویدیوها، بازی‌ها، استودیوها و تازه‌های دنیای گیمینگ را هم در پلی نکسوس دنبال کنید.');
         }
         $seoDescription = mb_substr($seoDescription, 0, 155);
         $seo = Seo::page([
