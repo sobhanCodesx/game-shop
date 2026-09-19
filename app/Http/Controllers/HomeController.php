@@ -34,6 +34,8 @@ class HomeController extends Controller
         $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
         $latestStudios = collect();
+        $radarItems = collect($radar->linkedSnapshot()['items'] ?? []);
+        $personalizedHome = $this->personalizedHome($request, $feed, $radarItems);
 
         if (Schema::hasTable('studios') && Schema::hasTable('games') && Schema::hasColumn('games', 'studio_id')) {
             $latestStudios = Studio::query()->where('status', 'active')
@@ -112,10 +114,11 @@ class HomeController extends Controller
 
         return Inertia::render('Home', [
             ...$seo,
+            'personalizedHome' => $personalizedHome,
             'latestFeed' => $feed->latestImportant($request, 8),
             'latestStudios' => $latestStudios,
-            'gameRadar' => (function () use ($radar) {
-                $items = collect($radar->linkedSnapshot()['items'] ?? []);
+            'gameRadar' => (function () use ($radarItems) {
+                $items = $radarItems;
 
                 $ps5 = $items
                     ->filter(fn (array $item) => ($item['psn']['available'] ?? false) === true)
@@ -326,6 +329,52 @@ class HomeController extends Controller
                     'subscribers_count' => $game->subscribers_count,
                 ]),
         ]);
+    }
+
+    private function personalizedHome(Request $request, FeedService $feed, $radarItems): ?array
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return null;
+        }
+
+        $followedGames = $user->subscribedGames()
+            ->whereIn('games.status', ['active', 'published'])
+            ->with([
+                'playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+            ])
+            ->orderByDesc('game_subscriptions.created_at')
+            ->limit(12)
+            ->get(['games.id', 'games.name', 'games.slug', 'games.cover']);
+
+        $gameIds = $followedGames->pluck('id')->map(fn ($id) => (int) $id)->values();
+        $gameIdLookup = $gameIds->flip();
+
+        $matchedRadar = $gameIds->isEmpty()
+            ? collect()
+            : collect($radarItems)
+                ->filter(fn (array $item) => $gameIdLookup->has((int) ($item['playnexus_game_id'] ?? 0)))
+                ->take(6)
+                ->values();
+
+        return [
+            'followed_games' => $followedGames->map(fn (Game $game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'slug' => $game->slug,
+                'url' => route('channels.show', $game->slug, false),
+                'image_url' => MediaStorage::url($game->cover ?: $game->playlists->first()?->logo),
+            ])->values(),
+            'feed' => $gameIds->isEmpty()
+                ? []
+                : $feed->latestForGames($request, $gameIds->all(), 8),
+            'radar' => $matchedRadar,
+            'updated_at' => now()->toISOString(),
+        ];
     }
 
     private function navigationCategory(Category $category): array
