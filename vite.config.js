@@ -10,15 +10,10 @@ export default defineConfig(({ isSsrBuild }) => {
             laravel({
                 input: "resources/js/app.tsx",
                 ssr: "resources/js/ssr.tsx",
-                // Inertia/React already handles component HMR. A broad Laravel
-                // full-reload watcher can turn unrelated route/view writes into
-                // hard browser refreshes during local development.
-                refresh: [
-                    {
-                        paths: ["resources/views/**"],
-                        config: { delay: 250 },
-                    },
-                ],
+                // React/Inertia uses Vite HMR for frontend changes. Disable
+                // Laravel's full-page reload watcher entirely so local file
+                // writes can never create a browser reload loop.
+                refresh: false,
             }),
             inertia({
                 ssr: {
@@ -51,11 +46,9 @@ export default defineConfig(({ isSsrBuild }) => {
             port: 5173,
             strictPort: true,
 
-            hmr: {
-                host: "localhost",
-                port: 5173,
-            },
-
+            // Let Vite infer the HMR host from the page URL. Hard-coding
+            // localhost breaks when the app is opened through 127.0.0.1,
+            // a .test domain, LAN IP, or another local hostname.
             cors: {
                 origin: ["http://localhost:8000", "http://127.0.0.1:8000"],
             },
