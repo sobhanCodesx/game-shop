@@ -124,6 +124,12 @@ interface PersonalizedGameEvent {
     url: string;
     old_value: Record<string, unknown> | null;
     new_value: Record<string, unknown> | null;
+    change: {
+        label: string;
+        kind: "date" | "money";
+        from: string | number | null;
+        to: string | number | null;
+    } | null;
     detected_at: string | null;
     effective_at: string | null;
     expires_at: string | null;
@@ -1021,6 +1027,27 @@ function PersonalizedHomePanel({
                   : heroMedia?.thumbnail) ?? focusGame?.image_url
             : focusGame?.image_url);
 
+    const formatEventChangeValue = (
+        change: PersonalizedGameEvent["change"],
+        value: string | number | null,
+    ) => {
+        if (!change || value === null || value === undefined) return null;
+
+        if (change.kind === "money") {
+            return `${money.format(Number(value))} تومان`;
+        }
+
+        const date = new Date(String(value));
+        if (Number.isNaN(date.getTime())) return String(value);
+
+        return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            timeZone: "Asia/Tehran",
+        }).format(date);
+    };
+
     const priorityLabel = (priority?: PersonalizedFeedRelevance["priority"]) =>
         priority === "critical"
             ? "خیلی مهم برای تو"
@@ -1191,6 +1218,29 @@ function PersonalizedHomePanel({
                                                 ? `فعلاً خبر مهم تازه‌ای برای ${focusGame.name} نداریم`
                                                 : "فعلاً اتفاق مهمی برای تو پیدا نکردیم")}
                                     </h2>
+
+                                    {heroEvent?.change && (
+                                        <div className="mt-3 flex max-w-2xl flex-wrap items-center gap-2">
+                                            <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-bold text-white/45 backdrop-blur-md">
+                                                {heroEvent.change.label}
+                                            </span>
+                                            <span className="rounded-xl border border-white/10 bg-black/35 px-3 py-1.5 text-[10px] font-black text-white/55 backdrop-blur-md">
+                                                {formatEventChangeValue(
+                                                    heroEvent.change,
+                                                    heroEvent.change.from,
+                                                )}
+                                            </span>
+                                            <span className="text-[10px] font-black text-amber-200/70">
+                                                ←
+                                            </span>
+                                            <span className="rounded-xl border border-emerald-300/15 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-black text-emerald-200 backdrop-blur-md">
+                                                {formatEventChangeValue(
+                                                    heroEvent.change,
+                                                    heroEvent.change.to,
+                                                )}
+                                            </span>
+                                        </div>
+                                    )}
 
                                     <div className="mt-3 flex max-w-2xl items-start gap-2 rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5 text-[10px] leading-5 text-white/60 backdrop-blur-md sm:text-xs">
                                         <Sparkles
@@ -1378,6 +1428,23 @@ function PersonalizedHomePanel({
                                                 <strong className="block line-clamp-2 min-h-10 text-xs leading-5 text-white">
                                                     {event.title}
                                                 </strong>
+                                                {event.change && (
+                                                    <span className="mt-2 flex flex-wrap items-center gap-1.5 text-[8px] font-bold">
+                                                        <span className="text-white/35">
+                                                            {formatEventChangeValue(
+                                                                event.change,
+                                                                event.change.from,
+                                                            )}
+                                                        </span>
+                                                        <span className="text-amber-200/60">←</span>
+                                                        <span className="text-emerald-200/80">
+                                                            {formatEventChangeValue(
+                                                                event.change,
+                                                                event.change.to,
+                                                            )}
+                                                        </span>
+                                                    </span>
+                                                )}
                                                 <small className="mt-2 flex items-start gap-1.5 text-[9px] leading-4 text-white/40">
                                                     <Sparkles
                                                         className="mt-0.5 shrink-0 text-amber-200/70"
