@@ -152,3 +152,12 @@ jobs:
 
       - name: Build client and SSR bundles
         run: npm run build
+
+      - name: Run storefront regression tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+        run: php artisan test tests/Feature/HomeSeoTest.php tests/Feature/StudioTest.php tests/Feature/SearchPerformanceSeoTest.php tests/Feature/VideoWatchProgressTest.php tests/Feature/SitemapTest.php
