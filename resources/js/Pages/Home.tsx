@@ -110,8 +110,35 @@ interface PersonalizedFocusGame {
     image_url: string | null;
 }
 
+interface PersonalizedGameEvent {
+    id: number;
+    type: string;
+    type_label: string;
+    title: string;
+    summary: string | null;
+    importance_score: number;
+    priority: "critical" | "high" | "medium" | "normal";
+    reason: string;
+    source_name: string | null;
+    source_url: string | null;
+    url: string;
+    old_value: Record<string, unknown> | null;
+    new_value: Record<string, unknown> | null;
+    detected_at: string | null;
+    effective_at: string | null;
+    expires_at: string | null;
+    game: {
+        id: number;
+        name: string;
+        url: string;
+        image_url: string | null;
+        cover_url: string | null;
+    } | null;
+}
+
 interface PersonalizedHomeData {
     followed_games: PersonalizedGame[];
+    events: PersonalizedGameEvent[];
     feed: PersonalizedFeedItem[];
     radar: GameRadarItem[];
     intelligence: {
@@ -974,18 +1001,25 @@ function PersonalizedHomePanel({
     userName: string;
 }) {
     const firstName = userName.trim().split(/\s+/)[0] || "گیمر";
-    const heroItem = data.feed[0] ?? null;
-    const secondarySignals = data.feed.slice(1, 5);
+    const heroEvent = data.events[0] ?? null;
+    const heroItem = heroEvent ? null : (data.feed[0] ?? null);
+    const secondaryEvents = data.events.slice(1, 5);
+    const secondarySignals = data.feed.slice(heroEvent ? 0 : 1, heroEvent ? 4 : 5);
     const focusGame = data.intelligence.focus_game;
     const hasPersonalization =
-        data.followed_games.length > 0 || Boolean(focusGame) || data.feed.length > 0;
+        data.followed_games.length > 0 ||
+        Boolean(focusGame) ||
+        data.events.length > 0 ||
+        data.feed.length > 0;
     const radar = data.radar.slice(0, 3);
     const heroMedia = heroItem?.media[0];
-    const heroPreview = heroItem
-        ? (heroMedia?.type === "image"
-              ? heroMedia.url
-              : heroMedia?.thumbnail) ?? focusGame?.image_url
-        : focusGame?.image_url;
+    const heroPreview =
+        heroEvent?.game?.image_url ??
+        (heroItem
+            ? (heroMedia?.type === "image"
+                  ? heroMedia.url
+                  : heroMedia?.thumbnail) ?? focusGame?.image_url
+            : focusGame?.image_url);
 
     const priorityLabel = (priority?: PersonalizedFeedRelevance["priority"]) =>
         priority === "critical"
@@ -1093,7 +1127,13 @@ function PersonalizedHomePanel({
                                 <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.04),rgba(2,6,23,.32)_45%,rgba(2,6,23,.98)_100%)]" />
                                 <span className="absolute inset-0 bg-[radial-gradient(circle_at_85%_5%,rgba(99,102,241,.24),transparent_40%)]" />
 
-                                {heroItem ? (
+                                {heroEvent ? (
+                                    <Link
+                                        aria-label={heroEvent.title}
+                                        className="absolute inset-0 z-10"
+                                        href={heroEvent.url}
+                                    />
+                                ) : heroItem ? (
                                     <Link
                                         aria-label={heroItem.title}
                                         className="absolute inset-0 z-10"
@@ -1109,7 +1149,19 @@ function PersonalizedHomePanel({
 
                                 <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-4 sm:p-6">
                                     <div className="mb-3 flex flex-wrap items-center gap-2">
-                                        {heroItem ? (
+                                        {heroEvent ? (
+                                            <>
+                                                <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-slate-950">
+                                                    {priorityLabel(heroEvent.priority)}
+                                                </span>
+                                                <span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-2.5 py-1 text-[9px] font-black text-amber-100 backdrop-blur-md">
+                                                    {heroEvent.type_label}
+                                                </span>
+                                                <span className="rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur-md">
+                                                    SIGNAL
+                                                </span>
+                                            </>
+                                        ) : heroItem ? (
                                             <>
                                                 <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-slate-950">
                                                     {priorityLabel(heroItem.relevance.priority)}
@@ -1126,10 +1178,15 @@ function PersonalizedHomePanel({
                                     </div>
 
                                     <p className="mb-1.5 text-[10px] font-black tracking-[.08em] text-indigo-200/75">
-                                        {heroItem ? "الان این مهم‌تره" : "وضعیت بازی مهم تو"}
+                                        {heroEvent
+                                            ? "NEXUS SIGNAL — الان این مهم‌تره"
+                                            : heroItem
+                                              ? "الان این مهم‌تره"
+                                              : "وضعیت بازی مهم تو"}
                                     </p>
                                     <h2 className="max-w-3xl text-xl font-black leading-8 text-white sm:text-3xl sm:leading-[1.35]">
-                                        {heroItem?.title ??
+                                        {heroEvent?.title ??
+                                            heroItem?.title ??
                                             (focusGame
                                                 ? `فعلاً خبر مهم تازه‌ای برای ${focusGame.name} نداریم`
                                                 : "فعلاً اتفاق مهمی برای تو پیدا نکردیم")}
@@ -1141,7 +1198,8 @@ function PersonalizedHomePanel({
                                             size={14}
                                         />
                                         <span>
-                                            {heroItem?.relevance.reason ??
+                                            {heroEvent?.reason ??
+                                                heroItem?.relevance.reason ??
                                                 data.intelligence.focus_reason ??
                                                 "هر وقت اتفاق مهمی برای بازی‌هات بیفته، اول همین‌جا می‌بینیش."}
                                         </span>
@@ -1267,6 +1325,72 @@ function PersonalizedHomePanel({
                                 </div>
                             </div>
                         </div>
+
+                        {secondaryEvents.length > 0 && (
+                            <div className="mt-4 rounded-[24px] border border-amber-200/10 bg-[linear-gradient(135deg,rgba(245,158,11,.055),rgba(255,255,255,.02))] p-3 sm:p-4">
+                                <div className="mb-3 flex items-end justify-between gap-3 px-1">
+                                    <div>
+                                        <p className="text-[9px] font-black tracking-[.14em] text-amber-200/65">
+                                            STRUCTURED SIGNALS
+                                        </p>
+                                        <h3 className="mt-1 text-sm font-black">
+                                            نبض ساختاریافته بازی‌های تو
+                                        </h3>
+                                        <p className="mt-0.5 text-[9px] text-white/35">
+                                            تغییر واقعی، نه صرفاً یک خبر تازه
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[8px] font-black text-white/45">
+                                        {money.format(data.events.length)} سیگنال
+                                    </span>
+                                </div>
+                                <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
+                                    {secondaryEvents.map((event) => (
+                                        <Link
+                                            className="group relative w-[78vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[20px] border border-white/10 bg-slate-950 transition hover:-translate-y-0.5 hover:border-amber-200/25 sm:w-[300px]"
+                                            href={event.url}
+                                            key={event.id}
+                                        >
+                                            <span className="relative block aspect-[16/9] overflow-hidden">
+                                                {event.game?.image_url ? (
+                                                    <img
+                                                        alt={event.game.name}
+                                                        className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                                                        loading="lazy"
+                                                        src={event.game.image_url}
+                                                    />
+                                                ) : (
+                                                    <span className="grid size-full place-items-center bg-[radial-gradient(circle_at_top,#78350f,#020617_72%)] text-amber-200/60">
+                                                        <Sparkles size={30} />
+                                                    </span>
+                                                )}
+                                                <span className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                                                <span className="absolute right-2.5 top-2.5 rounded-full bg-amber-300 px-2 py-1 text-[8px] font-black text-slate-950">
+                                                    {event.type_label}
+                                                </span>
+                                                {event.game && (
+                                                    <span className="absolute bottom-2.5 right-2.5 rounded-full border border-white/10 bg-black/45 px-2 py-1 text-[8px] font-black text-white/75 backdrop-blur-md">
+                                                        {event.game.name}
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className="block p-3">
+                                                <strong className="block line-clamp-2 min-h-10 text-xs leading-5 text-white">
+                                                    {event.title}
+                                                </strong>
+                                                <small className="mt-2 flex items-start gap-1.5 text-[9px] leading-4 text-white/40">
+                                                    <Sparkles
+                                                        className="mt-0.5 shrink-0 text-amber-200/70"
+                                                        size={11}
+                                                    />
+                                                    {event.reason}
+                                                </small>
+                                            </span>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {data.followed_games.length > 0 && (
                             <div className="mt-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-3 sm:p-4">
