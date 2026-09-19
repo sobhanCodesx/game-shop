@@ -1,14 +1,14 @@
 {
-  "job_id": "20260919-main-feed-58-media-test",
+  "job_id": "20260919-main-feed-58-media-test-real",
   "tool": "upload_asset",
   "arguments": {
     "resource": "feed",
     "id": 58,
     "slot": "media",
-    "source_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlQ0rkAAAAASUVORK5CYII=",
-    "name": "playnexus-feed-publish-test.png",
-    "mime": "image/png",
-    "alt": "تصویر آزمایشی انتشار فید PlayNexus",
+    "source_url": "https://xboxwire.thesourcemediaassets.com/sites/2/2026/09/Physint_ENPoster_0908_4stars_4x5-a6e4884e58448d63c222-546x683.jpg",
+    "name": "playnexus-main-feed-test.jpg",
+    "mime": "image/jpeg",
+    "alt": "تصویر آزمایشی برای تست انتشار Feed از شاخه main",
     "sort_order": 0
   }
 }
