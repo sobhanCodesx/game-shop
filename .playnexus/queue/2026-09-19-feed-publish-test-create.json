@@ -1,0 +1,14 @@
+{
+  "job_id": "20260919-feed-publish-test-create",
+  "tool": "create_feed",
+  "arguments": {
+    "title": "تست انتشار فید PlayNexus",
+    "body": "<p>این فید به‌صورت موقت برای تست کامل مسیر انتشار PlayNexus ساخته شده است.</p>",
+    "feed_type": "post",
+    "feed_badge": null,
+    "allow_comments": false,
+    "notify_followers": false,
+    "seo_title": "تست انتشار فید PlayNexus",
+    "seo_description": "فید موقت برای تست کامل مسیر ساخت، مدیا و انتشار در PlayNexus."
+  }
+}
