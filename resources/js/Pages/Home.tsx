@@ -1032,7 +1032,10 @@ function PersonalizedHomePanel({
     const secondaryEvents = data.events
         .filter((event) => event.id !== heroEvent?.id)
         .slice(0, 4);
-    const secondarySignals = dedupedFeed.slice(heroEvent ? 0 : 1, heroEvent ? 4 : 5);
+    const favoriteFeedItems = dedupedFeed.slice(
+        heroEvent ? 0 : 1,
+        heroEvent ? 6 : 7,
+    );
     const focusGame = data.intelligence.focus_game;
     const hasPersonalization =
         data.followed_games.length > 0 ||
@@ -1422,6 +1425,162 @@ function PersonalizedHomePanel({
                             </div>
                         </div>
 
+                        {favoriteFeedItems.length > 0 && (
+                            <section className="mt-4 overflow-hidden rounded-[26px] border border-indigo-300/15 bg-[linear-gradient(135deg,rgba(99,102,241,.10),rgba(255,255,255,.025)_48%,rgba(168,85,247,.06))]">
+                                <header className="flex flex-col gap-3 border-b border-white/10 px-4 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-5">
+                                    <div className="min-w-0">
+                                        <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                                            <span className="grid size-8 place-items-center rounded-xl bg-indigo-400/15 text-indigo-200">
+                                                <Radio size={15} />
+                                            </span>
+                                            <span className="text-[9px] font-black tracking-[.16em] text-indigo-200/70">
+                                                YOUR FEED
+                                            </span>
+                                            <span className="rounded-full border border-indigo-200/10 bg-indigo-400/10 px-2 py-1 text-[8px] font-black text-indigo-100/75">
+                                                شخصی‌سازی‌شده
+                                            </span>
+                                        </div>
+
+                                        <h3 className="text-base font-black sm:text-lg">
+                                            فید برای تو
+                                        </h3>
+                                        <p className="mt-1 max-w-2xl text-[10px] leading-5 text-white/40 sm:text-[11px]">
+                                            خبر، ویدیو و تحلیل‌هایی که با چیزهایی که دنبال می‌کنی و بیشتر می‌بینی هم‌خوانی دارن.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        {data.intelligence.top_signals
+                                            .slice(0, 2)
+                                            .map((signal) => (
+                                                <span
+                                                    className="hidden rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[8px] font-bold text-white/55 sm:inline-flex"
+                                                    key={signal.key}
+                                                >
+                                                    {signal.label}
+                                                </span>
+                                            ))}
+                                        <Link
+                                            className="shrink-0 rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-[9px] font-black text-indigo-100 transition hover:border-indigo-300/25 hover:bg-white/[0.08]"
+                                            href="/feed"
+                                        >
+                                            دیدن فید کامل
+                                        </Link>
+                                    </div>
+                                </header>
+
+                                <div className="home-slider flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:p-4 lg:grid lg:grid-cols-12 lg:overflow-visible">
+                                    {favoriteFeedItems.map((item, index) => {
+                                        const media = item.media[0];
+                                        const preview =
+                                            media?.type === "image"
+                                                ? media.url
+                                                : media?.thumbnail;
+                                        const featured = index === 0;
+
+                                        return (
+                                            <Link
+                                                className={`group relative min-h-[230px] w-[78vw] max-w-[340px] shrink-0 snap-start overflow-hidden rounded-[21px] border border-white/10 bg-slate-950 transition duration-300 hover:-translate-y-0.5 hover:border-indigo-300/25 sm:w-[310px] lg:w-full lg:max-w-none ${
+                                                    featured
+                                                        ? "lg:col-span-5 lg:min-h-[320px]"
+                                                        : "lg:col-span-7 lg:min-h-[155px]"
+                                                }`}
+                                                href={item.url}
+                                                key={item.id}
+                                            >
+                                                {preview ? (
+                                                    <img
+                                                        alt={media?.alt ?? item.title}
+                                                        className={`absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.04] ${
+                                                            featured
+                                                                ? ""
+                                                                : "lg:w-[46%] lg:right-auto"
+                                                        }`}
+                                                        loading="lazy"
+                                                        src={preview}
+                                                    />
+                                                ) : (
+                                                    <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] text-indigo-200/50">
+                                                        <Radio size={34} />
+                                                    </span>
+                                                )}
+
+                                                <span
+                                                    className={`absolute inset-0 ${
+                                                        featured
+                                                            ? "bg-gradient-to-t from-black via-black/35 to-transparent"
+                                                            : "bg-gradient-to-t from-black via-black/40 to-transparent lg:bg-[linear-gradient(90deg,rgba(2,6,23,.98)_0%,rgba(2,6,23,.94)_54%,rgba(2,6,23,.22)_100%)]"
+                                                    }`}
+                                                />
+
+                                                <span className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[8px] font-black text-white/75 backdrop-blur-md">
+                                                    {item.relevance.signal_label}
+                                                </span>
+
+                                                <div
+                                                    className={`absolute inset-x-0 bottom-0 p-3.5 sm:p-4 ${
+                                                        featured
+                                                            ? ""
+                                                            : "lg:bottom-auto lg:left-0 lg:top-0 lg:flex lg:h-full lg:w-[58%] lg:flex-col lg:justify-center"
+                                                    }`}
+                                                >
+                                                    <div className="mb-2 flex items-center gap-2">
+                                                        <span
+                                                            className={`size-1.5 rounded-full ${
+                                                                item.relevance.priority === "critical"
+                                                                    ? "bg-rose-300"
+                                                                    : item.relevance.priority === "high"
+                                                                      ? "bg-amber-300"
+                                                                      : "bg-indigo-300"
+                                                            }`}
+                                                        />
+                                                        <span className="text-[8px] font-black text-white/50">
+                                                            {priorityLabel(
+                                                                item.relevance
+                                                                    .priority,
+                                                            )}
+                                                        </span>
+                                                    </div>
+
+                                                    <strong
+                                                        className={`block line-clamp-2 font-black leading-6 text-white ${
+                                                            featured
+                                                                ? "text-base sm:text-lg"
+                                                                : "text-sm"
+                                                        }`}
+                                                    >
+                                                        {item.title}
+                                                    </strong>
+
+                                                    <p className="mt-2 line-clamp-2 text-[9px] leading-5 text-white/45 sm:text-[10px]">
+                                                        {item.relevance.reason}
+                                                    </p>
+
+                                                    <div className="mt-3 flex items-center gap-2 text-[8px] text-white/35">
+                                                        <span>
+                                                            {item.author.name}
+                                                        </span>
+                                                        {typeof item.views ===
+                                                            "number" && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <span>
+                                                                    {money.format(
+                                                                        item.views,
+                                                                    )}{" "}
+                                                                    بازدید
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        )}
+
                         {secondaryEvents.length > 0 && (
                             <div className="mt-4 rounded-[24px] border border-amber-200/10 bg-[linear-gradient(135deg,rgba(245,158,11,.055),rgba(255,255,255,.02))] p-3 sm:p-4">
                                 <div className="mb-3 flex items-end justify-between gap-3 px-1">
@@ -1555,73 +1714,6 @@ function PersonalizedHomePanel({
                             </div>
                         )}
 
-                        {secondarySignals.length > 0 && (
-                            <div className="mt-4">
-                                <div className="mb-3 flex items-end justify-between gap-3 px-1">
-                                    <div>
-                                        <h3 className="text-sm font-black">
-                                            بعد از این، این‌ها ارزش دیدن دارن
-                                        </h3>
-                                        <p className="mt-0.5 text-[9px] text-white/35">
-                                            مرتب‌شده با ترکیب اهمیت خبر و علاقه‌ی تو
-                                        </p>
-                                    </div>
-                                    <Link
-                                        className="text-[10px] font-black text-indigo-200 hover:text-white"
-                                        href="/feed"
-                                    >
-                                        فید کامل
-                                    </Link>
-                                </div>
-                                <div className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4">
-                                    {secondarySignals.map((item) => {
-                                        const media = item.media[0];
-                                        const preview =
-                                            media?.type === "image"
-                                                ? media.url
-                                                : media?.thumbnail;
-
-                                        return (
-                                            <Link
-                                                className="group w-[78vw] max-w-[330px] shrink-0 snap-start overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.035] transition hover:border-indigo-300/25 sm:w-[300px]"
-                                                href={item.url}
-                                                key={item.id}
-                                            >
-                                                <span className="relative block aspect-[16/9] overflow-hidden bg-slate-950">
-                                                    {preview ? (
-                                                        <img
-                                                            alt={media?.alt ?? item.title}
-                                                            className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                                                            loading="lazy"
-                                                            src={preview}
-                                                        />
-                                                    ) : (
-                                                        <span className="grid size-full place-items-center text-indigo-200/50">
-                                                            <Radio size={30} />
-                                                        </span>
-                                                    )}
-                                                    <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                                    <span className="absolute right-2.5 top-2.5 rounded-full bg-black/45 px-2 py-1 text-[8px] font-black text-white/75 backdrop-blur-md">
-                                                        {item.relevance.signal_label}
-                                                    </span>
-                                                </span>
-                                                <span className="block p-3">
-                                                    <strong className="block line-clamp-2 min-h-10 text-xs leading-5 text-white">
-                                                        {item.title}
-                                                    </strong>
-                                                    <small className="mt-2 flex items-start gap-1.5 text-[9px] leading-4 text-white/40">
-                                                        <Sparkles
-                                                            className="mt-0.5 shrink-0 text-indigo-200/70"
-                                                            size={11}
-                                                        />
-                                                        {item.relevance.reason}
-                                                    </small>
-                                                </span>
-                                            </Link>
-                                        );
-                                    })}
-                                </div>
-                            </div>
                         )}
                     </div>
                 )}
