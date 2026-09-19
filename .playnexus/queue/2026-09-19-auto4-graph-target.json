@@ -1,7 +1,0 @@
-{
-  "job_id": "2026-09-19-auto4-graph-target",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query { feeds(first: 20, orderBy: \"created_at\", orderDir: \"desc\") { nodes { id title status publishedAt createdAt game { id name } } pageInfo { total hasMore } } search(query: \"Stranger Than Heaven\", first: 6) { games { id name slug status studio { id name } } content { id type title status publishedAt game { id name } } studios { id name } } }"
-  }
-}
