@@ -28,7 +28,7 @@ class PlayNexusGraphService
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
         ) ?: '');
 
-        $maxVariablesBytes = (int) config('content_agent.graphql.max_variables_bytes', 48000);
+        $maxVariablesBytes = (int) config('content_agent.graphql.max_variables_bytes', 96000);
         if ($variablesBytes > $maxVariablesBytes) {
             throw new RuntimeException("GraphQL variables are too large. Maximum is {$maxVariablesBytes} bytes.");
         }
@@ -53,7 +53,7 @@ class PlayNexusGraphService
         $result = $execution->toArray(DebugFlag::NONE);
         $elapsedMs = round((hrtime(true) - $startedAt) / 1_000_000, 2);
 
-        $maxResponseBytes = (int) config('content_agent.graphql.max_response_bytes', 2097152);
+        $maxResponseBytes = (int) config('content_agent.graphql.max_response_bytes', 4194304);
         $encodedResult = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if (is_string($encodedResult) && strlen($encodedResult) > $maxResponseBytes) {
             $result = [
@@ -66,7 +66,7 @@ class PlayNexusGraphService
 
         $result['extensions'] = [
             'playnexus' => [
-                'schemaVersion' => '1.0.0',
+                'schemaVersion' => '1.1.0',
                 'readOnly' => true,
                 'queryHash' => $metrics['hash'],
                 'depth' => $metrics['depth'],
@@ -96,20 +96,20 @@ class PlayNexusGraphService
 
         return [
             'name' => 'PlayNexus Intelligence Graph',
-            'version' => '1.0.0',
+            'version' => '1.1.0',
             'read_only' => true,
             'endpoint' => '/api/graphql',
             'authentication' => 'Uses the same Bearer token as the existing PlayNexus MCP endpoint.',
             'limits' => [
-                'max_query_bytes' => (int) config('content_agent.graphql.max_query_bytes', 24000),
-                'max_variables_bytes' => (int) config('content_agent.graphql.max_variables_bytes', 48000),
-                'max_response_bytes' => (int) config('content_agent.graphql.max_response_bytes', 2097152),
-                'max_depth' => (int) config('content_agent.graphql.max_depth', 10),
-                'max_introspection_depth' => (int) config('content_agent.graphql.max_introspection_depth', 16),
-                'max_complexity' => (int) config('content_agent.graphql.max_complexity', 500),
-                'max_fields' => (int) config('content_agent.graphql.max_fields', 250),
-                'max_page_size' => (int) config('content_agent.graphql.max_page_size', 50),
-                'max_offset' => (int) config('content_agent.graphql.max_offset', 10000),
+                'max_query_bytes' => (int) config('content_agent.graphql.max_query_bytes', 48000),
+                'max_variables_bytes' => (int) config('content_agent.graphql.max_variables_bytes', 96000),
+                'max_response_bytes' => (int) config('content_agent.graphql.max_response_bytes', 4194304),
+                'max_depth' => (int) config('content_agent.graphql.max_depth', 14),
+                'max_introspection_depth' => (int) config('content_agent.graphql.max_introspection_depth', 20),
+                'max_complexity' => (int) config('content_agent.graphql.max_complexity', 1500),
+                'max_fields' => (int) config('content_agent.graphql.max_fields', 600),
+                'max_page_size' => (int) config('content_agent.graphql.max_page_size', 100),
+                'max_offset' => (int) config('content_agent.graphql.max_offset', 50000),
             ],
             'guidance' => [
                 'Use GraphQL for discovery, joins, filtering, context gathering and deciding what action is needed.',
