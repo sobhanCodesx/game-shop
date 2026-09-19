@@ -85,7 +85,7 @@ class PlayNexusGraphGuard
             throw new RuntimeException("GraphQL query is too deep ({$metrics['depth']}/{$maxDepth}).");
         }
 
-        $maxComplexity = (int) config('content_agent.graphql.max_complexity', 1500);
+        $maxComplexity = (int) config('content_agent.graphql.max_complexity', 12000);
         if ($metrics['complexity'] > $maxComplexity) {
             throw new RuntimeException("GraphQL query is too complex ({$metrics['complexity']}/{$maxComplexity}).");
         }
