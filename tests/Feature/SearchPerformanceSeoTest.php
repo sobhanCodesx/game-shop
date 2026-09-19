@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Game;
+use App\Models\HomeSetting;
 use App\Models\SocialContent;
+use App\Models\User;
 use App\Models\Studio;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -46,6 +49,86 @@ class SearchPerformanceSeoTest extends TestCase
         $response
             ->assertDontSee('HEAVY_PAYLOAD_MARKER')
             ->assertDontSee('HEAVY_BODY_HTML_MARKER');
+    }
+
+    public function test_home_preview_keeps_lightweight_related_media_fallbacks(): void
+    {
+        $relatedVideo = SocialContent::query()->create([
+            'type' => 'video',
+            'title' => 'ویدیوی مرجع',
+            'slug' => 'related-video-preview',
+            'thumbnail' => 'videos/related-preview.webp',
+            'video_path' => 'videos/related-preview.mp4',
+            'duration' => 90,
+            'status' => 'published',
+            'published_at' => now()->subMinutes(2),
+        ]);
+
+        SocialContent::query()->create([
+            'type' => 'post',
+            'feed_type' => 'news',
+            'feed_badge' => 'news',
+            'title' => 'خبر دارای ویدیوی مرتبط',
+            'slug' => 'post-with-related-preview',
+            'related_content_id' => $relatedVideo->id,
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('latestFeed.0.title', 'خبر دارای ویدیوی مرتبط')
+                ->where('latestFeed.0.media.0.type', 'video')
+                ->where(
+                    'latestFeed.0.media.0.thumbnail',
+                    'http://localhost/storage/videos/related-preview.webp',
+                ));
+    }
+
+    public function test_home_preserves_explicit_admin_meta_description(): void
+    {
+        HomeSetting::query()->create([
+            'content' => [
+                'seo_description' => 'توضیح کوتاه اما عمدی مدیر سایت.',
+            ],
+        ]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('seo.description', 'توضیح کوتاه اما عمدی مدیر سایت.'));
+    }
+
+    public function test_personalized_home_keeps_relevance_while_using_compact_content_payloads(): void
+    {
+        $user = User::factory()->create();
+        $game = Game::factory()->create(['status' => 'active']);
+        $user->subscribedGames()->attach($game);
+
+        SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'video',
+            'feed_type' => 'video',
+            'title' => 'ویدیوی شخصی‌سازی شده',
+            'slug' => 'personalized-light-video',
+            'thumbnail' => 'videos/personalized.webp',
+            'body' => '<p>PERSONALIZED_HEAVY_BODY</p>',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('home'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('personalizedHome.videos.0.title', 'ویدیوی شخصی‌سازی شده')
+                ->has('personalizedHome.videos.0.relevance')
+                ->missing('personalizedHome.videos.0.body')
+                ->missing('personalizedHome.videos.0.body_html'));
+
+        $response->assertDontSee('PERSONALIZED_HEAVY_BODY');
     }
 
     public function test_feed_schema_reuses_the_complete_playnexus_organization(): void
