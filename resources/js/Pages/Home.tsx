@@ -282,7 +282,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
                                 <h2 className="truncate text-lg font-black text-[var(--store-text)] sm:text-xl">
-                                    نبض PLAY NEXUS
+                                    تازه‌های PLAY NEXUS
                                 </h2>
                                 <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black text-emerald-500">
                                     LIVE
@@ -1001,7 +1001,7 @@ function PersonalizedHomePanel({
                     <div className="relative mt-5 rounded-[22px] border border-dashed border-white/15 bg-white/[0.035] p-5 sm:p-6">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-3">
-                                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/8 text-indigo-200">
+                                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/10 text-indigo-200">
                                     <Gamepad2 size={23} />
                                 </span>
                                 <div>
@@ -1101,7 +1101,7 @@ function PersonalizedHomePanel({
                                                     : media?.thumbnail;
                                             return (
                                                 <Link
-                                                    className="group flex min-w-0 gap-3 rounded-[18px] border border-white/8 bg-white/[0.035] p-2.5 transition hover:border-indigo-300/30 hover:bg-white/[0.055]"
+                                                    className="group flex min-w-0 gap-3 rounded-[18px] border border-white/10 bg-white/[0.035] p-2.5 transition hover:border-indigo-300/30 hover:bg-white/[0.055]"
                                                     href={item.url}
                                                     key={item.id}
                                                 >
@@ -1156,7 +1156,7 @@ function PersonalizedHomePanel({
                                     <div className="space-y-2 p-3">
                                         {radar.map((item) => (
                                             <Link
-                                                className="group flex items-center gap-3 rounded-[18px] border border-white/8 bg-white/[0.035] p-2.5 transition hover:border-fuchsia-300/30"
+                                                className="group flex items-center gap-3 rounded-[18px] border border-white/10 bg-white/[0.035] p-2.5 transition hover:border-fuchsia-300/30"
                                                 href={item.playnexus_url ?? "/game-radar"}
                                                 key={item.id}
                                             >
