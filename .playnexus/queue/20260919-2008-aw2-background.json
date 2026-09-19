@@ -1,0 +1,10 @@
+{
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game",
+    "id": 14,
+    "slot": "background",
+    "source_url": "https://cdn.prod.website-files.com/64630b03551142e3347ae3da/6492b82d3fba884ea3d9733d_AlanWake2_00053.webp",
+    "alt": "تصویر پس‌زمینه رسمی Alan Wake 2 از دنیای تاریک بازی"
+  }
+}
