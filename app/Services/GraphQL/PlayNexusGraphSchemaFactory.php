@@ -548,6 +548,8 @@ class PlayNexusGraphSchemaFactory
             'fields' => [
                 'id' => Type::nonNull(Type::id()),
                 'type' => Type::nonNull(Type::string()),
+                'path' => Type::string(),
+                'thumbnailPath' => ['type' => Type::string(), 'resolve' => fn (SocialContentMedia $media) => $media->thumbnail],
                 'url' => [
                     'type' => Type::string(),
                     'resolve' => fn (SocialContentMedia $media) => MediaStorage::url($media->path),
