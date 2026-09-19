@@ -124,7 +124,7 @@ function VideoPlayer({ content }: { content: WatchContent }) {
                 <span className="playnexus-player-ambient__secondary" />
                 <span className="playnexus-player-ambient__highlight" />
             </div>
-            <div className="playnexus-player-frame absolute inset-0 overflow-hidden rounded-[24px] sm:rounded-[28px] lg:rounded-[32px]">
+            <div className="playnexus-player-frame absolute inset-0 overflow-hidden rounded-[28px] sm:rounded-[32px] lg:rounded-[36px]">
                 <video
                     className="playnexus-player-native"
                     controls
@@ -750,7 +750,7 @@ export default function Show({
                 <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,840px)_330px] xl:justify-center">
                     <div className="flex min-w-0 flex-col">
                         <div
-                            className={`relative bg-black ${content.video_url ? "overflow-visible" : "overflow-hidden"} ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-[24px] sm:rounded-[28px]" : "aspect-video w-full rounded-[24px] sm:rounded-[28px] lg:rounded-[32px]"}`}
+                            className={`playnexus-video-stage relative bg-black ${content.video_url ? "overflow-visible" : "overflow-hidden"} ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-[28px] sm:rounded-[32px]" : "aspect-video w-full rounded-[28px] sm:rounded-[32px] lg:rounded-[36px]"}`}
                         >
                             {content.video_url ? (
                                 <VideoPlayer content={content} />
