@@ -423,19 +423,20 @@ const freshDateLabel = (value: string) =>
 
 function FreshReleases({ items }: { items: FreshItem[] }) {
     const railRef = useRef<HTMLDivElement>(null);
-    const [seenAt] = useState(() =>
-        typeof window === "undefined"
-            ? 0
-            : Number(localStorage.getItem(freshSeenKey) ?? 0),
-    );
+    const [seenAt, setSeenAt] = useState(0);
     const latest = items.length
         ? Math.max(...items.map((item) => Date.parse(item.published_at)))
         : 0;
 
     useEffect(() => {
+        setSeenAt(Number(localStorage.getItem(freshSeenKey) ?? 0));
+    }, []);
+
+    useEffect(() => {
         if (!latest || latest <= seenAt) return;
         const timer = window.setTimeout(() => {
             localStorage.setItem(freshSeenKey, String(latest));
+            setSeenAt(latest);
             window.dispatchEvent(new CustomEvent("fresh-content-seen"));
         }, 5000);
         return () => window.clearTimeout(timer);
@@ -519,13 +520,14 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                                 className={`group w-[calc((100vw-4rem)/2)] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-[18px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] sm:max-w-[330px] sm:rounded-[20px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
                                 href={item.url}
                                 key={item.key}
-                                onClick={() =>
-                                    latest &&
+                                onClick={() => {
+                                    if (!latest) return;
                                     localStorage.setItem(
                                         freshSeenKey,
                                         String(latest),
-                                    )
-                                }
+                                    );
+                                    setSeenAt(latest);
+                                }}
                             >
                                 <article className="flex h-full flex-col">
                                     <header className="flex items-center gap-2 p-2.5 sm:gap-2.5 sm:p-3">
