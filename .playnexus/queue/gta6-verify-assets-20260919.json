@@ -1,0 +1,8 @@
+{
+  "job_id": "gta6-verify-assets-20260919",
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "game",
+    "id": 1
+  }
+}
