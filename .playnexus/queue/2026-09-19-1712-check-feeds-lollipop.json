@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-09-19-1712-check-feeds-lollipop",
-  "tool": "select_content",
-  "arguments": {
-    "resource": "feed",
-    "query": "Lollipop Chainsaw 2 Back2Back",
-    "limit": 20
-  }
-}
