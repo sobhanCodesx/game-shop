@@ -1,8 +1,0 @@
-{
-  "job_id": "20260919-daily-game-studio-check-fromsoftware",
-  "tool": "search_studios",
-  "arguments": {
-    "query": "FromSoftware",
-    "limit": 20
-  }
-}
