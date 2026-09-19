@@ -1,0 +1,7 @@
+{
+  "job_id": "20260919-gears-eday-feed-search",
+  "tool": "get_feed",
+  "arguments": {
+    "search": "Gears of War E-Day"
+  }
+}
