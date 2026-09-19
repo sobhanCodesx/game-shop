@@ -1,0 +1,13 @@
+{
+  "job_id": "20260919-daily-armored-core-vi-background",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game",
+    "id": 11,
+    "slot": "background",
+    "source_url": "https://us-east-1-bandai.graphassets.com/AXzioIclSWilEjFtsMJPwz/cmf4wnudxcu4y08k9etk908ex",
+    "name": "armored-core-vi-official-background.jpg",
+    "alt": "تصویر رسمی Armored Core VI Fires of Rubicon از نبرد ماشین‌های جنگی در Rubicon 3",
+    "sort_order": 0
+  }
+}
