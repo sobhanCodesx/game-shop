@@ -23,14 +23,30 @@ if ("serviceWorker" in navigator) {
             });
         });
     } else {
-        // A production worker left behind on localhost can make Vite/HMR appear stale.
-        void navigator.serviceWorker
-            .getRegistrations()
-            .then((registrations) => {
-                for (const registration of registrations) {
-                    void registration.unregister();
-                }
-            });
+        // A production worker/cache left behind on localhost can keep serving
+        // stale navigations after switching back to Vite development.
+        void Promise.all([
+            navigator.serviceWorker.getRegistrations().then((registrations) =>
+                Promise.all(
+                    registrations.map((registration) =>
+                        registration.unregister(),
+                    ),
+                ),
+            ),
+            "caches" in window
+                ? caches
+                      .keys()
+                      .then((keys) =>
+                          Promise.all(
+                              keys
+                                  .filter((key) =>
+                                      key.startsWith("playnexus-"),
+                                  )
+                                  .map((key) => caches.delete(key)),
+                          ),
+                      )
+                : Promise.resolve([]),
+        ]);
     }
 }
 
