@@ -347,10 +347,10 @@ textarea {
 }
 
 .pn-signature-frame {
-    --pn-frame-opacity: 0.54;
-    --pn-frame-speed: 9s;
-    --pn-frame-glow: 0.11;
-    --pn-frame-width: 1px;
+    --pn-frame-opacity: 0.72;
+    --pn-frame-speed: 8.5s;
+    --pn-frame-glow: 0.16;
+    --pn-frame-width: 1.4px;
     position: relative;
     isolation: isolate;
 }
@@ -366,11 +366,11 @@ textarea {
         from var(--pn-frame-angle),
         rgb(129 140 248 / 0%) 0deg,
         rgb(129 140 248 / 0%) 34deg,
-        rgb(139 92 246 / 28%) 66deg,
-        rgb(168 85 247 / 62%) 96deg,
-        rgb(34 211 238 / 72%) 124deg,
-        rgb(99 102 241 / 42%) 154deg,
-        rgb(99 102 241 / 8%) 190deg,
+        rgb(139 92 246 / 42%) 66deg,
+        rgb(168 85 247 / 82%) 96deg,
+        rgb(34 211 238 / 92%) 124deg,
+        rgb(99 102 241 / 62%) 154deg,
+        rgb(99 102 241 / 14%) 190deg,
         rgb(129 140 248 / 0%) 224deg,
         rgb(129 140 248 / 0%) 360deg
     );
@@ -424,10 +424,10 @@ textarea {
 }
 
 .pn-signature-frame--hero {
-    --pn-frame-opacity: 0.72;
-    --pn-frame-speed: 7.8s;
-    --pn-frame-glow: 0.15;
-    --pn-frame-width: 1.15px;
+    --pn-frame-opacity: 0.88;
+    --pn-frame-speed: 7.4s;
+    --pn-frame-glow: 0.21;
+    --pn-frame-width: 1.65px;
 }
 
 .pn-signature-frame--subtle {
@@ -437,9 +437,62 @@ textarea {
 }
 
 .pn-signature-frame--cool {
-    --pn-frame-opacity: 0.56;
-    --pn-frame-speed: 9.6s;
-    --pn-frame-glow: 0.105;
+    --pn-frame-opacity: 0.7;
+    --pn-frame-speed: 9.2s;
+    --pn-frame-glow: 0.15;
+}
+
+/* Visible but restrained neon edge for nested Home panels. */
+.pn-neon-panel {
+    position: relative;
+    border: 1px solid rgb(129 140 248 / 26%);
+    box-shadow:
+        0 0 0 1px rgb(99 102 241 / 8%),
+        0 0 24px rgb(99 102 241 / 11%),
+        inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.pn-neon-panel::before {
+    content: "";
+    position: absolute;
+    z-index: 5;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+        115deg,
+        rgb(129 140 248 / 16%),
+        rgb(129 140 248 / 78%) 28%,
+        rgb(34 211 238 / 62%) 48%,
+        rgb(168 85 247 / 72%) 70%,
+        rgb(129 140 248 / 12%)
+    );
+    pointer-events: none;
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.72;
+}
+
+.pn-neon-panel--warm {
+    border-color: rgb(251 191 36 / 24%);
+    box-shadow:
+        0 0 0 1px rgb(245 158 11 / 7%),
+        0 0 22px rgb(245 158 11 / 9%),
+        inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.pn-neon-panel--warm::before {
+    background: linear-gradient(
+        115deg,
+        rgb(251 191 36 / 14%),
+        rgb(251 191 36 / 64%) 32%,
+        rgb(244 114 182 / 44%) 62%,
+        rgb(129 140 248 / 36%)
+    );
+    opacity: 0.62;
 }
 
 @keyframes pn-signature-orbit {
