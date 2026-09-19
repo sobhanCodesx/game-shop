@@ -77,6 +77,7 @@ class XboxTrackedGameSourceAdapter implements TrackedGameSourceAdapter
                     $releaseDate = $this->releaseDate(
                         data_get($product, 'MarketProperties.0.OriginalReleaseDate'),
                     );
+                    $previousState = is_array($state->state) ? $state->state : [];
 
                     $observations[] = [
                         'game_id' => $state->game_id,
@@ -89,10 +90,10 @@ class XboxTrackedGameSourceAdapter implements TrackedGameSourceAdapter
                         'watch_direct' => true,
                         'state' => [
                             'available' => true,
-                            'release_date' => $releaseDate,
-                            'release_phase' => $releaseDate && now()->startOfDay()->lt(\Illuminate\Support\Carbon::parse($releaseDate))
-                                ? 'coming'
-                                : 'released',
+                            'release_date' => $releaseDate ?? ($previousState['release_date'] ?? null),
+                            'release_phase' => $releaseDate
+                                ? (now()->startOfDay()->lt(\Illuminate\Support\Carbon::parse($releaseDate)) ? 'coming' : 'released')
+                                : ($previousState['release_phase'] ?? null),
                             'price_raw' => $this->displayPrice($amount, $currency),
                             'price_amount' => $currency ? $amount : null,
                             'currency' => $currency,
