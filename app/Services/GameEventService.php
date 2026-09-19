@@ -43,7 +43,6 @@ class GameEventService
             'confidence' => 1,
             'old_value' => ['release_date' => $oldDate],
             'new_value' => ['release_date' => $newDate],
-            'detected_at' => now(),
             'effective_at' => now(),
             'expires_at' => null,
             'status' => 'active',
@@ -164,7 +163,6 @@ class GameEventService
             'confidence' => 1,
             'old_value' => ['price' => (int) $product->price],
             'new_value' => ['price' => (int) $product->discount_price],
-            'detected_at' => now(),
             'effective_at' => now(),
             'expires_at' => $product->expires_at,
             'status' => 'active',
@@ -185,13 +183,14 @@ class GameEventService
         $type = (string) $attributes['type'];
         $attributes['importance_score'] ??= $this->importance->defaultScore($type);
         $attributes['confidence'] ??= 1;
-        $attributes['detected_at'] ??= now();
         $attributes['status'] ??= 'candidate';
         $attributes['dedupe_key'] ??= $this->dedupeKey($attributes);
 
         $existing = GameEvent::query()
             ->where('dedupe_key', $attributes['dedupe_key'])
             ->first();
+
+        $attributes['detected_at'] ??= $existing?->detected_at ?? now();
 
         if ($existing) {
             if ($existing->status === 'dismissed') {
