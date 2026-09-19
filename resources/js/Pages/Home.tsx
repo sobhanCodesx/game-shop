@@ -556,6 +556,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                                             <img
                                                 alt={item.title}
                                                 className={`size-full transition duration-500 group-hover:scale-[1.035] ${video ? "object-cover" : "object-contain p-3"}`}
+                                                decoding="async"
                                                 loading="lazy"
                                                 src={item.image_url}
                                             />
@@ -693,7 +694,8 @@ function ChannelRail({ channels }: { channels: ChannelItem[] }) {
                                     <img
                                         alt={`کانال ${channel.name}`}
                                         className="size-full object-cover transition duration-300 group-hover:scale-110"
-                                        loading="lazy"
+                                        decoding="async"
+                                                loading="lazy"
                                         src={channel.image_url}
                                     />
                                 ) : (
@@ -783,7 +785,8 @@ function ContentRail({ section }: { section: ContentSection }) {
                                     <img
                                         alt={item.title}
                                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                                        loading="lazy"
+                                        decoding="async"
+                                                loading="lazy"
                                         src={item.image_url}
                                     />
                                 ) : (
@@ -958,7 +961,8 @@ function LatestFeedRail({ items }: { items: HomeFeedPreviewItem[] }) {
                                 <img
                                     alt={media?.alt ?? item.title}
                                     className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                                    loading="lazy"
+                                    decoding="async"
+                                                loading="lazy"
                                     src={preview}
                                 />
                             ) : (
@@ -979,7 +983,8 @@ function LatestFeedRail({ items }: { items: HomeFeedPreviewItem[] }) {
                                         <img
                                             alt={item.author.name}
                                             className="size-full object-cover"
-                                            loading="lazy"
+                                            decoding="async"
+                                                loading="lazy"
                                             src={item.author.avatar_url}
                                         />
                                     ) : (
@@ -1059,7 +1064,8 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
                             <img
                                 alt={`پس‌زمینه ${studio.name}`}
                                 className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                                loading="lazy"
+                                decoding="async"
+                                                loading="lazy"
                                 src={studio.background_url}
                             />
                         ) : (
@@ -1074,7 +1080,8 @@ function LatestStudioRail({ items }: { items: StudioItem[] }) {
                                     <img
                                         alt={`لوگوی ${studio.name}`}
                                         className="size-full object-cover"
-                                        loading="lazy"
+                                        decoding="async"
+                                                loading="lazy"
                                         src={studio.logo_url}
                                     />
                                 ) : (
@@ -2217,7 +2224,8 @@ function PersonalizedHomePanel({
                                                                         item.title
                                                                     }
                                                                     className="relative z-[1] size-full object-contain p-1 transition duration-500 group-hover:scale-[1.025]"
-                                                                    loading="lazy"
+                                                                    decoding="async"
+                                                loading="lazy"
                                                                     src={preview}
                                                                 />
                                                             </>
@@ -2381,24 +2389,16 @@ function PersonalizedHomePanel({
                                             >
                                                 <span className="relative block aspect-[4/3] overflow-hidden bg-[#050914] sm:aspect-[16/10]">
                                                     {preview ? (
-                                                        <>
-                                                            <img
-                                                                aria-hidden="true"
-                                                                alt=""
-                                                                className="absolute inset-0 size-full scale-110 object-cover opacity-40 blur-2xl"
-                                                                loading="lazy"
-                                                                src={preview}
-                                                            />
-                                                            <img
-                                                                alt={
-                                                                    media?.alt ??
-                                                                    item.title
-                                                                }
-                                                                className="relative z-[1] size-full object-contain p-1.5 transition duration-500 group-hover:scale-[1.025]"
-                                                                loading="lazy"
-                                                                src={preview}
-                                                            />
-                                                        </>
+                                                        <img
+                                                            alt={
+                                                                media?.alt ??
+                                                                item.title
+                                                            }
+                                                            className="relative z-[1] size-full object-contain p-1.5 transition duration-300 group-hover:scale-[1.02]"
+                                                            decoding="async"
+                                                            loading="lazy"
+                                                            src={preview}
+                                                        />
                                                     ) : (
                                                         <span className="grid size-full place-items-center bg-[linear-gradient(145deg,#151d31,#0b1120)] text-indigo-200/20">
                                                             <Newspaper
@@ -2459,7 +2459,8 @@ function PersonalizedHomePanel({
                                                     <img
                                                         alt={event.game.name}
                                                         className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                                                        loading="lazy"
+                                                        decoding="async"
+                                                loading="lazy"
                                                         src={event.game.image_url}
                                                     />
                                                 ) : (
@@ -2539,7 +2540,8 @@ function PersonalizedHomePanel({
                                                 <img
                                                     alt={game.name}
                                                     className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.05]"
-                                                    loading="lazy"
+                                                    decoding="async"
+                                                loading="lazy"
                                                     src={game.image_url}
                                                 />
                                             ) : (
@@ -2858,6 +2860,20 @@ function CampaignBanner({
         setActiveSlide(0);
     }, [activeSlide, slides.length]);
 
+    useEffect(() => {
+        if (slides.length < 2) return;
+
+        const nextSlide = slides[(activeSlide + 1) % slides.length];
+        const source =
+            window.innerWidth <= 640 && nextSlide.mobile_image_url
+                ? nextSlide.mobile_image_url
+                : nextSlide.desktop_image_url;
+
+        const image = new Image();
+        image.decoding = "async";
+        image.src = source;
+    }, [activeSlide, slides]);
+
     if (!slides.length) {
         if (variant === "signed-in") return null;
 
@@ -2905,25 +2921,6 @@ function CampaignBanner({
             <div
                 className={`pn-neon-panel pn-neon-panel--campaign relative w-full overflow-hidden rounded-[24px] bg-[#050914] shadow-[0_26px_80px_-38px_rgba(79,70,229,.7)] ${shellClass}`}
             >
-                <picture
-                    aria-hidden="true"
-                    className="absolute inset-0 block size-full"
-                >
-                    <source
-                        media="(max-width: 640px)"
-                        srcSet={
-                            slide.mobile_image_url ??
-                            slide.desktop_image_url
-                        }
-                    />
-                    <img
-                        alt=""
-                        className="size-full scale-110 object-cover opacity-40 blur-2xl saturate-125"
-                        decoding="async"
-                        src={slide.desktop_image_url}
-                    />
-                </picture>
-
                 <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,.26),rgba(2,6,23,.04)_34%,rgba(2,6,23,.04)_66%,rgba(2,6,23,.26))]" />
 
                 <picture className="relative z-[1] block w-full sm:absolute sm:inset-0 sm:size-full">
@@ -3121,39 +3118,6 @@ export default function Home({
             delete root.dataset.pnScrolling;
         };
     }, []);
-
-    useEffect(() => {
-        const root = storefrontRootRef.current;
-        if (!root || !("IntersectionObserver" in window)) return;
-
-        const images = Array.from(
-            root.querySelectorAll<HTMLImageElement>('img[loading="lazy"]'),
-        );
-
-        const preloadMargin =
-            window.innerWidth < 768 ? "520px 0px" : "900px 0px";
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                for (const entry of entries) {
-                    if (!entry.isIntersecting) continue;
-
-                    const image = entry.target as HTMLImageElement;
-                    image.loading = "eager";
-                    image.fetchPriority = "auto";
-                    observer.unobserve(image);
-                }
-            },
-            {
-                rootMargin: preloadMargin,
-                threshold: 0.01,
-            },
-        );
-
-        images.forEach((image) => observer.observe(image));
-
-        return () => observer.disconnect();
-    }, [personalizedHome]);
 
     return (
         <div
