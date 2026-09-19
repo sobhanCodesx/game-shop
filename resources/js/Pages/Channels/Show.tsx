@@ -7,6 +7,7 @@ import {
     ListVideo,
     Play,
     Radio,
+    Radar,
     Store,
     Users,
 } from "lucide-react";
@@ -40,6 +41,14 @@ interface Channel {
     subscribers_count: number;
     videos_count: number;
     is_subscribed: boolean;
+    watch: {
+        active: boolean;
+        mode: "off" | "smart" | "direct";
+        source_count: number;
+        direct_source_count: number;
+        source_labels: string[];
+        last_checked_at: string | null;
+    };
     studio: { name: string; url: string; logo_url: string | null } | null;
 }
 
@@ -166,15 +175,44 @@ export default function ChannelShow({
                             )}
                             {channel.studio && <Link className="mt-3 inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1.5 text-[11px] font-black text-violet-400 transition hover:bg-violet-500/20" href={channel.studio.url}>{channel.studio.logo_url && <img alt="" className="size-5 rounded-full object-cover" src={channel.studio.logo_url} />}ساخته‌شده توسط {channel.studio.name}</Link>}
                         </div>
-                        <Button
-                            className="w-full shrink-0 font-black sm:w-auto sm:min-w-28"
-                            onPress={subscribe}
-                            variant={
-                                channel.is_subscribed ? "secondary" : "primary"
-                            }
-                        >
-                            {channel.is_subscribed ? "مشترک هستید" : "عضویت"}
-                        </Button>
+                        <div className="w-full shrink-0 sm:w-auto">
+                            <Button
+                                className={`w-full font-black sm:min-w-40 ${
+                                    channel.is_subscribed
+                                        ? "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                                        : ""
+                                }`}
+                                onPress={subscribe}
+                                startContent={
+                                    <Radar
+                                        className={
+                                            channel.is_subscribed
+                                                ? "text-emerald-300"
+                                                : undefined
+                                        }
+                                        size={16}
+                                    />
+                                }
+                                variant={
+                                    channel.is_subscribed
+                                        ? "secondary"
+                                        : "primary"
+                                }
+                            >
+                                {channel.is_subscribed
+                                    ? "Nexus Watch فعال"
+                                    : "زیر نظر بگیر"}
+                            </Button>
+
+                            {channel.watch.active && (
+                                <div className="mt-2 flex max-w-[260px] items-center justify-center gap-2 rounded-xl border border-emerald-400/10 bg-emerald-400/[0.055] px-3 py-2 text-[9px] font-bold leading-4 text-emerald-300/80 sm:justify-start">
+                                    <span className="size-1.5 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.8)]" />
+                                    <span>
+                                        تغییرات مهم این بازی رو خود Nexus برات چک می‌کنه
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </section>
                     {storeInfo && (
                         <section
