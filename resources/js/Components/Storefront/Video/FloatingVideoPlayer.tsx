@@ -274,8 +274,8 @@ export default function FloatingVideoPlayer({
                 <div
                     className={
                         isFloating
-                            ? "playnexus-player-frame fixed bottom-20 right-3 z-[60] aspect-video w-[min(88vw,390px)] overflow-hidden rounded-[20px] bg-black shadow-2xl shadow-black/50 ring-1 ring-white/20 sm:bottom-5 sm:right-5 sm:rounded-[24px]"
-                            : "playnexus-player-frame absolute inset-0 overflow-hidden rounded-[24px] sm:rounded-[28px] lg:rounded-[32px]"
+                            ? "playnexus-player-frame fixed bottom-20 right-3 z-[60] aspect-video w-[min(88vw,390px)] overflow-hidden rounded-[22px] bg-black shadow-2xl shadow-black/50 ring-1 ring-white/20 sm:bottom-5 sm:right-5 sm:rounded-[26px]"
+                            : "playnexus-player-frame absolute inset-0 overflow-hidden rounded-[28px] sm:rounded-[32px] lg:rounded-[36px]"
                     }
                     style={
                         isFloating
