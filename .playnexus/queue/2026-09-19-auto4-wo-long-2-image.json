@@ -1,0 +1,12 @@
+{
+  "job_id": "20260919-auto4-wo-long-2-image",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 59,
+    "slot": "media",
+    "source_url": "https://teamninja-studio.com/wolong2/assets/images/ogp.jpg",
+    "name": "wo-long-2-wings-of-ember-release-date.jpg",
+    "alt": "Wo Long 2 Wings of Ember و تاریخ انتشار مارس ۲۰۲۷"
+  }
+}
