@@ -1,0 +1,7 @@
+{
+  "job_id": "verify-feed-54-published-20260919",
+  "tool": "get_feed",
+  "arguments": {
+    "id": 54
+  }
+}
