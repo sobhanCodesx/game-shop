@@ -13,6 +13,10 @@ use Illuminate\Http\Request;
 
 class FeedService
 {
+    public function __construct(
+        private readonly UserGamingRelevanceService $relevance,
+    ) {}
+
     public const TYPES = ['post', 'news', 'article', 'video', 'clip', 'trailer', 'game_update', 'review', 'image'];
 
     public function paginate(Request $request, string $tab = 'for-you', int $perPage = 10): LengthAwarePaginator
@@ -126,6 +130,51 @@ class FeedService
         $contents = $this->feedQuery()->whereBelongsTo($game)->latest('published_at')->latest('id')->limit($limit)->get();
 
         return $this->mapItems($contents, $request->user());
+    }
+
+    public function smartForProfile(Request $request, array $profile, int $limit = 8): array
+    {
+        $gameIds = array_slice(array_keys($profile['game_scores'] ?? []), 0, 16);
+
+        if ($gameIds === []) {
+            return [];
+        }
+
+        $candidateLimit = max(40, $limit * 8);
+        $candidates = $this->feedQuery()
+            ->whereIn('game_id', $gameIds)
+            ->where('published_at', '>=', now()->subDays(60))
+            ->latest('published_at')
+            ->latest('id')
+            ->limit($candidateLimit)
+            ->get();
+
+        $ranked = $this->relevance->rankContents($candidates, $profile)->take($limit);
+        $mapped = collect($this->mapItems($ranked->pluck('content'), $request->user()))->keyBy('id');
+
+        return $ranked
+            ->map(function (array $rank) use ($mapped) {
+                /** @var SocialContent $content */
+                $content = $rank['content'];
+                $item = $mapped->get($content->id);
+
+                if (! $item) {
+                    return null;
+                }
+
+                return [
+                    ...$item,
+                    'relevance' => [
+                        'priority' => $rank['priority'],
+                        'reason' => $rank['reason'],
+                        'signal_key' => $rank['signal_key'],
+                        'signal_label' => $rank['signal_label'],
+                    ],
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public function latestForGames(Request $request, array $gameIds, int $limit = 8): array
