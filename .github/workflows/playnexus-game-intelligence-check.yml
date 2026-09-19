@@ -3,6 +3,11 @@ name: PlayNexus Game Intelligence Check
 on:
   push:
     paths:
+      - 'app/Http/Controllers/FeedController.php'
+      - 'app/Http/Controllers/StudioController.php'
+      - 'resources/js/Components/Storefront/Navigation/StorefrontPanels.tsx'
+      - 'resources/js/Components/Storefront/Navigation/StorefrontStories.tsx'
+      - 'tests/Feature/SearchPerformanceSeoTest.php'
       - 'resources/js/Components/Storefront/Video/FloatingVideoPlayer.tsx'
       - 'resources/css/app.css'
       - 'app/Services/FeedService.php'
@@ -40,6 +45,11 @@ on:
       - '.github/workflows/playnexus-game-intelligence-check.yml'
   pull_request:
     paths:
+      - 'app/Http/Controllers/FeedController.php'
+      - 'app/Http/Controllers/StudioController.php'
+      - 'resources/js/Components/Storefront/Navigation/StorefrontPanels.tsx'
+      - 'resources/js/Components/Storefront/Navigation/StorefrontStories.tsx'
+      - 'tests/Feature/SearchPerformanceSeoTest.php'
       - 'resources/js/Components/Storefront/Video/FloatingVideoPlayer.tsx'
       - 'resources/css/app.css'
       - 'app/Services/FeedService.php'
@@ -107,6 +117,8 @@ jobs:
           php -l app/Services/GameRadarService.php
           php -l app/Services/FeedService.php
           php -l app/Http/Controllers/HomeController.php
+          php -l app/Http/Controllers/FeedController.php
+          php -l app/Http/Controllers/StudioController.php
           php -l app/Http/Middleware/HandleInertiaRequests.php
           php -l routes/console.php
           php -l database/migrations/2026_09_19_120000_create_game_events_table.php
@@ -115,6 +127,7 @@ jobs:
           php -l tests/Feature/GameSourceMonitorTest.php
           php -l tests/Feature/FollowedGameWatchTest.php
           php -l tests/Feature/PersonalizedEditorialFeedTest.php
+          php -l tests/Feature/SearchPerformanceSeoTest.php
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -126,7 +139,7 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
-        run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php tests/Feature/FollowedGameWatchTest.php tests/Feature/PersonalizedEditorialFeedTest.php
+        run: php artisan test tests/Feature/GameEventTest.php tests/Feature/GameSourceMonitorTest.php tests/Feature/FollowedGameWatchTest.php tests/Feature/PersonalizedEditorialFeedTest.php tests/Feature/SearchPerformanceSeoTest.php
 
       - name: Set up Node
         uses: actions/setup-node@v4
