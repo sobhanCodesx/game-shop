@@ -69,7 +69,13 @@ class HomeController extends Controller
         $socialImage = url((string) ($slides->first()['desktop_image_url'] ?? $logo));
         $socialImageAlt = (string) ($slides->first()['alt'] ?? $slides->first()['title'] ?? "لوگوی {$siteName}");
         $seoTitle = trim((string) ($settings['seo_title'] ?? '')) ?: "فروشگاه بازی و تجهیزات گیمینگ | {$siteName}";
-        $seoDescription = trim((string) ($settings['seo_description'] ?? '')) ?: "خرید بازی، کنسول و تجهیزات گیمینگ با تضمین اصالت و پشتیبانی تخصصی از {$siteName}.";
+        $seoDescription = trim((string) ($settings['seo_description'] ?? ''));
+        if ($seoDescription === '') {
+            $seoDescription = "اخبار، ویدیوها، بازی‌ها، استودیوها و تازه‌های دنیای گیمینگ را در {$siteName} دنبال کنید؛ همراه با فروشگاه تخصصی بازی و تجهیزات گیمینگ.";
+        } elseif (mb_strlen($seoDescription) < 110) {
+            $seoDescription = trim($seoDescription.' اخبار، ویدیوها، بازی‌ها، استودیوها و تازه‌های دنیای گیمینگ را هم در پلی نکسوس دنبال کنید.');
+        }
+        $seoDescription = mb_substr($seoDescription, 0, 155);
         $seo = Seo::page([
             'title' => $seoTitle,
             'description' => $seoDescription,
@@ -118,7 +124,7 @@ class HomeController extends Controller
         return Inertia::render('Home', [
             ...$seo,
             'personalizedHome' => $personalizedHome,
-            'latestFeed' => $feed->latestImportant($request, 8),
+            'latestFeed' => $feed->latestImportantPreview($request, 8),
             'latestStudios' => $latestStudios,
             'gameRadar' => (function () use ($radarItems) {
                 $items = $radarItems;
