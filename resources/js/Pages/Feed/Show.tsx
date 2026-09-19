@@ -15,7 +15,7 @@ import {
     ShoppingBag,
     Video,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import FeedCommentsSheet from "../../Components/Storefront/Feed/FeedCommentsSheet";
 import FeedMediaSlider from "../../Components/Storefront/Feed/FeedMediaSlider";
@@ -95,6 +95,25 @@ export default function FeedShow({
     const [commentsOpen, setCommentsOpen] = useState(false);
     const [feedback, setFeedback] = useState("");
 
+    useEffect(() => {
+        const reset = () =>
+            window.scrollTo({
+                top: 0,
+                left: 0,
+                behavior: "auto",
+            });
+
+        // Inertia/browser scroll restoration can race with the first paint.
+        // Reset immediately and once more after layout settles so feed details
+        // always open from the author/title, never halfway down at the media.
+        reset();
+        const firstFrame = window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(reset);
+        });
+
+        return () => window.cancelAnimationFrame(firstFrame);
+    }, [item.id]);
+
     const requireAuth = () => {
         if (auth.user) return true;
         router.visit(
@@ -166,7 +185,7 @@ export default function FeedShow({
     return (
         <StorefrontLayout>
             <Seo seo={seo} />
-            <main className="mx-auto w-full max-w-6xl pb-14 pt-2 sm:px-4 sm:pt-4 lg:pt-6">
+            <main className="pn-feed-page pn-feed-detail mx-auto w-full max-w-6xl pb-14 pt-2 sm:px-4 sm:pt-4 lg:pt-6">
                 <div className="mx-auto max-w-[820px] px-4 sm:px-0">
                     <nav aria-label="مسیر صفحه" className="mb-1.5">
                         <ol className="flex min-w-0 items-center gap-2 overflow-hidden text-[11px] text-[var(--store-muted)] sm:text-xs">
@@ -205,7 +224,7 @@ export default function FeedShow({
                     </Link>
                 </div>
 
-                <article className="mx-auto overflow-hidden border-y border-[var(--store-border)] bg-[var(--store-panel)] shadow-[0_24px_70px_-58px_rgba(15,23,42,.9)] sm:max-w-[820px] sm:rounded-[26px] sm:border">
+                <article className="pn-feed-card pn-feed-card--detail mx-auto overflow-hidden border-y border-[var(--store-border)] shadow-[0_24px_70px_-58px_rgba(15,23,42,.9)] sm:max-w-[820px] sm:rounded-[26px] sm:border">
                     <header className="px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
                         <div className="flex items-center gap-2.5">
                             {item.author.url ? (
@@ -261,7 +280,7 @@ export default function FeedShow({
                     {item.media.length > 0 && (
                         <section
                             aria-label="رسانه‌های مطلب"
-                            className="mx-3 overflow-hidden rounded-2xl border border-[var(--store-border)] bg-black [--feed-media-max-height:300px] sm:mx-6 sm:[--feed-media-max-height:390px] lg:[--feed-media-max-height:430px]"
+                            className="pn-feed-media mx-3 overflow-hidden rounded-2xl border border-[var(--store-border)] [--feed-media-max-height:300px] sm:mx-6 sm:[--feed-media-max-height:390px] lg:[--feed-media-max-height:430px]"
                         >
                             <FeedMediaSlider
                                 media={item.media}
