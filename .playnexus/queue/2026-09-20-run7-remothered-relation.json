@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-20-run7-remothered-relation",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query($q: String!) { search(query: $q, first: 5) { games { id name slug status releaseDate } } }",
-    "variables": {"q": "Remothered Red Nun's Legacy"}
-  }
-}
