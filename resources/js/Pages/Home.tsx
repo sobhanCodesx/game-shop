@@ -1208,12 +1208,7 @@ function PersonalizedHomePanel({
 
     const radarCloud: PersonalizedMediaCloudItem[] = [];
     data.radar.forEach((item) => {
-        const imageUrl =
-            item.banner_url ??
-            item.cover_url ??
-            item.psn?.image_url ??
-            item.xbox?.image_url ??
-            null;
+        const imageUrl = item.banner_url ?? item.cover_url ?? null;
         if (!imageUrl) return;
 
         const identity = normalizeTitle(item.title);
@@ -1325,10 +1320,6 @@ function PersonalizedHomePanel({
                                         data-source={item.source}
                                         href={item.url}
                                         key={item.key}
-                                        style={{
-                                            ["--pn-cloud-index" as string]:
-                                                index,
-                                        }}
                                         title={item.title}
                                     >
                                         <img
