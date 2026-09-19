@@ -32,7 +32,7 @@ class SocialContentObserver
 
     private function dispatch(SocialContent $content): void
     {
-        if ($content->game_id && ($content->notify_followers ?? true)) {
+        if ($content->game_id) {
             BroadcastContentPublished::dispatch('social', $content->id)->afterCommit();
         }
     }
