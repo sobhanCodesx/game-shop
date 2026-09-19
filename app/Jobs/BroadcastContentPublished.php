@@ -22,8 +22,9 @@ class BroadcastContentPublished implements ShouldQueue
         public readonly int $contentId,
     ) {}
 
-    public function handle(GameEventService $gameEvents): void
+    public function handle(?GameEventService $gameEvents = null): void
     {
+        $gameEvents ??= app(GameEventService::class);
         $content = match ($this->contentType) {
             'product' => Product::query()->with('game:id,name')->find($this->contentId),
             default => SocialContent::query()->with('game:id,name')->find($this->contentId),
