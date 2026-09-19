@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\ContentAgentMediaService;
 use App\Services\ContentAgentService;
 use App\Services\FeedService;
+use App\Services\GraphQL\PlayNexusGraphService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +19,7 @@ class ContentAgentMcpController extends Controller
     private const MODERN_PROTOCOL = '2026-07-28';
     private const LEGACY_PROTOCOL = '2025-11-25';
 
-    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia): Response
+    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, PlayNexusGraphService $graph): Response
     {
         $payload = $request->json()->all();
 
@@ -43,7 +44,7 @@ class ContentAgentMcpController extends Controller
                 'initialize' => $this->rpcResult($id, $this->initializeResult($params)),
                 'server/discover' => $this->rpcResult($id, $this->discoverResult()),
                 'tools/list' => $this->rpcResult($id, $this->toolsListResult()),
-                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia)),
+                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia, $graph)),
                 'ping' => $this->rpcResult($id, new \stdClass()),
                 default => $this->rpcError($id, -32601, 'Method not found.'),
             };
@@ -97,12 +98,18 @@ class ContentAgentMcpController extends Controller
         ];
     }
 
-    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia): array
+    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, PlayNexusGraphService $graph): array
     {
         $name = (string) ($params['name'] ?? '');
         $arguments = is_array($params['arguments'] ?? null) ? $params['arguments'] : [];
 
         $result = match ($name) {
+            'describe_playnexus_graph' => $graph->describe(),
+            'query_playnexus_graph' => $graph->execute(
+                (string) ($arguments['query'] ?? ''),
+                is_array($arguments['variables'] ?? null) ? $arguments['variables'] : [],
+                is_string($arguments['operation_name'] ?? null) ? $arguments['operation_name'] : null,
+            ),
             'search_games' => $contentAgent->searchGames($arguments),
             'search_studios' => $contentAgent->searchStudios($arguments),
             'search_platforms' => $contentAgent->searchPlatforms($arguments),
@@ -183,6 +190,43 @@ class ContentAgentMcpController extends Controller
         ];
 
         return [
+            [
+                'name' => 'describe_playnexus_graph',
+                'description' => 'Discover the read-only PlayNexus Intelligence Graph. Returns SDL, limits, guidance and useful example queries. Use this when you need to understand relationships before querying.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => new \stdClass(),
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'query_playnexus_graph',
+                'description' => 'Run a safe read-only GraphQL query across PlayNexus games, studios, platforms, products, content, collections, categories and cached Game Radar. Prefer this for relational discovery/context, then use dedicated MCP action tools for writes.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'query' => [
+                            'type' => 'string',
+                            'minLength' => 1,
+                            'maxLength' => (int) config('content_agent.graphql.max_query_bytes', 24000),
+                            'description' => 'A GraphQL query operation. Mutations/subscriptions are rejected.',
+                        ],
+                        'variables' => [
+                            'type' => 'object',
+                            'additionalProperties' => true,
+                            'description' => 'GraphQL variables object.',
+                        ],
+                        'operation_name' => [
+                            'type' => ['string', 'null'],
+                            'maxLength' => 120,
+                        ],
+                    ],
+                    'required' => ['query'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
             $this->searchTool('search_games', 'Search PlayNexus games before linking or creating content.'),
             $this->searchTool('search_studios', 'Search PlayNexus game studios before linking or creating content.'),
             [
@@ -573,15 +617,15 @@ class ContentAgentMcpController extends Controller
 
     private function instructions(): string
     {
-        return 'PlayNexus Content Admin MCP v2.1. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary media/files use the dedicated chunked asset tools; the MCP never fetches arbitrary remote URLs. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+        return 'PlayNexus Content Admin MCP v3.0. The preferred reasoning path is the read-only PlayNexus Intelligence Graph: use describe_playnexus_graph when needed, then query_playnexus_graph to gather relational context in one request. Use dedicated MCP action tools for all writes.  Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary media/files use the dedicated chunked asset tools; the MCP never fetches arbitrary remote URLs. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
     }
 
     private function serverInfo(): array
     {
         return [
             'name' => 'playnexus-content-agent',
-            'title' => 'PlayNexus Content Admin Agent',
-            'version' => '2.1.0',
+            'title' => 'PlayNexus AI Content & Intelligence Agent',
+            'version' => '3.0.0',
         ];
     }
 
