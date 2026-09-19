@@ -1,7 +1,0 @@
-{
-  "job_id": "20260919-main-feed-58-publish-test",
-  "tool": "publish_feed",
-  "arguments": {
-    "id": 58
-  }
-}
