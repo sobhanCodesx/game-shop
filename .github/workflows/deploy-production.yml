@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '.playnexus/queue/**'
   workflow_dispatch:
     inputs:
       deploy:
@@ -165,9 +167,9 @@ jobs:
           {
             echo "### PlayNexus deployment"
             echo ""
-            echo "- Commit: \`$GITHUB_SHA\`"
-            echo "- Ref: \`$GITHUB_REF\`"
-            echo "- Package SHA-256: \`${{ steps.package.outputs.sha256 || 'not-built' }}\`"
+            echo "- Commit: `$GITHUB_SHA`"
+            echo "- Ref: `$GITHUB_REF`"
+            echo "- Package SHA-256: `${{ steps.package.outputs.sha256 || 'not-built' }}`"
             if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
               echo "- Production transport: HTTPS deployment agent"
             else
