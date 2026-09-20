@@ -80,6 +80,13 @@ class MobileApiTest extends TestCase
             ->assertJsonPath('code', 'mobile_unauthenticated');
     }
 
+    public function test_optional_mobile_route_falls_back_to_guest_when_token_is_stale(): void
+    {
+        $this->withToken('stale-token-from-another-environment')
+            ->getJson('/api/v1/stories')
+            ->assertOk();
+    }
+
     public function test_mobile_cart_is_stateless_and_resolves_server_prices(): void
     {
         $user = User::factory()->create([
