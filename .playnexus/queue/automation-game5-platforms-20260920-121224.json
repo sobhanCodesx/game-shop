@@ -1,0 +1,1 @@
+{"tool":"query_playnexus_graph","arguments":{"query":"query { platforms(first: 30) { nodes { id name slug } } }"}}
