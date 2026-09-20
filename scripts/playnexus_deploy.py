@@ -70,7 +70,12 @@ def _decode_response(response: urllib.response.addinfourl) -> dict:
     try:
         parsed = json.loads(raw.decode("utf-8"))
     except Exception as exc:
-        raise RuntimeError("PlayNexus returned a non-JSON response.") from exc
+        status = getattr(response, "status", "unknown")
+        content_type = response.headers.get("Content-Type", "unknown")
+        raise RuntimeError(
+            "PlayNexus returned a non-JSON response "
+            f"(HTTP {status}, Content-Type: {content_type})."
+        ) from exc
     if not isinstance(parsed, dict):
         raise RuntimeError("PlayNexus returned an unexpected JSON payload.")
     return parsed
@@ -212,7 +217,8 @@ def main() -> int:
 
     print(
         f"Uploading signed deployment package: {size / (1024 * 1024):.2f} MiB "
-        f"in {total_chunks} chunks"
+        f"in {total_chunks} chunks",
+        flush=True,
     )
 
     with package.open("rb") as handle:
@@ -244,7 +250,7 @@ def main() -> int:
             operation_id = received_id
 
             if index == total_chunks - 1 or (index + 1) % max(1, total_chunks // 10) == 0:
-                print(f"Upload progress: {index + 1}/{total_chunks}")
+                print(f"Upload progress: {index + 1}/{total_chunks}", flush=True)
 
     state = request_json(
         "POST",
@@ -287,7 +293,8 @@ def main() -> int:
 
         print(
             f"Server stage: {state.get('stage', 'unknown')} "
-            f"({state.get('progress', 0)}%)"
+            f"({state.get('progress', 0)}%)",
+            flush=True,
         )
     else:
         die("Deployment exceeded the expected number of server stages.")
