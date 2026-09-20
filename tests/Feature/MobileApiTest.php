@@ -138,7 +138,9 @@ class MobileApiTest extends TestCase
         $this->withToken($token)
             ->getJson('/api/v1/watch-progress')
             ->assertOk()
-            ->assertJsonPath("progress.{$video->id}.position", 98);
+            ->assertJsonPath("progress.{$video->id}.position", 98)
+            ->assertJsonPath("progress.{$video->id}.content.id", $video->id)
+            ->assertJsonPath('items.0.content.id', $video->id);
     }
 
 
