@@ -123,6 +123,44 @@ class MobileCatalogController extends Controller
             $radarItems,
         );
 
+        $latestVideos = SocialContent::query()
+            ->published()
+            ->where('type', 'video')
+            ->with(['game:id,name,slug,cover', 'media'])
+            ->latest('published_at')
+            ->latest('id')
+            ->limit(10)
+            ->get()
+            ->map(fn (SocialContent $video) => $storefront->content($video))
+            ->values();
+
+        $latestGames = Game::query()
+            ->whereIn('status', ['active', 'published'])
+            ->with('studio:id,name,slug,logo,status')
+            ->latest()
+            ->latest('id')
+            ->limit(10)
+            ->get()
+            ->map(fn (Game $game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'slug' => $game->slug,
+                'developer' => $game->developer,
+                'publisher' => $game->publisher,
+                'cover_url' => MediaStorage::url($game->cover),
+                'background_url' => MediaStorage::url($game->background),
+                'created_at' => $game->created_at?->toISOString(),
+                'studio' => $game->studio?->status === 'active' ? [
+                    'id' => $game->studio->id,
+                    'name' => $game->studio->name,
+                    'slug' => $game->studio->slug,
+                    'logo_url' => MediaStorage::url($game->studio->logo),
+                ] : null,
+            ])
+            ->values();
+
+        $nexusLatest = $this->nexusLatest($request, $storefront);
+
         return response()->json([
             'settings' => $settings,
             'slides' => $slides,
@@ -146,6 +184,9 @@ class MobileCatalogController extends Controller
                 ->map($productMap)
                 ->values(),
             'latest_feed' => $feed->latestImportantPreview($request, 10),
+            'latest_videos' => $latestVideos,
+            'latest_games' => $latestGames,
+            'nexus_latest' => $nexusLatest,
             'latest_studios' => $studios,
             'game_radar' => $radarPreview,
             'content_sections' => $this->contentSections($request, $prices, $storefront),
@@ -427,6 +468,99 @@ class MobileCatalogController extends Controller
     public function radar(GameRadarService $radar): JsonResponse
     {
         return response()->json($radar->linkedSnapshot());
+    }
+
+    private function nexusLatest(
+        Request $request,
+        StorefrontDataService $storefront,
+    ): Collection {
+        $content = SocialContent::query()
+            ->published()
+            ->whereIn('type', ['post', 'video'])
+            ->with(['game:id,name,slug,cover', 'media'])
+            ->latest('published_at')
+            ->latest('id')
+            ->limit(4)
+            ->get()
+            ->map(function (SocialContent $item) use ($storefront) {
+                $card = $storefront->content($item);
+
+                return [
+                    'key' => 'content-'.$item->id,
+                    'kind' => $item->type === 'video' ? 'video' : 'feed',
+                    'id' => $item->id,
+                    'title' => $item->title,
+                    'subtitle' => $item->game?->name ?? 'PlayNexus',
+                    'slug' => $item->slug,
+                    'image_url' => $card['thumbnail_url'] ?? null,
+                    'url' => $card['url'] ?? null,
+                    'created_at' => ($item->published_at ?? $item->created_at)?->toISOString(),
+                ];
+            });
+
+        $studios = Studio::query()
+            ->where('status', 'active')
+            ->latest()
+            ->limit(3)
+            ->get()
+            ->map(fn (Studio $studio) => [
+                'key' => 'studio-'.$studio->id,
+                'kind' => 'studio',
+                'id' => $studio->id,
+                'title' => $studio->name,
+                'subtitle' => 'استودیو جدید',
+                'slug' => $studio->slug,
+                'image_url' => MediaStorage::url($studio->background ?: $studio->logo),
+                'url' => route('studios.show', $studio->slug, false),
+                'created_at' => $studio->created_at?->toISOString(),
+            ]);
+
+        $games = Game::query()
+            ->whereIn('status', ['active', 'published'])
+            ->latest()
+            ->limit(3)
+            ->get()
+            ->map(fn (Game $game) => [
+                'key' => 'game-'.$game->id,
+                'kind' => 'game',
+                'id' => $game->id,
+                'title' => $game->name,
+                'subtitle' => $game->developer ?: 'بازی جدید',
+                'slug' => $game->slug,
+                'image_url' => MediaStorage::url($game->background ?: $game->cover),
+                'url' => route('channels.show', $game->slug, false),
+                'created_at' => $game->created_at?->toISOString(),
+            ]);
+
+        $products = Product::query()
+            ->with($this->productRelations())
+            ->publiclyVisible()
+            ->latest()
+            ->limit(3)
+            ->get()
+            ->map(function (Product $product) use ($request, $storefront) {
+                $card = $storefront->product($product, $request->user());
+
+                return [
+                    'key' => 'product-'.$product->id,
+                    'kind' => 'product',
+                    'id' => $product->id,
+                    'title' => $product->title,
+                    'subtitle' => $card['category'] ?? 'محصول جدید',
+                    'slug' => $product->slug,
+                    'image_url' => $card['cover_url'] ?? null,
+                    'url' => route('products.show', $product->slug, false),
+                    'created_at' => $product->created_at?->toISOString(),
+                ];
+            });
+
+        return $content
+            ->concat($studios)
+            ->concat($games)
+            ->concat($products)
+            ->sortByDesc(fn (array $item) => $item['created_at'] ?? '')
+            ->take(10)
+            ->values();
     }
 
     private function contentSections(
