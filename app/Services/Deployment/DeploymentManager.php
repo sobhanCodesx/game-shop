@@ -108,7 +108,16 @@ final class DeploymentManager
 
     public function verify(string $id, int $userId): array
     {
-        $state = $this->owned($id, $userId); $dir = $this->paths->operation($id); $stage = $dir.'/staging';
+        $state = $this->owned($id, $userId);
+        if ($state['status'] === 'verified') {
+            return $state;
+        }
+        if ($state['status'] !== 'uploaded') {
+            throw new RuntimeException('بسته در وضعیت قابل Verify نیست.');
+        }
+
+        $dir = $this->paths->operation($id);
+        $stage = $dir.'/staging';
         if (is_dir($stage)) File::deleteDirectory($stage);
         $manifest = $this->verifier->verify($dir.'/package.zip', $stage);
 
