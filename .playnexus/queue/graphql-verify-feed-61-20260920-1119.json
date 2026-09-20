@@ -1,0 +1,7 @@
+{
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "{ feeds(first: 5, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title status publishedAt game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }",
+    "variables": {}
+  }
+}
