@@ -58,16 +58,52 @@ final class DeploymentManager
 
     public function complete(string $id, int $userId): array
     {
-        $state = $this->owned($id, $userId); $dir = $this->paths->operation($id); $archive = $dir.'/package.zip';
-        $lock = fopen($dir.'/upload.lock', 'c+'); if (! $lock || ! flock($lock, LOCK_EX | LOCK_NB)) throw new RuntimeException('عملیات دیگری روی این بسته در حال اجراست.');
+        $state = $this->owned($id, $userId);
+        if (in_array($state['status'], ['uploaded', 'verified', 'running', 'completed'], true)) {
+            return $state;
+        }
+
+        $dir = $this->paths->operation($id);
+        $archive = $dir.'/package.zip';
+        $lock = fopen($dir.'/upload.lock', 'c+');
+        if (! $lock || ! flock($lock, LOCK_EX | LOCK_NB)) {
+            throw new RuntimeException('عملیات دیگری روی این بسته در حال اجراست.');
+        }
+
         try {
-            $target = fopen($archive.'.tmp', 'wb'); if (! $target) throw new RuntimeException('ساخت فایل بسته ممکن نیست.');
-            for ($i = 0; $i < $state['total_chunks']; $i++) { $path = $dir.'/chunks/'.$i.'.part'; if (! is_file($path)) throw new RuntimeException("قطعه {$i} دریافت نشده است."); $source = fopen($path, 'rb'); stream_copy_to_stream($source, $target); fclose($source); }
+            $target = fopen($archive.'.tmp', 'wb');
+            if (! $target) {
+                throw new RuntimeException('ساخت فایل بسته ممکن نیست.');
+            }
+
+            for ($i = 0; $i < $state['total_chunks']; $i++) {
+                $path = $dir.'/chunks/'.$i.'.part';
+                if (! is_file($path)) {
+                    throw new RuntimeException("قطعه {$i} دریافت نشده است.");
+                }
+
+                $source = fopen($path, 'rb');
+                stream_copy_to_stream($source, $target);
+                fclose($source);
+            }
+
             fclose($target);
-            if (filesize($archive.'.tmp') !== $state['size']) throw new RuntimeException('اندازه فایل نهایی معتبر نیست.');
-            rename($archive.'.tmp', $archive); File::deleteDirectory($dir.'/chunks');
-            return $this->states->update($id, ['status' => 'uploaded', 'stage' => 'uploaded', 'progress' => 100]);
-        } finally { flock($lock, LOCK_UN); fclose($lock); }
+            if (filesize($archive.'.tmp') !== $state['size']) {
+                throw new RuntimeException('اندازه فایل نهایی معتبر نیست.');
+            }
+
+            rename($archive.'.tmp', $archive);
+            File::deleteDirectory($dir.'/chunks');
+
+            return $this->states->update($id, [
+                'status' => 'uploaded',
+                'stage' => 'uploaded',
+                'progress' => 100,
+            ]);
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
     }
 
     public function verify(string $id, int $userId): array
