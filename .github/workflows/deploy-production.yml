@@ -81,7 +81,6 @@ jobs:
           SESSION_DRIVER=array
           QUEUE_CONNECTION=sync
           INERTIA_SSR_ENABLED=true
-          PLAYNEXUS_CONTENT_AGENT_TOKEN=$PLAYNEXUS_CONTENT_AGENT_TOKEN
           EOF
           touch /tmp/playnexus-deploy.sqlite
           chmod 600 .env
