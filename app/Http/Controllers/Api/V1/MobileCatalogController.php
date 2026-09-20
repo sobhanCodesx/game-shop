@@ -3,19 +3,27 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\HomeSettingsController;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Game;
+use App\Models\HomeSection;
+use App\Models\HomeSetting;
 use App\Models\HomeSlide;
+use App\Models\Platform;
 use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\Studio;
 use App\Models\Ticket;
 use App\Services\FeedService;
+use App\Services\FollowedGameWatchService;
+use App\Services\GameEventService;
 use App\Services\GameRadarService;
 use App\Services\MediaStorage;
 use App\Services\ProductPriceService;
 use App\Services\SmartSearchService;
 use App\Services\StorefrontDataService;
+use App\Services\UserGamingRelevanceService;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -58,7 +66,13 @@ class MobileCatalogController extends Controller
         StorefrontDataService $storefront,
         FeedService $feed,
         GameRadarService $radar,
+        ProductPriceService $prices,
+        UserGamingRelevanceService $relevance,
+        GameEventService $gameEvents,
+        FollowedGameWatchService $watch,
     ): JsonResponse {
+        $settings = [...HomeSettingsController::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])];
+        $limit = max(1, min(30, (int) ($settings['products_limit'] ?? 12)));
         $relations = $this->productRelations();
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
 
@@ -100,16 +114,26 @@ class MobileCatalogController extends Controller
             ->filter(fn (array $item) => ($item['psn']['available'] ?? false) || ($item['xbox']['available'] ?? false))
             ->take(12)
             ->values();
+        $personalized = $this->personalizedHome(
+            $request,
+            $feed,
+            $relevance,
+            $gameEvents,
+            $watch,
+            $radarItems,
+        );
 
         return response()->json([
+            'settings' => $settings,
             'slides' => $slides,
             'categories' => $storefront->navigation(),
+            'personalized_home' => $personalized,
             'featured_products' => Product::query()
                 ->with($relations)
                 ->publiclyVisible()
                 ->where('featured', true)
                 ->latest()
-                ->limit(12)
+                ->limit($limit)
                 ->get()
                 ->map($productMap)
                 ->values(),
@@ -117,13 +141,16 @@ class MobileCatalogController extends Controller
                 ->with($relations)
                 ->publiclyVisible()
                 ->latest()
-                ->limit(12)
+                ->limit($limit)
                 ->get()
                 ->map($productMap)
                 ->values(),
             'latest_feed' => $feed->latestImportantPreview($request, 10),
             'latest_studios' => $studios,
             'game_radar' => $radarPreview,
+            'content_sections' => $this->contentSections($request, $prices, $storefront),
+            'fresh_content' => $this->freshContent($request, $prices),
+            'channels' => $this->homeChannels(),
         ]);
     }
 
@@ -386,6 +413,269 @@ class MobileCatalogController extends Controller
     public function radar(GameRadarService $radar): JsonResponse
     {
         return response()->json($radar->linkedSnapshot());
+    }
+
+    private function contentSections(
+        Request $request,
+        ProductPriceService $prices,
+        StorefrontDataService $storefront,
+    ): Collection {
+        return HomeSection::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(function (HomeSection $section) use ($request, $prices, $storefront) {
+                if ($section->content_type === 'products') {
+                    $query = Product::query()
+                        ->with($this->productRelations())
+                        ->publiclyVisible()
+                        ->when($section->query_type === 'featured', fn ($query) => $query->where('featured', true))
+                        ->when($section->query_type === 'popular', fn ($query) => $query->orderByDesc('sold_stock'))
+                        ->when($section->query_type === 'category', fn ($query) => $query->where('category_id', $section->category_id))
+                        ->when($section->query_type === 'manual', fn ($query) => $query->whereIn('id', $section->item_ids ?? []));
+
+                    if ($section->query_type !== 'popular') {
+                        $query->latest();
+                    }
+
+                    $items = $query
+                        ->limit($section->items_limit)
+                        ->get()
+                        ->map(fn (Product $product) => [
+                            ...$storefront->product($product, $request->user()),
+                            'pricing' => $prices->forUser($product, $request->user()),
+                        ]);
+                } elseif (in_array($section->content_type, ['categories', 'games', 'brands', 'platforms'], true)) {
+                    $model = match ($section->content_type) {
+                        'categories' => Category::class,
+                        'games' => Game::class,
+                        'brands' => Brand::class,
+                        'platforms' => Platform::class,
+                    };
+                    $imageField = match ($section->content_type) {
+                        'categories' => 'image',
+                        'games' => 'cover',
+                        'brands' => 'logo',
+                        'platforms' => 'icon',
+                    };
+
+                    $query = $model::query()
+                        ->whereIn('status', ['active', 'published'])
+                        ->when(
+                            $section->query_type === 'manual',
+                            fn ($query) => $query->whereIn('id', $section->item_ids ?? []),
+                        )
+                        ->when(
+                            $section->content_type === 'games' || $section->query_type !== 'manual',
+                            fn ($query) => $query->latest(),
+                        );
+
+                    $items = $query
+                        ->limit($section->items_limit)
+                        ->get()
+                        ->map(fn ($item) => [
+                            'id' => $item->id,
+                            'title' => $item->name,
+                            'slug' => $item->slug ?? null,
+                            'eyebrow' => match ($section->content_type) {
+                                'categories' => 'دسته‌بندی',
+                                'games' => 'بازی',
+                                'brands' => 'برند',
+                                'platforms' => 'پلتفرم',
+                            },
+                            'excerpt' => $item->description ?? $item->manufacturer ?? null,
+                            'image_url' => MediaStorage::url($item->{$imageField}),
+                        ]);
+                } else {
+                    $type = rtrim($section->content_type, 's');
+                    $query = SocialContent::query()
+                        ->published()
+                        ->where('type', $type)
+                        ->with(['game:id,name,slug,cover', 'media', 'relatedContent:id,thumbnail', 'relatedProduct:id', 'relatedProduct.coverMedia'])
+                        ->when($section->query_type === 'featured', fn ($query) => $query->where('featured', true))
+                        ->when($section->query_type === 'popular', fn ($query) => $query->orderByDesc('views'))
+                        ->when($section->query_type === 'manual', fn ($query) => $query->whereIn('id', $section->item_ids ?? []));
+
+                    if ($section->query_type !== 'popular') {
+                        $query->latest('published_at');
+                    }
+
+                    $items = $query
+                        ->limit($section->items_limit)
+                        ->get()
+                        ->map(fn (SocialContent $content) => $storefront->content($content));
+                }
+
+                return [
+                    ...$section->only(['id', 'title', 'subtitle', 'content_type', 'layout']),
+                    'items' => $items->values(),
+                ];
+            })
+            ->filter(fn (array $section) => $section['items']->isNotEmpty())
+            ->values();
+    }
+
+    private function freshContent(Request $request, ProductPriceService $prices): Collection
+    {
+        $cutoff = now()->subDays(14);
+
+        $products = Product::query()
+            ->with(['category:id,name', 'coverMedia'])
+            ->publiclyVisible()
+            ->where(fn ($query) => $query
+                ->where('published_at', '>=', $cutoff)
+                ->orWhere(fn ($query) => $query
+                    ->whereNull('published_at')
+                    ->where('created_at', '>=', $cutoff)))
+            ->orderByRaw('COALESCE(published_at, created_at) DESC')
+            ->limit(8)
+            ->get()
+            ->map(fn (Product $product) => [
+                'key' => 'product-'.$product->id,
+                'type' => 'product',
+                'id' => $product->id,
+                'title' => $product->title,
+                'slug' => $product->slug,
+                'image_url' => MediaStorage::url($product->coverMedia?->path),
+                'eyebrow' => $product->category?->name ?? 'محصول گیمینگ',
+                'published_at' => ($product->published_at ?? $product->created_at)->toISOString(),
+                'pricing' => $prices->forUser($product, $request->user()),
+            ]);
+
+        $videos = SocialContent::query()
+            ->published()
+            ->where('type', 'video')
+            ->where('published_at', '>=', $cutoff)
+            ->latest('published_at')
+            ->limit(8)
+            ->get()
+            ->map(fn (SocialContent $video) => [
+                'key' => 'video-'.$video->id,
+                'type' => 'video',
+                'id' => $video->id,
+                'title' => $video->title,
+                'slug' => $video->slug,
+                'image_url' => MediaStorage::url($video->thumbnail),
+                'eyebrow' => 'ویدیوی بلند',
+                'published_at' => $video->published_at->toISOString(),
+                'duration' => $video->duration,
+                'views' => $video->views,
+            ]);
+
+        return $products
+            ->concat($videos)
+            ->sortByDesc('published_at')
+            ->take(10)
+            ->values();
+    }
+
+    private function homeChannels(): Collection
+    {
+        return Game::query()
+            ->whereIn('status', ['active', 'published'])
+            ->with([
+                'playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+            ])
+            ->withCount([
+                'videos' => fn ($query) => $query->published(),
+                'subscribers',
+            ])
+            ->latest()
+            ->latest('id')
+            ->limit(16)
+            ->get(['id', 'name', 'slug', 'cover'])
+            ->map(fn (Game $game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'slug' => $game->slug,
+                'image_url' => MediaStorage::url($game->cover ?: $game->playlists->first()?->logo),
+                'videos_count' => (int) $game->videos_count,
+                'subscribers_count' => (int) $game->subscribers_count,
+            ])
+            ->values();
+    }
+
+    private function personalizedHome(
+        Request $request,
+        FeedService $feed,
+        UserGamingRelevanceService $relevance,
+        GameEventService $gameEvents,
+        FollowedGameWatchService $watch,
+        Collection $radarItems,
+    ): ?array {
+        $user = $request->user();
+        if (! $user) {
+            return null;
+        }
+
+        $followedGames = $user->subscribedGames()
+            ->whereIn('games.status', ['active', 'published'])
+            ->with([
+                'playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+            ])
+            ->orderByDesc('game_subscriptions.created_at')
+            ->limit(12)
+            ->get(['games.id', 'games.name', 'games.slug', 'games.cover']);
+
+        $profile = $relevance->profile($request, $followedGames);
+        $gameScores = $profile['game_scores'] ?? [];
+        $followedGames = $followedGames
+            ->sortByDesc(fn (Game $game) => (float) ($gameScores[$game->id] ?? 0))
+            ->values();
+
+        $relevantGameIds = collect(array_keys($gameScores))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->take(16)
+            ->values();
+        $lookup = $relevantGameIds->flip();
+
+        $matchedRadar = $relevantGameIds->isEmpty()
+            ? collect()
+            : $radarItems
+                ->filter(fn (array $item) => $lookup->has((int) ($item['playnexus_game_id'] ?? 0)))
+                ->take(6)
+                ->values();
+
+        $focusGame = null;
+        if ($profile['focus_game_id'] ?? null) {
+            $focusGame = Game::query()
+                ->whereKey($profile['focus_game_id'])
+                ->whereIn('status', ['active', 'published'])
+                ->first(['id', 'name', 'slug', 'cover']);
+        }
+
+        return [
+            'followed_games' => $followedGames->map(fn (Game $game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'slug' => $game->slug,
+                'image_url' => MediaStorage::url($game->cover ?: $game->playlists->first()?->logo),
+            ])->values(),
+            'events' => $gameEvents->forProfile($profile, 8),
+            'videos' => $feed->smartVideosForProfile($request, $profile, 4),
+            'feed' => $feed->smartEditorialForProfile($request, $profile, 8),
+            'radar' => $matchedRadar,
+            'watch' => $watch->summaryForGames($followedGames->pluck('id')),
+            'intelligence' => [
+                'confidence' => $profile['confidence'] ?? null,
+                'top_signals' => $profile['top_signals'] ?? [],
+                'focus_reason' => $profile['focus_reason'] ?? null,
+                'focus_game' => $focusGame ? [
+                    'id' => $focusGame->id,
+                    'name' => $focusGame->name,
+                    'slug' => $focusGame->slug,
+                    'image_url' => MediaStorage::url($focusGame->cover),
+                ] : null,
+            ],
+            'updated_at' => now()->toISOString(),
+        ];
     }
 
     private function productQuery(Request $request): Builder
