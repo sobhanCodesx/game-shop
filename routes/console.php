@@ -4,6 +4,7 @@ use App\Services\FollowedGameWatchService;
 use App\Services\GameEventService;
 use App\Services\GameRadarService;
 use App\Services\GameSourceMonitorService;
+use App\Services\MobileApiTokenService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -55,6 +56,15 @@ Artisan::command('nexus:sync-game-events {--days=90}', function () {
 
     $this->info("Game Events synced: {$count} records considered from the last {$days} days.");
 })->purpose('Backfill canonical Game Events from published PlayNexus content');
+
+Artisan::command('nexus:prune-mobile-api-tokens', function () {
+    $count = app(MobileApiTokenService::class)->pruneExpired();
+    $this->info("Expired mobile API tokens pruned: {$count}.");
+})->purpose('Delete expired native mobile API access tokens');
+
+Schedule::command('nexus:prune-mobile-api-tokens')
+    ->dailyAt('03:20')
+    ->withoutOverlapping();
 
 Schedule::command('nexus:sync-game-radar')
     ->everySixHours()
