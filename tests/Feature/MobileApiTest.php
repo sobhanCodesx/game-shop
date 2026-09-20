@@ -175,4 +175,39 @@ class MobileApiTest extends TestCase
             ->assertJsonPath('content.title', 'Native API story')
             ->assertJsonPath('content.feed_type', 'news');
     }
+
+    public function test_mobile_stories_are_separate_from_shorts(): void
+    {
+        $story = SocialContent::query()->create([
+            'type' => 'story',
+            'media_type' => 'image',
+            'title' => 'Story only',
+            'slug' => 'story-only',
+            'video_path' => 'stories/story.webp',
+            'thumbnail' => 'stories/story.webp',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+
+        $short = SocialContent::query()->create([
+            'type' => 'short',
+            'media_type' => 'video',
+            'title' => 'Short only',
+            'slug' => 'short-only',
+            'video_path' => 'shorts/short.mp4',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+
+        $this->getJson('/api/v1/stories')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $story->id)
+            ->assertJsonMissing(['id' => $short->id]);
+
+        $this->getJson('/api/v1/shorts')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $short->id)
+            ->assertJsonMissing(['id' => $story->id]);
+    }
+
 }
