@@ -11,6 +11,21 @@ use Illuminate\Support\Facades\DB;
 
 class MobileDeviceApiController extends Controller
 {
+    public function session(Request $request): JsonResponse
+    {
+        $token = $request->attributes->get('mobile_access_token');
+
+        return response()->json([
+            'authenticated' => true,
+            'user_id' => $request->user()->getKey(),
+            'token' => [
+                'id' => $token?->getKey(),
+                'device_name' => $token?->device_name,
+                'expires_at' => $token?->expires_at?->toISOString(),
+            ],
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         return response()->json([
