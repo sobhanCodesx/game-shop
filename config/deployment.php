@@ -51,7 +51,6 @@ return [
         'lang',
         'public',
         'vendor',
-        'storage',
     ],
     'allowed_files' => [
         'composer.json',
