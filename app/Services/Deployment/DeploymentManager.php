@@ -212,11 +212,35 @@ final class DeploymentManager
     private function maintenance(array $state): array { $secret=bin2hex(random_bytes(24)); Artisan::call('down', ['--secret' => $secret]); return $this->states->update($state['id'], ['stage' => 'maintenance', 'progress' => 35, 'maintenance_bypass' => $secret]); }
     private function switchFiles(array $state): array
     {
-        $stage = $this->paths->operation($state['id']).'/staging'; $new = [];
-        foreach ($state['diff']['changed'] as $path) { if (! is_file(base_path($path))) $new[] = $path; $this->copyFile($stage.'/'.$path, base_path($path)); }
-        foreach ($state['diff']['deleted'] as $path) if ($this->allowed($path) && ! $this->preservedServerPath($path) && is_file(base_path($path))) @unlink(base_path($path));
-        foreach (['deployment-manifest.json', 'deployment-manifest.sig'] as $file) $this->copyFile($stage.'/'.$file, base_path($file));
-        $state['stage']='switched'; $state['progress']=55; $state['new_files']=$new; unset($state['maintenance_bypass']); return $this->states->save($state);
+        $stage = $this->paths->operation($state['id']).'/staging';
+        $new = [];
+
+        foreach ($state['diff']['changed'] as $path) {
+            if (! is_file(base_path($path))) {
+                $new[] = $path;
+            }
+
+            $this->copyFile($stage.'/'.$path, base_path($path));
+        }
+
+        /*
+         * Do not delete stale files or publish the new manifest here.
+         *
+         * The next deployment request must still be able to boot using the
+         * previous release while migrations/cache rebuilds are pending. Old
+         * vendor/build files are harmless for this short window, but deleting
+         * them before the next request can make Laravel return an HTML 500/503
+         * before the deployment agent has a chance to finish.
+         *
+         * The successful manifest and stale-file cleanup are committed only
+         * after migration, optimization and the internal health check pass.
+         */
+        $state['stage'] = 'switched';
+        $state['progress'] = 55;
+        $state['new_files'] = $new;
+        unset($state['maintenance_bypass']);
+
+        return $this->states->save($state);
     }
     private function migrate(array $state): array { $this->artisan('optimize:clear', [] ,$state); $this->artisan('package:discover', ['--ansi' => false], $state); $this->artisan('migrate', ['--force' => true], $state); return $this->states->update($state['id'], ['stage' => 'migrated', 'progress' => 70]); }
     private function optimize(array $state): array { foreach (['config:cache', 'route:cache', 'view:cache', 'event:cache'] as $command) $this->artisan($command, [], $state); if (function_exists('opcache_reset')) @opcache_reset(); return $this->states->update($state['id'], ['stage' => 'optimized', 'progress' => 85]); }
@@ -226,7 +250,42 @@ final class DeploymentManager
         if (in_array(false, $checks, true)) throw new RuntimeException('Health check پس از نصب ناموفق بود.');
         return $this->states->update($state['id'], ['stage' => 'health_checked', 'progress' => 95]);
     }
-    private function completeDeployment(array $state): array { $this->syncSsrBundle(); Artisan::call('up'); $state = $this->states->update($state['id'], ['status' => 'completed', 'stage' => 'completed', 'progress' => 100]); $this->states->pruneSuccessful(); return $state; }
+    private function completeDeployment(array $state): array
+    {
+        $stage = $this->paths->operation($state['id']).'/staging';
+
+        $this->removeDeletedFiles($state);
+
+        foreach (['deployment-manifest.json', 'deployment-manifest.sig'] as $file) {
+            $this->copyFile($stage.'/'.$file, base_path($file));
+        }
+
+        $this->syncSsrBundle();
+        Artisan::call('up');
+
+        $state = $this->states->update($state['id'], [
+            'status' => 'completed',
+            'stage' => 'completed',
+            'progress' => 100,
+        ]);
+
+        $this->states->pruneSuccessful();
+
+        return $state;
+    }
+
+    private function removeDeletedFiles(array $state): void
+    {
+        foreach ($state['diff']['deleted'] ?? [] as $path) {
+            if (
+                $this->allowed($path)
+                && ! $this->preservedServerPath($path)
+                && is_file(base_path($path))
+            ) {
+                @unlink(base_path($path));
+            }
+        }
+    }
     private function artisan(string $command, array $arguments, array $state): void { $start = microtime(true); $code = Artisan::call($command, $arguments); $log = ['command' => $command, 'exit_code' => $code, 'duration_ms' => (int) ((microtime(true)-$start)*1000), 'output' => mb_substr(Artisan::output(), 0, 4000)]; $fresh = $this->states->get($state['id']); $fresh['logs'][] = $log; $this->states->save($fresh); if ($code !== 0) throw new RuntimeException("فرمان {$command} ناموفق بود."); }
     private function preflight(array $manifest, array $dangerous, string $stage): array
     {
