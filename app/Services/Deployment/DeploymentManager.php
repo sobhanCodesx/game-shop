@@ -235,7 +235,10 @@ final class DeploymentManager
     {
         $path = ltrim(str_replace('\\', '/', $path), '/');
 
-        return $path === 'public/apk' || str_starts_with($path, 'public/apk/');
+        return $path === 'public/apk'
+            || str_starts_with($path, 'public/apk/')
+            || $path === 'public/storage'
+            || str_starts_with($path, 'public/storage/');
     }
     private function syncSsrBundle(): void
     {
