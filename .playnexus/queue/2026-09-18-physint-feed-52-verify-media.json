@@ -1,5 +1,0 @@
-{
-  "job_id": "20260918-physint-feed-52-verify-media",
-  "tool": "list_content_assets",
-  "arguments": {"resource": "feed", "id": 52}
-}

@@ -1,7 +1,0 @@
-{
-  "job_id": "20260918-mw4-feed-51-verify",
-  "tool": "get_feed",
-  "arguments": {
-    "id": 51
-  }
-}

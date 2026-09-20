@@ -1,9 +1,0 @@
-{
-  "job_id": "20260918-ac-shadows-game-9-publish",
-  "tool": "set_content_state",
-  "arguments": {
-    "resource": "game",
-    "id": 9,
-    "state": "active"
-  }
-}

@@ -1,8 +1,0 @@
-{
-  "job_id": "20260918-ac-black-flag-verify-new-media",
-  "tool": "list_content_assets",
-  "arguments": {
-    "resource": "game",
-    "id": 10
-  }
-}

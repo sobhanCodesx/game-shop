@@ -1,9 +1,0 @@
-{
-  "job_id": "20260918-black-flag-resynced-10-publish",
-  "tool": "set_content_state",
-  "arguments": {
-    "resource": "game",
-    "id": 10,
-    "state": "active"
-  }
-}

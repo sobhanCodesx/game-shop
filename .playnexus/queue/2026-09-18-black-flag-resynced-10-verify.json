@@ -1,8 +1,0 @@
-{
-  "job_id": "20260918-black-flag-resynced-10-verify",
-  "tool": "get_content",
-  "arguments": {
-    "resource": "game",
-    "id": 10
-  }
-}
