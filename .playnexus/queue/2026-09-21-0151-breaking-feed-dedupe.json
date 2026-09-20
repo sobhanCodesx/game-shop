@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-21-0151-breaking-feed-dedupe",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query($q: String!) { search(query: $q, first: 12) { content { id type title status publishedAt game { id name slug } } } }",
+    "variables": {"q": "StarCraft PC Gaming Show Tokyo Direct 2026"}
+  }
+}
