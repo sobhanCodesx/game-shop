@@ -49,6 +49,25 @@ class SitemapTest extends TestCase
             'duration' => 125,
             'views' => 42,
         ]);
+        $mediaBackedVideo = SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'video',
+            'title' => 'ویدیوی دارای مدیای مرتبط',
+            'slug' => 'media-backed-video',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+            'excerpt' => 'ویدیویی که مسیر فایل آن فقط در رابطه مدیا ذخیره شده است',
+            'duration' => null,
+            'views' => 9,
+        ]);
+        $mediaBackedVideo->media()->create([
+            'type' => 'video',
+            'path' => 'videos/media-backed-video.mp4',
+            'thumbnail' => 'videos/thumbnails/media-backed-video.jpg',
+            'duration' => 88,
+            'sort_order' => 0,
+        ]);
+
         $short = SocialContent::query()->create([
             'game_id' => $game->id,
             'type' => 'short',
@@ -112,6 +131,10 @@ class SitemapTest extends TestCase
             ->assertSee('<video:thumbnail_loc>http://localhost/storage/videos/thumbnails/public-video.jpg</video:thumbnail_loc>', false)
             ->assertSee('<video:content_loc>http://localhost/storage/videos/public-video.mp4</video:content_loc>', false)
             ->assertSee('<video:duration>125</video:duration>', false)
+            ->assertSee(route('content.show', ['videos', $mediaBackedVideo->slug]), false)
+            ->assertSee('<video:thumbnail_loc>http://localhost/storage/videos/thumbnails/media-backed-video.jpg</video:thumbnail_loc>', false)
+            ->assertSee('<video:content_loc>http://localhost/storage/videos/media-backed-video.mp4</video:content_loc>', false)
+            ->assertSee('<video:duration>88</video:duration>', false)
             ->assertDontSee('public-short')
             ->assertDontSee('public-feed-post')
             ->assertDontSee('draft-video');
