@@ -7,13 +7,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Legacy PlayNexus used the "short" type for both Shorts and Stories.
-        // Image-based legacy entries are unambiguous Stories, so move only
-        // those automatically. Video Shorts remain Shorts; future Stories use
-        // the dedicated "story" type.
+        // The legacy admin /shorts area is actually PlayNexus' Story manager.
+        // Migrate every existing legacy record to the dedicated story type so
+        // real short-form videos can safely use type=short going forward.
         DB::table('social_contents')
             ->where('type', 'short')
-            ->where('media_type', 'image')
             ->update(['type' => 'story']);
     }
 
@@ -21,7 +19,6 @@ return new class extends Migration
     {
         DB::table('social_contents')
             ->where('type', 'story')
-            ->where('media_type', 'image')
             ->update(['type' => 'short']);
     }
 };
