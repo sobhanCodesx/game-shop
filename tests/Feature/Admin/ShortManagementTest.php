@@ -28,7 +28,7 @@ class ShortManagementTest extends TestCase
         ])->assertRedirect('/admin/shorts');
 
         $short = SocialContent::firstOrFail();
-        $this->assertSame('short', $short->type);
+        $this->assertSame('story', $short->type);
         $this->assertSame('image', $short->media_type);
         $this->assertSame('/products', $short->link_url);
         Storage::disk('public')->assertExists($short->video_path);
@@ -46,10 +46,10 @@ class ShortManagementTest extends TestCase
         Storage::disk('public')->assertMissing($short->video_path);
     }
 
-    public function test_published_shorts_are_shared_as_stories_but_excluded_from_explore(): void
+    public function test_published_stories_are_shared_as_stories_but_excluded_from_explore(): void
     {
         SocialContent::create([
-            'type' => 'short', 'media_type' => 'image', 'title' => 'استوری', 'slug' => 'story',
+            'type' => 'story', 'media_type' => 'image', 'title' => 'استوری', 'slug' => 'story',
             'video_path' => 'shorts/story.webp', 'thumbnail' => 'shorts/story.webp',
             'status' => 'published', 'published_at' => now()->subMinute(), 'sort_order' => 1,
         ]);
