@@ -18,6 +18,7 @@ class DeploymentAgentApiTest extends TestCase
 
         config([
             'content_agent.token' => 'deployment-agent-test-token',
+            'content_agent.author_user_id' => 42,
             'deployment.import_enabled' => true,
             'deployment.directory' => $this->directory,
             'deployment.chunk_size' => 2 * 1024 * 1024,
@@ -54,7 +55,7 @@ class DeploymentAgentApiTest extends TestCase
             ->post('/api/deployment-agent/upload/chunk', $this->chunkPayload('refs/heads/main', $sha));
 
         $response->assertOk()
-            ->assertJsonPath('user_id', 0)
+            ->assertJsonPath('user_id', 42)
             ->assertJsonPath('source_ref', 'refs/heads/main')
             ->assertJsonPath('source_sha', $sha)
             ->assertJsonPath('run_id', '123456');
