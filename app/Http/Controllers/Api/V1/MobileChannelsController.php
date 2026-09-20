@@ -18,6 +18,71 @@ use Illuminate\Http\Request;
 
 class MobileChannelsController extends Controller
 {
+    public function channels(Request $request): JsonResponse
+    {
+        $query = Game::query()
+            ->whereIn('status', ['active', 'published'])
+            ->with([
+                'studio:id,name,slug,logo,status',
+                'playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+            ])
+            ->withCount([
+                'videos' => fn ($query) => $query->published(),
+                'subscribers',
+            ])
+            ->when(
+                $request->filled('q'),
+                fn ($query) => $query->where(
+                    fn ($search) => $search
+                        ->where('name', 'like', '%'.$request->string('q')->toString().'%')
+                        ->orWhere('developer', 'like', '%'.$request->string('q')->toString().'%')
+                        ->orWhere('publisher', 'like', '%'.$request->string('q')->toString().'%'),
+                ),
+            )
+            ->when(
+                $request->filled('studio'),
+                fn ($query) => $query->whereHas(
+                    'studio',
+                    fn ($studio) => $studio->where('slug', $request->string('studio')->toString()),
+                ),
+            )
+            ->orderByDesc('subscribers_count')
+            ->latest('id');
+
+        $channels = $query
+            ->paginate(max(1, min(50, $request->integer('per_page', 24))))
+            ->withQueryString()
+            ->through(function (Game $game) use ($request) {
+                $logo = $game->cover ?: $game->playlists->first()?->logo;
+
+                return [
+                    'id' => $game->id,
+                    'name' => $game->name,
+                    'slug' => $game->slug,
+                    'developer' => $game->developer,
+                    'publisher' => $game->publisher,
+                    'cover_url' => MediaStorage::url($logo),
+                    'background_url' => MediaStorage::url($game->background),
+                    'videos_count' => (int) $game->videos_count,
+                    'subscribers_count' => (int) $game->subscribers_count,
+                    'is_subscribed' => $request->user()
+                        ? $game->subscribers()->whereKey($request->user()->id)->exists()
+                        : false,
+                    'studio' => $game->studio?->status === 'active' ? [
+                        'id' => $game->studio->id,
+                        'name' => $game->studio->name,
+                        'slug' => $game->studio->slug,
+                        'logo_url' => MediaStorage::url($game->studio->logo),
+                    ] : null,
+                ];
+            });
+
+        return response()->json($channels);
+    }
+
     public function studios(Request $request): JsonResponse
     {
         $studios = Studio::query()
