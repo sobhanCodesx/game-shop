@@ -1,7 +1,0 @@
-{
-  "job_id": "2026-09-20-2033-story-graph-read",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query { content(first: 20, types: [STORY, VIDEO], statuses: [PUBLISHED]) { nodes { id type title slug status publishedAt linkUrl game { id name slug } media { type url thumbnailUrl } } } }"
-  }
-}
