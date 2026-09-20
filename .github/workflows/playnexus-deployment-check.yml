@@ -57,3 +57,45 @@ jobs:
 
       - name: Run deployment agent tests
         run: php artisan test tests/Feature/DeploymentAgentApiTest.php
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build frontend and SSR
+        run: |
+          npm ci
+          npm run build
+          test -s public/build/manifest.json
+          test -s bootstrap/ssr/ssr.js
+
+      - name: Smoke test signed deployment package
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if ! php -m | grep -qi '^zip; then
+            sudo apt-get update
+            sudo apt-get install -y php-zip
+          fi
+          APP_KEY="base64:$(openssl rand -base64 32)"
+          PLAYNEXUS_CONTENT_AGENT_TOKEN="deployment-ci-token-with-more-than-32-characters" \
+          APP_ENV=production \
+          APP_KEY="$APP_KEY" \
+          APP_URL=https://playnexus.ir \
+          INERTIA_SSR_ENABLED=true \
+          php artisan deployment:export --output=/tmp/playnexus-deployment-smoke.zip
+          test -s /tmp/playnexus-deployment-smoke.zip
+          python3 - <<'PY'
+          import zipfile
+          p = "/tmp/playnexus-deployment-smoke.zip"
+          with zipfile.ZipFile(p) as z:
+              names = set(z.namelist())
+              assert "deployment-manifest.json" in names
+              assert "deployment-manifest.sig" in names
+              assert "public/build/manifest.json" in names
+              assert "bootstrap/ssr/ssr.js" in names
+              assert ".env" not in names
+              assert not any(name == "storage" or name.startswith("storage/") for name in names)
+          PY
