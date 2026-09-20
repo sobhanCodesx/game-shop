@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\AndroidReleaseDownloadController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminResourceController;
 use App\Http\Controllers\Admin\AndroidReleaseController;
@@ -46,7 +45,6 @@ use App\Http\Controllers\VideoCommunityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
-Route::get('app/android/download', AndroidReleaseDownloadController::class)->name('android.download');
 Route::get('feed', [FeedController::class, 'index'])->name('feed.index');
 Route::get('feed/trending', [FeedController::class, 'trending'])->name('feed.trending');
 Route::get('posts/{content:slug}', [FeedController::class, 'show'])->name('posts.show');
