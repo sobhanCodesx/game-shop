@@ -1,0 +1,246 @@
+name: Deploy PlayNexus Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build, upload, and validate a release without switching production"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playnexus-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy
+    if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: production
+
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_BASE_PATH: ${{ secrets.DEPLOY_BASE_PATH }}
+      DEPLOY_HEALTHCHECK_URL: ${{ secrets.DEPLOY_HEALTHCHECK_URL }}
+      DEPLOY_SSR_BUNDLE_PATH: ${{ secrets.DEPLOY_SSR_BUNDLE_PATH }}
+      DEPLOY_SSR_RESTART_FILE: ${{ secrets.DEPLOY_SSR_RESTART_FILE }}
+      DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          required=(
+            DEPLOY_HOST
+            DEPLOY_PORT
+            DEPLOY_USER
+            DEPLOY_BASE_PATH
+            DEPLOY_HEALTHCHECK_URL
+            DEPLOY_SSH_PRIVATE_KEY
+            DEPLOY_KNOWN_HOSTS
+          )
+
+          for key in "${required[@]}"; do
+            if [[ -z "${!key:-}" ]]; then
+              echo "::error::Missing required production secret: $key"
+              exit 1
+            fi
+          done
+
+          if [[ ! "$DEPLOY_PORT" =~ ^[0-9]+$ ]]; then
+            echo "::error::DEPLOY_PORT must be numeric."
+            exit 1
+          fi
+
+          if [[ "$DEPLOY_BASE_PATH" != /* || "$DEPLOY_BASE_PATH" == "/" ]]; then
+            echo "::error::DEPLOY_BASE_PATH must be a safe absolute path."
+            exit 1
+          fi
+
+          DRY_RUN=0
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.dry_run }}" == "true" ]]; then
+            DRY_RUN=1
+          fi
+
+          echo "DEPLOY_DRY_RUN=$DRY_RUN" >> "$GITHUB_ENV"
+          echo "DEPLOY_RELEASE_ID=${GITHUB_SHA}-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Verify build runtime
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node --version
+          npm --version
+          php --version
+          composer --version
+          php -r 'if (PHP_VERSION_ID < 80200) { fwrite(STDERR, "PHP 8.2+ is required.\n"); exit(1); }'
+          php -r 'if (!extension_loaded("ftp")) { fwrite(STDERR, "PHP ext-ftp is required by composer.lock.\n"); exit(1); }'
+
+      - name: Install production PHP dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          composer validate --no-check-publish
+          composer install \
+            --no-dev \
+            --prefer-dist \
+            --optimize-autoloader \
+            --no-interaction \
+            --no-progress \
+            --no-scripts
+
+      - name: Build client and SSR bundles
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm ci
+          npm run build
+          test -f public/build/manifest.json
+          test -s bootstrap/ssr/ssr.js
+
+      - name: Create immutable release archive
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          ARCHIVE="$RUNNER_TEMP/playnexus-${DEPLOY_RELEASE_ID}.tar.gz"
+
+          tar \
+            --exclude='./.git' \
+            --exclude='./.github' \
+            --exclude='./.env' \
+            --exclude='./.env.backup' \
+            --exclude='./.env.production' \
+            --exclude='./node_modules' \
+            --exclude='./storage/*' \
+            --exclude='./public/storage' \
+            --exclude='./public/apk' \
+            --exclude='./deployment-exports' \
+            --exclude='./tests' \
+            -czf "$ARCHIVE" .
+
+          test -s "$ARCHIVE"
+          sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
+
+          echo "DEPLOY_ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+          echo "DEPLOY_ARCHIVE_SHA256=$(cut -d' ' -f1 "$ARCHIVE.sha256")" >> "$GITHUB_ENV"
+
+      - name: Configure pinned SSH trust
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/playnexus_deploy"
+          chmod 600 "$HOME/.ssh/playnexus_deploy"
+
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+          test -s "$HOME/.ssh/playnexus_deploy"
+          test -s "$HOME/.ssh/known_hosts"
+
+      - name: Verify SSH and prepare incoming directory
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          SSH_OPTS=(
+            -i "$HOME/.ssh/playnexus_deploy"
+            -p "$DEPLOY_PORT"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+            -o ConnectTimeout=15
+          )
+
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "mkdir -p '$DEPLOY_BASE_PATH/.incoming' && chmod 700 '$DEPLOY_BASE_PATH/.incoming'"
+
+      - name: Upload release
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          REMOTE_ARCHIVE="$DEPLOY_BASE_PATH/.incoming/${DEPLOY_RELEASE_ID}.tar.gz"
+
+          scp \
+            -i "$HOME/.ssh/playnexus_deploy" \
+            -P "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "$DEPLOY_ARCHIVE" \
+            "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_ARCHIVE"
+
+          echo "DEPLOY_REMOTE_ARCHIVE=$REMOTE_ARCHIVE" >> "$GITHUB_ENV"
+
+      - name: Activate release safely
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          SSH_OPTS=(
+            -i "$HOME/.ssh/playnexus_deploy"
+            -p "$DEPLOY_PORT"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+            -o ConnectTimeout=15
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=4
+          )
+
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_BASE_PATH='$DEPLOY_BASE_PATH' \
+             DEPLOY_RELEASE_ID='$DEPLOY_RELEASE_ID' \
+             DEPLOY_RELEASE_SHA='$GITHUB_SHA' \
+             DEPLOY_ARCHIVE='$DEPLOY_REMOTE_ARCHIVE' \
+             DEPLOY_ARCHIVE_SHA256='$DEPLOY_ARCHIVE_SHA256' \
+             DEPLOY_HEALTHCHECK_URL='$DEPLOY_HEALTHCHECK_URL' \
+             DEPLOY_SSR_BUNDLE_PATH='$DEPLOY_SSR_BUNDLE_PATH' \
+             DEPLOY_SSR_RESTART_FILE='$DEPLOY_SSR_RESTART_FILE' \
+             DEPLOY_DRY_RUN='$DEPLOY_DRY_RUN' \
+             bash -s" < scripts/deploy-production.sh
+
+      - name: Deployment summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### PlayNexus production deployment"
+            echo ""
+            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- Release: \`${DEPLOY_RELEASE_ID:-not-created}\`"
+            echo "- Dry run: \`${DEPLOY_DRY_RUN:-unknown}\`"
+            echo "- Target: \`production\`"
+          } >> "$GITHUB_STEP_SUMMARY"
