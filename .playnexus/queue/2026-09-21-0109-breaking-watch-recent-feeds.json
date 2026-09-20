@@ -1,0 +1,1 @@
+{"tool":"query_playnexus_graph","arguments":{"query":"query { feeds(first: 20, orderBy: {column: CREATED_AT, order: DESC}) { data { id title slug status created_at } } }"}}
