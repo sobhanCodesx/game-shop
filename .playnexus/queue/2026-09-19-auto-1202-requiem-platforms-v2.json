@@ -1,9 +1,0 @@
-{
-  "job_id": "20260919-auto-1202-requiem-platforms-v2",
-  "tool": "update_content",
-  "arguments": {
-    "resource": "game",
-    "id": 12,
-    "platform_ids": [1, 2, 3, 4]
-  }
-}
