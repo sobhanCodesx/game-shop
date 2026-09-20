@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ContentAgentGraphqlController;
 use App\Http\Controllers\Api\ContentAgentMcpController;
+use App\Http\Controllers\Api\DeploymentAgentController;
 use App\Http\Controllers\Api\V1\MobileAccountController;
 use App\Http\Controllers\Api\V1\MobileAuthController;
 use App\Http\Controllers\Api\V1\MobileCatalogController;
@@ -21,6 +22,17 @@ Route::post('/mcp', ContentAgentMcpController::class)
 Route::post('/graphql', ContentAgentGraphqlController::class)
     ->middleware(['content.agent', 'throttle:30,1'])
     ->name('content-agent.graphql');
+
+Route::prefix('/deployment-agent')
+    ->middleware(['throttle:300,1', 'deployment.agent'])
+    ->name('deployment-agent.')
+    ->group(function () {
+        Route::post('/upload/chunk', [DeploymentAgentController::class, 'chunk'])->name('chunk');
+        Route::post('/upload/complete', [DeploymentAgentController::class, 'complete'])->name('complete');
+        Route::post('/{deployment}/verify', [DeploymentAgentController::class, 'verify'])->whereUuid('deployment')->name('verify');
+        Route::post('/{deployment}/apply', [DeploymentAgentController::class, 'apply'])->whereUuid('deployment')->name('apply');
+        Route::get('/{deployment}/status', [DeploymentAgentController::class, 'status'])->whereUuid('deployment')->name('status');
+    });
 
 Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
     Route::get('meta', [MobileCatalogController::class, 'meta'])

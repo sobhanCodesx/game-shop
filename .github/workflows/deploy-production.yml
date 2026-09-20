@@ -1,0 +1,176 @@
+name: Deploy PlayNexus Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy after building the package (only allowed from main)"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playnexus-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      PLAYNEXUS_CONTENT_AGENT_TOKEN: ${{ secrets.PLAYNEXUS_CONTENT_AGENT_TOKEN }}
+      PLAYNEXUS_DEPLOY_API_URL: https://playnexus.ir/api/deployment-agent
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify existing PlayNexus secret
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ -z "${PLAYNEXUS_CONTENT_AGENT_TOKEN:-}" ]]; then
+            echo "::error::Repository secret PLAYNEXUS_CONTENT_AGENT_TOKEN is missing."
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Ensure PHP deployment extensions
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          missing=0
+          php -m | grep -qi '^zip$' || missing=1
+          php -m | grep -qi '^ftp$' || missing=1
+          if [[ "$missing" == "1" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y php-zip php-ftp
+          fi
+          php -r 'if (PHP_VERSION_ID < 80200) { fwrite(STDERR, "PHP 8.2+ is required.\n"); exit(1); }'
+          php -r 'foreach (["zip","ftp","mbstring","openssl","fileinfo","pdo"] as $ext) { if (!extension_loaded($ext)) { fwrite(STDERR, "Missing PHP extension: $ext\n"); exit(1); } }'
+
+      - name: Create ephemeral build environment
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          APP_KEY="base64:$(openssl rand -base64 32)"
+          cat > .env <<EOF
+          APP_NAME="PlayNexus"
+          APP_ENV=production
+          APP_KEY=$APP_KEY
+          APP_DEBUG=false
+          APP_URL=https://playnexus.ir
+          LOG_CHANNEL=stderr
+          DB_CONNECTION=sqlite
+          DB_DATABASE=/tmp/playnexus-deploy.sqlite
+          CACHE_STORE=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          INERTIA_SSR_ENABLED=true
+          EOF
+          touch /tmp/playnexus-deploy.sqlite
+          chmod 600 .env
+
+      - name: Install production PHP dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          composer validate --no-check-publish
+          composer install \
+            --no-dev \
+            --prefer-dist \
+            --optimize-autoloader \
+            --classmap-authoritative \
+            --no-interaction \
+            --no-progress
+          php artisan package:discover --ansi
+
+      - name: Build browser and standalone SSR bundles
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm ci
+          npm run build
+          test -s public/build/manifest.json
+          test -s bootstrap/ssr/ssr.js
+
+      - name: Validate deployment routes and configuration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          php artisan route:list --path=api/deployment-agent
+          php -r '
+            require "vendor/autoload.php";
+            $app = require "bootstrap/app.php";
+            $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            if (!config("deployment.import_enabled") || !config("deployment.export_enabled")) {
+                fwrite(STDERR, "Deployment automation is not configured.\n");
+                exit(1);
+            }
+            if (config("deployment.app_id") !== "playnexus-production-v1") {
+                fwrite(STDERR, "Unexpected deployment app id.\n");
+                exit(1);
+            }
+            if (strlen((string) config("deployment.signing_key")) < 32) {
+                fwrite(STDERR, "Derived deployment signing key is invalid.\n");
+                exit(1);
+            }
+          '
+
+      - name: Build signed production package
+        id: package
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PACKAGE="$RUNNER_TEMP/playnexus-deployment-${GITHUB_SHA}.zip"
+          php artisan deployment:export --output="$PACKAGE"
+          test -s "$PACKAGE"
+          echo "path=$PACKAGE" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$PACKAGE" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Store short-lived bootstrap artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playnexus-deployment-${{ github.sha }}
+          path: ${{ steps.package.outputs.path }}
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 0
+
+      - name: Deploy package to PlayNexus over HTTPS
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.deploy == true)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/playnexus_deploy.py "${{ steps.package.outputs.path }}"
+
+      - name: Deployment summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### PlayNexus deployment"
+            echo ""
+            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- Ref: \`$GITHUB_REF\`"
+            echo "- Package SHA-256: \`${{ steps.package.outputs.sha256 || 'not-built' }}\`"
+            if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+              echo "- Production transport: HTTPS deployment agent"
+            else
+              echo "- Production transport: skipped (non-main ref)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -13,34 +13,126 @@ final class DeploymentManager
 
     public function acceptChunk(int $userId, array $data, string $uploadedPath): array
     {
-        if (! config('deployment.import_enabled')) throw new RuntimeException('Import غیرفعال است.');
-        $state = empty($data['operation_id']) ? $this->states->create($userId, ['total_chunks' => (int) $data['total_chunks'], 'size' => (int) $data['size'], 'name' => basename($data['name'])]) : $this->owned($data['operation_id'], $userId);
-        if ($state['status'] !== 'uploading' || $state['total_chunks'] !== (int) $data['total_chunks'] || $state['size'] !== (int) $data['size']) throw new RuntimeException('مشخصات قطعه با عملیات هم‌خوان نیست.');
-        $directory = $this->paths->operation($state['id']).'/chunks'; File::ensureDirectoryExists($directory, 0750, true);
+        if (! config('deployment.import_enabled')) {
+            throw new RuntimeException('Import غیرفعال است.');
+        }
+
+        $metadata = [
+            'total_chunks' => (int) $data['total_chunks'],
+            'size' => (int) $data['size'],
+            'name' => basename($data['name']),
+        ];
+
+        foreach (['source_sha', 'source_ref', 'run_id'] as $key) {
+            if (isset($data[$key]) && $data[$key] !== '') {
+                $metadata[$key] = (string) $data[$key];
+            }
+        }
+
+        $state = empty($data['operation_id'])
+            ? $this->states->create($userId, $metadata)
+            : $this->owned($data['operation_id'], $userId);
+
+        foreach (['total_chunks', 'size', 'source_sha', 'source_ref', 'run_id'] as $key) {
+            if (array_key_exists($key, $metadata) && (string) ($state[$key] ?? '') !== (string) $metadata[$key]) {
+                throw new RuntimeException('مشخصات قطعه با عملیات هم‌خوان نیست.');
+            }
+        }
+
+        if ($state['status'] !== 'uploading') {
+            throw new RuntimeException('عملیات دیگر در وضعیت آپلود نیست.');
+        }
+
+        $directory = $this->paths->operation($state['id']).'/chunks';
+        File::ensureDirectoryExists($directory, 0750, true);
+
         $target = $directory.'/'.(int) $data['chunk_index'].'.part';
-        if (! is_file($target)) File::move($uploadedPath, $target);
-        return $this->states->update($state['id'], ['progress' => min(95, (int) floor((count(glob($directory.'/*.part') ?: []) / $state['total_chunks']) * 95))]);
+        if (! is_file($target)) {
+            File::move($uploadedPath, $target);
+        }
+
+        return $this->states->update($state['id'], [
+            'progress' => min(95, (int) floor((count(glob($directory.'/*.part') ?: []) / $state['total_chunks']) * 95)),
+        ]);
     }
 
     public function complete(string $id, int $userId): array
     {
-        $state = $this->owned($id, $userId); $dir = $this->paths->operation($id); $archive = $dir.'/package.zip';
-        $lock = fopen($dir.'/upload.lock', 'c+'); if (! $lock || ! flock($lock, LOCK_EX | LOCK_NB)) throw new RuntimeException('عملیات دیگری روی این بسته در حال اجراست.');
+        $state = $this->owned($id, $userId);
+        if (in_array($state['status'], ['uploaded', 'verified', 'running', 'completed'], true)) {
+            return $state;
+        }
+
+        $dir = $this->paths->operation($id);
+        $archive = $dir.'/package.zip';
+        $lock = fopen($dir.'/upload.lock', 'c+');
+        if (! $lock || ! flock($lock, LOCK_EX | LOCK_NB)) {
+            throw new RuntimeException('عملیات دیگری روی این بسته در حال اجراست.');
+        }
+
         try {
-            $target = fopen($archive.'.tmp', 'wb'); if (! $target) throw new RuntimeException('ساخت فایل بسته ممکن نیست.');
-            for ($i = 0; $i < $state['total_chunks']; $i++) { $path = $dir.'/chunks/'.$i.'.part'; if (! is_file($path)) throw new RuntimeException("قطعه {$i} دریافت نشده است."); $source = fopen($path, 'rb'); stream_copy_to_stream($source, $target); fclose($source); }
+            $target = fopen($archive.'.tmp', 'wb');
+            if (! $target) {
+                throw new RuntimeException('ساخت فایل بسته ممکن نیست.');
+            }
+
+            for ($i = 0; $i < $state['total_chunks']; $i++) {
+                $path = $dir.'/chunks/'.$i.'.part';
+                if (! is_file($path)) {
+                    throw new RuntimeException("قطعه {$i} دریافت نشده است.");
+                }
+
+                $source = fopen($path, 'rb');
+                stream_copy_to_stream($source, $target);
+                fclose($source);
+            }
+
             fclose($target);
-            if (filesize($archive.'.tmp') !== $state['size']) throw new RuntimeException('اندازه فایل نهایی معتبر نیست.');
-            rename($archive.'.tmp', $archive); File::deleteDirectory($dir.'/chunks');
-            return $this->states->update($id, ['status' => 'uploaded', 'stage' => 'uploaded', 'progress' => 100]);
-        } finally { flock($lock, LOCK_UN); fclose($lock); }
+            if (filesize($archive.'.tmp') !== $state['size']) {
+                throw new RuntimeException('اندازه فایل نهایی معتبر نیست.');
+            }
+
+            rename($archive.'.tmp', $archive);
+            File::deleteDirectory($dir.'/chunks');
+
+            return $this->states->update($id, [
+                'status' => 'uploaded',
+                'stage' => 'uploaded',
+                'progress' => 100,
+            ]);
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
     }
 
     public function verify(string $id, int $userId): array
     {
-        $state = $this->owned($id, $userId); $dir = $this->paths->operation($id); $stage = $dir.'/staging';
+        $state = $this->owned($id, $userId);
+        if ($state['status'] === 'verified') {
+            return $state;
+        }
+        if ($state['status'] !== 'uploaded') {
+            throw new RuntimeException('بسته در وضعیت قابل Verify نیست.');
+        }
+
+        $dir = $this->paths->operation($id);
+        $stage = $dir.'/staging';
         if (is_dir($stage)) File::deleteDirectory($stage);
         $manifest = $this->verifier->verify($dir.'/package.zip', $stage);
+
+        if (! empty($state['source_sha'])) {
+            $packageCommit = strtolower((string) ($manifest['git_commit'] ?? ''));
+            $expectedCommit = strtolower((string) $state['source_sha']);
+            if ($packageCommit === '' || ! hash_equals($expectedCommit, $packageCommit)) {
+                throw new RuntimeException('Commit بسته با Commit درخواست Deploy هم‌خوان نیست.');
+            }
+        }
+
+        if (! empty($state['source_ref']) && $state['source_ref'] !== 'refs/heads/main') {
+            throw new RuntimeException('Deploy خودکار فقط از branch اصلی مجاز است.');
+        }
+
         $current = $this->currentManifest(); $currentFiles = collect($current['files'] ?? [])->keyBy('path'); $newFiles = collect($manifest['files'])->keyBy('path');
         $changed = $newFiles->filter(fn ($file, $path) => ! isset($currentFiles[$path]) || $currentFiles[$path]['sha256'] !== $file['sha256'])->keys()->values()->all();
         $deleted = $currentFiles->keys()->diff($newFiles->keys())->filter(fn ($path) => $this->allowed($path) && ! $this->preservedServerPath($path))->values()->all();
@@ -57,7 +149,8 @@ final class DeploymentManager
         if (! $lock || ! flock($lock, LOCK_EX | LOCK_NB)) throw new RuntimeException('یک deployment دیگر در حال اجراست.');
         try {
             return match ($state['stage']) {
-                'verified' => $this->backup($state), 'backed_up' => $this->maintenance($state), 'maintenance' => $this->switchFiles($state),
+                'verified' => $this->hasRuntimeChanges($state) ? $this->backup($state) : $this->completeNoop($state),
+                'backed_up' => $this->maintenance($state), 'maintenance' => $this->switchFiles($state),
                 'switched' => $this->migrate($state), 'migrated' => $this->optimize($state), 'optimized' => $this->health($state),
                 'health_checked' => $this->completeDeployment($state), 'completed' => $state,
                 default => throw new RuntimeException('مرحله فعلی قابل اجرا نیست.'),
@@ -80,6 +173,30 @@ final class DeploymentManager
         foreach ($state['new_files'] ?? [] as $path) if ($this->allowed($path) && is_file(base_path($path))) @unlink(base_path($path));
         Artisan::call('optimize:clear'); Artisan::call('up');
         return $this->states->update($id, ['status' => 'rolled_back', 'stage' => 'rolled_back', 'progress' => 100]);
+    }
+
+    private function hasRuntimeChanges(array $state): bool
+    {
+        return ! empty($state['diff']['changed'])
+            || ! empty($state['diff']['deleted'])
+            || ! empty($state['diff']['pending_migrations']);
+    }
+
+    private function completeNoop(array $state): array
+    {
+        $stage = $this->paths->operation($state['id']).'/staging';
+        foreach (['deployment-manifest.json', 'deployment-manifest.sig'] as $file) {
+            $this->copyFile($stage.'/'.$file, base_path($file));
+        }
+
+        $state = $this->states->update($state['id'], [
+            'status' => 'completed',
+            'stage' => 'completed',
+            'progress' => 100,
+        ]);
+        $this->states->pruneSuccessful();
+
+        return $state;
     }
 
     private function backup(array $state): array
@@ -152,7 +269,10 @@ final class DeploymentManager
     {
         $path = ltrim(str_replace('\\', '/', $path), '/');
 
-        return $path === 'public/apk' || str_starts_with($path, 'public/apk/');
+        return $path === 'public/apk'
+            || str_starts_with($path, 'public/apk/')
+            || $path === 'public/storage'
+            || str_starts_with($path, 'public/storage/');
     }
     private function syncSsrBundle(): void
     {

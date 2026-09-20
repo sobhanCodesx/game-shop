@@ -1,0 +1,120 @@
+name: PlayNexus Deployment Check
+
+on:
+  push:
+    paths:
+      - '.github/workflows/deploy-production.yml'
+      - '.github/workflows/playnexus-deployment-check.yml'
+      - 'app/Http/Controllers/Api/DeploymentAgentController.php'
+      - 'app/Http/Middleware/AuthenticateDeploymentAgent.php'
+      - 'bootstrap/app.php'
+      - 'app/Http/Requests/Api/DeploymentAgentChunkRequest.php'
+      - 'app/Services/Deployment/**'
+      - 'config/deployment.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'routes/api.php'
+      - 'scripts/playnexus_deploy.py'
+      - 'tests/Feature/DeploymentAgentApiTest.php'
+      - 'PRODUCTION_DEPLOYMENT.md'
+  pull_request:
+    paths:
+      - '.github/workflows/deploy-production.yml'
+      - '.github/workflows/playnexus-deployment-check.yml'
+      - 'app/Http/Controllers/Api/DeploymentAgentController.php'
+      - 'app/Http/Middleware/AuthenticateDeploymentAgent.php'
+      - 'bootstrap/app.php'
+      - 'app/Http/Requests/Api/DeploymentAgentChunkRequest.php'
+      - 'app/Services/Deployment/**'
+      - 'config/deployment.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'routes/api.php'
+      - 'scripts/playnexus_deploy.py'
+      - 'tests/Feature/DeploymentAgentApiTest.php'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          php -l app/Http/Controllers/Api/DeploymentAgentController.php
+          php -l app/Http/Middleware/AuthenticateDeploymentAgent.php
+          php -l bootstrap/app.php
+          php -l app/Http/Requests/Api/DeploymentAgentChunkRequest.php
+          php -l app/Services/Deployment/DeploymentManager.php
+          php -l app/Services/Deployment/PackageBuilder.php
+          php -l app/Services/Deployment/PackageVerifier.php
+          php -l config/deployment.php
+          php -l routes/api.php
+          php -l tests/Feature/DeploymentAgentApiTest.php
+
+      - name: Python syntax
+        run: python3 -m py_compile scripts/playnexus_deploy.py
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run deployment agent tests
+        run: php artisan test tests/Feature/DeploymentAgentApiTest.php
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build frontend and SSR
+        run: |
+          set -Eeuo pipefail
+          npm ci
+          npm run build
+          test -s public/build/manifest.json
+          test -s bootstrap/ssr/ssr.js
+
+      - name: Smoke test signed deployment package
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if ! php -m | grep -qi '^zip$'; then
+            sudo apt-get update
+            sudo apt-get install -y php-zip
+          fi
+          APP_KEY="base64:$(openssl rand -base64 32)"
+          PLAYNEXUS_CONTENT_AGENT_TOKEN="deployment-ci-token-with-more-than-32-characters" \
+          APP_ENV=production \
+          APP_KEY="$APP_KEY" \
+          APP_URL=https://playnexus.ir \
+          INERTIA_SSR_ENABLED=true \
+          php artisan deployment:export --output=/tmp/playnexus-deployment-smoke.zip
+          test -s /tmp/playnexus-deployment-smoke.zip
+          python3 - <<'PY'
+          import zipfile
+
+          path = "/tmp/playnexus-deployment-smoke.zip"
+          with zipfile.ZipFile(path) as archive:
+              names = set(archive.namelist())
+              assert "deployment-manifest.json" in names
+              assert "deployment-manifest.sig" in names
+              assert "public/build/manifest.json" in names
+              assert "bootstrap/ssr/ssr.js" in names
+              assert ".env" not in names
+              assert not any(
+                  name == "storage" or name.startswith("storage/")
+                  for name in names
+              )
+          PY
