@@ -202,4 +202,24 @@ class MobileApiTest extends TestCase
             ->assertJsonPath('data.0.id', $short->id);
     }
 
+
+    public function test_phone_password_login_does_not_require_an_otp_after_registration_flow(): void
+    {
+        $user = User::factory()->create([
+            'phone' => '09121234567',
+            'phone_verified_at' => null,
+            'status' => 'active',
+            'password' => 'player1234',
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => '09121234567',
+            'password' => 'player1234',
+            'device_name' => 'Android Phone',
+        ])->assertOk()
+            ->assertJsonPath('token_type', 'Bearer')
+            ->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('user.phone', '09121234567');
+    }
+
 }

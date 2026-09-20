@@ -183,18 +183,6 @@ class MobileAuthController extends Controller
             ], 409);
         }
 
-        if (! $isEmail && ! $user->phone_verified_at) {
-            $mobiles->send($identifier, 'verify_mobile');
-
-            return response()->json([
-                'message' => 'ابتدا شماره موبایل را تأیید کنید.',
-                'code' => 'verification_required',
-                'verification_required' => true,
-                'channel' => 'mobile',
-                'identifier' => $identifier,
-            ], 409);
-        }
-
         $user->forceFill(['last_login_at' => now()])->save();
 
         return $this->tokenResponse($user, $tokens, $data['device_name'] ?? null);
