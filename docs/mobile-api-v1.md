@@ -91,6 +91,8 @@ The Home contract includes configurable Home settings, slides, category navigati
 ## Store and discovery
 
 - `GET /products`
+- `GET /offers`
+- `GET /exchange-products`
 - `GET /products/{slug}`
 - `GET /categories`
 - `GET /categories/{slug}`
@@ -102,6 +104,7 @@ Product list query parameters include `q`, `category`, `trade`, `offers`, `sort`
 
 ## Games, studios and collections
 
+- `GET /channels` — paginated game/channel directory; supports `q`, `studio`, and `per_page`
 - `GET /studios`
 - `GET /studios/{slug}`
 - `GET /channels/{gameSlug}`
@@ -183,8 +186,9 @@ Never trust locally cached prices in the app. Always call `/cart/resolve` or che
 
 The web-only anti-bot session challenge is intentionally not used by the native API because these routes require a valid Bearer token and are rate limited.
 
-## Push devices
+## Native session and push devices
 
+- `GET /session` — validates the current bearer token and returns token expiry/device context
 - `GET /devices`
 - `PUT /devices`
 - `DELETE /devices/{installationId}`
