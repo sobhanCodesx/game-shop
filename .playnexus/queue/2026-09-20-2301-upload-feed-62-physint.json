@@ -1,0 +1,12 @@
+{
+  "job_id": "2026-09-20-2301-upload-feed-62-physint",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 62,
+    "slot": "media",
+    "source_url": "https://www.kojimaproductions.jp/sites/default/files/2026-09/physint_enposter_1x1.jpg",
+    "name": "physint-official-poster.jpg",
+    "alt": "پوستر رسمی PHYSINT با بیل اسکارشگورد و چارلی فریزر"
+  }
+}
