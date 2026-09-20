@@ -1,0 +1,8 @@
+{
+  "job_id": "20260920-game-engine-access-test",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "{ studios(first: 5, orderBy: \"name\", orderDir: \"asc\") { nodes { id name slug status } pageInfo { total first offset hasMore nextOffset } } }",
+    "variables": {}
+  }
+}
