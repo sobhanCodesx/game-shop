@@ -7,6 +7,8 @@ that token or the temporary Laravel maintenance bypass secret.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import http.cookiejar
 import json
 import math
@@ -25,7 +27,16 @@ API_BASE = os.getenv(
     "PLAYNEXUS_DEPLOY_API_URL",
     "https://playnexus.ir/api/deployment-agent",
 ).rstrip("/")
-TOKEN = os.getenv("PLAYNEXUS_CONTENT_AGENT_TOKEN", "").strip()
+ROOT_TOKEN = os.getenv("PLAYNEXUS_CONTENT_AGENT_TOKEN", "").strip()
+DEPLOY_TOKEN = (
+    hmac.new(
+        ROOT_TOKEN.encode("utf-8"),
+        b"playnexus/deployment-auth/v1",
+        hashlib.sha256,
+    ).hexdigest()
+    if ROOT_TOKEN
+    else ""
+)
 SOURCE_SHA = os.getenv("GITHUB_SHA", "").strip().lower()
 SOURCE_REF = os.getenv("GITHUB_REF", "").strip()
 RUN_ID = os.getenv("GITHUB_RUN_ID", "").strip()
@@ -39,7 +50,7 @@ def die(message: str) -> "NoReturn":
     raise SystemExit(1)
 
 
-if not TOKEN:
+if not ROOT_TOKEN:
     die("PLAYNEXUS_CONTENT_AGENT_TOKEN is missing.")
 if SOURCE_REF != "refs/heads/main":
     die(f"Refusing deployment from non-main ref: {SOURCE_REF or '<empty>'}")
@@ -89,7 +100,7 @@ def request_json(
     url = f"{API_BASE}/{path.lstrip('/')}"
     headers = {
         "Accept": "application/json",
-        "Authorization": f"Bearer {TOKEN}",
+        "Authorization": f"Bearer {DEPLOY_TOKEN}",
         "User-Agent": "PlayNexus-GitHub-Deploy/1",
         "X-PlayNexus-Deploy-SHA": SOURCE_SHA,
         "X-PlayNexus-Deploy-Run": RUN_ID,
