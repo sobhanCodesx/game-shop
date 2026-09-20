@@ -5,18 +5,19 @@ not expose external SSH.
 
 ## Security model
 
-The deployment agent reuses the existing
+The deployment system reuses the existing root
 `PLAYNEXUS_CONTENT_AGENT_TOKEN`. No second deployment secret and no
 production enable/disable environment flag are required.
 
-The token has three roles in the platform:
+MCP and GraphQL continue to authenticate with the existing bearer token. The
+deployment endpoint deliberately does **not** accept that raw bearer. GitHub
+derives a deployment-only credential with the HMAC context
+`playnexus/deployment-auth/v1`, while package signing uses the separate context
+`playnexus/deployment-package/v1`. This domain separation means disclosure of
+a deployment bearer does not grant access to MCP or GraphQL.
 
-- authenticate MCP requests;
-- authenticate the read-only GraphQL Intelligence Graph;
-- authenticate the production deployment agent.
-
-Deployment packages never contain the raw token. A package signing key is
-derived from it with a deployment-specific HMAC context. The package also has a
+Deployment packages never contain the root token. A package signing key is
+derived from it with the package-specific HMAC context. The package also has a
 fixed application id (`playnexus-production-v1`) so a package built for
 another application cannot be accepted.
 
