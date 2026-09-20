@@ -820,7 +820,7 @@ class ContentAgentMediaService
             'platform' => Platform::query()->findOrFail($id),
             'collection' => VideoPlaylist::query()->findOrFail($id),
             'feed' => SocialContent::query()->where('type', 'post')->findOrFail($id),
-            'story' => SocialContent::query()->where('type', 'short')->findOrFail($id),
+            'story' => SocialContent::query()->where('type', 'story')->findOrFail($id),
             'video' => SocialContent::query()->where('type', 'video')->findOrFail($id),
             'product' => Product::query()->findOrFail($id),
         };
