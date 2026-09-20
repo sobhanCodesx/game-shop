@@ -112,11 +112,13 @@ class UserGamingRelevanceService
             $interactionCount += $row->completed ? 2 : 1;
         }
 
-        $sessionIds = collect([
-            ...(array) $request->session()->get('viewed_posts', []),
-            ...(array) $request->session()->get('viewed_videos', []),
-            ...(array) $request->session()->get('viewed_shorts', []),
-        ])->map(fn ($id) => (int) $id)->filter()->unique()->values();
+        $sessionIds = $request->hasSession()
+            ? collect([
+                ...(array) $request->session()->get('viewed_posts', []),
+                ...(array) $request->session()->get('viewed_videos', []),
+                ...(array) $request->session()->get('viewed_shorts', []),
+            ])->map(fn ($id) => (int) $id)->filter()->unique()->values()
+            : collect();
 
         if ($sessionIds->isNotEmpty()) {
             $viewed = SocialContent::query()

@@ -1,0 +1,89 @@
+name: Mobile API Check
+
+on:
+  push:
+    branches:
+      - mobile-api-v1
+    paths:
+      - 'app/Http/Controllers/Api/V1/**'
+      - 'app/Http/Middleware/AuthenticateMobileApi.php'
+      - 'app/Models/MobileAccessToken.php'
+      - 'app/Models/User.php'
+      - 'app/Services/MobileApiTokenService.php'
+      - 'app/Services/GoogleIdentityTokenService.php'
+      - 'app/Services/UserGamingRelevanceService.php'
+      - 'bootstrap/app.php'
+      - 'config/mobile-api.php'
+      - 'config/services.php'
+      - 'database/migrations/*mobile_access_tokens*'
+      - 'routes/api.php'
+      - 'routes/console.php'
+      - 'tests/Feature/MobileApiTest.php'
+      - 'tests/Feature/VideoWatchProgressTest.php'
+      - '.github/workflows/mobile-api-check.yml'
+  pull_request:
+    paths:
+      - 'app/Http/Controllers/Api/V1/**'
+      - 'app/Http/Middleware/AuthenticateMobileApi.php'
+      - 'app/Models/MobileAccessToken.php'
+      - 'app/Models/User.php'
+      - 'app/Services/MobileApiTokenService.php'
+      - 'app/Services/GoogleIdentityTokenService.php'
+      - 'app/Services/UserGamingRelevanceService.php'
+      - 'bootstrap/app.php'
+      - 'config/mobile-api.php'
+      - 'config/services.php'
+      - 'database/migrations/*mobile_access_tokens*'
+      - 'routes/api.php'
+      - 'routes/console.php'
+      - 'tests/Feature/MobileApiTest.php'
+      - 'tests/Feature/VideoWatchProgressTest.php'
+      - '.github/workflows/mobile-api-check.yml'
+
+jobs:
+  mobile-api:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: inertia_testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, ftp, fileinfo, gd
+          coverage: none
+
+      - name: Validate PHP syntax
+        run: |
+          php -l routes/api.php
+          php -l routes/console.php
+          php -l bootstrap/app.php
+          find app/Http/Controllers/Api/V1 app/Http/Middleware app/Models app/Services database/migrations -type f -name '*.php' -print0 |
+            xargs -0 -n1 php -l
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Boot native API routes
+        run: php artisan route:list --path=api/v1
+
+      - name: Run mobile API feature tests
+        run: php artisan test tests/Feature/MobileApiTest.php
+
+      - name: Run playback compatibility regression
+        run: php artisan test tests/Feature/VideoWatchProgressTest.php
