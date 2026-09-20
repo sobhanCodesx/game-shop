@@ -30,6 +30,18 @@ class AuthenticateMobileApi
         if (! $accessToken || ! $accessToken->user || $accessToken->user->status !== 'active') {
             $accessToken?->delete();
 
+            // Public/optional mobile routes must still work when an installed
+            // app carries an expired token from another environment or an old
+            // session. Treat that request as a guest; required routes remain
+            // strict and return 401.
+            if ($mode === 'optional') {
+                Auth::forgetUser();
+                $request->setUserResolver(fn () => null);
+                $request->attributes->remove('mobile_access_token');
+
+                return $next($request);
+            }
+
             return $this->unauthorized();
         }
 
