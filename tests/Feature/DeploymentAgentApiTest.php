@@ -8,6 +8,8 @@ use Tests\TestCase;
 
 class DeploymentAgentApiTest extends TestCase
 {
+    private const ROOT_TOKEN = 'deployment-agent-test-token';
+
     private string $directory;
 
     protected function setUp(): void
@@ -17,7 +19,7 @@ class DeploymentAgentApiTest extends TestCase
         $this->directory = storage_path('framework/testing/deployment-agent-'.bin2hex(random_bytes(4)));
 
         config([
-            'content_agent.token' => 'deployment-agent-test-token',
+            'content_agent.token' => self::ROOT_TOKEN,
             'content_agent.author_user_id' => 42,
             'deployment.import_enabled' => true,
             'deployment.directory' => $this->directory,
@@ -32,18 +34,26 @@ class DeploymentAgentApiTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_deployment_agent_requires_the_existing_content_agent_token(): void
+    public function test_deployment_agent_requires_authentication(): void
     {
         $this->postJson('/api/deployment-agent/upload/complete', [
             'operation_id' => '00000000-0000-0000-0000-000000000000',
         ])->assertUnauthorized();
     }
 
+    public function test_raw_content_agent_token_is_not_accepted_as_deployment_bearer(): void
+    {
+        $this->withToken(self::ROOT_TOKEN)
+            ->postJson('/api/deployment-agent/upload/complete', [
+                'operation_id' => '00000000-0000-0000-0000-000000000000',
+            ])->assertUnauthorized();
+    }
+
     public function test_deployment_agent_rejects_non_main_source_refs_before_upload(): void
     {
         $this->withHeaders([
             'Accept' => 'application/json',
-            'Authorization' => 'Bearer deployment-agent-test-token',
+            'Authorization' => 'Bearer '.$this->deploymentToken(),
         ])->post(
             '/api/deployment-agent/upload/chunk',
             $this->chunkPayload('refs/heads/chatgpt_dev'),
@@ -56,7 +66,7 @@ class DeploymentAgentApiTest extends TestCase
 
         $response = $this->withHeaders([
             'Accept' => 'application/json',
-            'Authorization' => 'Bearer deployment-agent-test-token',
+            'Authorization' => 'Bearer '.$this->deploymentToken(),
         ])->post(
             '/api/deployment-agent/upload/chunk',
             $this->chunkPayload('refs/heads/main', $sha),
@@ -71,6 +81,15 @@ class DeploymentAgentApiTest extends TestCase
         $this->assertMatchesRegularExpression(
             '/^[a-f0-9-]{36}$/',
             (string) $response->json('id'),
+        );
+    }
+
+    private function deploymentToken(): string
+    {
+        return hash_hmac(
+            'sha256',
+            'playnexus/deployment-auth/v1',
+            self::ROOT_TOKEN,
         );
     }
 
