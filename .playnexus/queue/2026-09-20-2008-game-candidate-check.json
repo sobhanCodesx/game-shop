@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-20-2008-game-candidate-check",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query($q: String!) { search(query: $q, first: 10) { games { id name slug status releaseDate } } }",
-    "variables": {"q": "Onimusha Way of the Sword"}
-  }
-}
