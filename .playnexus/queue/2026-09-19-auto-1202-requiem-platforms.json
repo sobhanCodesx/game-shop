@@ -1,8 +1,0 @@
-{
-  "job_id": "20260919-auto-1202-requiem-platforms",
-  "tool": "update_game",
-  "arguments": {
-    "id": 12,
-    "platform_ids": [1, 2, 3, 4]
-  }
-}
