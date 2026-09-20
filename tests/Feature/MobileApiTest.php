@@ -49,6 +49,30 @@ class MobileApiTest extends TestCase
         ]);
     }
 
+    public function test_bearer_user_can_pass_current_password_validation(): void
+    {
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'status' => 'active',
+            'password' => 'player1234',
+        ]);
+        $token = app(\App\Services\MobileApiTokenService::class)
+            ->issue($user, 'Password test')['plain_text_token'];
+
+        $this->withToken($token)
+            ->putJson('/api/v1/me/password', [
+                'current_password' => 'player1234',
+                'password' => 'newplayer5678',
+                'password_confirmation' => 'newplayer5678',
+            ])
+            ->assertOk();
+
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check(
+            'newplayer5678',
+            $user->fresh()->password,
+        ));
+    }
+
     public function test_mobile_api_rejects_protected_endpoint_without_token(): void
     {
         $this->getJson('/api/v1/me')
