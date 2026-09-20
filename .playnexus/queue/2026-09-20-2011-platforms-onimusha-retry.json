@@ -1,7 +1,0 @@
-{
-  "job_id": "2026-09-20-2011-platforms-onimusha-retry",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query { platforms(first: 20) { nodes { id name slug status } } }"
-  }
-}
