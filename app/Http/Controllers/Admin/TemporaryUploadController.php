@@ -18,7 +18,7 @@ class TemporaryUploadController extends Controller
             'chunk_index' => ['required', 'integer', 'min:0', 'max:9999'],
             'total_chunks' => ['required', 'integer', 'min:1', 'max:10000'],
             'name' => ['required', 'string', 'max:255'],
-            'mime' => ['required', Rule::in(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime'])],
+            'mime' => ['required', Rule::in(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime', 'application/vnd.android.package-archive', 'application/zip', 'application/x-zip-compressed', 'application/octet-stream'])],
             'size' => ['required', 'integer', 'min:1', 'max:2147483648'],
             'chunk' => ['required', 'file', 'max:5120'],
         ]);

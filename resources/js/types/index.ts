@@ -30,6 +30,13 @@ export interface SharedPageProps {
         categories: import("../Components/Storefront/Navigation/types").NavigationCategory[];
         stories: import("../Components/Storefront/Navigation/types").StorefrontStory[];
         fresh_content_at: string | null;
+        android_app: {
+            version: string;
+            version_code: number;
+            file_size: number;
+            released_at: string | null;
+            download_url: string;
+        } | null;
     };
     [key: string]: unknown;
 }

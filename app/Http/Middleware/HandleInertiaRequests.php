@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AndroidRelease;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\SocialContent;
@@ -175,6 +176,27 @@ class HandleInertiaRequests extends Middleware
                             'channel_avatar_url' => MediaStorage::url($story->game?->cover) ?: url((string) config('seo.default_image', '/logo.png')),
                         ])->values()->all()
                 ),
+                'android_app' => Cache::remember('android.latest-release.v1', now()->addMinutes(5), function (): ?array {
+                    try {
+                        $release = AndroidRelease::query()
+                            ->where('is_active', true)
+                            ->orderByDesc('version_code')
+                            ->first();
+
+                        return $release ? [
+                            'version' => $release->version,
+                            'version_code' => $release->version_code,
+                            'file_size' => $release->file_size,
+                            'released_at' => $release->released_at?->toISOString(),
+                            'download_url' => route('android.download'),
+                        ] : null;
+                    } catch (\Throwable) {
+                        // During the first deploy the code can become visible a
+                        // moment before the migration is applied. Keep public
+                        // pages healthy until the table exists.
+                        return null;
+                    }
+                }),
                 'fresh_content_at' => Cache::remember('storefront.fresh_content_at', 300, function (): ?string {
                     $cutoff = now()->subDays(14);
                     $product = Product::query()->publiclyVisible()

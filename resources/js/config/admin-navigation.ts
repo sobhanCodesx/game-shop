@@ -18,6 +18,7 @@ import {
     PanelsTopLeft,
     RefreshCw,
     Rocket,
+    Smartphone,
     Settings,
     ShoppingBag,
     Tags,
@@ -120,6 +121,7 @@ export const adminNavigation: NavigationEntry[] = [
             link("پترن‌های پیامک", "/admin/sms-patterns", ListChecks),
             link("تست پیامک", "/admin/sms-test", MessageSquareText),
             link("به‌روزرسانی سیستم", "/admin/deployments", Rocket),
+            link("ریلیز نسخه اندروید", "/admin/android-releases", Smartphone),
             link("نگهداری سیستم", "/admin/system-maintenance", TerminalSquare, {
                 superAdminOnly: true,
             }),

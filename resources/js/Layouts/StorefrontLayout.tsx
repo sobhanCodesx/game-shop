@@ -2,6 +2,7 @@ import { router, usePage } from "@inertiajs/react";
 import type { PropsWithChildren } from "react";
 
 import StorefrontAuthOverlay from "../Components/Auth/StorefrontAuthOverlay";
+import StorefrontFooter from "../Components/Storefront/StorefrontFooter";
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
 import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
 import type { SharedPageProps } from "../types";
@@ -43,6 +44,7 @@ export default function StorefrontLayout({ children, announcement }: Props) {
                 freshContentAt={storefront.fresh_content_at}
             />
             {children}
+            <StorefrontFooter androidApp={storefront.android_app} />
             <StorefrontAuthOverlay />
         </div>
     );

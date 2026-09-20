@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AndroidReleaseDownloadController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminResourceController;
+use App\Http\Controllers\Admin\AndroidReleaseController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\CatalogController;
 use App\Http\Controllers\Admin\CommerceSettingsController;
@@ -44,6 +46,7 @@ use App\Http\Controllers\VideoCommunityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('app/android/download', AndroidReleaseDownloadController::class)->name('android.download');
 Route::get('feed', [FeedController::class, 'index'])->name('feed.index');
 Route::get('feed/trending', [FeedController::class, 'trending'])->name('feed.trending');
 Route::get('posts/{content:slug}', [FeedController::class, 'show'])->name('posts.show');
@@ -157,6 +160,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/', AdminDashboardController::class)->name('dashboard');
     Route::get('home', [HomeSettingsController::class, 'edit'])->name('home.edit');
     Route::post('home', [HomeSettingsController::class, 'update'])->name('home.update');
+    Route::get('android-releases', [AndroidReleaseController::class, 'index'])->name('android-releases.index');
+    Route::post('android-releases', [AndroidReleaseController::class, 'store'])->name('android-releases.store');
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
     Route::patch('orders/{order}', [AdminOrderController::class, 'update'])->name('orders.update');
