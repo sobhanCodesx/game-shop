@@ -1,0 +1,1 @@
+{"tool":"query_playnexus_graph","arguments":{"query":"query { games(first: 50) { data { id name slug } } }"}}
