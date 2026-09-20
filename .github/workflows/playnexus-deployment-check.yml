@@ -6,6 +6,8 @@ on:
       - '.github/workflows/deploy-production.yml'
       - '.github/workflows/playnexus-deployment-check.yml'
       - 'app/Http/Controllers/Api/DeploymentAgentController.php'
+      - 'app/Http/Middleware/AuthenticateDeploymentAgent.php'
+      - 'bootstrap/app.php'
       - 'app/Http/Requests/Api/DeploymentAgentChunkRequest.php'
       - 'app/Services/Deployment/**'
       - 'config/deployment.php'
@@ -18,6 +20,8 @@ on:
       - '.github/workflows/deploy-production.yml'
       - '.github/workflows/playnexus-deployment-check.yml'
       - 'app/Http/Controllers/Api/DeploymentAgentController.php'
+      - 'app/Http/Middleware/AuthenticateDeploymentAgent.php'
+      - 'bootstrap/app.php'
       - 'app/Http/Requests/Api/DeploymentAgentChunkRequest.php'
       - 'app/Services/Deployment/**'
       - 'config/deployment.php'
@@ -41,6 +45,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           php -l app/Http/Controllers/Api/DeploymentAgentController.php
+          php -l app/Http/Middleware/AuthenticateDeploymentAgent.php
+          php -l bootstrap/app.php
           php -l app/Http/Requests/Api/DeploymentAgentChunkRequest.php
           php -l app/Services/Deployment/DeploymentManager.php
           php -l app/Services/Deployment/PackageBuilder.php
