@@ -1,0 +1,59 @@
+name: PlayNexus Deployment Check
+
+on:
+  push:
+    paths:
+      - '.github/workflows/deploy-production.yml'
+      - '.github/workflows/playnexus-deployment-check.yml'
+      - 'app/Http/Controllers/Api/DeploymentAgentController.php'
+      - 'app/Http/Requests/Api/DeploymentAgentChunkRequest.php'
+      - 'app/Services/Deployment/**'
+      - 'config/deployment.php'
+      - 'routes/api.php'
+      - 'scripts/playnexus_deploy.py'
+      - 'tests/Feature/DeploymentAgentApiTest.php'
+      - 'PRODUCTION_DEPLOYMENT.md'
+  pull_request:
+    paths:
+      - '.github/workflows/deploy-production.yml'
+      - '.github/workflows/playnexus-deployment-check.yml'
+      - 'app/Http/Controllers/Api/DeploymentAgentController.php'
+      - 'app/Http/Requests/Api/DeploymentAgentChunkRequest.php'
+      - 'app/Services/Deployment/**'
+      - 'config/deployment.php'
+      - 'routes/api.php'
+      - 'scripts/playnexus_deploy.py'
+      - 'tests/Feature/DeploymentAgentApiTest.php'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          php -l app/Http/Controllers/Api/DeploymentAgentController.php
+          php -l app/Http/Requests/Api/DeploymentAgentChunkRequest.php
+          php -l app/Services/Deployment/DeploymentManager.php
+          php -l app/Services/Deployment/PackageBuilder.php
+          php -l app/Services/Deployment/PackageVerifier.php
+          php -l config/deployment.php
+          php -l routes/api.php
+          php -l tests/Feature/DeploymentAgentApiTest.php
+
+      - name: Python syntax
+        run: python3 -m py_compile scripts/playnexus_deploy.py
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run deployment agent tests
+        run: php artisan test tests/Feature/DeploymentAgentApiTest.php
