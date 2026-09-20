@@ -43,7 +43,7 @@ class MobileAccountController extends Controller
                     ->map(fn ($item) => $item->only(['id', 'title', 'quantity']))
                     ->values(),
             ] : null,
-            'notification_preferences' => $this->notificationPreferences($user),
+            'notification_preferences' => $this->notificationPreferencePayload($user),
             'unread_notifications_count' => $user->unreadNotifications()->count(),
             'profile_completion' => collect([
                 $user->name,
@@ -217,7 +217,7 @@ class MobileAccountController extends Controller
     public function notificationPreferences(Request $request): JsonResponse
     {
         return response()->json([
-            'preferences' => $this->notificationPreferences($request->user()),
+            'preferences' => $this->notificationPreferencePayload($request->user()),
         ]);
     }
 
@@ -282,7 +282,7 @@ class MobileAccountController extends Controller
         ];
     }
 
-    private function notificationPreferences($user): array
+    private function notificationPreferencePayload($user): array
     {
         return [
             'sms_enabled' => $user->contentNotificationPreference?->sms_enabled ?? true,
