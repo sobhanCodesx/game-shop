@@ -1,0 +1,1 @@
+{"job_id":"2026-09-20-1238-story-graph-stellar-blade-retry","tool":"query_playnexus_graph","arguments":{"query":"query($q: String!) { search(query: $q, first: 8) { games { id name slug status } content { id type title slug status publishedAt game { id name slug } } } }","variables":{"q":"Stellar Blade Bayonetta"}}}
