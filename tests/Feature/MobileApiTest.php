@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class MobileApiTest extends TestCase
@@ -114,6 +115,21 @@ class MobileApiTest extends TestCase
             ->getJson('/api/v1/watch-progress')
             ->assertOk()
             ->assertJsonPath("progress.{$video->id}.position", 98);
+    }
+
+
+    public function test_mobile_relevance_profile_does_not_require_a_web_session(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $request = Request::create('/api/v1/home', 'GET');
+        $request->setUserResolver(fn () => $user);
+
+        $profile = app(\App\Services\UserGamingRelevanceService::class)
+            ->profile($request, collect());
+
+        $this->assertIsArray($profile);
+        $this->assertArrayHasKey('game_scores', $profile);
+        $this->assertArrayHasKey('confidence', $profile);
     }
 
     public function test_public_mobile_content_endpoint_returns_native_contract(): void
