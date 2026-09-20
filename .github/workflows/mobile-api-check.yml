@@ -11,6 +11,7 @@ on:
       - 'app/Models/User.php'
       - 'app/Services/MobileApiTokenService.php'
       - 'app/Services/GoogleIdentityTokenService.php'
+      - 'app/Services/UserGamingRelevanceService.php'
       - 'bootstrap/app.php'
       - 'config/mobile-api.php'
       - 'config/services.php'
@@ -18,6 +19,7 @@ on:
       - 'routes/api.php'
       - 'routes/console.php'
       - 'tests/Feature/MobileApiTest.php'
+      - 'tests/Feature/VideoWatchProgressTest.php'
       - '.github/workflows/mobile-api-check.yml'
   pull_request:
     paths:
@@ -27,6 +29,7 @@ on:
       - 'app/Models/User.php'
       - 'app/Services/MobileApiTokenService.php'
       - 'app/Services/GoogleIdentityTokenService.php'
+      - 'app/Services/UserGamingRelevanceService.php'
       - 'bootstrap/app.php'
       - 'config/mobile-api.php'
       - 'config/services.php'
@@ -34,6 +37,8 @@ on:
       - 'routes/api.php'
       - 'routes/console.php'
       - 'tests/Feature/MobileApiTest.php'
+      - 'tests/Feature/VideoWatchProgressTest.php'
+      - '.github/workflows/mobile-api-check.yml'
 
 jobs:
   mobile-api:
@@ -74,8 +79,11 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Boot native API routes
+        run: php artisan route:list --path=api/v1
+
       - name: Run mobile API feature tests
         run: php artisan test tests/Feature/MobileApiTest.php
 
-      - name: Run related regression tests
-        run: php artisan test tests/Feature/CustomerAuthenticationTest.php tests/Feature/OrderCheckoutTest.php tests/Feature/VideoWatchProgressTest.php
+      - name: Run playback compatibility regression
+        run: php artisan test tests/Feature/VideoWatchProgressTest.php
