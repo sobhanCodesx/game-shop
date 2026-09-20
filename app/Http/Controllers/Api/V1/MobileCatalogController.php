@@ -126,7 +126,14 @@ class MobileCatalogController extends Controller
         $latestVideos = SocialContent::query()
             ->published()
             ->where('type', 'video')
-            ->with(['game:id,name,slug,cover', 'media'])
+            ->with([
+                'game:id,name,slug,cover',
+                'game.playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+                'media',
+            ])
             ->latest('published_at')
             ->latest('id')
             ->limit(10)

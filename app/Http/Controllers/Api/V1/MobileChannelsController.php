@@ -118,7 +118,7 @@ class MobileChannelsController extends Controller
         return response()->json($studios);
     }
 
-    public function studio(Request $request, Studio $studio): JsonResponse
+    public function studio(Request $request, Studio $studio, StorefrontDataService $data): JsonResponse
     {
         abort_unless($studio->status === 'active', 404);
 
@@ -180,6 +180,25 @@ class MobileChannelsController extends Controller
                 'videos_count' => (int) $playlist->videos_count,
             ]);
 
+        $latestVideos = SocialContent::query()
+            ->published()
+            ->where('type', 'video')
+            ->whereHas('game', fn ($query) => $query->where('studio_id', $studio->id))
+            ->with([
+                'game:id,name,slug,cover',
+                'game.playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+                'media',
+            ])
+            ->latest('published_at')
+            ->latest('id')
+            ->limit(5)
+            ->get()
+            ->map(fn (SocialContent $video) => $data->content($video))
+            ->values();
+
         return response()->json([
             'studio' => [
                 ...$this->studioData($studio),
@@ -188,6 +207,7 @@ class MobileChannelsController extends Controller
             ],
             'channels' => $channels,
             'collections' => $collections,
+            'latest_videos' => $latestVideos,
         ]);
     }
 
@@ -205,7 +225,15 @@ class MobileChannelsController extends Controller
             ->published()
             ->where('type', 'video')
             ->whereBelongsTo($game)
-            ->with(['game:id,name,slug,cover', 'user:id,name,avatar', 'media'])
+            ->with([
+                    'game:id,name,slug,cover',
+                    'game.playlists' => fn ($query) => $query
+                        ->publiclyVisible()
+                        ->whereNotNull('logo')
+                        ->select(['id', 'game_id', 'logo', 'sort_order']),
+                    'user:id,name,avatar',
+                    'media',
+                ])
             ->latest('published_at')
             ->paginate(max(1, min(50, $request->integer('per_page', 18))))
             ->withQueryString()
@@ -257,7 +285,15 @@ class MobileChannelsController extends Controller
             'videos' => fn ($query) => $query
                 ->published()
                 ->where('type', 'video')
-                ->with(['game:id,name,slug,cover', 'user:id,name,avatar', 'media']),
+                ->with([
+                    'game:id,name,slug,cover',
+                    'game.playlists' => fn ($query) => $query
+                        ->publiclyVisible()
+                        ->whereNotNull('logo')
+                        ->select(['id', 'game_id', 'logo', 'sort_order']),
+                    'user:id,name,avatar',
+                    'media',
+                ]),
         ]);
 
         return response()->json([
@@ -285,7 +321,15 @@ class MobileChannelsController extends Controller
             'videos' => fn ($query) => $query
                 ->published()
                 ->where('type', 'video')
-                ->with(['game:id,name,slug,cover', 'user:id,name,avatar', 'media']),
+                ->with([
+                    'game:id,name,slug,cover',
+                    'game.playlists' => fn ($query) => $query
+                        ->publiclyVisible()
+                        ->whereNotNull('logo')
+                        ->select(['id', 'game_id', 'logo', 'sort_order']),
+                    'user:id,name,avatar',
+                    'media',
+                ]),
         ]);
 
         return response()->json([

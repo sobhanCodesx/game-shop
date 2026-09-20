@@ -246,7 +246,14 @@ class MobileAccountController extends Controller
             ->savedContent()
             ->published()
             ->whereIn('type', ['post', 'video', 'short'])
-            ->with(['game:id,name,slug,cover', 'media'])
+            ->with([
+                'game:id,name,slug,cover',
+                'game.playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+                'media',
+            ])
             ->orderByDesc('social_content_saves.created_at');
 
         $paginator = $query
