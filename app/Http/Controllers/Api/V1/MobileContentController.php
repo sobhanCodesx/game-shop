@@ -121,7 +121,7 @@ class MobileContentController extends Controller
 
         $contentFeed = SocialContent::query()
             ->published()
-            ->where('type', '!=', 'short')
+            ->whereNotIn('type', ['short', 'story'])
             ->where(fn (Builder $query) => $query
                 ->whereNotNull('thumbnail')
                 ->orWhereNotNull('video_path')
@@ -210,6 +210,58 @@ class MobileContentController extends Controller
     public function shorts(Request $request, StorefrontDataService $data): JsonResponse
     {
         return $this->contentIndex($request, $data, 'short');
+    }
+
+    public function stories(Request $request): JsonResponse
+    {
+        $items = SocialContent::query()
+            ->published()
+            ->where('type', 'story')
+            ->whereNotNull('video_path')
+            ->with([
+                'game:id,name,slug,cover',
+                'game.playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+                'user:id,name,avatar',
+            ])
+            ->orderBy('sort_order')
+            ->orderByDesc('published_at')
+            ->paginate(max(1, min(30, $request->integer('per_page', 18))))
+            ->withQueryString()
+            ->through(function (SocialContent $story): array {
+                $gameLogo = $story->game?->playlists->first()?->logo ?: $story->game?->cover;
+
+                return [
+                    'id' => $story->id,
+                    'type' => 'story',
+                    'title' => $story->title,
+                    'slug' => $story->slug,
+                    'excerpt' => $story->excerpt,
+                    'media_type' => $story->media_type,
+                    'media_url' => MediaStorage::url($story->video_path),
+                    'thumbnail_url' => MediaStorage::url($story->thumbnail),
+                    'duration' => $story->duration,
+                    'link_url' => $story->link_url,
+                    'link_label' => $story->link_label,
+                    'published_at' => $story->published_at?->toISOString(),
+                    'author' => [
+                        'name' => $story->user?->name ?: ($story->game?->name ?? 'PlayNexus'),
+                        'avatar_url' => MediaStorage::url($story->user?->avatar)
+                            ?: MediaStorage::url($gameLogo),
+                    ],
+                    'game' => $story->game ? [
+                        'id' => $story->game->id,
+                        'name' => $story->game->name,
+                        'slug' => $story->game->slug,
+                        'cover_url' => MediaStorage::url($story->game->cover),
+                        'logo_url' => MediaStorage::url($gameLogo),
+                    ] : null,
+                ];
+            });
+
+        return response()->json($items);
     }
 
     public function comments(
