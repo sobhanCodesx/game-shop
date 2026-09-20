@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-20-2304-final-graph-verify-feed-62",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "{ feeds(first: 5, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title slug status feedType feedBadge publishedAt game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }",
+    "variables": {}
+  }
+}
