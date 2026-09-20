@@ -1,1 +1,0 @@
-{"tool":"query_playnexus_graph","arguments":{"query":"query { studios(first: 50) { data { id name slug } } }"}}
