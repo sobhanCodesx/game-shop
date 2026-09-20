@@ -252,6 +252,7 @@ final class DeploymentManager
          * still alive so the next deployment step boots from the new vendor set.
          */
         $this->clearBootstrapCacheFiles();
+        $this->refreshOpcodeCache($state['diff']['changed'] ?? []);
 
         $state['stage'] = 'switched';
         $state['progress'] = 55;
@@ -268,6 +269,21 @@ final class DeploymentManager
                     'پاک‌سازی cache بوت‌استرپ قبل از تعویض vendor ممکن نشد: '.basename($path)
                 );
             }
+        }
+    }
+
+    private function refreshOpcodeCache(array $changed): void
+    {
+        if (function_exists('opcache_invalidate')) {
+            foreach ($changed as $path) {
+                if (is_string($path) && str_ends_with($path, '.php')) {
+                    @opcache_invalidate(base_path($path), true);
+                }
+            }
+        }
+
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
         }
     }
 

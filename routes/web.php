@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AndroidAppPageController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminResourceController;
 use App\Http\Controllers\Admin\AndroidReleaseController;
@@ -45,6 +46,7 @@ use App\Http\Controllers\VideoCommunityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('android', AndroidAppPageController::class)->name('android.app');
 Route::get('feed', [FeedController::class, 'index'])->name('feed.index');
 Route::get('feed/trending', [FeedController::class, 'trending'])->name('feed.trending');
 Route::get('posts/{content:slug}', [FeedController::class, 'show'])->name('posts.show');
@@ -160,6 +162,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('home', [HomeSettingsController::class, 'update'])->name('home.update');
     Route::get('android-releases', [AndroidReleaseController::class, 'index'])->name('android-releases.index');
     Route::post('android-releases', [AndroidReleaseController::class, 'store'])->name('android-releases.store');
+    Route::put('android-releases/page', [AndroidReleaseController::class, 'updatePage'])->name('android-releases.page.update');
+    Route::post('android-releases/media', [AndroidReleaseController::class, 'uploadPageMedia'])->name('android-releases.media.store');
+    Route::delete('android-releases/media/{mediaId}', [AndroidReleaseController::class, 'destroyPageMedia'])->name('android-releases.media.destroy');
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
     Route::patch('orders/{order}', [AdminOrderController::class, 'update'])->name('orders.update');

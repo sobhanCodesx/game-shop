@@ -98,7 +98,7 @@ export default function StorefrontFooter({
                         {androidApp ? (
                             <a
                                 className="group inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-white px-6 py-3 text-sm font-black text-slate-950 shadow-xl shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-300"
-                                href={androidApp.download_url}
+                                href="/android"
                             >
                                 <span className="grid size-9 place-items-center rounded-xl bg-slate-950 text-white transition group-hover:scale-105">
                                     <Download size={18} />

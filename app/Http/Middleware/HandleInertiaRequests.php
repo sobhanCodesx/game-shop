@@ -188,7 +188,7 @@ class HandleInertiaRequests extends Middleware
                             'version_code' => $release->version_code,
                             'file_size' => $release->file_size,
                             'released_at' => $release->released_at?->toISOString(),
-                            'download_url' => route('android.download'),
+                            'download_url' => route('android.apk.download'),
                         ] : null;
                     } catch (\Throwable) {
                         // During the first deploy the code can become visible a

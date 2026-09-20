@@ -25,6 +25,7 @@ return [
          */
         'paths' => [
             '/',
+            'android',
             'categories/*',
             'channels/*',
             'collections/*',

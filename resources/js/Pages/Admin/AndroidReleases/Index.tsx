@@ -4,10 +4,15 @@ import axios from "axios";
 import {
     CheckCircle2,
     Download,
+    ExternalLink,
     FileArchive,
+    Film,
+    Image as ImageIcon,
     PackageCheck,
+    Save,
     ShieldCheck,
     Smartphone,
+    Trash2,
     Upload,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -28,10 +33,31 @@ type Release = {
     download_url: string;
 };
 
+type PageMedia = {
+    id: string;
+    type: "image" | "video";
+    url: string | null;
+    alt: string;
+    caption: string;
+};
+
+type PageConfig = {
+    eyebrow: string;
+    hero_title: string;
+    hero_description: string;
+    promo_title: string;
+    promo_description: string;
+    seo_title: string;
+    seo_description: string;
+    media: PageMedia[];
+};
+
 type Props = {
     releases: Release[];
     latest: Release | null;
     maxUploadBytes: number;
+    page: PageConfig;
+    maxPageMediaBytes: number;
 };
 
 const chunkSize = 4 * 1024 * 1024;
@@ -57,6 +83,8 @@ export default function AndroidReleaseIndex({
     releases,
     latest,
     maxUploadBytes,
+    page,
+    maxPageMediaBytes,
 }: Props) {
     const [file, setFile] = useState<File | null>(null);
     const [notes, setNotes] = useState("");
@@ -65,6 +93,18 @@ export default function AndroidReleaseIndex({
     const [message, setMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [inputKey, setInputKey] = useState(0);
+
+    const [pageForm, setPageForm] = useState<PageConfig>(page);
+    const [pageBusy, setPageBusy] = useState(false);
+    const [pageMessage, setPageMessage] = useState<string | null>(null);
+    const [pageError, setPageError] = useState<string | null>(null);
+
+    const [mediaFile, setMediaFile] = useState<File | null>(null);
+    const [mediaAlt, setMediaAlt] = useState("");
+    const [mediaCaption, setMediaCaption] = useState("");
+    const [mediaBusy, setMediaBusy] = useState(false);
+    const [mediaProgress, setMediaProgress] = useState(0);
+    const [mediaInputKey, setMediaInputKey] = useState(0);
 
     const nextVersion = useMemo(() => {
         if (!latest) return "1.0.0";
@@ -81,7 +121,62 @@ export default function AndroidReleaseIndex({
         );
     }, [latest]);
 
-    const upload = async () => {
+    const errorMessage = (caught: unknown, fallback: string) => {
+        if (!axios.isAxiosError(caught)) return fallback;
+
+        const payload = caught.response?.data as
+            | {
+                  message?: string;
+                  errors?: Record<string, string[]>;
+              }
+            | undefined;
+        const firstValidation = payload?.errors
+            ? Object.values(payload.errors).flat()[0]
+            : null;
+
+        return firstValidation || payload?.message || caught.message;
+    };
+
+    const uploadTemporary = async (
+        selected: File,
+        onProgress: (value: number) => void,
+    ) => {
+        const uploadId = crypto.randomUUID();
+        const total = Math.max(1, Math.ceil(selected.size / chunkSize));
+
+        for (let index = 0; index < total; index++) {
+            const form = new FormData();
+            form.append("upload_id", uploadId);
+            form.append("chunk_index", String(index));
+            form.append("total_chunks", String(total));
+            form.append("name", selected.name);
+            form.append(
+                "mime",
+                selected.type || "application/octet-stream",
+            );
+            form.append("size", String(selected.size));
+            form.append(
+                "chunk",
+                selected.slice(
+                    index * chunkSize,
+                    Math.min(selected.size, (index + 1) * chunkSize),
+                ),
+                selected.name + ".part" + index,
+            );
+
+            await axios.post("/admin/uploads/chunk", form);
+            onProgress(Math.round(((index + 1) / total) * 88));
+        }
+
+        await axios.post("/admin/uploads/complete", {
+            upload_id: uploadId,
+        });
+        onProgress(94);
+
+        return uploadId;
+    };
+
+    const uploadRelease = async () => {
         if (!file || busy) return;
 
         if (!file.name.toLowerCase().endsWith(".apk")) {
@@ -99,42 +194,8 @@ export default function AndroidReleaseIndex({
         setMessage(null);
         setError(null);
 
-        const uploadId = crypto.randomUUID();
-
         try {
-            const total = Math.max(1, Math.ceil(file.size / chunkSize));
-
-            for (let index = 0; index < total; index++) {
-                const form = new FormData();
-                form.append("upload_id", uploadId);
-                form.append("chunk_index", String(index));
-                form.append("total_chunks", String(total));
-                form.append("name", file.name);
-                form.append(
-                    "mime",
-                    file.type || "application/octet-stream",
-                );
-                form.append("size", String(file.size));
-                form.append(
-                    "chunk",
-                    file.slice(
-                        index * chunkSize,
-                        Math.min(file.size, (index + 1) * chunkSize),
-                    ),
-                    file.name + ".part" + index,
-                );
-
-                await axios.post("/admin/uploads/chunk", form);
-                setProgress(
-                    Math.round(((index + 1) / total) * 82),
-                );
-            }
-
-            await axios.post("/admin/uploads/complete", {
-                upload_id: uploadId,
-            });
-            setProgress(90);
-
+            const uploadId = await uploadTemporary(file, setProgress);
             const response = await axios.post<{
                 message: string;
                 release: Release;
@@ -150,36 +211,130 @@ export default function AndroidReleaseIndex({
             setInputKey((value) => value + 1);
             router.reload({ only: ["releases", "latest"] });
         } catch (caught) {
-            if (axios.isAxiosError(caught)) {
-                const payload = caught.response?.data as
-                    | {
-                          message?: string;
-                          errors?: Record<string, string[]>;
-                      }
-                    | undefined;
-                const firstValidation = payload?.errors
-                    ? Object.values(payload.errors).flat()[0]
-                    : null;
-
-                setError(
-                    firstValidation ||
-                        payload?.message ||
-                        caught.message,
-                );
-            } else {
-                setError("انتشار نسخه اندروید ناموفق بود.");
-            }
+            setError(errorMessage(caught, "انتشار نسخه اندروید ناموفق بود."));
         } finally {
             setBusy(false);
+        }
+    };
+
+    const savePage = async () => {
+        setPageBusy(true);
+        setPageMessage(null);
+        setPageError(null);
+
+        try {
+            const response = await axios.put<{
+                message: string;
+                page: PageConfig;
+            }>("/admin/android-releases/page", {
+                eyebrow: pageForm.eyebrow,
+                hero_title: pageForm.hero_title,
+                hero_description: pageForm.hero_description,
+                promo_title: pageForm.promo_title,
+                promo_description: pageForm.promo_description,
+                seo_title: pageForm.seo_title,
+                seo_description: pageForm.seo_description,
+            });
+
+            setPageForm(response.data.page);
+            setPageMessage(response.data.message);
+        } catch (caught) {
+            setPageError(
+                errorMessage(caught, "ذخیره صفحه اندروید ناموفق بود."),
+            );
+        } finally {
+            setPageBusy(false);
+        }
+    };
+
+    const uploadMedia = async () => {
+        if (!mediaFile || mediaBusy) return;
+
+        if (mediaFile.size > maxPageMediaBytes) {
+            setPageError("حجم مدیا از سقف مجاز بیشتر است.");
+            return;
+        }
+
+        setMediaBusy(true);
+        setMediaProgress(0);
+        setPageMessage(null);
+        setPageError(null);
+
+        try {
+            const uploadId = await uploadTemporary(
+                mediaFile,
+                setMediaProgress,
+            );
+            const response = await axios.post<{
+                message: string;
+                page: PageConfig;
+            }>("/admin/android-releases/media", {
+                upload_token: uploadId,
+                alt: mediaAlt.trim() || null,
+                caption: mediaCaption.trim() || null,
+            });
+
+            setMediaProgress(100);
+            setPageForm(response.data.page);
+            setPageMessage(response.data.message);
+            setMediaFile(null);
+            setMediaAlt("");
+            setMediaCaption("");
+            setMediaInputKey((value) => value + 1);
+        } catch (caught) {
+            setPageError(
+                errorMessage(caught, "آپلود مدیای صفحه اندروید ناموفق بود."),
+            );
+        } finally {
+            setMediaBusy(false);
+        }
+    };
+
+    const removeMedia = async (item: PageMedia) => {
+        if (!confirm("این مدیا از صفحه اندروید حذف شود؟")) return;
+
+        setPageMessage(null);
+        setPageError(null);
+
+        try {
+            const response = await axios.delete<{
+                message: string;
+                page: PageConfig;
+            }>(
+                "/admin/android-releases/media/" +
+                    encodeURIComponent(item.id),
+            );
+
+            setPageForm(response.data.page);
+            setPageMessage(response.data.message);
+        } catch (caught) {
+            setPageError(errorMessage(caught, "حذف مدیا ناموفق بود."));
         }
     };
 
     return (
         <AdminLayout
             title="ریلیز نسخه اندروید"
-            description="APK را آپلود کن؛ PlayNexus شماره نسخه و Build را خودکار می‌سازد، نسخه جدید را فعال می‌کند و لینک دانلود سایت فوراً به آن متصل می‌شود."
+            description="مدیریت APK، تاریخچه نسخه‌ها و لندینگ عمومی /android"
         >
             <Head title="ریلیز نسخه اندروید" />
+
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                <div>
+                    <strong className="block text-sm text-emerald-300">
+                        صفحه عمومی اندروید آماده مدیریت است
+                    </strong>
+                    <span className="mt-1 block text-xs text-slate-400">
+                        محتوای تبلیغاتی، مدیا، SEO و نسخه‌ها در یک پنل
+                    </span>
+                </div>
+                <a href="/android" target="_blank" rel="noreferrer">
+                    <Button size="sm" variant="secondary">
+                        <ExternalLink size={15} />
+                        مشاهده /android
+                    </Button>
+                </a>
+            </div>
 
             <div className="grid gap-5 xl:grid-cols-[1fr_1.5fr]">
                 <Card
@@ -231,14 +386,14 @@ export default function AndroidReleaseIndex({
                             <strong className="text-white">
                                 v{nextVersion}
                             </strong>{" "}
-                            خواهد بود. نیازی نیست شماره نسخه را دستی وارد کنی.
+                            خواهد بود.
                         </div>
 
                         {latest && (
                             <a href={latest.download_url}>
                                 <Button fullWidth variant="secondary">
                                     <Download size={17} />
-                                    تست دانلود آخرین APK
+                                    تست فایل APK
                                 </Button>
                             </a>
                         )}
@@ -257,8 +412,7 @@ export default function AndroidReleaseIndex({
                                     آپلود ریلیز جدید
                                 </h2>
                                 <p className="mt-1 text-xs text-slate-500">
-                                    آپلود تکه‌ای است و برای APKهای حجیم محدودیت
-                                    معمول فرم PHP را دور می‌زند.
+                                    آپلود تکه‌ای؛ شماره نسخه و Build خودکار
                                 </p>
                             </div>
                         </div>
@@ -299,7 +453,7 @@ export default function AndroidReleaseIndex({
 
                         <label className="block">
                             <span className="mb-2 block text-xs font-bold text-slate-400">
-                                توضیحات نسخه — اختیاری
+                                توضیحات نسخه
                             </span>
                             <textarea
                                 className="min-h-28 w-full resize-y rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-sm text-slate-200 outline-none transition focus:border-indigo-500"
@@ -308,7 +462,7 @@ export default function AndroidReleaseIndex({
                                 onChange={(event) =>
                                     setNotes(event.target.value)
                                 }
-                                placeholder="مثلاً: بهبود سرعت، اصلاح نوتیفیکیشن‌ها و طراحی جدید صفحه ویدیو"
+                                placeholder="تغییرات این نسخه را بنویس؛ در صفحه عمومی هم نمایش داده می‌شود."
                                 value={notes}
                             />
                         </label>
@@ -321,19 +475,10 @@ export default function AndroidReleaseIndex({
                                         {progress.toLocaleString("fa-IR")}٪
                                     </span>
                                 </div>
-                                <div
-                                    aria-label="پیشرفت آپلود APK"
-                                    aria-valuemax={100}
-                                    aria-valuemin={0}
-                                    aria-valuenow={progress}
-                                    className="h-2 overflow-hidden rounded-full bg-slate-800"
-                                    role="progressbar"
-                                >
+                                <div className="h-2 overflow-hidden rounded-full bg-slate-800">
                                     <div
                                         className="h-full bg-gradient-to-l from-emerald-400 to-cyan-500 transition-[width]"
-                                        style={{
-                                            width: progress + "%",
-                                        }}
+                                        style={{ width: progress + "%" }}
                                     />
                                 </div>
                             </div>
@@ -342,7 +487,7 @@ export default function AndroidReleaseIndex({
                         <Button
                             fullWidth
                             isDisabled={!file || busy}
-                            onPress={upload}
+                            onPress={uploadRelease}
                             variant="primary"
                         >
                             <PackageCheck size={18} />
@@ -356,12 +501,309 @@ export default function AndroidReleaseIndex({
                                 className="mt-0.5 shrink-0 text-emerald-500"
                                 size={14}
                             />
-                            بعد از موفقیت، نسخه قبلی فقط از حالت فعال خارج می‌شود
-                            و فایل و سابقه آن حذف نمی‌شود.
+                            نسخه قبلی و فایل آن برای تاریخچه باقی می‌ماند.
                         </p>
                     </Card.Content>
                 </Card>
             </div>
+
+            <Card
+                className="mt-5 border border-slate-800 bg-slate-900/60"
+                variant="secondary"
+            >
+                <Card.Content className="space-y-5 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 className="font-black text-white">
+                                محتوای لندینگ /android
+                            </h2>
+                            <p className="mt-1 text-xs text-slate-500">
+                                متن‌های صفحه عمومی و متادیتای نتایج گوگل
+                            </p>
+                        </div>
+                        <Button
+                            isDisabled={pageBusy}
+                            onPress={savePage}
+                            variant="primary"
+                        >
+                            <Save size={16} />
+                            {pageBusy ? "در حال ذخیره…" : "ذخیره صفحه"}
+                        </Button>
+                    </div>
+
+                    {pageMessage && (
+                        <Alert color="success">{pageMessage}</Alert>
+                    )}
+                    {pageError && <Alert color="danger">{pageError}</Alert>}
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                        <div>
+                            <label className="mb-2 block text-xs font-bold text-slate-400">
+                                لیبل بالای Hero
+                            </label>
+                            <Input
+                                value={pageForm.eyebrow}
+                                onChange={(event) =>
+                                    setPageForm({
+                                        ...pageForm,
+                                        eyebrow: event.target.value,
+                                    })
+                                }
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-2 block text-xs font-bold text-slate-400">
+                                H1 صفحه
+                            </label>
+                            <Input
+                                value={pageForm.hero_title}
+                                onChange={(event) =>
+                                    setPageForm({
+                                        ...pageForm,
+                                        hero_title: event.target.value,
+                                    })
+                                }
+                            />
+                        </div>
+                        <label className="block lg:col-span-2">
+                            <span className="mb-2 block text-xs font-bold text-slate-400">
+                                توضیح Hero
+                            </span>
+                            <textarea
+                                className="min-h-28 w-full rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-sm outline-none focus:border-indigo-500"
+                                value={pageForm.hero_description}
+                                onChange={(event) =>
+                                    setPageForm({
+                                        ...pageForm,
+                                        hero_description:
+                                            event.target.value,
+                                    })
+                                }
+                            />
+                        </label>
+                        <div>
+                            <label className="mb-2 block text-xs font-bold text-slate-400">
+                                عنوان بخش تبلیغاتی
+                            </label>
+                            <Input
+                                value={pageForm.promo_title}
+                                onChange={(event) =>
+                                    setPageForm({
+                                        ...pageForm,
+                                        promo_title: event.target.value,
+                                    })
+                                }
+                            />
+                        </div>
+                        <label className="block">
+                            <span className="mb-2 block text-xs font-bold text-slate-400">
+                                توضیح تبلیغاتی
+                            </span>
+                            <textarea
+                                className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-sm outline-none focus:border-indigo-500"
+                                value={pageForm.promo_description}
+                                onChange={(event) =>
+                                    setPageForm({
+                                        ...pageForm,
+                                        promo_description:
+                                            event.target.value,
+                                    })
+                                }
+                            />
+                        </label>
+                    </div>
+
+                    <div className="grid gap-4 rounded-2xl border border-indigo-500/15 bg-indigo-500/5 p-4 lg:grid-cols-2">
+                        <div>
+                            <label className="mb-2 block text-xs font-bold text-indigo-300">
+                                SEO Title
+                            </label>
+                            <Input
+                                value={pageForm.seo_title}
+                                onChange={(event) =>
+                                    setPageForm({
+                                        ...pageForm,
+                                        seo_title: event.target.value,
+                                    })
+                                }
+                            />
+                        </div>
+                        <label className="block">
+                            <span className="mb-2 block text-xs font-bold text-indigo-300">
+                                Meta Description
+                            </span>
+                            <textarea
+                                className="min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-sm outline-none focus:border-indigo-500"
+                                maxLength={300}
+                                value={pageForm.seo_description}
+                                onChange={(event) =>
+                                    setPageForm({
+                                        ...pageForm,
+                                        seo_description:
+                                            event.target.value,
+                                    })
+                                }
+                            />
+                        </label>
+                    </div>
+                </Card.Content>
+            </Card>
+
+            <Card
+                className="mt-5 border border-slate-800 bg-slate-900/60"
+                variant="secondary"
+            >
+                <Card.Content className="space-y-5 p-5">
+                    <div>
+                        <h2 className="font-black text-white">
+                            مدیای تبلیغاتی صفحه
+                        </h2>
+                        <p className="mt-1 text-xs text-slate-500">
+                            تصویر یا ویدیو آپلود کن؛ اولین مدیا در Hero نمایش
+                            داده می‌شود و بقیه وارد گالری می‌شوند.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
+                        <div>
+                            <label className="mb-2 block text-xs font-bold text-slate-400">
+                                فایل
+                            </label>
+                            <Input
+                                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                                disabled={mediaBusy}
+                                key={mediaInputKey}
+                                onChange={(event) =>
+                                    setMediaFile(
+                                        event.target.files?.[0] ?? null,
+                                    )
+                                }
+                                type="file"
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-2 block text-xs font-bold text-slate-400">
+                                Alt تصویر
+                            </label>
+                            <Input
+                                value={mediaAlt}
+                                onChange={(event) =>
+                                    setMediaAlt(event.target.value)
+                                }
+                                placeholder="مثلاً صفحه اصلی اپ پلی نکسوس"
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-2 block text-xs font-bold text-slate-400">
+                                کپشن
+                            </label>
+                            <Input
+                                value={mediaCaption}
+                                onChange={(event) =>
+                                    setMediaCaption(event.target.value)
+                                }
+                                placeholder="توضیح کوتاه این مدیا"
+                            />
+                        </div>
+                        <Button
+                            isDisabled={!mediaFile || mediaBusy}
+                            onPress={uploadMedia}
+                            variant="primary"
+                        >
+                            <Upload size={16} />
+                            آپلود
+                        </Button>
+                    </div>
+
+                    {mediaFile && (
+                        <p className="text-xs text-slate-500">
+                            {mediaFile.name} • {formatBytes(mediaFile.size)}
+                        </p>
+                    )}
+
+                    {mediaBusy && (
+                        <div>
+                            <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
+                                <span>در حال آپلود مدیا...</span>
+                                <span>
+                                    {mediaProgress.toLocaleString("fa-IR")}٪
+                                </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+                                <div
+                                    className="h-full bg-indigo-500 transition-[width]"
+                                    style={{
+                                        width: mediaProgress + "%",
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        {pageForm.media.map((item) => (
+                            <div
+                                className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/50"
+                                key={item.id}
+                            >
+                                <div className="relative aspect-video bg-black">
+                                    {item.type === "video" ? (
+                                        <video
+                                            className="size-full object-cover"
+                                            controls
+                                            preload="metadata"
+                                        >
+                                            {item.url && (
+                                                <source src={item.url} />
+                                            )}
+                                        </video>
+                                    ) : (
+                                        item.url && (
+                                            <img
+                                                alt={item.alt}
+                                                className="size-full object-cover"
+                                                src={item.url}
+                                            />
+                                        )
+                                    )}
+                                    <span className="absolute right-2 top-2 rounded-lg bg-black/60 p-2 text-white">
+                                        {item.type === "video" ? (
+                                            <Film size={14} />
+                                        ) : (
+                                            <ImageIcon size={14} />
+                                        )}
+                                    </span>
+                                </div>
+                                <div className="p-3">
+                                    <p className="truncate text-xs font-bold text-slate-300">
+                                        {item.alt || "بدون Alt"}
+                                    </p>
+                                    <p className="mt-1 truncate text-[11px] text-slate-600">
+                                        {item.caption || "بدون کپشن"}
+                                    </p>
+                                    <Button
+                                        className="mt-3"
+                                        color="danger"
+                                        fullWidth
+                                        onPress={() => removeMedia(item)}
+                                        size="sm"
+                                        variant="ghost"
+                                    >
+                                        <Trash2 size={14} />
+                                        حذف
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+
+                        {pageForm.media.length === 0 && (
+                            <div className="col-span-full rounded-2xl border border-dashed border-slate-800 p-8 text-center text-xs text-slate-500">
+                                هنوز مدیایی برای صفحه اندروید ثبت نشده است.
+                            </div>
+                        )}
+                    </div>
+                </Card.Content>
+            </Card>
 
             <Card
                 className="mt-5 border border-slate-800 bg-slate-900/60"
