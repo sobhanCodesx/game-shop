@@ -288,14 +288,51 @@ class MobileContentController extends Controller
 
     private function contentIndex(Request $request, StorefrontDataService $data, string $type): JsonResponse
     {
-        $items = SocialContent::query()
+        $query = SocialContent::query()
             ->published()
             ->where('type', $type)
             ->with(['game:id,name,slug,cover', 'media'])
-            ->latest('published_at')
+            ->withCount([
+                'reactions as likes_count' => fn (Builder $query) => $query->where('type', 'like'),
+                'reactions as dislikes_count' => fn (Builder $query) => $query->where('type', 'dislike'),
+                'comments as comments_count' => fn (Builder $query) => $query->published(),
+            ])
+            ->latest('published_at');
+
+        if ($request->user()) {
+            $userId = $request->user()->id;
+
+            $query
+                ->withCount([
+                    'reactions as viewer_like_count' => fn (Builder $query) => $query
+                        ->where('type', 'like')
+                        ->where('user_id', $userId),
+                    'reactions as viewer_dislike_count' => fn (Builder $query) => $query
+                        ->where('type', 'dislike')
+                        ->where('user_id', $userId),
+                    'savedBy as viewer_saved_count' => fn (Builder $query) => $query
+                        ->where('users.id', $userId),
+                ]);
+        }
+
+        $items = $query
             ->paginate(max(1, min(30, $request->integer('per_page', 18))))
             ->withQueryString()
-            ->through(fn (SocialContent $item) => $data->content($item));
+            ->through(function (SocialContent $item) use ($data): array {
+                $viewerReaction = ((int) ($item->viewer_like_count ?? 0)) > 0
+                    ? 'like'
+                    : (((int) ($item->viewer_dislike_count ?? 0)) > 0 ? 'dislike' : null);
+
+                return [
+                    ...$data->content($item),
+                    'likes_count' => (int) ($item->likes_count ?? 0),
+                    'dislikes_count' => (int) ($item->dislikes_count ?? 0),
+                    'comments_count' => (int) ($item->comments_count ?? 0),
+                    'user_reaction' => $viewerReaction,
+                    'is_liked' => $viewerReaction === 'like',
+                    'is_saved' => ((int) ($item->viewer_saved_count ?? 0)) > 0,
+                ];
+            });
 
         return response()->json($items);
     }
