@@ -109,6 +109,24 @@ class MobileCatalogController extends Controller
             ])
             ->values();
 
+        $latestVideos = SocialContent::query()
+            ->published()
+            ->where('type', 'video')
+            ->with([
+                'game:id,name,slug,cover',
+                'game.playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+                'media',
+            ])
+            ->latest('published_at')
+            ->latest('id')
+            ->limit(10)
+            ->get()
+            ->map(fn (SocialContent $video) => $storefront->content($video))
+            ->values();
+
         $radarItems = collect($radar->linkedSnapshot()['items'] ?? []);
         $radarPreview = $radarItems
             ->filter(fn (array $item) => ($item['psn']['available'] ?? false) || ($item['xbox']['available'] ?? false))
@@ -146,6 +164,7 @@ class MobileCatalogController extends Controller
                 ->map($productMap)
                 ->values(),
             'latest_feed' => $feed->latestImportantPreview($request, 10),
+            'latest_videos' => $latestVideos,
             'latest_studios' => $studios,
             'game_radar' => $radarPreview,
             'content_sections' => $this->contentSections($request, $prices, $storefront),
