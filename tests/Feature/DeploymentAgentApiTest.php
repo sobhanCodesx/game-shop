@@ -41,18 +41,26 @@ class DeploymentAgentApiTest extends TestCase
 
     public function test_deployment_agent_rejects_non_main_source_refs_before_upload(): void
     {
-        $this->withToken('deployment-agent-test-token')
-            ->post('/api/deployment-agent/upload/chunk', $this->chunkPayload('refs/heads/chatgpt_dev'))
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['source_ref']);
+        $this->withHeaders([
+            'Accept' => 'application/json',
+            'Authorization' => 'Bearer deployment-agent-test-token',
+        ])->post(
+            '/api/deployment-agent/upload/chunk',
+            $this->chunkPayload('refs/heads/chatgpt_dev'),
+        )->assertUnprocessable()->assertJsonValidationErrors(['source_ref']);
     }
 
     public function test_deployment_agent_accepts_main_chunk_and_records_source_identity(): void
     {
         $sha = str_repeat('a', 40);
 
-        $response = $this->withToken('deployment-agent-test-token')
-            ->post('/api/deployment-agent/upload/chunk', $this->chunkPayload('refs/heads/main', $sha));
+        $response = $this->withHeaders([
+            'Accept' => 'application/json',
+            'Authorization' => 'Bearer deployment-agent-test-token',
+        ])->post(
+            '/api/deployment-agent/upload/chunk',
+            $this->chunkPayload('refs/heads/main', $sha),
+        );
 
         $response->assertOk()
             ->assertJsonPath('user_id', 42)
@@ -77,7 +85,11 @@ class DeploymentAgentApiTest extends TestCase
             'source_sha' => $sha ?? str_repeat('b', 40),
             'source_ref' => $ref,
             'run_id' => '123456',
-            'chunk' => UploadedFile::fake()->create('deployment.part', 1, 'application/octet-stream'),
+            'chunk' => UploadedFile::fake()->create(
+                'deployment.part',
+                1,
+                'application/octet-stream',
+            ),
         ];
     }
 }
