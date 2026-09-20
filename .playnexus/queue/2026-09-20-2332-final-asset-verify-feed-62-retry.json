@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-20-2332-final-asset-verify-feed-62-retry",
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "feed",
+    "id": 62
+  }
+}
