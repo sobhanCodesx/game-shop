@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-20-2009-capcom-studio-check",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query($q: String!) { search(query: $q, first: 5) { studios { id name slug status } } }",
-    "variables": {"q": "Capcom"}
-  }
-}
