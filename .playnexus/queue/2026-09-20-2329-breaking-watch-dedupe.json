@@ -1,0 +1,6 @@
+{
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query { contents(first: 25, orderBy: {field: CREATED_AT, direction: DESC}) { nodes { id title slug status createdAt publishedAt } } }"
+  }
+}
