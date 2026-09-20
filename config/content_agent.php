@@ -20,7 +20,8 @@ return [
         'max_offset' => env('PLAYNEXUS_CONTENT_AGENT_GRAPHQL_MAX_OFFSET', 50000),
     ],
     'uploads' => [
-        'max_size' => env('PLAYNEXUS_CONTENT_AGENT_MAX_UPLOAD_SIZE', 104857600),
+        // Keep production uploads at least 300 MB even if an older .env still has the legacy 100 MB value.
+        'max_size' => max((int) env('PLAYNEXUS_CONTENT_AGENT_MAX_UPLOAD_SIZE', 314572800), 314572800),
         'max_chunk_size' => env('PLAYNEXUS_CONTENT_AGENT_MAX_CHUNK_SIZE', 2097152),
         'ttl_seconds' => env('PLAYNEXUS_CONTENT_AGENT_UPLOAD_TTL', 86400),
     ],
