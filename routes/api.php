@@ -16,7 +16,7 @@ Route::post('/graphql', ContentAgentGraphqlController::class)
 
 
 Route::prefix('/deployment-agent')
-    ->middleware(['content.agent', 'throttle:120,1'])
+    ->middleware(['throttle:300,1', 'content.agent'])
     ->name('deployment-agent.')
     ->group(function () {
         Route::post('/upload/chunk', [DeploymentAgentController::class, 'chunk'])->name('chunk');
