@@ -91,6 +91,10 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
             ->name('channels.playlists.show');
         Route::get('collections/{playlist:slug}', [MobileChannelsController::class, 'collection'])
             ->name('collections.show');
+
+        Route::post('cart/resolve', [MobileCommerceController::class, 'cart'])
+            ->middleware('throttle:90,1')
+            ->name('cart.resolve');
     });
 
     Route::middleware(['mobile.api', 'throttle:180,1'])->group(function (): void {
@@ -133,7 +137,6 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
             ->middleware('throttle:30,1')
             ->name('channels.subscription');
 
-        Route::post('cart/resolve', [MobileCommerceController::class, 'cart'])->name('cart.resolve');
         Route::post('checkout/bootstrap', [MobileCommerceController::class, 'checkout'])->name('checkout.bootstrap');
         Route::post('checkout/preview', [MobileCommerceController::class, 'preview'])->name('checkout.preview');
         Route::post('checkout', [MobileCommerceController::class, 'store'])->name('checkout.store');
