@@ -138,7 +138,9 @@ class MobileApiTest extends TestCase
         $this->withToken($token)
             ->getJson('/api/v1/watch-progress')
             ->assertOk()
-            ->assertJsonPath("progress.{$video->id}.position", 98);
+            ->assertJsonPath("progress.{$video->id}.position", 98)
+            ->assertJsonPath("progress.{$video->id}.content.id", $video->id)
+            ->assertJsonPath('items.0.content.id', $video->id);
     }
 
 
@@ -198,6 +200,25 @@ class MobileApiTest extends TestCase
         $this->getJson('/api/v1/shorts')
             ->assertOk()
             ->assertJsonPath('data.0.id', $short->id);
+    }
+
+    public function test_phone_password_login_does_not_require_an_otp_after_registration_flow(): void
+    {
+        $user = User::factory()->create([
+            'phone' => '09121234567',
+            'phone_verified_at' => null,
+            'status' => 'active',
+            'password' => 'player1234',
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => '09121234567',
+            'password' => 'player1234',
+            'device_name' => 'Android Phone',
+        ])->assertOk()
+            ->assertJsonPath('token_type', 'Bearer')
+            ->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('user.phone', '09121234567');
     }
 
 }

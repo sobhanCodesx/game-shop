@@ -5,37 +5,58 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\SocialContent;
 use App\Models\VideoWatchProgress;
+use App\Services\StorefrontDataService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MobileWatchProgressController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, StorefrontDataService $storefront): JsonResponse
     {
         $progress = $request->user()
             ->videoWatchProgress()
             ->whereHas('content', fn ($query) => $query
                 ->published()
                 ->whereIn('type', ['video', 'short']))
+            ->with([
+                'content.game:id,name,slug,cover',
+                'content.game.playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+                'content.media',
+            ])
             ->orderByDesc('last_watched_at')
             ->get([
+                'id',
+                'user_id',
                 'social_content_id',
                 'position_seconds',
                 'duration_seconds',
                 'completed',
+                'last_watched_at',
                 'updated_at',
             ])
-            ->mapWithKeys(fn (VideoWatchProgress $item) => [
-                (string) $item->social_content_id => [
-                    'content_id' => (int) $item->social_content_id,
-                    'position' => (int) $item->position_seconds,
-                    'duration' => (int) ($item->duration_seconds ?? 0),
-                    'completed' => (bool) $item->completed,
-                    'updated_at' => $item->updated_at?->toISOString(),
-                ],
-            ]);
+            ->mapWithKeys(function (VideoWatchProgress $item) use ($storefront): array {
+                $content = $item->content;
 
-        return response()->json(['progress' => $progress]);
+                return [
+                    (string) $item->social_content_id => [
+                        'content_id' => (int) $item->social_content_id,
+                        'position' => (int) $item->position_seconds,
+                        'duration' => (int) ($item->duration_seconds ?? 0),
+                        'completed' => (bool) $item->completed,
+                        'updated_at' => $item->last_watched_at?->toISOString()
+                            ?? $item->updated_at?->toISOString(),
+                        'content' => $content ? $storefront->content($content) : null,
+                    ],
+                ];
+            });
+
+        return response()->json([
+            'progress' => $progress,
+            'items' => $progress->values(),
+        ]);
     }
 
     public function store(Request $request, SocialContent $content): JsonResponse
