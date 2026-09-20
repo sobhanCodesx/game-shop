@@ -48,6 +48,190 @@ interface Props extends Pick<StorefrontNavigationProps, "categories" | "user"> {
     hasFreshContent: boolean;
 }
 
+function CategoryTreeNode({
+    category,
+    depth,
+    onClose,
+}: {
+    category: NavigationCategory;
+    depth: number;
+    onClose: () => void;
+}) {
+    const hasChildren = category.children.length > 0;
+    const compact = depth >= 2;
+
+    return (
+        <div className={depth > 0 ? "relative pr-5" : ""}>
+            {depth > 0 && (
+                <>
+                    <span
+                        aria-hidden="true"
+                        className="absolute bottom-0 right-[5px] top-0 w-px bg-gradient-to-b from-indigo-500/35 via-[var(--store-border)] to-transparent"
+                    />
+                    <span
+                        aria-hidden="true"
+                        className="absolute right-[5px] top-[18px] h-px w-3 bg-[var(--store-border)]"
+                    />
+                    <span
+                        aria-hidden="true"
+                        className="absolute right-[2px] top-[15px] size-[7px] rounded-full border border-indigo-400/60 bg-[var(--store-surface-strong)]"
+                    />
+                </>
+            )}
+
+            <Link
+                href={`/categories/${category.slug}`}
+                onClick={onClose}
+                className={`group relative flex items-center gap-2.5 rounded-xl border border-transparent text-[var(--store-muted)] transition-all duration-150 hover:border-indigo-500/20 hover:bg-indigo-500/[.07] hover:text-[var(--store-text)] ${
+                    compact ? "min-h-8 px-2 py-1.5" : "min-h-10 px-2.5 py-2"
+                }`}
+            >
+                {!compact &&
+                    (category.image_url ? (
+                        <img
+                            alt=""
+                            aria-hidden="true"
+                            src={category.image_url}
+                            loading="lazy"
+                            className="size-8 shrink-0 rounded-lg object-cover ring-1 ring-white/10"
+                        />
+                    ) : (
+                        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--store-accent-soft)] text-indigo-400">
+                            <Gamepad2 size={15} />
+                        </span>
+                    ))}
+
+                {compact && (
+                    <span
+                        aria-hidden="true"
+                        className="size-1.5 shrink-0 rounded-full bg-indigo-400/55 transition group-hover:bg-indigo-400"
+                    />
+                )}
+
+                <span
+                    className={`min-w-0 flex-1 truncate font-bold ${
+                        compact ? "text-[11px]" : "text-xs"
+                    }`}
+                >
+                    {category.name}
+                </span>
+
+                {category.products_count > 0 && (
+                    <span className="shrink-0 rounded-md bg-[var(--store-surface)] px-1.5 py-0.5 text-[9px] font-black tabular-nums text-[var(--store-muted)]">
+                        {category.products_count.toLocaleString("fa-IR")}
+                    </span>
+                )}
+
+                <ChevronLeft
+                    size={compact ? 12 : 14}
+                    className="shrink-0 opacity-35 transition-transform group-hover:-translate-x-0.5 group-hover:text-indigo-400 group-hover:opacity-100"
+                />
+            </Link>
+
+            {hasChildren && (
+                <div
+                    className={`space-y-1 ${
+                        compact ? "mt-0.5" : "mt-1.5"
+                    }`}
+                >
+                    {category.children.map((child) => (
+                        <CategoryTreeNode
+                            key={child.id}
+                            category={child}
+                            depth={depth + 1}
+                            onClose={onClose}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function RootCategoryCard({
+    category,
+    onClose,
+}: {
+    category: NavigationCategory;
+    onClose: () => void;
+}) {
+    return (
+        <article className="mb-3 break-inside-avoid overflow-hidden rounded-[22px] border border-[var(--store-border)] bg-[var(--store-panel)] shadow-[0_12px_30px_rgba(0,0,0,.14)] transition hover:border-indigo-500/25">
+            <Link
+                href={`/categories/${category.slug}`}
+                onClick={onClose}
+                className="group relative flex items-center gap-3 overflow-hidden border-b border-[var(--store-border)] px-3.5 py-3.5"
+            >
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -left-8 -top-12 size-28 rounded-full bg-indigo-500/10 blur-2xl"
+                />
+
+                {category.image_url ? (
+                    <img
+                        alt={category.name}
+                        src={category.image_url}
+                        loading="lazy"
+                        className="relative size-11 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
+                    />
+                ) : (
+                    <span className="relative grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-violet-500/10 text-indigo-400 ring-1 ring-indigo-500/20">
+                        <FolderOpen size={19} />
+                    </span>
+                )}
+
+                <div className="relative min-w-0 flex-1">
+                    <p className="truncate text-sm font-black text-[var(--store-text)] transition group-hover:text-indigo-400">
+                        {category.name}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-[var(--store-muted)]">
+                        {category.children.length > 0
+                            ? `${category.children.length.toLocaleString(
+                                  "fa-IR",
+                              )} زیرمجموعه`
+                            : "مشاهده محصولات این دسته"}
+                    </p>
+                </div>
+
+                {category.products_count > 0 && (
+                    <span className="relative shrink-0 rounded-lg border border-indigo-500/15 bg-indigo-500/[.08] px-2 py-1 text-[10px] font-black text-indigo-300">
+                        {category.products_count.toLocaleString("fa-IR")}
+                    </span>
+                )}
+
+                <ChevronLeft
+                    size={15}
+                    className="relative shrink-0 text-[var(--store-muted)] transition group-hover:-translate-x-1 group-hover:text-indigo-400"
+                />
+            </Link>
+
+            <div className="p-2.5">
+                {category.children.length ? (
+                    <div className="space-y-1">
+                        {category.children.map((child) => (
+                            <CategoryTreeNode
+                                key={child.id}
+                                category={child}
+                                depth={1}
+                                onClose={onClose}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <Link
+                        href={`/categories/${category.slug}`}
+                        onClick={onClose}
+                        className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--store-border)] text-[11px] font-bold text-[var(--store-muted)] transition hover:border-indigo-500/30 hover:text-indigo-400"
+                    >
+                        <ShoppingBag size={14} />
+                        ورود مستقیم به محصولات
+                    </Link>
+                )}
+            </div>
+        </article>
+    );
+}
+
 function MegaMenu({
     categories,
     onClose,
@@ -57,286 +241,139 @@ function MegaMenu({
     onClose: () => void;
     menuRef: RefObject<HTMLDivElement | null>;
 }) {
-    const [activeCategoryId, setActiveCategoryId] = useState<number | null>(
-        categories[0]?.id ?? null,
+    const totalChildren = categories.reduce(
+        (sum, category) => sum + category.children.length,
+        0,
     );
-
-    const activeCategory =
-        categories.find((category) => category.id === activeCategoryId) ??
-        categories[0] ??
-        null;
-
-    const activeChildren = activeCategory?.children ?? [];
 
     return (
         <div
             ref={menuRef}
-            className="absolute inset-x-0 top-full z-[90] border-t border-[var(--store-border)] bg-[var(--store-bg)]/95 shadow-[0_34px_90px_rgba(0,0,0,.48)] backdrop-blur-2xl"
+            className="absolute inset-x-0 top-full z-[100] border-t border-[var(--store-border)] bg-[var(--store-bg)]/97 shadow-[0_38px_100px_rgba(0,0,0,.58)] backdrop-blur-2xl"
         >
             <div className="mx-auto max-w-7xl px-5 py-4">
-                <div className="overflow-hidden rounded-[28px] border border-[var(--store-border)] bg-[var(--store-surface-strong)] shadow-[0_22px_70px_rgba(0,0,0,.32)]">
-                    {categories.length ? (
-                        <div className="grid min-h-[360px] max-h-[min(68vh,560px)] grid-cols-[280px_minmax(0,1fr)]">
-                            <aside className="flex min-h-0 flex-col border-l border-[var(--store-border)] bg-[var(--store-panel)]">
-                                <div className="border-b border-[var(--store-border)] px-4 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/20">
-                                            <FolderOpen size={19} />
-                                        </span>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-black text-[var(--store-text)]">
-                                                دسته‌بندی محصولات
-                                            </p>
-                                            <p className="mt-0.5 text-[10px] text-[var(--store-muted)]">
-                                                سریع‌تر به چیزی که می‌خواهی برس
-                                            </p>
-                                        </div>
-                                    </div>
+                <div className="overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface-strong)] shadow-[0_26px_80px_rgba(0,0,0,.38)]">
+                    <header className="relative overflow-hidden border-b border-[var(--store-border)] px-5 py-4">
+                        <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-indigo-500/10 blur-3xl"
+                        />
+                        <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -bottom-28 left-1/3 size-56 rounded-full bg-cyan-400/5 blur-3xl"
+                        />
+
+                        <div className="relative flex items-center gap-4">
+                            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-xl shadow-indigo-500/20">
+                                <Package size={21} />
+                            </span>
+
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-base font-black text-[var(--store-text)]">
+                                        نقشه کامل فروشگاه
+                                    </h2>
+                                    <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 text-[9px] font-black text-indigo-300">
+                                        درختی
+                                    </span>
                                 </div>
-
-                                <div
-                                    className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2.5"
-                                    role="tablist"
-                                    aria-label="دسته‌بندی‌های اصلی"
-                                >
-                                    {categories.map((category) => {
-                                        const isActive =
-                                            activeCategory?.id === category.id;
-
-                                        return (
-                                            <button
-                                                key={category.id}
-                                                type="button"
-                                                role="tab"
-                                                aria-selected={isActive}
-                                                onMouseEnter={() =>
-                                                    setActiveCategoryId(category.id)
-                                                }
-                                                onFocus={() =>
-                                                    setActiveCategoryId(category.id)
-                                                }
-                                                onClick={() =>
-                                                    setActiveCategoryId(category.id)
-                                                }
-                                                className={`group flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-right transition-all duration-200 ${
-                                                    isActive
-                                                        ? "border-indigo-500/30 bg-indigo-500/12 text-indigo-300 shadow-[inset_0_0_0_1px_rgba(99,102,241,.06)]"
-                                                        : "border-transparent text-[var(--store-muted)] hover:border-[var(--store-border)] hover:bg-[var(--store-surface)] hover:text-[var(--store-text)]"
-                                                }`}
-                                            >
-                                                {category.image_url ? (
-                                                    <img
-                                                        alt=""
-                                                        aria-hidden="true"
-                                                        src={category.image_url}
-                                                        loading="lazy"
-                                                        className="size-9 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
-                                                    />
-                                                ) : (
-                                                    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[var(--store-accent-soft)] text-indigo-400">
-                                                        <Gamepad2 size={17} />
-                                                    </span>
-                                                )}
-
-                                                <span className="min-w-0 flex-1 truncate text-xs font-black">
-                                                    {category.name}
-                                                </span>
-
-                                                <span className="text-[10px] tabular-nums opacity-60">
-                                                    {category.products_count > 0
-                                                        ? category.products_count.toLocaleString(
-                                                              "fa-IR",
-                                                          )
-                                                        : ""}
-                                                </span>
-
-                                                <ChevronLeft
-                                                    size={15}
-                                                    className={`shrink-0 transition-transform ${
-                                                        isActive
-                                                            ? "-translate-x-0.5 text-indigo-400"
-                                                            : "opacity-35 group-hover:-translate-x-0.5"
-                                                    }`}
-                                                />
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="border-t border-[var(--store-border)] p-3">
-                                    <Link
-                                        href="/categories"
-                                        onClick={onClose}
-                                        className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] text-[11px] font-black text-[var(--store-text)] transition hover:border-indigo-500/40 hover:text-indigo-400"
-                                    >
-                                        مشاهده همه دسته‌ها
-                                        <ChevronLeft size={14} />
-                                    </Link>
-                                </div>
-                            </aside>
-
-                            <section className="min-w-0 overflow-y-auto p-5 lg:p-6">
-                                {activeCategory && (
-                                    <>
-                                        <div className="relative overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-panel)] p-5">
-                                            <span className="pointer-events-none absolute -left-16 -top-20 size-52 rounded-full bg-indigo-500/10 blur-3xl" />
-                                            <span className="pointer-events-none absolute -bottom-24 right-16 size-48 rounded-full bg-cyan-400/5 blur-3xl" />
-
-                                            <div className="relative flex items-center gap-4">
-                                                {activeCategory.image_url ? (
-                                                    <img
-                                                        alt={activeCategory.name}
-                                                        src={activeCategory.image_url}
-                                                        loading="lazy"
-                                                        className="size-16 shrink-0 rounded-2xl object-cover ring-1 ring-white/10"
-                                                    />
-                                                ) : (
-                                                    <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-cyan-400/10 text-indigo-400 ring-1 ring-indigo-500/20">
-                                                        <Gamepad2 size={27} />
-                                                    </span>
-                                                )}
-
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">
-                                                        PlayNexus Collection
-                                                    </p>
-                                                    <h2 className="mt-1 truncate text-xl font-black text-[var(--store-text)]">
-                                                        {activeCategory.name}
-                                                    </h2>
-                                                    <p className="mt-1 text-xs text-[var(--store-muted)]">
-                                                        {activeCategory.products_count > 0
-                                                            ? `${activeCategory.products_count.toLocaleString(
-                                                                  "fa-IR",
-                                                              )} محصول در این بخش`
-                                                            : "دسته‌بندی منتخب فروشگاه"}
-                                                    </p>
-                                                </div>
-
-                                                <Link
-                                                    href={`/categories/${activeCategory.slug}`}
-                                                    onClick={onClose}
-                                                    className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2.5 text-[11px] font-black text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-500"
-                                                >
-                                                    ورود به دسته
-                                                </Link>
-                                            </div>
-                                        </div>
-
-                                        {activeChildren.length ? (
-                                            <div className="mt-5 grid gap-3 xl:grid-cols-2">
-                                                {activeChildren.map((child) => (
-                                                    <article
-                                                        key={child.id}
-                                                        className="group rounded-2xl border border-[var(--store-border)] bg-[var(--store-panel)] p-4 transition hover:border-indigo-500/35 hover:bg-[var(--store-surface)]"
-                                                    >
-                                                        <Link
-                                                            href={`/categories/${child.slug}`}
-                                                            onClick={onClose}
-                                                            className="flex items-center gap-3"
-                                                        >
-                                                            {child.image_url ? (
-                                                                <img
-                                                                    alt=""
-                                                                    aria-hidden="true"
-                                                                    src={child.image_url}
-                                                                    loading="lazy"
-                                                                    className="size-10 shrink-0 rounded-xl object-cover"
-                                                                />
-                                                            ) : (
-                                                                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--store-accent-soft)] text-indigo-400">
-                                                                    <Gamepad2 size={18} />
-                                                                </span>
-                                                            )}
-
-                                                            <div className="min-w-0 flex-1">
-                                                                <p className="truncate text-sm font-black text-[var(--store-text)] transition group-hover:text-indigo-400">
-                                                                    {child.name}
-                                                                </p>
-                                                                <p className="mt-0.5 text-[10px] text-[var(--store-muted)]">
-                                                                    {child.products_count > 0
-                                                                        ? `${child.products_count.toLocaleString(
-                                                                              "fa-IR",
-                                                                          )} محصول`
-                                                                        : child.children.length
-                                                                          ? `${child.children.length.toLocaleString(
-                                                                                "fa-IR",
-                                                                            )} زیرمجموعه`
-                                                                          : "مشاهده محصولات"}
-                                                                </p>
-                                                            </div>
-
-                                                            <ChevronLeft
-                                                                size={16}
-                                                                className="shrink-0 text-[var(--store-muted)] transition group-hover:-translate-x-1 group-hover:text-indigo-400"
-                                                            />
-                                                        </Link>
-
-                                                        {!!child.children.length && (
-                                                            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--store-border)] pt-3">
-                                                                {child.children
-                                                                    .slice(0, 5)
-                                                                    .map((leaf) => (
-                                                                        <Link
-                                                                            key={leaf.id}
-                                                                            href={`/categories/${leaf.slug}`}
-                                                                            onClick={onClose}
-                                                                            className="rounded-lg bg-[var(--store-surface)] px-2.5 py-1.5 text-[10px] font-bold text-[var(--store-muted)] transition hover:bg-indigo-500/12 hover:text-indigo-400"
-                                                                        >
-                                                                            {leaf.name}
-                                                                        </Link>
-                                                                    ))}
-
-                                                                {child.children.length > 5 && (
-                                                                    <Link
-                                                                        href={`/categories/${child.slug}`}
-                                                                        onClick={onClose}
-                                                                        className="rounded-lg px-2.5 py-1.5 text-[10px] font-black text-indigo-400"
-                                                                    >
-                                                                        +
-                                                                        {(
-                                                                            child.children.length -
-                                                                            5
-                                                                        ).toLocaleString(
-                                                                            "fa-IR",
-                                                                        )}
-                                                                    </Link>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </article>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="mt-5 grid min-h-40 place-items-center rounded-2xl border border-dashed border-[var(--store-border)] bg-[var(--store-panel)] text-center">
-                                                <div>
-                                                    <span className="mx-auto grid size-11 place-items-center rounded-2xl bg-[var(--store-accent-soft)] text-indigo-400">
-                                                        <ShoppingBag size={19} />
-                                                    </span>
-                                                    <p className="mt-3 text-sm font-black text-[var(--store-text)]">
-                                                        محصولات این دسته آماده‌اند
-                                                    </p>
-                                                    <p className="mt-1 text-xs text-[var(--store-muted)]">
-                                                        برای مشاهده مستقیم وارد صفحه دسته شو.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </section>
-                        </div>
-                    ) : (
-                        <div className="grid min-h-64 place-items-center p-6 text-center">
-                            <div>
-                                <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-[var(--store-accent-soft)] text-indigo-400">
-                                    <FolderOpen size={21} />
-                                </span>
-                                <p className="mt-3 text-sm font-black text-[var(--store-text)]">
-                                    دسته‌بندی فعالی برای نمایش وجود ندارد.
+                                <p className="mt-1 text-[11px] text-[var(--store-muted)]">
+                                    همه والدها، فرزندها و زیرمجموعه‌ها یک‌جا؛
+                                    بدون رفت‌وبرگشت بین پنل‌ها.
                                 </p>
                             </div>
+
+                            <div className="mr-auto hidden items-center gap-2 xl:flex">
+                                <span className="rounded-xl border border-[var(--store-border)] bg-[var(--store-panel)] px-3 py-2 text-[10px] font-bold text-[var(--store-muted)]">
+                                    {categories.length.toLocaleString("fa-IR")} والد
+                                </span>
+                                <span className="rounded-xl border border-[var(--store-border)] bg-[var(--store-panel)] px-3 py-2 text-[10px] font-bold text-[var(--store-muted)]">
+                                    {totalChildren.toLocaleString("fa-IR")} زیرمجموعه مستقیم
+                                </span>
+                            </div>
                         </div>
-                    )}
+
+                        <div className="relative mt-4 grid grid-cols-4 gap-2">
+                            <Link
+                                href="/shop"
+                                onClick={onClose}
+                                className="group flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--store-border)] bg-[var(--store-panel)] text-[11px] font-black text-[var(--store-text)] transition hover:border-indigo-500/30 hover:bg-indigo-500/[.08] hover:text-indigo-300"
+                            >
+                                <ShoppingBag size={14} />
+                                همه محصولات
+                            </Link>
+                            <Link
+                                href="/exchange-products"
+                                onClick={onClose}
+                                className="group flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--store-border)] bg-[var(--store-panel)] text-[11px] font-black text-[var(--store-text)] transition hover:border-cyan-500/30 hover:bg-cyan-500/[.07] hover:text-cyan-300"
+                            >
+                                <Repeat2 size={14} />
+                                قابل معاوضه
+                            </Link>
+                            <Link
+                                href="/offers"
+                                onClick={onClose}
+                                className="group flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--store-border)] bg-[var(--store-panel)] text-[11px] font-black text-[var(--store-text)] transition hover:border-amber-500/30 hover:bg-amber-500/[.07] hover:text-amber-300"
+                            >
+                                <Tags size={14} />
+                                تخفیف‌ها
+                            </Link>
+                            <Link
+                                href="/categories"
+                                onClick={onClose}
+                                className="group flex h-10 items-center justify-center gap-2 rounded-xl border border-indigo-500/25 bg-indigo-500/10 text-[11px] font-black text-indigo-300 transition hover:bg-indigo-500 hover:text-white"
+                            >
+                                <FolderOpen size={14} />
+                                صفحه دسته‌بندی‌ها
+                            </Link>
+                        </div>
+                    </header>
+
+                    <div className="max-h-[min(66vh,610px)] overflow-y-auto p-4 [scrollbar-gutter:stable]">
+                        {categories.length ? (
+                            <div className="columns-2 gap-3 2xl:columns-3">
+                                {categories.map((category) => (
+                                    <RootCategoryCard
+                                        key={category.id}
+                                        category={category}
+                                        onClose={onClose}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="grid min-h-64 place-items-center text-center">
+                                <div>
+                                    <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-[var(--store-accent-soft)] text-indigo-400">
+                                        <FolderOpen size={21} />
+                                    </span>
+                                    <p className="mt-3 text-sm font-black text-[var(--store-text)]">
+                                        دسته‌بندی فعالی برای نمایش وجود ندارد.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <footer className="flex items-center gap-3 border-t border-[var(--store-border)] bg-[var(--store-panel)] px-5 py-3 text-[10px] text-[var(--store-muted)]">
+                        <span className="flex items-center gap-1.5">
+                            <span className="size-1.5 rounded-full bg-indigo-400" />
+                            والد
+                        </span>
+                        <ChevronLeft size={11} className="opacity-35" />
+                        <span className="flex items-center gap-1.5">
+                            <span className="size-1.5 rounded-full bg-violet-400/80" />
+                            فرزند
+                        </span>
+                        <ChevronLeft size={11} className="opacity-35" />
+                        <span className="flex items-center gap-1.5">
+                            <span className="size-1.5 rounded-full bg-cyan-400/70" />
+                            زیرمجموعه
+                        </span>
+
+                        <span className="mr-auto hidden text-[10px] text-[var(--store-muted)] xl:block">
+                            روی هر عنوان بزن تا مستقیم وارد همان شاخه شوی.
+                        </span>
+                    </footer>
                 </div>
             </div>
         </div>
