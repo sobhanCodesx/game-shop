@@ -164,6 +164,20 @@ class MobileCatalogController extends Controller
         return response()->json($products);
     }
 
+    public function offers(Request $request, StorefrontDataService $storefront): JsonResponse
+    {
+        $request->merge(['offers' => true]);
+
+        return $this->products($request, $storefront);
+    }
+
+    public function exchangeProducts(Request $request, StorefrontDataService $storefront): JsonResponse
+    {
+        $request->merge(['trade' => true]);
+
+        return $this->products($request, $storefront);
+    }
+
     public function product(
         Request $request,
         Product $product,
