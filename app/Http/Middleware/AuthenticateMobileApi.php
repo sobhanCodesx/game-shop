@@ -6,6 +6,7 @@ use App\Services\MobileApiTokenService;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuthenticateMobileApi
@@ -33,6 +34,7 @@ class AuthenticateMobileApi
         }
 
         $request->setUserResolver(fn () => $accessToken->user);
+        Auth::setUser($accessToken->user);
         $request->attributes->set('mobile_access_token', $accessToken);
 
         return $next($request);
