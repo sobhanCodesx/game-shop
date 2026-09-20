@@ -319,7 +319,7 @@ class StorefrontController extends Controller
     public function videos(Request $request, StorefrontDataService $data): Response
     {
         $videos = SocialContent::query()->published()->where('type', 'video')
-            ->with('game:id,name,slug,cover')
+            ->with(['game:id,name,slug,cover', 'media'])
             ->latest('published_at')->paginate(18)->through(fn ($item) => $data->content($item));
         $canonical = route('videos.index');
         $description = 'تماشای تازه‌ترین تریلرها، گیم‌پلی‌ها، بررسی‌ها و ویدیوهای دنیای بازی در PlayNexus.';
