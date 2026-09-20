@@ -165,6 +165,11 @@ class User extends Authenticatable
         return $this->hasMany(MobileDevice::class);
     }
 
+    public function mobileAccessTokens(): HasMany
+    {
+        return $this->hasMany(MobileAccessToken::class);
+    }
+
     public function subscribedGames(): BelongsToMany
     {
         return $this->belongsToMany(Game::class, 'game_subscriptions')->withTimestamps();
