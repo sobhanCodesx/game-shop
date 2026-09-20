@@ -56,8 +56,11 @@ class MobileChannelsController extends Controller
                     fn ($studio) => $studio->where('slug', $request->string('studio')->toString()),
                 ),
             )
-            ->orderByDesc('subscribers_count')
-            ->latest('id');
+            ->when(
+                $request->string('sort')->toString() === 'latest',
+                fn ($query) => $query->latest()->latest('id'),
+                fn ($query) => $query->orderByDesc('subscribers_count')->latest('id'),
+            );
 
         $channels = $query
             ->paginate(max(1, min(50, $request->integer('per_page', 24))))
