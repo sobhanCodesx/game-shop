@@ -1,0 +1,7 @@
+{
+  "job_id": "20260920-studio-coverage-read",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query { studios(first: 50) { data { id name slug status } } }"
+  }
+}
