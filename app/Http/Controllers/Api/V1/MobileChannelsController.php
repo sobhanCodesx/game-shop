@@ -34,6 +34,13 @@ class MobileChannelsController extends Controller
                 'subscribers',
             ])
             ->when(
+                $request->user(),
+                fn ($query) => $query->withExists([
+                    'subscribers as is_subscribed' => fn ($subscribers) => $subscribers
+                        ->whereKey($request->user()->id),
+                ]),
+            )
+            ->when(
                 $request->filled('q'),
                 fn ($query) => $query->where(
                     fn ($search) => $search
@@ -68,9 +75,7 @@ class MobileChannelsController extends Controller
                     'background_url' => MediaStorage::url($game->background),
                     'videos_count' => (int) $game->videos_count,
                     'subscribers_count' => (int) $game->subscribers_count,
-                    'is_subscribed' => $request->user()
-                        ? $game->subscribers()->whereKey($request->user()->id)->exists()
-                        : false,
+                    'is_subscribed' => (bool) ($game->is_subscribed ?? false),
                     'studio' => $game->studio?->status === 'active' ? [
                         'id' => $game->studio->id,
                         'name' => $game->studio->name,
@@ -121,6 +126,13 @@ class MobileChannelsController extends Controller
                 'videos' => fn ($query) => $query->published(),
                 'subscribers',
             ])
+            ->when(
+                $request->user(),
+                fn ($query) => $query->withExists([
+                    'subscribers as is_subscribed' => fn ($subscribers) => $subscribers
+                        ->whereKey($request->user()->id),
+                ]),
+            )
             ->orderByDesc('subscribers_count')
             ->latest('id')
             ->paginate(
@@ -137,6 +149,7 @@ class MobileChannelsController extends Controller
                 'background_url' => MediaStorage::url($game->background),
                 'videos_count' => (int) $game->videos_count,
                 'followers_count' => (int) $game->subscribers_count,
+                'is_subscribed' => (bool) ($game->is_subscribed ?? false),
             ]);
 
         $collections = VideoPlaylist::query()
