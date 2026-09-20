@@ -178,38 +178,28 @@ class MobileApiTest extends TestCase
             ->assertJsonPath('content.feed_type', 'news');
     }
 
-    public function test_mobile_stories_are_separate_from_shorts(): void
+    public function test_mobile_stories_use_the_same_short_records_as_storefront(): void
     {
-        $story = SocialContent::query()->create([
-            'type' => 'story',
-            'media_type' => 'image',
-            'title' => 'Story only',
-            'slug' => 'story-only',
-            'video_path' => 'stories/story.webp',
-            'thumbnail' => 'stories/story.webp',
-            'status' => 'published',
-            'published_at' => now()->subMinute(),
-        ]);
-
         $short = SocialContent::query()->create([
             'type' => 'short',
-            'media_type' => 'video',
-            'title' => 'Short only',
-            'slug' => 'short-only',
-            'video_path' => 'shorts/short.mp4',
+            'media_type' => 'image',
+            'title' => 'Wolverine Story',
+            'slug' => 'wolverine-story',
+            'video_path' => 'shorts/wolverine.webp',
+            'thumbnail' => 'shorts/wolverine.webp',
             'status' => 'published',
             'published_at' => now()->subMinute(),
         ]);
 
         $this->getJson('/api/v1/stories')
             ->assertOk()
-            ->assertJsonPath('data.0.id', $story->id)
-            ->assertJsonMissing(['id' => $short->id]);
+            ->assertJsonPath('data.0.id', $short->id)
+            ->assertJsonPath('data.0.title', 'Wolverine Story')
+            ->assertJsonPath('data.0.media_type', 'image');
 
         $this->getJson('/api/v1/shorts')
             ->assertOk()
-            ->assertJsonPath('data.0.id', $short->id)
-            ->assertJsonMissing(['id' => $story->id]);
+            ->assertJsonPath('data.0.id', $short->id);
     }
 
 }

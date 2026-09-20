@@ -18,7 +18,7 @@ class ShortController extends Controller
 {
     public function index(): Response
     {
-        $shorts = SocialContent::query()->where('type', 'story')
+        $shorts = SocialContent::query()->where('type', 'short')
             ->orderBy('sort_order')->orderByDesc('id')->paginate(16)->withQueryString();
 
         return Inertia::render('Admin/Shorts/Index', [
@@ -44,17 +44,17 @@ class ShortController extends Controller
     public function store(ShortRequest $request, MediaOptimizationService $optimizer, TemporaryUploadService $uploads): RedirectResponse
     {
         $short = new SocialContent($request->safe()->only(['title', 'excerpt', 'link_url', 'link_label', 'status', 'sort_order']));
-        $short->fill(['user_id' => $request->user()->id, 'type' => 'story', 'slug' => $this->uniqueSlug($request->string('title')->toString())]);
+        $short->fill(['user_id' => $request->user()->id, 'type' => 'short', 'slug' => $this->uniqueSlug($request->string('title')->toString())]);
         $short->published_at = $short->status === 'published' ? now() : null;
         $this->claimAndStore($request, $short, $optimizer, $uploads);
         $short->save();
 
-        return to_route('admin.shorts.index')->with('success', 'استوری با موفقیت ثبت شد.');
+        return to_route('admin.shorts.index')->with('success', 'شورت با موفقیت ثبت شد.');
     }
 
     public function edit(SocialContent $short): Response
     {
-        abort_unless($short->type === 'story', 404);
+        abort_unless($short->type === 'short', 404);
 
         return Inertia::render('Admin/Shorts/Form', ['short' => [
             ...$short->only(['id', 'title', 'excerpt', 'link_url', 'link_label', 'media_type', 'status', 'sort_order']),
@@ -65,7 +65,7 @@ class ShortController extends Controller
 
     public function update(ShortRequest $request, SocialContent $short, MediaOptimizationService $optimizer, TemporaryUploadService $uploads): RedirectResponse
     {
-        abort_unless($short->type === 'story', 404);
+        abort_unless($short->type === 'short', 404);
         $short->fill($request->safe()->only(['title', 'excerpt', 'link_url', 'link_label', 'status', 'sort_order']));
         $short->published_at = $short->status === 'published' ? ($short->published_at ?? now()) : null;
         if ($request->hasFile('media') || $request->filled('upload_token')) {
@@ -74,23 +74,23 @@ class ShortController extends Controller
             MediaStorage::disk()->delete($old);
         } elseif ($request->hasFile('thumbnail')) {
             $oldThumbnail = $short->thumbnail;
-            $short->thumbnail = $optimizer->store($request->file('thumbnail'), 'stories/thumbnails')['path'];
+            $short->thumbnail = $optimizer->store($request->file('thumbnail'), 'shorts/thumbnails')['path'];
             if ($oldThumbnail && $oldThumbnail !== $short->video_path) {
                 MediaStorage::disk()->delete($oldThumbnail);
             }
         }
         $short->save();
 
-        return to_route('admin.shorts.index')->with('success', 'استوری ویرایش شد.');
+        return to_route('admin.shorts.index')->with('success', 'شورت ویرایش شد.');
     }
 
     public function destroy(SocialContent $short): RedirectResponse
     {
-        abort_unless($short->type === 'story', 404);
+        abort_unless($short->type === 'short', 404);
         MediaStorage::disk()->delete(array_filter([$short->video_path, $short->thumbnail]));
         $short->delete();
 
-        return back()->with('success', 'استوری حذف شد.');
+        return back()->with('success', 'شورت حذف شد.');
     }
 
     private function claimAndStore(ShortRequest $request, SocialContent $short, MediaOptimizationService $optimizer, TemporaryUploadService $uploads): void
@@ -108,13 +108,13 @@ class ShortController extends Controller
 
     private function storeMedia(SocialContent $short, UploadedFile $file, MediaOptimizationService $optimizer, ?UploadedFile $customThumbnail = null): void
     {
-        $stored = $optimizer->store($file, 'stories');
+        $stored = $optimizer->store($file, 'shorts');
         $short->media_type = $stored['type'];
         $short->video_path = $stored['path'];
         $short->video_mime = $file->getMimeType();
         if ($stored['type'] === 'video') {
             $short->thumbnail = $customThumbnail
-                ? $optimizer->store($customThumbnail, 'stories/thumbnails')['path']
+                ? $optimizer->store($customThumbnail, 'shorts/thumbnails')['path']
                 : null;
             $short->duration = null;
         } else {
@@ -125,7 +125,7 @@ class ShortController extends Controller
 
     private function uniqueSlug(string $title): string
     {
-        $base = Str::slug($title) ?: 'story';
+        $base = Str::slug($title) ?: 'short';
         $slug = $base;
         $i = 2;
         while (SocialContent::query()->where('slug', $slug)->exists()) {

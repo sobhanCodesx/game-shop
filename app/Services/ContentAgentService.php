@@ -321,7 +321,7 @@ class ContentAgentService
         $story = SocialContent::query()->create([
             'user_id' => $this->authorUserId(),
             'game_id' => $data['game_id'] ?? null,
-            'type' => 'story',
+            'type' => 'short',
             'title' => $data['title'],
             'slug' => $this->uniqueSlug($data['title'], 'story'),
             'excerpt' => $data['excerpt'] ?? null,
@@ -485,7 +485,7 @@ class ContentAgentService
 
     public function updateStory(array $arguments): array
     {
-        $story = $this->findSocialContent((int) ($arguments['id'] ?? 0), 'story');
+        $story = $this->findSocialContent((int) ($arguments['id'] ?? 0), 'short');
         $data = $this->validateStory($arguments, creating: false);
 
         foreach (['title', 'excerpt', 'game_id', 'link_url', 'link_label', 'sort_order'] as $field) {
@@ -602,7 +602,7 @@ class ContentAgentService
             'game' => $this->setGameStatus((int) $data['id'], $state),
             'studio' => $this->setStudioStatus((int) $data['id'], $state),
             'collection' => $this->setCollectionVisibility((int) $data['id'], $state),
-            'story' => $this->setSocialContentStatus((int) $data['id'], 'story', $state),
+            'story' => $this->setSocialContentStatus((int) $data['id'], 'short', $state),
             'video' => $this->setSocialContentStatus((int) $data['id'], 'video', $state),
         };
     }
@@ -909,7 +909,7 @@ class ContentAgentService
             'platform' => Platform::query(),
             'collection' => VideoPlaylist::query()->with(['game:id,name,slug', 'studio:id,name,slug'])->withCount('videos'),
             'feed' => SocialContent::query()->where('type', 'post')->with(['game:id,name,slug', 'media']),
-            'story' => SocialContent::query()->where('type', 'story')->with('game:id,name,slug'),
+            'story' => SocialContent::query()->where('type', 'short')->with('game:id,name,slug'),
             'video' => SocialContent::query()->where('type', 'video')->with(['game:id,name,slug', 'playlists:id,game_id,studio_id,title,slug']),
             'product' => Product::query()->with('game:id,name,slug'),
         };

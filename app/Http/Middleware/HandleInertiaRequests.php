@@ -164,8 +164,8 @@ class HandleInertiaRequests extends Middleware
                     now()->addMinutes(5),
                     fn () => app(StorefrontDataService::class)->navigation(),
                 ),
-                'stories' => Cache::remember('storefront.stories.v2', now()->addMinute(), fn () =>
-                    SocialContent::query()->published()->where('type', 'story')->whereNotNull('video_path')
+                'stories' => Cache::remember('storefront.stories.v1', now()->addMinute(), fn () =>
+                    SocialContent::query()->published()->where('type', 'short')->whereNotNull('video_path')
                         ->with('game:id,name,slug,cover')
                         ->orderBy('sort_order')->orderByDesc('published_at')->limit(20)->get()->map(fn (SocialContent $story) => [
                             ...$story->only(['id', 'title', 'excerpt', 'media_type', 'duration', 'link_url', 'link_label']),
