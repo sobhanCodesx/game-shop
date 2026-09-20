@@ -245,30 +245,17 @@ export default function DeploymentIndex({
                             ساخت و دانلود بسته هاست
                         </Button>
                         <p className="text-xs text-slate-500">
-                            ابتدا خودتان npm run build را اجرا کنید. Export
-                            خروجی مرورگر، باندل standalone SSR در
-                            bootstrap/ssr/ssr.js، vendor و فایل‌های لازم Laravel
-                            را بدون نیاز به node_modules داخل بسته قرار می‌دهد.
-                            بعد از انتشار، پردازش Node مربوط به SSR را از پنل
-                            هاست Restart کنید.
+                            انتشار خودکار GitHub همین بسته امضاشده را می‌سازد،
+                            از طریق HTTPS آپلود می‌کند، قبل از نصب بررسی و بکاپ
+                            می‌گیرد و پس از Health Check نسخه را نهایی می‌کند.
+                            این دکمه فقط برای انتشار دستی اضطراری باقی مانده است.
                         </p>
                         {!capabilities.export && (
                             <div className="space-y-1 text-xs text-slate-500">
                                 {!capabilities.export_enabled && (
                                     <p>
-                                        متغیر DEPLOY_EXPORT_ENABLED را روی true
-                                        قرار دهید.
-                                    </p>
-                                )}
-                                {!capabilities.app_id_configured && (
-                                    <p>
-                                        متغیر DEPLOYMENT_APP_ID تنظیم نشده است.
-                                    </p>
-                                )}
-                                {!capabilities.signing_key_configured && (
-                                    <p>
-                                        DEPLOYMENT_SIGNING_KEY باید حداقل ۳۲
-                                        کاراکتر باشد.
+                                        توکن Content Agent تنظیم نشده است؛
+                                        Deployment از همان توکن MCP/GraphQL استفاده می‌کند.
                                     </p>
                                 )}
                                 {!capabilities.zip && (
