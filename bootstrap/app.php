@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AuthenticateContentAgent;
+use App\Http\Middleware\AuthenticateDeploymentAgent;
 use App\Http\Middleware\DispatchSmsOutbox;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsSuperAdmin;
@@ -40,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'super-admin' => EnsureUserIsSuperAdmin::class,
             'deployment.guard' => RejectImpersonatedDeployment::class,
             'content.agent' => AuthenticateContentAgent::class,
+            'deployment.agent' => AuthenticateDeploymentAgent::class,
         ]);
 
         $middleware->web(append: [
