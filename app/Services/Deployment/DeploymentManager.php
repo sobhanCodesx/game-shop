@@ -215,6 +215,15 @@ final class DeploymentManager
         $stage = $this->paths->operation($state['id']).'/staging';
         $new = [];
 
+        /*
+         * Production vendor is built with --no-dev, while an older release may
+         * still have Laravel package discovery caches that reference dev-only
+         * providers (for example Laravel\\Pail\\PailServiceProvider). Clear
+         * bootstrap caches before replacing vendor so the next HTTP request
+         * rebuilds package discovery from the production dependency set.
+         */
+        $this->clearBootstrapCachesBeforeSwitch();
+
         foreach ($state['diff']['changed'] as $path) {
             if (! is_file(base_path($path))) {
                 $new[] = $path;
@@ -242,6 +251,17 @@ final class DeploymentManager
 
         return $this->states->save($state);
     }
+    private function clearBootstrapCachesBeforeSwitch(): void
+    {
+        foreach (glob(base_path('bootstrap/cache/*.php')) ?: [] as $path) {
+            if (is_file($path) && ! @unlink($path) && is_file($path)) {
+                throw new RuntimeException(
+                    'پاک‌سازی cache بوت‌استرپ قبل از تعویض vendor ممکن نشد: '.basename($path)
+                );
+            }
+        }
+    }
+
     private function migrate(array $state): array { $this->artisan('optimize:clear', [] ,$state); $this->artisan('package:discover', ['--ansi' => false], $state); $this->artisan('migrate', ['--force' => true], $state); return $this->states->update($state['id'], ['stage' => 'migrated', 'progress' => 70]); }
     private function optimize(array $state): array { foreach (['config:cache', 'route:cache', 'view:cache', 'event:cache'] as $command) $this->artisan($command, [], $state); if (function_exists('opcache_reset')) @opcache_reset(); return $this->states->update($state['id'], ['stage' => 'optimized', 'progress' => 85]); }
     private function health(array $state): array
