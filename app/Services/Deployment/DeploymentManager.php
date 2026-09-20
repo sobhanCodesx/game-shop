@@ -244,6 +244,15 @@ final class DeploymentManager
          * The successful manifest and stale-file cleanup are committed only
          * after migration, optimization and the internal health check pass.
          */
+        /*
+         * Composer is installed with --no-dev in production. If a previous
+         * release cached a development-only provider (for example laravel/pail),
+         * the next HTTP request can fail before the deployment controller is
+         * reached. Remove generated bootstrap caches while this request is
+         * still alive so the next deployment step boots from the new vendor set.
+         */
+        $this->clearBootstrapCacheFiles();
+
         $state['stage'] = 'switched';
         $state['progress'] = 55;
         $state['new_files'] = $new;
@@ -303,6 +312,15 @@ final class DeploymentManager
                 && is_file(base_path($path))
             ) {
                 @unlink(base_path($path));
+            }
+        }
+    }
+
+    private function clearBootstrapCacheFiles(): void
+    {
+        foreach (glob(base_path('bootstrap/cache/*.php')) ?: [] as $file) {
+            if (is_file($file) && ! @unlink($file)) {
+                throw new RuntimeException('پاک‌سازی bootstrap cache قبل از ادامه Deploy ممکن نشد.');
             }
         }
     }
