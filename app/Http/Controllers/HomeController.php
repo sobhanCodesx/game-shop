@@ -310,12 +310,25 @@ class HomeController extends Controller
                     'pricing' => $prices->forUser($product, $request->user()),
                 ])
                 ->concat(SocialContent::query()->published()->where('type', 'video')->where('published_at', '>=', $freshCutoff)
-                    ->latest('published_at')->limit(8)->get()->map(fn (SocialContent $video) => [
-                        'key' => 'video-'.$video->id, 'type' => 'video', 'title' => $video->title,
-                        'url' => route('content.show', ['type' => 'videos', 'content' => $video->slug], false),
-                        'image_url' => MediaStorage::url($video->thumbnail), 'eyebrow' => 'ویدیوی بلند',
-                        'published_at' => $video->published_at->toISOString(), 'duration' => $video->duration, 'views' => $video->views,
-                    ]))
+                    ->with('media')
+                    ->latest('published_at')->limit(8)->get()->map(function (SocialContent $video) {
+                        $primaryVideoMedia = $video->media->first(
+                            fn ($media) => $media->type === 'video' && filled($media->path),
+                        );
+                        $primaryImageMedia = $video->media->first(
+                            fn ($media) => $media->type === 'image' && filled($media->path),
+                        );
+                        $thumbnailPath = $video->thumbnail
+                            ?: $primaryVideoMedia?->thumbnail
+                            ?: $primaryImageMedia?->path;
+
+                        return [
+                            'key' => 'video-'.$video->id, 'type' => 'video', 'title' => $video->title,
+                            'url' => route('content.show', ['type' => 'videos', 'content' => $video->slug], false),
+                            'image_url' => MediaStorage::url($thumbnailPath), 'eyebrow' => 'ویدیوی بلند',
+                            'published_at' => $video->published_at->toISOString(), 'duration' => $video->duration, 'views' => $video->views,
+                        ];
+                    }))
                 ->sortByDesc('published_at')->take(10)->values(),
             'channels' => Game::query()
                 ->whereIn('status', ['active', 'published'])
