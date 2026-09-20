@@ -65,6 +65,7 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
         Route::get('discover', [MobileContentController::class, 'discover'])->name('discover');
         Route::get('videos', [MobileContentController::class, 'videos'])->name('videos.index');
         Route::get('shorts', [MobileContentController::class, 'shorts'])->name('shorts.index');
+        Route::get('stories', [MobileContentController::class, 'stories'])->name('stories.index');
         Route::get('contents/{content:slug}', [MobileContentController::class, 'show'])->name('contents.show');
         Route::get('contents/{content:slug}/comments', [MobileContentController::class, 'comments'])->name('contents.comments');
         Route::post('contents/{content:slug}/views', [MobileContentController::class, 'recordView'])
