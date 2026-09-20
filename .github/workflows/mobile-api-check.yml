@@ -3,6 +3,7 @@ name: Mobile API Check
 on:
   push:
     branches:
+      - main
       - mobile-api-v1
     paths:
       - 'app/Http/Controllers/Api/V1/**'
