@@ -11,14 +11,12 @@ use Illuminate\Http\Request;
 
 class DeploymentAgentController extends Controller
 {
-    private const AGENT_ACTOR_ID = 0;
-
     public function chunk(DeploymentAgentChunkRequest $request, DeploymentManager $manager): JsonResponse
     {
         $data = $request->validated();
 
         return response()->json(
-            $manager->acceptChunk(self::AGENT_ACTOR_ID, $data, $request->file('chunk')->getPathname())
+            $manager->acceptChunk($this->actorId(), $data, $request->file('chunk')->getPathname())
         );
     }
 
@@ -29,29 +27,37 @@ class DeploymentAgentController extends Controller
         ]);
 
         return response()->json(
-            $manager->complete($data['operation_id'], self::AGENT_ACTOR_ID)
+            $manager->complete($data['operation_id'], $this->actorId())
         );
     }
 
     public function verify(Request $request, DeploymentManager $manager): JsonResponse
     {
         return response()->json(
-            $manager->verify((string) $request->route('deployment'), self::AGENT_ACTOR_ID)
+            $manager->verify((string) $request->route('deployment'), $this->actorId())
         );
     }
 
     public function apply(Request $request, DeploymentManager $manager): JsonResponse
     {
         return response()->json(
-            $manager->advance((string) $request->route('deployment'), self::AGENT_ACTOR_ID)
+            $manager->advance((string) $request->route('deployment'), $this->actorId())
         );
     }
 
     public function status(Request $request, DeploymentStateStore $states): JsonResponse
     {
         $state = $states->get((string) $request->route('deployment'));
-        abort_unless((int) ($state['user_id'] ?? -1) === self::AGENT_ACTOR_ID, 404);
+        abort_unless((int) ($state['user_id'] ?? -1) === $this->actorId(), 404);
 
         return response()->json($state);
+    }
+
+    private function actorId(): int
+    {
+        $id = (int) config('content_agent.author_user_id');
+        abort_if($id < 1, 503, 'PlayNexus content agent author is not configured.');
+
+        return $id;
     }
 }
