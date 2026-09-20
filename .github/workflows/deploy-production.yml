@@ -6,11 +6,11 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Build, upload, and validate a release without switching production"
+      deploy:
+        description: "Deploy after building the package (only allowed from main)"
         required: true
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
@@ -20,23 +20,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Build and deploy
-    if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_ENABLED == 'true'
+  build-and-deploy:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
-    environment: production
-
+    timeout-minutes: 40
     env:
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      DEPLOY_BASE_PATH: ${{ secrets.DEPLOY_BASE_PATH }}
-      DEPLOY_HEALTHCHECK_URL: ${{ secrets.DEPLOY_HEALTHCHECK_URL }}
-      DEPLOY_SSR_BUNDLE_PATH: ${{ secrets.DEPLOY_SSR_BUNDLE_PATH }}
-      DEPLOY_SSR_RESTART_FILE: ${{ secrets.DEPLOY_SSR_RESTART_FILE }}
-      DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      PLAYNEXUS_CONTENT_AGENT_TOKEN: ${{ secrets.PLAYNEXUS_CONTENT_AGENT_TOKEN }}
+      PLAYNEXUS_DEPLOY_API_URL: https://playnexus.ir/api/deployment-agent
 
     steps:
       - name: Checkout exact commit
@@ -45,45 +34,14 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Validate deployment configuration
+      - name: Verify existing PlayNexus secret
         shell: bash
         run: |
           set -Eeuo pipefail
-
-          required=(
-            DEPLOY_HOST
-            DEPLOY_PORT
-            DEPLOY_USER
-            DEPLOY_BASE_PATH
-            DEPLOY_HEALTHCHECK_URL
-            DEPLOY_SSH_PRIVATE_KEY
-            DEPLOY_KNOWN_HOSTS
-          )
-
-          for key in "${required[@]}"; do
-            if [[ -z "${!key:-}" ]]; then
-              echo "::error::Missing required production secret: $key"
-              exit 1
-            fi
-          done
-
-          if [[ ! "$DEPLOY_PORT" =~ ^[0-9]+$ ]]; then
-            echo "::error::DEPLOY_PORT must be numeric."
+          if [[ -z "${PLAYNEXUS_CONTENT_AGENT_TOKEN:-}" ]]; then
+            echo "::error::Repository secret PLAYNEXUS_CONTENT_AGENT_TOKEN is missing."
             exit 1
           fi
-
-          if [[ "$DEPLOY_BASE_PATH" != /* || "$DEPLOY_BASE_PATH" == "/" ]]; then
-            echo "::error::DEPLOY_BASE_PATH must be a safe absolute path."
-            exit 1
-          fi
-
-          DRY_RUN=0
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.dry_run }}" == "true" ]]; then
-            DRY_RUN=1
-          fi
-
-          echo "DEPLOY_DRY_RUN=$DRY_RUN" >> "$GITHUB_ENV"
-          echo "DEPLOY_RELEASE_ID=${GITHUB_SHA}-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -91,16 +49,42 @@ jobs:
           node-version: "22"
           cache: npm
 
-      - name: Verify build runtime
+      - name: Ensure PHP deployment extensions
         shell: bash
         run: |
           set -Eeuo pipefail
-          node --version
-          npm --version
-          php --version
-          composer --version
+          missing=0
+          php -m | grep -qi '^zip$' || missing=1
+          php -m | grep -qi '^ftp$' || missing=1
+          if [[ "$missing" == "1" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y php-zip php-ftp
+          fi
           php -r 'if (PHP_VERSION_ID < 80200) { fwrite(STDERR, "PHP 8.2+ is required.\n"); exit(1); }'
-          php -r 'if (!extension_loaded("ftp")) { fwrite(STDERR, "PHP ext-ftp is required by composer.lock.\n"); exit(1); }'
+          php -r 'foreach (["zip","ftp","mbstring","openssl","fileinfo","pdo"] as $ext) { if (!extension_loaded($ext)) { fwrite(STDERR, "Missing PHP extension: $ext\n"); exit(1); } }'
+
+      - name: Create ephemeral build environment
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          APP_KEY="base64:$(openssl rand -base64 32)"
+          cat > .env <<EOF
+          APP_NAME="PlayNexus"
+          APP_ENV=production
+          APP_KEY=$APP_KEY
+          APP_DEBUG=false
+          APP_URL=https://playnexus.ir
+          LOG_CHANNEL=stderr
+          DB_CONNECTION=sqlite
+          DB_DATABASE=/tmp/playnexus-deploy.sqlite
+          CACHE_STORE=array
+          SESSION_DRIVER=array
+          QUEUE_CONNECTION=sync
+          INERTIA_SSR_ENABLED=true
+          PLAYNEXUS_CONTENT_AGENT_TOKEN=$PLAYNEXUS_CONTENT_AGENT_TOKEN
+          EOF
+          touch /tmp/playnexus-deploy.sqlite
+          chmod 600 .env
 
       - name: Install production PHP dependencies
         shell: bash
@@ -111,136 +95,83 @@ jobs:
             --no-dev \
             --prefer-dist \
             --optimize-autoloader \
+            --classmap-authoritative \
             --no-interaction \
-            --no-progress \
-            --no-scripts
+            --no-progress
+          php artisan package:discover --ansi
 
-      - name: Build client and SSR bundles
+      - name: Build browser and standalone SSR bundles
         shell: bash
         run: |
           set -Eeuo pipefail
           npm ci
           npm run build
-          test -f public/build/manifest.json
+          test -s public/build/manifest.json
           test -s bootstrap/ssr/ssr.js
 
-      - name: Create immutable release archive
+      - name: Validate deployment routes and configuration
         shell: bash
         run: |
           set -Eeuo pipefail
+          php artisan route:list --path=api/deployment-agent
+          php -r '
+            require "vendor/autoload.php";
+            $app = require "bootstrap/app.php";
+            $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            if (!config("deployment.import_enabled") || !config("deployment.export_enabled")) {
+                fwrite(STDERR, "Deployment automation is not configured.\n");
+                exit(1);
+            }
+            if (config("deployment.app_id") !== "playnexus-production-v1") {
+                fwrite(STDERR, "Unexpected deployment app id.\n");
+                exit(1);
+            }
+            if (strlen((string) config("deployment.signing_key")) < 32) {
+                fwrite(STDERR, "Derived deployment signing key is invalid.\n");
+                exit(1);
+            }
+          '
 
-          ARCHIVE="$RUNNER_TEMP/playnexus-${DEPLOY_RELEASE_ID}.tar.gz"
-
-          tar \
-            --exclude='./.git' \
-            --exclude='./.github' \
-            --exclude='./.env' \
-            --exclude='./.env.backup' \
-            --exclude='./.env.production' \
-            --exclude='./node_modules' \
-            --exclude='./storage/*' \
-            --exclude='./public/storage' \
-            --exclude='./public/apk' \
-            --exclude='./deployment-exports' \
-            --exclude='./tests' \
-            -czf "$ARCHIVE" .
-
-          test -s "$ARCHIVE"
-          sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
-
-          echo "DEPLOY_ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
-          echo "DEPLOY_ARCHIVE_SHA256=$(cut -d' ' -f1 "$ARCHIVE.sha256")" >> "$GITHUB_ENV"
-
-      - name: Configure pinned SSH trust
+      - name: Build signed production package
+        id: package
         shell: bash
         run: |
           set -Eeuo pipefail
+          PACKAGE="$RUNNER_TEMP/playnexus-deployment-${GITHUB_SHA}.zip"
+          php artisan deployment:export --output="$PACKAGE"
+          test -s "$PACKAGE"
+          echo "path=$PACKAGE" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$PACKAGE" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
 
-          install -d -m 700 "$HOME/.ssh"
-          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$HOME/.ssh/playnexus_deploy"
-          chmod 600 "$HOME/.ssh/playnexus_deploy"
+      - name: Store short-lived bootstrap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: playnexus-deployment-${{ github.sha }}
+          path: ${{ steps.package.outputs.path }}
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 0
 
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-          chmod 600 "$HOME/.ssh/known_hosts"
-
-          test -s "$HOME/.ssh/playnexus_deploy"
-          test -s "$HOME/.ssh/known_hosts"
-
-      - name: Verify SSH and prepare incoming directory
+      - name: Deploy package to PlayNexus over HTTPS
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.deploy == true)
         shell: bash
         run: |
           set -Eeuo pipefail
-
-          SSH_OPTS=(
-            -i "$HOME/.ssh/playnexus_deploy"
-            -p "$DEPLOY_PORT"
-            -o BatchMode=yes
-            -o IdentitiesOnly=yes
-            -o StrictHostKeyChecking=yes
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
-            -o ConnectTimeout=15
-          )
-
-          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST" \
-            "mkdir -p '$DEPLOY_BASE_PATH/.incoming' && chmod 700 '$DEPLOY_BASE_PATH/.incoming'"
-
-      - name: Upload release
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-
-          REMOTE_ARCHIVE="$DEPLOY_BASE_PATH/.incoming/${DEPLOY_RELEASE_ID}.tar.gz"
-
-          scp \
-            -i "$HOME/.ssh/playnexus_deploy" \
-            -P "$DEPLOY_PORT" \
-            -o BatchMode=yes \
-            -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            "$DEPLOY_ARCHIVE" \
-            "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_ARCHIVE"
-
-          echo "DEPLOY_REMOTE_ARCHIVE=$REMOTE_ARCHIVE" >> "$GITHUB_ENV"
-
-      - name: Activate release safely
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-
-          SSH_OPTS=(
-            -i "$HOME/.ssh/playnexus_deploy"
-            -p "$DEPLOY_PORT"
-            -o BatchMode=yes
-            -o IdentitiesOnly=yes
-            -o StrictHostKeyChecking=yes
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
-            -o ConnectTimeout=15
-            -o ServerAliveInterval=15
-            -o ServerAliveCountMax=4
-          )
-
-          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$DEPLOY_HOST" \
-            "DEPLOY_BASE_PATH='$DEPLOY_BASE_PATH' \
-             DEPLOY_RELEASE_ID='$DEPLOY_RELEASE_ID' \
-             DEPLOY_RELEASE_SHA='$GITHUB_SHA' \
-             DEPLOY_ARCHIVE='$DEPLOY_REMOTE_ARCHIVE' \
-             DEPLOY_ARCHIVE_SHA256='$DEPLOY_ARCHIVE_SHA256' \
-             DEPLOY_HEALTHCHECK_URL='$DEPLOY_HEALTHCHECK_URL' \
-             DEPLOY_SSR_BUNDLE_PATH='$DEPLOY_SSR_BUNDLE_PATH' \
-             DEPLOY_SSR_RESTART_FILE='$DEPLOY_SSR_RESTART_FILE' \
-             DEPLOY_DRY_RUN='$DEPLOY_DRY_RUN' \
-             bash -s" < scripts/deploy-production.sh
+          python3 scripts/playnexus_deploy.py "${{ steps.package.outputs.path }}"
 
       - name: Deployment summary
         if: always()
         shell: bash
         run: |
           {
-            echo "### PlayNexus production deployment"
+            echo "### PlayNexus deployment"
             echo ""
             echo "- Commit: \`$GITHUB_SHA\`"
-            echo "- Release: \`${DEPLOY_RELEASE_ID:-not-created}\`"
-            echo "- Dry run: \`${DEPLOY_DRY_RUN:-unknown}\`"
-            echo "- Target: \`production\`"
+            echo "- Ref: \`$GITHUB_REF\`"
+            echo "- Package SHA-256: \`${{ steps.package.outputs.sha256 || 'not-built' }}\`"
+            if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+              echo "- Production transport: HTTPS deployment agent"
+            else
+              echo "- Production transport: skipped (non-main ref)"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
