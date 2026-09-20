@@ -13,13 +13,47 @@ final class DeploymentManager
 
     public function acceptChunk(int $userId, array $data, string $uploadedPath): array
     {
-        if (! config('deployment.import_enabled')) throw new RuntimeException('Import غیرفعال است.');
-        $state = empty($data['operation_id']) ? $this->states->create($userId, ['total_chunks' => (int) $data['total_chunks'], 'size' => (int) $data['size'], 'name' => basename($data['name'])]) : $this->owned($data['operation_id'], $userId);
-        if ($state['status'] !== 'uploading' || $state['total_chunks'] !== (int) $data['total_chunks'] || $state['size'] !== (int) $data['size']) throw new RuntimeException('مشخصات قطعه با عملیات هم‌خوان نیست.');
-        $directory = $this->paths->operation($state['id']).'/chunks'; File::ensureDirectoryExists($directory, 0750, true);
+        if (! config('deployment.import_enabled')) {
+            throw new RuntimeException('Import غیرفعال است.');
+        }
+
+        $metadata = [
+            'total_chunks' => (int) $data['total_chunks'],
+            'size' => (int) $data['size'],
+            'name' => basename($data['name']),
+        ];
+
+        foreach (['source_sha', 'source_ref', 'run_id'] as $key) {
+            if (isset($data[$key]) && $data[$key] !== '') {
+                $metadata[$key] = (string) $data[$key];
+            }
+        }
+
+        $state = empty($data['operation_id'])
+            ? $this->states->create($userId, $metadata)
+            : $this->owned($data['operation_id'], $userId);
+
+        foreach (['total_chunks', 'size', 'source_sha', 'source_ref', 'run_id'] as $key) {
+            if (array_key_exists($key, $metadata) && (string) ($state[$key] ?? '') !== (string) $metadata[$key]) {
+                throw new RuntimeException('مشخصات قطعه با عملیات هم‌خوان نیست.');
+            }
+        }
+
+        if ($state['status'] !== 'uploading') {
+            throw new RuntimeException('عملیات دیگر در وضعیت آپلود نیست.');
+        }
+
+        $directory = $this->paths->operation($state['id']).'/chunks';
+        File::ensureDirectoryExists($directory, 0750, true);
+
         $target = $directory.'/'.(int) $data['chunk_index'].'.part';
-        if (! is_file($target)) File::move($uploadedPath, $target);
-        return $this->states->update($state['id'], ['progress' => min(95, (int) floor((count(glob($directory.'/*.part') ?: []) / $state['total_chunks']) * 95))]);
+        if (! is_file($target)) {
+            File::move($uploadedPath, $target);
+        }
+
+        return $this->states->update($state['id'], [
+            'progress' => min(95, (int) floor((count(glob($directory.'/*.part') ?: []) / $state['total_chunks']) * 95)),
+        ]);
     }
 
     public function complete(string $id, int $userId): array
@@ -41,6 +75,19 @@ final class DeploymentManager
         $state = $this->owned($id, $userId); $dir = $this->paths->operation($id); $stage = $dir.'/staging';
         if (is_dir($stage)) File::deleteDirectory($stage);
         $manifest = $this->verifier->verify($dir.'/package.zip', $stage);
+
+        if (! empty($state['source_sha'])) {
+            $packageCommit = strtolower((string) ($manifest['git_commit'] ?? ''));
+            $expectedCommit = strtolower((string) $state['source_sha']);
+            if ($packageCommit === '' || ! hash_equals($expectedCommit, $packageCommit)) {
+                throw new RuntimeException('Commit بسته با Commit درخواست Deploy هم‌خوان نیست.');
+            }
+        }
+
+        if (! empty($state['source_ref']) && $state['source_ref'] !== 'refs/heads/main') {
+            throw new RuntimeException('Deploy خودکار فقط از branch اصلی مجاز است.');
+        }
+
         $current = $this->currentManifest(); $currentFiles = collect($current['files'] ?? [])->keyBy('path'); $newFiles = collect($manifest['files'])->keyBy('path');
         $changed = $newFiles->filter(fn ($file, $path) => ! isset($currentFiles[$path]) || $currentFiles[$path]['sha256'] !== $file['sha256'])->keys()->values()->all();
         $deleted = $currentFiles->keys()->diff($newFiles->keys())->filter(fn ($path) => $this->allowed($path) && ! $this->preservedServerPath($path))->values()->all();
