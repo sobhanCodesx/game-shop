@@ -533,7 +533,7 @@ class ContentAgentMediaService
 
         if ($slot === 'thumbnail') {
             $this->ensureImageMime($actualMime);
-            $stored = $this->optimizer->store($file, 'shorts/thumbnails');
+            $stored = $this->optimizer->store($file, 'stories/thumbnails');
             $old = $story->thumbnail;
 
             try {
@@ -551,7 +551,7 @@ class ContentAgentMediaService
             return $this->directAsset('thumbnail', 'image', $stored['path'], $actualMime) ?? [];
         }
 
-        $stored = $this->optimizer->store($file, 'shorts');
+        $stored = $this->optimizer->store($file, 'stories');
         $kind = $stored['type'];
         $oldPaths = array_values(array_filter([$story->video_path, $story->thumbnail]));
 
@@ -820,7 +820,7 @@ class ContentAgentMediaService
             'platform' => Platform::query()->findOrFail($id),
             'collection' => VideoPlaylist::query()->findOrFail($id),
             'feed' => SocialContent::query()->where('type', 'post')->findOrFail($id),
-            'story' => SocialContent::query()->where('type', 'short')->findOrFail($id),
+            'story' => SocialContent::query()->where('type', 'story')->findOrFail($id),
             'video' => SocialContent::query()->where('type', 'video')->findOrFail($id),
             'product' => Product::query()->findOrFail($id),
         };
