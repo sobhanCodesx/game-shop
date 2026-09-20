@@ -24,12 +24,12 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       PLAYNEXUS_MCP_URL: https://playnexus.ir/api/mcp
       PLAYNEXUS_CONTENT_AGENT_TOKEN: ${{ secrets.PLAYNEXUS_CONTENT_AGENT_TOKEN }}
       PLAYNEXUS_PUBLISHER_CHUNK_SIZE: 2097152
-      PLAYNEXUS_PUBLISHER_MAX_SOURCE_BYTES: 104857600
+      PLAYNEXUS_PUBLISHER_MAX_SOURCE_BYTES: 314572800
 
     steps:
       - name: Checkout publisher branch
