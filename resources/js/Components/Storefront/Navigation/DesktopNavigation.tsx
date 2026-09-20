@@ -48,54 +48,6 @@ interface Props extends Pick<StorefrontNavigationProps, "categories" | "user"> {
     hasFreshContent: boolean;
 }
 
-function CategoryTree({
-    categories,
-    onClose,
-    depth = 0,
-}: {
-    categories: NavigationCategory[];
-    onClose: () => void;
-    depth?: number;
-}) {
-    return (
-        <div
-            className={
-                depth
-                    ? "mr-3 border-r border-[var(--store-border)] pr-3"
-                    : "space-y-1"
-            }
-        >
-            {categories.map((category) => (
-                <div key={category.id} className="py-0.5">
-                    <Link
-                        href={`/categories/${category.slug}`}
-                        onClick={onClose}
-                        className="group flex min-h-8 items-center gap-2 rounded-lg px-2 text-sm text-[var(--store-muted)] transition hover:bg-[var(--store-accent-soft)] hover:text-indigo-500"
-                    >
-                        <span className="line-clamp-1">{category.name}</span>
-
-                        {category.products_count > 0 && (
-                            <span className="mr-auto text-[10px] opacity-60">
-                                {category.products_count.toLocaleString(
-                                    "fa-IR",
-                                )}
-                            </span>
-                        )}
-                    </Link>
-
-                    {!!category.children.length && (
-                        <CategoryTree
-                            categories={category.children}
-                            depth={depth + 1}
-                            onClose={onClose}
-                        />
-                    )}
-                </div>
-            ))}
-        </div>
-    );
-}
-
 function MegaMenu({
     categories,
     onClose,
@@ -105,77 +57,287 @@ function MegaMenu({
     onClose: () => void;
     menuRef: RefObject<HTMLDivElement | null>;
 }) {
+    const [activeCategoryId, setActiveCategoryId] = useState<number | null>(
+        categories[0]?.id ?? null,
+    );
+
+    const activeCategory =
+        categories.find((category) => category.id === activeCategoryId) ??
+        categories[0] ??
+        null;
+
+    const activeChildren = activeCategory?.children ?? [];
+
     return (
         <div
             ref={menuRef}
-            className="absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-124px)] overflow-y-auto border-t border-[var(--store-border)] bg-[var(--store-panel)] shadow-[0_30px_70px_rgba(2,6,23,.22)] backdrop-blur-2xl"
+            className="absolute inset-x-0 top-full z-[90] border-t border-[var(--store-border)] bg-[var(--store-bg)]/95 shadow-[0_34px_90px_rgba(0,0,0,.48)] backdrop-blur-2xl"
         >
-            <div className="mx-auto grid max-w-7xl gap-8 px-5 py-7 lg:grid-cols-[240px_1fr]">
-                <div className="rounded-3xl border border-[var(--store-border)] bg-[var(--store-accent-soft)] p-5">
-                    <span className="grid size-11 place-items-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/25">
-                        <FolderOpen size={22} />
-                    </span>
-
-                    <h2 className="mt-5 text-lg font-black text-[var(--store-text)]">
-                        جهان بازی‌ها را کشف کن
-                    </h2>
-
-                    <p className="mt-2 text-xs leading-6 text-[var(--store-muted)]">
-                        دسترسی سریع به بازی‌ها، اکانت‌های ظرفیتی، کنسول و
-                        تجهیزات گیمینگ.
-                    </p>
-
-                    <Link
-                        href="/categories"
-                        onClick={onClose}
-                        className="mt-5 inline-flex items-center gap-1 text-xs font-black text-indigo-500"
-                    >
-                        مشاهده همه دسته‌ها
-                        <ChevronLeft size={14} />
-                    </Link>
-                </div>
-
-                {categories.length ? (
-                    <div className="grid gap-x-8 gap-y-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {categories.map((category) => (
-                            <section key={category.id}>
-                                <Link
-                                    href={`/categories/${category.slug}`}
-                                    onClick={onClose}
-                                    className="group flex items-center gap-3"
-                                >
-                                    {category.image_url ? (
-                                        <img
-                                            alt={category.name}
-                                            src={category.image_url}
-                                            loading="lazy"
-                                            className="size-10 shrink-0 rounded-xl object-cover"
-                                        />
-                                    ) : (
-                                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--store-surface)] text-indigo-500">
-                                            <Gamepad2 size={19} />
+            <div className="mx-auto max-w-7xl px-5 py-4">
+                <div className="overflow-hidden rounded-[28px] border border-[var(--store-border)] bg-[var(--store-surface-strong)] shadow-[0_22px_70px_rgba(0,0,0,.32)]">
+                    {categories.length ? (
+                        <div className="grid min-h-[360px] max-h-[min(68vh,560px)] grid-cols-[280px_minmax(0,1fr)]">
+                            <aside className="flex min-h-0 flex-col border-l border-[var(--store-border)] bg-[var(--store-panel)]">
+                                <div className="border-b border-[var(--store-border)] px-4 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/20">
+                                            <FolderOpen size={19} />
                                         </span>
-                                    )}
-
-                                    <span className="font-black text-[var(--store-text)] transition group-hover:text-indigo-500">
-                                        {category.name}
-                                    </span>
-                                </Link>
-
-                                <div className="mt-3">
-                                    <CategoryTree
-                                        categories={category.children}
-                                        onClose={onClose}
-                                    />
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-black text-[var(--store-text)]">
+                                                دسته‌بندی محصولات
+                                            </p>
+                                            <p className="mt-0.5 text-[10px] text-[var(--store-muted)]">
+                                                سریع‌تر به چیزی که می‌خواهی برس
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
+
+                                <div
+                                    className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2.5"
+                                    role="tablist"
+                                    aria-label="دسته‌بندی‌های اصلی"
+                                >
+                                    {categories.map((category) => {
+                                        const isActive =
+                                            activeCategory?.id === category.id;
+
+                                        return (
+                                            <button
+                                                key={category.id}
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={isActive}
+                                                onMouseEnter={() =>
+                                                    setActiveCategoryId(category.id)
+                                                }
+                                                onFocus={() =>
+                                                    setActiveCategoryId(category.id)
+                                                }
+                                                onClick={() =>
+                                                    setActiveCategoryId(category.id)
+                                                }
+                                                className={`group flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-right transition-all duration-200 ${
+                                                    isActive
+                                                        ? "border-indigo-500/30 bg-indigo-500/12 text-indigo-300 shadow-[inset_0_0_0_1px_rgba(99,102,241,.06)]"
+                                                        : "border-transparent text-[var(--store-muted)] hover:border-[var(--store-border)] hover:bg-[var(--store-surface)] hover:text-[var(--store-text)]"
+                                                }`}
+                                            >
+                                                {category.image_url ? (
+                                                    <img
+                                                        alt=""
+                                                        aria-hidden="true"
+                                                        src={category.image_url}
+                                                        loading="lazy"
+                                                        className="size-9 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
+                                                    />
+                                                ) : (
+                                                    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[var(--store-accent-soft)] text-indigo-400">
+                                                        <Gamepad2 size={17} />
+                                                    </span>
+                                                )}
+
+                                                <span className="min-w-0 flex-1 truncate text-xs font-black">
+                                                    {category.name}
+                                                </span>
+
+                                                <span className="text-[10px] tabular-nums opacity-60">
+                                                    {category.products_count > 0
+                                                        ? category.products_count.toLocaleString(
+                                                              "fa-IR",
+                                                          )
+                                                        : ""}
+                                                </span>
+
+                                                <ChevronLeft
+                                                    size={15}
+                                                    className={`shrink-0 transition-transform ${
+                                                        isActive
+                                                            ? "-translate-x-0.5 text-indigo-400"
+                                                            : "opacity-35 group-hover:-translate-x-0.5"
+                                                    }`}
+                                                />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="border-t border-[var(--store-border)] p-3">
+                                    <Link
+                                        href="/categories"
+                                        onClick={onClose}
+                                        className="flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] text-[11px] font-black text-[var(--store-text)] transition hover:border-indigo-500/40 hover:text-indigo-400"
+                                    >
+                                        مشاهده همه دسته‌ها
+                                        <ChevronLeft size={14} />
+                                    </Link>
+                                </div>
+                            </aside>
+
+                            <section className="min-w-0 overflow-y-auto p-5 lg:p-6">
+                                {activeCategory && (
+                                    <>
+                                        <div className="relative overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-panel)] p-5">
+                                            <span className="pointer-events-none absolute -left-16 -top-20 size-52 rounded-full bg-indigo-500/10 blur-3xl" />
+                                            <span className="pointer-events-none absolute -bottom-24 right-16 size-48 rounded-full bg-cyan-400/5 blur-3xl" />
+
+                                            <div className="relative flex items-center gap-4">
+                                                {activeCategory.image_url ? (
+                                                    <img
+                                                        alt={activeCategory.name}
+                                                        src={activeCategory.image_url}
+                                                        loading="lazy"
+                                                        className="size-16 shrink-0 rounded-2xl object-cover ring-1 ring-white/10"
+                                                    />
+                                                ) : (
+                                                    <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-cyan-400/10 text-indigo-400 ring-1 ring-indigo-500/20">
+                                                        <Gamepad2 size={27} />
+                                                    </span>
+                                                )}
+
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">
+                                                        PlayNexus Collection
+                                                    </p>
+                                                    <h2 className="mt-1 truncate text-xl font-black text-[var(--store-text)]">
+                                                        {activeCategory.name}
+                                                    </h2>
+                                                    <p className="mt-1 text-xs text-[var(--store-muted)]">
+                                                        {activeCategory.products_count > 0
+                                                            ? `${activeCategory.products_count.toLocaleString(
+                                                                  "fa-IR",
+                                                              )} محصول در این بخش`
+                                                            : "دسته‌بندی منتخب فروشگاه"}
+                                                    </p>
+                                                </div>
+
+                                                <Link
+                                                    href={`/categories/${activeCategory.slug}`}
+                                                    onClick={onClose}
+                                                    className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2.5 text-[11px] font-black text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-500"
+                                                >
+                                                    ورود به دسته
+                                                </Link>
+                                            </div>
+                                        </div>
+
+                                        {activeChildren.length ? (
+                                            <div className="mt-5 grid gap-3 xl:grid-cols-2">
+                                                {activeChildren.map((child) => (
+                                                    <article
+                                                        key={child.id}
+                                                        className="group rounded-2xl border border-[var(--store-border)] bg-[var(--store-panel)] p-4 transition hover:border-indigo-500/35 hover:bg-[var(--store-surface)]"
+                                                    >
+                                                        <Link
+                                                            href={`/categories/${child.slug}`}
+                                                            onClick={onClose}
+                                                            className="flex items-center gap-3"
+                                                        >
+                                                            {child.image_url ? (
+                                                                <img
+                                                                    alt=""
+                                                                    aria-hidden="true"
+                                                                    src={child.image_url}
+                                                                    loading="lazy"
+                                                                    className="size-10 shrink-0 rounded-xl object-cover"
+                                                                />
+                                                            ) : (
+                                                                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--store-accent-soft)] text-indigo-400">
+                                                                    <Gamepad2 size={18} />
+                                                                </span>
+                                                            )}
+
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="truncate text-sm font-black text-[var(--store-text)] transition group-hover:text-indigo-400">
+                                                                    {child.name}
+                                                                </p>
+                                                                <p className="mt-0.5 text-[10px] text-[var(--store-muted)]">
+                                                                    {child.products_count > 0
+                                                                        ? `${child.products_count.toLocaleString(
+                                                                              "fa-IR",
+                                                                          )} محصول`
+                                                                        : child.children.length
+                                                                          ? `${child.children.length.toLocaleString(
+                                                                                "fa-IR",
+                                                                            )} زیرمجموعه`
+                                                                          : "مشاهده محصولات"}
+                                                                </p>
+                                                            </div>
+
+                                                            <ChevronLeft
+                                                                size={16}
+                                                                className="shrink-0 text-[var(--store-muted)] transition group-hover:-translate-x-1 group-hover:text-indigo-400"
+                                                            />
+                                                        </Link>
+
+                                                        {!!child.children.length && (
+                                                            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--store-border)] pt-3">
+                                                                {child.children
+                                                                    .slice(0, 5)
+                                                                    .map((leaf) => (
+                                                                        <Link
+                                                                            key={leaf.id}
+                                                                            href={`/categories/${leaf.slug}`}
+                                                                            onClick={onClose}
+                                                                            className="rounded-lg bg-[var(--store-surface)] px-2.5 py-1.5 text-[10px] font-bold text-[var(--store-muted)] transition hover:bg-indigo-500/12 hover:text-indigo-400"
+                                                                        >
+                                                                            {leaf.name}
+                                                                        </Link>
+                                                                    ))}
+
+                                                                {child.children.length > 5 && (
+                                                                    <Link
+                                                                        href={`/categories/${child.slug}`}
+                                                                        onClick={onClose}
+                                                                        className="rounded-lg px-2.5 py-1.5 text-[10px] font-black text-indigo-400"
+                                                                    >
+                                                                        +
+                                                                        {(
+                                                                            child.children.length -
+                                                                            5
+                                                                        ).toLocaleString(
+                                                                            "fa-IR",
+                                                                        )}
+                                                                    </Link>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </article>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="mt-5 grid min-h-40 place-items-center rounded-2xl border border-dashed border-[var(--store-border)] bg-[var(--store-panel)] text-center">
+                                                <div>
+                                                    <span className="mx-auto grid size-11 place-items-center rounded-2xl bg-[var(--store-accent-soft)] text-indigo-400">
+                                                        <ShoppingBag size={19} />
+                                                    </span>
+                                                    <p className="mt-3 text-sm font-black text-[var(--store-text)]">
+                                                        محصولات این دسته آماده‌اند
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-[var(--store-muted)]">
+                                                        برای مشاهده مستقیم وارد صفحه دسته شو.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </section>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="grid min-h-48 place-items-center rounded-3xl border border-dashed border-[var(--store-border)] text-sm text-[var(--store-muted)]">
-                        دسته‌بندی فعالی برای نمایش وجود ندارد.
-                    </div>
-                )}
+                        </div>
+                    ) : (
+                        <div className="grid min-h-64 place-items-center p-6 text-center">
+                            <div>
+                                <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-[var(--store-accent-soft)] text-indigo-400">
+                                    <FolderOpen size={21} />
+                                </span>
+                                <p className="mt-3 text-sm font-black text-[var(--store-text)]">
+                                    دسته‌بندی فعالی برای نمایش وجود ندارد.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -256,6 +418,11 @@ export default function DesktopNavigation({
     }, [megaOpen]);
 
     useEffect(() => {
+        setMegaOpen(false);
+        setAccountOpen(false);
+    }, [pathname]);
+
+    useEffect(() => {
         if (!accountOpen) {
             return;
         }
@@ -281,6 +448,8 @@ export default function DesktopNavigation({
     };
 
     const handleAccountPress = () => {
+        setMegaOpen(false);
+
         if (!user) {
             onOpenAccount();
             return;
@@ -296,7 +465,7 @@ export default function DesktopNavigation({
     };
 
     return (
-        <header className="store-desktop-header relative hidden border-b border-[var(--store-border)] bg-[var(--store-header)] backdrop-blur-2xl lg:block">
+        <header className="store-desktop-header relative z-[80] hidden border-b border-[var(--store-border)] bg-[var(--store-header)] backdrop-blur-2xl lg:block">
             {/* =========================
                 MAIN HEADER
             ========================== */}
@@ -415,7 +584,7 @@ export default function DesktopNavigation({
 
                             {/* ACCOUNT DROPDOWN */}
                             {user && accountOpen && (
-                                <div className="absolute left-0 top-[calc(100%+.65rem)] z-[70] w-64 overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-2 shadow-2xl">
+                                <div className="absolute left-0 top-[calc(100%+.65rem)] z-[110] w-64 overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface-strong)] p-2 shadow-2xl backdrop-blur-2xl">
                                     <div className="border-b border-[var(--store-border)] px-3 py-3">
                                         <p className="truncate text-sm font-black text-[var(--store-text)]">
                                             {user.name}
@@ -484,8 +653,11 @@ export default function DesktopNavigation({
                         <Button
                             aria-expanded={megaOpen}
                             aria-haspopup="true"
-                            className="h-9 shrink-0 rounded-xl bg-indigo-600 px-4 text-xs font-black text-white shadow-lg shadow-indigo-500/15"
-                            onPress={() => setMegaOpen((current) => !current)}
+                            className="h-9 shrink-0 rounded-xl bg-gradient-to-l from-indigo-600 to-violet-600 px-4 text-xs font-black text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-110"
+                            onPress={() => {
+                                setAccountOpen(false);
+                                setMegaOpen((current) => !current);
+                            }}
                         >
                             <Package size={17} className="shrink-0" />
 
@@ -581,7 +753,7 @@ export default function DesktopNavigation({
                         تخفیف‌ها
                     </Link>
 
-                    <div className="mr-auto shrink-0">
+                    <div className="mr-auto hidden shrink-0 2xl:block">
                         {user ? (
                             <Link
                                 className="flex h-9 items-center gap-2 rounded-xl bg-emerald-500/10 px-4 text-xs font-black text-emerald-600 transition hover:bg-emerald-500 hover:text-white"
