@@ -140,7 +140,8 @@ final class DeploymentManager
         if (! $lock || ! flock($lock, LOCK_EX | LOCK_NB)) throw new RuntimeException('یک deployment دیگر در حال اجراست.');
         try {
             return match ($state['stage']) {
-                'verified' => $this->backup($state), 'backed_up' => $this->maintenance($state), 'maintenance' => $this->switchFiles($state),
+                'verified' => $this->hasRuntimeChanges($state) ? $this->backup($state) : $this->completeNoop($state),
+                'backed_up' => $this->maintenance($state), 'maintenance' => $this->switchFiles($state),
                 'switched' => $this->migrate($state), 'migrated' => $this->optimize($state), 'optimized' => $this->health($state),
                 'health_checked' => $this->completeDeployment($state), 'completed' => $state,
                 default => throw new RuntimeException('مرحله فعلی قابل اجرا نیست.'),
@@ -163,6 +164,30 @@ final class DeploymentManager
         foreach ($state['new_files'] ?? [] as $path) if ($this->allowed($path) && is_file(base_path($path))) @unlink(base_path($path));
         Artisan::call('optimize:clear'); Artisan::call('up');
         return $this->states->update($id, ['status' => 'rolled_back', 'stage' => 'rolled_back', 'progress' => 100]);
+    }
+
+    private function hasRuntimeChanges(array $state): bool
+    {
+        return ! empty($state['diff']['changed'])
+            || ! empty($state['diff']['deleted'])
+            || ! empty($state['diff']['pending_migrations']);
+    }
+
+    private function completeNoop(array $state): array
+    {
+        $stage = $this->paths->operation($state['id']).'/staging';
+        foreach (['deployment-manifest.json', 'deployment-manifest.sig'] as $file) {
+            $this->copyFile($stage.'/'.$file, base_path($file));
+        }
+
+        $state = $this->states->update($state['id'], [
+            'status' => 'completed',
+            'stage' => 'completed',
+            'progress' => 100,
+        ]);
+        $this->states->pruneSuccessful();
+
+        return $state;
     }
 
     private function backup(array $state): array
