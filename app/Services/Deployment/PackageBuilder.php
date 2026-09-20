@@ -34,7 +34,6 @@ final class PackageBuilder
         try {
             $progress('staging', 30);
             foreach ($this->paths() as $relative) $this->copy(base_path($relative), $stage.'/'.$relative);
-            $this->stageStorageStructure($stage);
             $progress('copying_dependencies', 55);
             $this->copy(base_path('vendor'), $stage.'/vendor');
             $requiredFiles = ['vendor/autoload.php', 'vendor/composer/installed.php', 'public/build/manifest.json'];
