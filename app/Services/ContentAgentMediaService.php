@@ -533,7 +533,7 @@ class ContentAgentMediaService
 
         if ($slot === 'thumbnail') {
             $this->ensureImageMime($actualMime);
-            $stored = $this->optimizer->store($file, 'shorts/thumbnails');
+            $stored = $this->optimizer->store($file, 'stories/thumbnails');
             $old = $story->thumbnail;
 
             try {
@@ -551,7 +551,7 @@ class ContentAgentMediaService
             return $this->directAsset('thumbnail', 'image', $stored['path'], $actualMime) ?? [];
         }
 
-        $stored = $this->optimizer->store($file, 'shorts');
+        $stored = $this->optimizer->store($file, 'stories');
         $kind = $stored['type'];
         $oldPaths = array_values(array_filter([$story->video_path, $story->thumbnail]));
 
