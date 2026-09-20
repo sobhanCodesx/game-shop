@@ -460,6 +460,7 @@ class MobileContentController extends Controller
             'id' => $playlist->id,
             'title' => $playlist->title,
             'slug' => $playlist->slug,
+            'image_url' => MediaStorage::url($playlist->logo),
             'channel_name' => $playlist->game?->name ?? $playlist->studio?->name ?? 'PlayNexus',
             'is_public' => $playlist->visibility === 'public',
             'items' => $playlist->videos
