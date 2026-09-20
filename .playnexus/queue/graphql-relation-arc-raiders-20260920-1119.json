@@ -1,0 +1,7 @@
+{
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query($q: String!) { search(query: $q, first: 5) { games { id name slug status releaseDate } } }",
+    "variables": {"q": "ARC Raiders"}
+  }
+}
