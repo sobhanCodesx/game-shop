@@ -142,6 +142,13 @@ class StorefrontDataService
         $video = $content->video_path
             ?: ($primaryMedia?->type === 'video' ? $primaryMedia->path : null);
 
+        $gameLogo = null;
+        if ($content->relationLoaded('game') && $content->game) {
+            $gameLogo = $content->game->relationLoaded('playlists')
+                ? $content->game->playlists->first()?->logo
+                : null;
+        }
+
         return [
             'id' => $content->id,
             'type' => $content->type,
@@ -163,11 +170,13 @@ class StorefrontDataService
             'channel' => $content->relationLoaded('game') && $content->game ? [
                 'id' => $content->game->id,
                 'name' => $content->game->name,
+                'slug' => $content->game->slug,
                 'url' => route('channels.show', $content->game->slug, false),
-                'avatar_url' => MediaStorage::url(
-                    $content->game->cover ?: ($content->game->relationLoaded('playlists') ? $content->game->playlists->first()?->logo : null)
-                ),
+                'logo_url' => MediaStorage::url($gameLogo ?: $content->game->cover),
+                'avatar_url' => MediaStorage::url($gameLogo ?: $content->game->cover),
+                'cover_url' => MediaStorage::url($content->game->cover),
             ] : null,
         ];
     }
+
 }

@@ -64,7 +64,14 @@ class MobileContentController extends Controller
             ->published()
             ->where('type', $content->type)
             ->whereKeyNot($content->id)
-            ->with(['game:id,name,slug,cover', 'media'])
+            ->with([
+                'game:id,name,slug,cover',
+                'game.playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+                'media',
+            ])
             ->when(
                 $content->game_id,
                 fn (Builder $query) => $query->orderByRaw('CASE WHEN game_id = ? THEN 0 ELSE 1 END', [$content->game_id]),
@@ -96,9 +103,13 @@ class MobileContentController extends Controller
                 'id' => $content->game->id,
                 'name' => $content->game->name,
                 'slug' => $content->game->slug,
-                'avatar_url' => MediaStorage::url(
-                    $content->game->cover ?: $content->game->playlists->first()?->logo,
+                'logo_url' => MediaStorage::url(
+                    $content->game->playlists->first()?->logo ?: $content->game->cover,
                 ),
+                'avatar_url' => MediaStorage::url(
+                    $content->game->playlists->first()?->logo ?: $content->game->cover,
+                ),
+                'cover_url' => MediaStorage::url($content->game->cover),
                 'background_url' => MediaStorage::url($content->game->background),
                 'subscribers_count' => $content->game->subscribers()->count(),
                 'is_subscribed' => $request->user()
@@ -145,7 +156,14 @@ class MobileContentController extends Controller
             ->keyBy('id');
 
         $contentQuery = SocialContent::query()
-            ->with(['game:id,name,slug,cover', 'media'])
+            ->with([
+                'game:id,name,slug,cover',
+                'game.playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+                'media',
+            ])
             ->withCount([
                 'reactions as likes_count' => fn (Builder $query) => $query->where('type', 'like'),
                 'comments as comments_count' => fn (Builder $query) => $query->published(),
@@ -291,7 +309,14 @@ class MobileContentController extends Controller
         $query = SocialContent::query()
             ->published()
             ->where('type', $type)
-            ->with(['game:id,name,slug,cover', 'media'])
+            ->with([
+                'game:id,name,slug,cover',
+                'game.playlists' => fn ($query) => $query
+                    ->publiclyVisible()
+                    ->whereNotNull('logo')
+                    ->select(['id', 'game_id', 'logo', 'sort_order']),
+                'media',
+            ])
             ->withCount([
                 'reactions as likes_count' => fn (Builder $query) => $query->where('type', 'like'),
                 'reactions as dislikes_count' => fn (Builder $query) => $query->where('type', 'dislike'),
@@ -392,7 +417,13 @@ class MobileContentController extends Controller
                 'videos' => fn ($query) => $query
                     ->published()
                     ->where('type', 'video')
-                    ->with('game:id,name,slug,cover'),
+                    ->with([
+                        'game:id,name,slug,cover',
+                        'game.playlists' => fn ($query) => $query
+                            ->publiclyVisible()
+                            ->whereNotNull('logo')
+                            ->select(['id', 'game_id', 'logo', 'sort_order']),
+                    ]),
             ])
             ->orderBy('sort_order')
             ->first();
