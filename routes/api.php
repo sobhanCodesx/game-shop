@@ -72,6 +72,8 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
             ->name('contents.views.store');
 
         Route::get('products', [MobileCatalogController::class, 'products'])->name('products.index');
+        Route::get('offers', [MobileCatalogController::class, 'offers'])->name('offers.index');
+        Route::get('exchange-products', [MobileCatalogController::class, 'exchangeProducts'])->name('exchange-products.index');
         Route::get('products/{product:slug}', [MobileCatalogController::class, 'product'])->name('products.show');
         Route::get('categories', [MobileCatalogController::class, 'categories'])->name('categories.index');
         Route::get('categories/{category:slug}', [MobileCatalogController::class, 'category'])->name('categories.show');
@@ -81,6 +83,7 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
         Route::get('search', [MobileCatalogController::class, 'search'])->name('search');
         Route::get('game-radar', [MobileCatalogController::class, 'radar'])->name('game-radar.index');
 
+        Route::get('channels', [MobileChannelsController::class, 'channels'])->name('channels.index');
         Route::get('studios', [MobileChannelsController::class, 'studios'])->name('studios.index');
         Route::get('studios/{studio:slug}', [MobileChannelsController::class, 'studio'])->name('studios.show');
         Route::get('channels/{game:slug}', [MobileChannelsController::class, 'channel'])->name('channels.show');
@@ -147,6 +150,7 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
         Route::patch('tickets/{ticket}/exchange-response', [MobileTicketController::class, 'exchangeDecision'])
             ->name('tickets.exchange-response');
 
+        Route::get('session', [MobileDeviceApiController::class, 'session'])->name('session');
         Route::get('devices', [MobileDeviceApiController::class, 'index'])->name('devices.index');
         Route::put('devices', [MobileDeviceApiController::class, 'store'])->name('devices.store');
         Route::delete('devices/{installationId}', [MobileDeviceApiController::class, 'destroy'])
