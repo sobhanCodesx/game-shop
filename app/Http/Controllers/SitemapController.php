@@ -136,11 +136,27 @@ class SitemapController extends Controller
     /** @return iterable<array{loc: string, lastmod?: string, video?: array<string, mixed>}> */
     private function socialContentUrls(string $contentType): iterable
     {
-        foreach (SocialContent::query()->published()->where('type', $contentType)->orderBy('id')->cursor() as $content) {
+        $contents = SocialContent::query()
+            ->published()
+            ->where('type', $contentType)
+            ->with('media');
+
+        foreach ($contents->lazyById(200) as $content) {
             $plural = $contentType === 'video' ? 'videos' : 'shorts';
             $entry = $this->entry(route('content.show', [$plural, $content->slug]), $content->updated_at);
-            $thumbnail = MediaStorage::url($content->thumbnail);
-            $videoUrl = MediaStorage::url($content->video_path);
+            $primaryVideoMedia = $content->media->first(
+                fn ($media) => $media->type === 'video' && filled($media->path),
+            );
+            $primaryImageMedia = $content->media->first(
+                fn ($media) => $media->type === 'image' && filled($media->path),
+            );
+            $thumbnailPath = $content->thumbnail
+                ?: $primaryVideoMedia?->thumbnail
+                ?: $primaryImageMedia?->path;
+            $videoPath = $content->video_path ?: $primaryVideoMedia?->path;
+            $duration = $content->duration ?: $primaryVideoMedia?->duration;
+            $thumbnail = MediaStorage::url($thumbnailPath);
+            $videoUrl = MediaStorage::url($videoPath);
 
             if ($videoUrl && ($thumbnail || $contentType === 'video')) {
                 $description = RichText::plainText(
@@ -153,7 +169,7 @@ class SitemapController extends Controller
                     'title' => Str::limit($content->title, 100, '…'),
                     'description' => Str::limit($description, 2048, '…'),
                     'content_loc' => url($videoUrl),
-                    'duration' => $content->duration && $content->duration <= 28800 ? $content->duration : null,
+                    'duration' => $duration && $duration <= 28800 ? $duration : null,
                     'publication_date' => $content->published_at?->toAtomString(),
                     'view_count' => max(0, (int) $content->views),
                 ], fn ($value) => $value !== null && $value !== '');
