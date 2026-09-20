@@ -1,7 +1,0 @@
-{
-  "job_id": "2026-09-20-2211-retry-studios-graph",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query { studios(first: 100, status: \"active\", orderBy: \"id\", orderDir: \"asc\") { nodes { id name slug status gameCount } pageInfo { total } } }"
-  }
-}
