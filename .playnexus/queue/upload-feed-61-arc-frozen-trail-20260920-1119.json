@@ -1,0 +1,10 @@
+{
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 61,
+    "slot": "media",
+    "source_url": "https://assets.arcraiders.com/media/e3b333c7-1a2f-ARC%20Raiders_Blog_Header_DevUpdate_1920x622_3-1024x332.png",
+    "alt": "آپدیت Frozen Trail بازی ARC Raiders با محیط برفی جدید"
+  }
+}
