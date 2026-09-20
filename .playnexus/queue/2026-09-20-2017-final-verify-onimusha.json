@@ -1,0 +1,5 @@
+{
+  "job_id": "2026-09-20-2017-final-verify-onimusha",
+  "tool": "get_content",
+  "arguments": {"resource": "game", "id": 17}
+}
