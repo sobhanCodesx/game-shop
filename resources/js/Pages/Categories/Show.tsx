@@ -145,6 +145,9 @@ export default function CategoryShow({
                         <img
                             alt=""
                             className="absolute inset-0 h-full w-full object-cover opacity-15"
+                            decoding="async"
+                            fetchPriority="high"
+                            loading="eager"
                             src={category.image_url}
                         />
                     )}
