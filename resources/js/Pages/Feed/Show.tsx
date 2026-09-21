@@ -313,7 +313,7 @@ export default function FeedShow({
                     {hasRelated && (
                         <section
                             aria-labelledby="related-context-title"
-                            className="border-t border-[var(--store-border)] px-4 py-4 sm:px-6 sm:py-5"
+                            className="pn-deferred-zone border-t border-[var(--store-border)] px-4 py-4 sm:px-6 sm:py-5"
                         >
                             <div className="mb-2.5 flex items-center justify-between gap-3">
                                 <h2
@@ -337,6 +337,7 @@ export default function FeedShow({
                                                 <img
                                                     alt={item.author.name}
                                                     className="size-full object-cover"
+                                                    decoding="async"
                                                     loading="lazy"
                                                     src={item.author.avatar_url}
                                                 />
@@ -384,6 +385,7 @@ export default function FeedShow({
                                                 <img
                                                     alt={item.related_product.title}
                                                     className="size-full object-cover"
+                                                    decoding="async"
                                                     loading="lazy"
                                                     src={item.related_product.image_url}
                                                 />
@@ -567,7 +569,7 @@ function RelatedSection({
     title: string;
 }) {
     return (
-        <section className="pn-feed-related mx-3 mt-8 rounded-[22px] p-3 sm:mx-0 sm:mt-9 sm:p-4">
+        <section className="pn-deferred-zone pn-feed-related mx-3 mt-8 rounded-[22px] p-3 sm:mx-0 sm:mt-9 sm:p-4">
             <header className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
                 <h2 className="flex items-center gap-2 text-base font-black sm:text-lg">
                     <Icon className="text-indigo-400" size={19} />
@@ -597,6 +599,7 @@ function FeedPreview({ item }: { item: FeedItemData }) {
                         <img
                             alt={media.alt}
                             className="size-full object-cover transition duration-300 group-hover:scale-105"
+                            decoding="async"
                             loading="lazy"
                             src={image}
                         />
