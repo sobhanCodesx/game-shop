@@ -343,10 +343,7 @@ export default function Edit({
                 });
                 setUploadProgress({});
                 setUploadErrors({});
-                window.setTimeout(
-                    () => feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
-                    0,
-                );
+
             },
             onError: (validationErrors) => {
                 const fields = Object.keys(validationErrors);
@@ -366,12 +363,21 @@ export default function Edit({
 
     const actions = (
         <>
-            <Link href="/" target="_blank">
+            <Link
+                href={`/?preview_home_template=${encodeURIComponent(data.settings.home_template)}`}
+                rel="noreferrer"
+                target="_blank"
+            >
                 <Button variant="secondary">
                     <Eye size={17} />
-                    مشاهده Home
+                    پیش‌نمایش قالب
                 </Button>
             </Link>
+            {recentlySuccessful && (
+                <Chip color="success" size="sm" variant="soft">
+                    ذخیره شد
+                </Chip>
+            )}
             <Button
                 isDisabled={processing || uploadsInProgress}
                 onPress={() =>
