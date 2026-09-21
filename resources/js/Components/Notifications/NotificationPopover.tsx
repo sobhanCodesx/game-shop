@@ -6,11 +6,27 @@ import { createPortal } from "react-dom";
 import type { SharedPageProps } from "../../types";
 
 let pollSubscribers = 0;
+let pollAdminSubscribers = 0;
 let pollTimer: number | undefined;
-const refreshNotifications = () => {
-    if (document.visibilityState === "visible" && navigator.onLine)
-        router.reload({ only: ["notifications", "admin"] });
+let lastRefreshAt = 0;
+
+const refreshNotifications = (force = false) => {
+    if (document.visibilityState !== "visible" || !navigator.onLine) return;
+
+    const now = Date.now();
+    if (!force && now - lastRefreshAt < 20_000) return;
+    lastRefreshAt = now;
+
+    router.reload({
+        only:
+            pollAdminSubscribers > 0
+                ? ["notifications", "admin"]
+                : ["notifications"],
+        preserveScroll: true,
+        preserveState: true,
+    });
 };
+
 const schedulePoll = () => {
     window.clearTimeout(pollTimer);
     pollTimer = window.setTimeout(
@@ -18,27 +34,40 @@ const schedulePoll = () => {
             refreshNotifications();
             schedulePoll();
         },
-        document.visibilityState === "visible" ? 15_000 : 60_000,
+        document.visibilityState === "visible" ? 60_000 : 300_000,
     );
 };
+
 const handleVisibility = () => {
     if (document.visibilityState === "visible") refreshNotifications();
     schedulePoll();
 };
-const startPolling = () => {
-    if (++pollSubscribers !== 1) return;
+
+const handleFocus = () => refreshNotifications();
+const handleOnline = () => refreshNotifications(true);
+
+const startPolling = (admin: boolean) => {
+    pollSubscribers += 1;
+    if (admin) pollAdminSubscribers += 1;
+    if (pollSubscribers !== 1) return;
+
     document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("focus", refreshNotifications);
-    window.addEventListener("online", refreshNotifications);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("online", handleOnline);
     schedulePoll();
 };
-const stopPolling = () => {
-    if (--pollSubscribers > 0) return;
-    pollSubscribers = 0;
+
+const stopPolling = (admin: boolean) => {
+    pollSubscribers = Math.max(0, pollSubscribers - 1);
+    if (admin) {
+        pollAdminSubscribers = Math.max(0, pollAdminSubscribers - 1);
+    }
+    if (pollSubscribers > 0) return;
+
     window.clearTimeout(pollTimer);
     document.removeEventListener("visibilitychange", handleVisibility);
-    window.removeEventListener("focus", refreshNotifications);
-    window.removeEventListener("online", refreshNotifications);
+    window.removeEventListener("focus", handleFocus);
+    window.removeEventListener("online", handleOnline);
 };
 
 export default function NotificationPopover({
@@ -75,9 +104,9 @@ export default function NotificationPopover({
     }, []);
 
     useEffect(() => {
-        startPolling();
-        return stopPolling;
-    }, []);
+        startPolling(admin);
+        return () => stopPolling(admin);
+    }, [admin]);
 
     const read = (id: string) => {
         setNavigating(id);
@@ -104,7 +133,7 @@ export default function NotificationPopover({
                 aria-label="اعلان‌ها"
                 onClick={() => {
                     setOpen((current) => {
-                        if (!current) refreshNotifications();
+                        if (!current) refreshNotifications(true);
                         return !current;
                     });
                 }}
