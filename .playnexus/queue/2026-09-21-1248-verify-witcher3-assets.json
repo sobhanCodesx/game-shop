@@ -1,8 +1,0 @@
-{
-  "tool": "list_content_assets",
-  "arguments": {
-    "resource": "game",
-    "id": 20
-  },
-  "purpose": "verify_witcher3_remastered_media_before_publish"
-}
