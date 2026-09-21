@@ -16,6 +16,7 @@ class HomeSettingsRequest extends FormRequest
     {
         return [
             'settings' => ['required', 'array'],
+            'settings.home_template' => ['required', Rule::in(collect(config('home-experience.templates', []))->filter(fn ($template) => (bool) ($template['available'] ?? false))->keys()->all())],
             'settings.announcement_enabled' => ['boolean'],
             'settings.announcement_text' => ['nullable', 'string', 'max:160'],
             'settings.announcement_url' => ['nullable', 'string', 'max:500'],
@@ -82,6 +83,8 @@ class HomeSettingsRequest extends FormRequest
             'slides.*.alt.max' => 'متن جایگزین تصویر نباید بیشتر از ۱۸۰ نویسه باشد.',
             'slides.*.button_url.required_if' => 'برای بنری که به لینک می‌رود، آدرس لینک الزامی است.',
             'slides.*.product_id.required_if' => 'برای بنر محصولی، انتخاب محصول الزامی است.',
+            'settings.home_template.required' => 'قالب صفحه اصلی را انتخاب کنید.',
+            'settings.home_template.in' => 'قالب انتخاب‌شده هنوز برای استفاده آماده نیست.',
             'settings.featured_categories_title.required' => 'عنوان دسته‌بندی‌های منتخب الزامی است.',
             'settings.featured_products_title.required' => 'عنوان محصولات منتخب الزامی است.',
             'settings.latest_products_title.required' => 'عنوان تازه‌ترین محصولات الزامی است.',
