@@ -8,6 +8,7 @@ use App\Models\SmsOutbox;
 use App\Services\Sms\SmsMessageFormatter;
 use App\Services\Sms\SmsPattern;
 use App\Services\Sms\SmsPatternRegistry;
+use App\Services\Sms\SmsProviderSettings;
 use App\Services\Sms\SmsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,11 +18,10 @@ use Inertia\Response;
 
 class SmsTestController extends Controller
 {
-    public function index(Request $request, SmsPatternRegistry $patterns): Response
+    public function index(Request $request, SmsPatternRegistry $patterns, SmsProviderSettings $providerSettings): Response
     {
-        $credentialsConfigured = filled(config('services.payamak_panel.username'))
-            && filled(config('services.payamak_panel.api_key'))
-            && filled(config('services.payamak_panel.pattern_endpoint'));
+        $providerSettings->applyRuntimeConfig();
+        $credentialsConfigured = $providerSettings->isConfigured();
         $messages = SmsOutbox::query()
             ->with('deliveryAttempts')
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
@@ -70,6 +70,8 @@ class SmsTestController extends Controller
         return Inertia::render('Admin/SmsTest/Index', [
             'patterns' => $patternOptions,
             'providerConfigured' => $credentialsConfigured,
+            'activeProvider' => $providerSettings->activeProvider(),
+            'activeProviderLabel' => $providerSettings->label($providerSettings->activeProvider()),
             'messages' => $messages,
             'filters' => $request->only(['status', 'search']),
         ]);
