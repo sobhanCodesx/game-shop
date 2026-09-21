@@ -72,6 +72,10 @@ class HomeExperienceService
 
     private function cache(): CacheRepository
     {
-        return Cache::store((string) config('home-experience.cache_store', 'file'));
+        $store = app()->environment('testing')
+            ? 'array'
+            : (string) config('home-experience.cache_store', 'file');
+
+        return Cache::store($store);
     }
 }
