@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-21-game-auto-final-verify-wolverine",
+  "tool": "get_content",
+  "arguments": {
+    "resource": "game",
+    "id": 18
+  }
+}
