@@ -1,6 +1,6 @@
 import { Button, Card, Chip } from "@heroui/react";
 import { Head, Link, router } from "@inertiajs/react";
-import { ImageOff, MapPin, Phone, UserRound } from "lucide-react";
+import { ImageOff, MapPin, Phone, Store, Truck, UserRound } from "lucide-react";
 import AdminLayout from "../../../Layouts/AdminLayout";
 const money = new Intl.NumberFormat("fa-IR");
 const labels: Record<string, string> = {
@@ -113,27 +113,27 @@ export default function Show({ order }: { order: any }) {
                     </Card>
                     <Card variant="secondary">
                         <Card.Content className="p-6">
-                            <h2 className="mb-4 text-lg font-black">
-                                اطلاعات تحویل
+                            <h2 className="mb-4 flex items-center gap-2 text-lg font-black">
+                                {order.delivery_method === "pickup" ? <Store size={19} /> : <Truck size={19} />}
+                                {order.delivery_method === "pickup" ? "تحویل حضوری" : "تحویل با پیک"}
                             </h2>
-                            <div className="grid gap-3 text-sm md:grid-cols-2">
-                                <p className="flex gap-2">
-                                    <UserRound size={18} />
-                                    {order.shipping_address.recipient_name}
-                                </p>
-                                <p className="flex gap-2">
-                                    <Phone size={18} />
-                                    {order.shipping_address.phone}
-                                </p>
-                                <p className="flex gap-2 md:col-span-2">
-                                    <MapPin size={18} />
-                                    {order.shipping_address.province}،{" "}
-                                    {order.shipping_address.city}،{" "}
-                                    {order.shipping_address.address_line}{" "}
-                                    {order.shipping_address.plaque &&
-                                        `، پلاک ${order.shipping_address.plaque}`}
-                                </p>
-                            </div>
+                            {order.delivery_method === "pickup" ? (
+                                <div className="space-y-3 text-sm">
+                                    <p className="flex gap-2"><UserRound size={18} />{order.user?.name}</p>
+                                    <p className="flex gap-2"><Phone size={18} />{order.user?.phone || "—"}</p>
+                                    <p className="flex gap-2"><MapPin className="shrink-0" size={18} /><span>{order.pickup_address || "آدرس مراجعه ثبت نشده است."}</span></p>
+                                </div>
+                            ) : (
+                                <div className="grid gap-3 text-sm md:grid-cols-2">
+                                    <p className="flex gap-2"><UserRound size={18} />{order.shipping_address.recipient_name}</p>
+                                    <p className="flex gap-2"><Phone size={18} />{order.shipping_address.phone}</p>
+                                    <p className="flex gap-2 md:col-span-2">
+                                        <MapPin size={18} />
+                                        {order.shipping_address.province}، {order.shipping_address.city}، {order.shipping_address.address_line}
+                                        {order.shipping_address.plaque && `، پلاک ${order.shipping_address.plaque}`}
+                                    </p>
+                                </div>
+                            )}
                         </Card.Content>
                     </Card>
                 </section>
