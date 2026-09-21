@@ -176,7 +176,7 @@ export default function DesktopNavigation({
     };
 
     return (
-        <header className="store-desktop-header relative z-[80] hidden border-b border-[var(--store-border)] bg-[var(--store-header)] backdrop-blur-2xl lg:block">
+        <header className="store-desktop-header relative z-[80] hidden border-b border-[var(--store-border)] bg-[var(--store-header)] lg:block">
             {/* =========================
                 MAIN HEADER
             ========================== */}
