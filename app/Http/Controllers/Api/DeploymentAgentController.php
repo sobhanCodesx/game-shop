@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\DeploymentAgentChunkRequest;
+use App\Services\Deployment\DeploymentHealthService;
 use App\Services\Deployment\DeploymentManager;
 use App\Services\Deployment\DeploymentStateStore;
 use Illuminate\Http\JsonResponse;
@@ -42,6 +43,32 @@ class DeploymentAgentController extends Controller
     {
         return response()->json(
             $manager->advance((string) $request->route('deployment'), $this->actorId())
+        );
+    }
+
+    public function health(Request $request, DeploymentHealthService $health): JsonResponse
+    {
+        $data = $request->validate([
+            'expected_sha' => ['sometimes', 'nullable', 'regex:/^[a-f0-9]{40}$/i'],
+        ]);
+
+        $report = $health->report(
+            isset($data['expected_sha']) ? strtolower((string) $data['expected_sha']) : null,
+        );
+
+        if (($report['status'] ?? 'error') !== 'ok') {
+            $failed = collect($report['checks'] ?? [])
+                ->filter(fn (array $check) => ($check['ok'] ?? false) !== true)
+                ->keys()
+                ->values()
+                ->all();
+
+            $report['error'] = 'Post-deploy health check failed: '.implode(', ', $failed);
+        }
+
+        return response()->json(
+            $report,
+            ($report['status'] ?? 'error') === 'ok' ? 200 : 503,
         );
     }
 

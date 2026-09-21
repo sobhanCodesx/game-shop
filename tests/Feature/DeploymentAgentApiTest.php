@@ -49,6 +49,22 @@ class DeploymentAgentApiTest extends TestCase
             ])->assertUnauthorized();
     }
 
+    public function test_post_deploy_health_endpoint_requires_authentication(): void
+    {
+        $this->getJson('/api/deployment-agent/health')
+            ->assertUnauthorized();
+    }
+
+    public function test_post_deploy_health_endpoint_validates_expected_sha(): void
+    {
+        $this->withHeaders([
+            'Accept' => 'application/json',
+            'Authorization' => 'Bearer '.$this->deploymentToken(),
+        ])->getJson('/api/deployment-agent/health?expected_sha=not-a-sha')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['expected_sha']);
+    }
+
     public function test_deployment_agent_rejects_non_main_source_refs_before_upload(): void
     {
         $this->withHeaders([

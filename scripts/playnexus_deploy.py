@@ -186,18 +186,83 @@ def establish_maintenance_bypass(secret: str) -> None:
         response.read(1024)
 
 
-def public_health(path: str) -> None:
+def public_health(path: str, expected_kind: str | None = None) -> None:
     parsed = urllib.parse.urlparse(API_BASE)
     url = f"{parsed.scheme}://{parsed.netloc}{path}"
+    last_error: Exception | None = None
+
+    for attempt in range(MAX_RETRIES):
+        request = urllib.request.Request(
+            url,
+            headers={
+                "Accept": "application/json,text/html,*/*",
+                "User-Agent": "PlayNexus-GitHub-Deploy/2",
+            },
+            method="GET",
+        )
+        try:
+            with opener.open(request, timeout=60) as response:
+                if response.status < 200 or response.status >= 300:
+                    raise RuntimeError(
+                        f"Health check failed for {path}: HTTP {response.status}"
+                    )
+
+                content_type = response.headers.get("Content-Type", "").lower()
+                body = response.read(4 * 1024 * 1024)
+                if not body:
+                    raise RuntimeError(f"Health check returned an empty body for {path}")
+
+                if expected_kind == "html":
+                    lowered = body[:8192].lower()
+                    if "text/html" not in content_type:
+                        raise RuntimeError(
+                            f"Expected HTML from {path}, got {content_type or 'unknown'}"
+                        )
+                    if b"<html" not in lowered and b"<!doctype html" not in lowered:
+                        raise RuntimeError(f"HTML shell marker is missing for {path}")
+                elif expected_kind == "json":
+                    if "application/json" not in content_type:
+                        raise RuntimeError(
+                            f"Expected JSON from {path}, got {content_type or 'unknown'}"
+                        )
+                    payload = json.loads(body.decode("utf-8"))
+                    if not isinstance(payload, dict):
+                        raise RuntimeError(f"JSON payload is not an object for {path}")
+
+                return
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError, ValueError, RuntimeError) as exc:
+            last_error = exc
+
+        if attempt + 1 < MAX_RETRIES:
+            time.sleep(2 ** attempt)
+
+    raise RuntimeError(f"Public smoke check failed for {path}: {last_error}")
+
+
+def external_asset_health(url: str) -> None:
+    parsed = urllib.parse.urlparse(url)
+    hostname = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or not (
+        hostname == "cdnpn.ir"
+        or hostname.endswith(".cdnpn.ir")
+        or hostname == "playnexus.ir"
+        or hostname.endswith(".playnexus.ir")
+    ):
+        raise RuntimeError("Health endpoint returned an unexpected CDN probe URL.")
+
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "PlayNexus-GitHub-Deploy/1"},
+        headers={
+            "Range": "bytes=0-1023",
+            "User-Agent": "PlayNexus-GitHub-Deploy/2",
+        },
         method="GET",
     )
-    with opener.open(request, timeout=60) as response:
-        if response.status < 200 or response.status >= 400:
-            raise RuntimeError(f"Health check failed for {path}: HTTP {response.status}")
-        response.read(1024)
+    with urllib.request.urlopen(request, timeout=60) as response:
+        if response.status not in {200, 206}:
+            raise RuntimeError(f"CDN probe failed: HTTP {response.status}")
+        if not response.read(1024):
+            raise RuntimeError("CDN probe returned an empty asset.")
 
 
 def main() -> int:
@@ -309,10 +374,47 @@ def main() -> int:
     if final_state.get("status") != "completed":
         die("Server did not persist the completed deployment state.")
 
-    public_health("/up")
-    public_health("/")
+    health = request_json(
+        "GET",
+        f"health?expected_sha={urllib.parse.quote(SOURCE_SHA)}",
+    )
+    if health.get("status") != "ok":
+        failed = [
+            name
+            for name, result in (health.get("checks") or {}).items()
+            if isinstance(result, dict) and result.get("ok") is not True
+        ]
+        die(
+            "Authenticated post-deploy health check failed: "
+            + (", ".join(failed) if failed else "unknown")
+        )
 
-    print(f"PlayNexus deployment completed for commit {SOURCE_SHA[:12]}.")
+    deployed_commit = str(health.get("commit") or "").lower()
+    if deployed_commit != SOURCE_SHA:
+        die(
+            "Authenticated health check reported the wrong deployed commit: "
+            f"{deployed_commit or '<missing>'}"
+        )
+
+    print(
+        "Authenticated health checks passed: "
+        + ", ".join((health.get("checks") or {}).keys()),
+        flush=True,
+    )
+
+    public_health("/up")
+    public_health("/", "html")
+    public_health("/feed", "html")
+    public_health("/videos", "html")
+    public_health("/game-radar", "html")
+    public_health("/api/v1/meta", "json")
+
+    cdn_probe_url = health.get("cdn_probe_url")
+    if isinstance(cdn_probe_url, str) and cdn_probe_url:
+        external_asset_health(cdn_probe_url)
+        print("CDN asset probe passed.", flush=True)
+
+    print(f"PlayNexus deployment and post-deploy verification completed for commit {SOURCE_SHA[:12]}.")
     return 0
 
 

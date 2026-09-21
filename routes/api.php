@@ -33,6 +33,7 @@ Route::prefix('/deployment-agent')
     ->group(function () {
         Route::post('/upload/chunk', [DeploymentAgentController::class, 'chunk'])->name('chunk');
         Route::post('/upload/complete', [DeploymentAgentController::class, 'complete'])->name('complete');
+        Route::get('/health', [DeploymentAgentController::class, 'health'])->name('health');
         Route::post('/{deployment}/verify', [DeploymentAgentController::class, 'verify'])->whereUuid('deployment')->name('verify');
         Route::post('/{deployment}/apply', [DeploymentAgentController::class, 'apply'])->whereUuid('deployment')->name('apply');
         Route::get('/{deployment}/status', [DeploymentAgentController::class, 'status'])->whereUuid('deployment')->name('status');
