@@ -416,7 +416,7 @@ def materialize_hls(
         if max_height < 144 or max_height > 2160:
             fail("transcode_max_height must be between 144 and 2160.")
         command += [
-            "-vf", f"scale=-2:{max_height}:force_original_aspect_ratio=decrease",
+            "-vf", f"scale=-2:min(ih\\,{max_height})",
             "-c:v", "libx264",
             "-preset", "medium",
             "-crf", "23",
