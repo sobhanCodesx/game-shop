@@ -321,6 +321,28 @@ class OrderCheckoutTest extends TestCase
             ->where('invoice.items.0.discount_amount', 20_000));
     }
 
+    public function test_pickup_order_cannot_be_marked_as_shipped(): void
+    {
+        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'admin']);
+        $order = $this->orderFor($user, 'processing', 'NP-PICKUP-STATE', [
+            'delivery_method' => 'pickup',
+            'pickup_address' => 'تهران، محل مراجعه',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.orders.update', $order), ['status' => 'shipped'])
+            ->assertSessionHasErrors('status');
+
+        $this->assertSame('processing', $order->fresh()->status);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.orders.update', $order), ['status' => 'delivered'])
+            ->assertRedirect();
+
+        $this->assertSame('delivered', $order->fresh()->status);
+    }
+
     public function test_admin_can_cancel_shipped_order_and_reverse_cashback(): void
     {
         $user = User::factory()->create(['wallet_balance' => 5_000]);
