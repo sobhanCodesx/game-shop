@@ -305,7 +305,12 @@ class HomeSettingsTest extends TestCase
         HomeSection::create(['title' => 'ویدیوهای محبوب', 'content_type' => 'videos', 'query_type' => 'popular', 'items_limit' => 8, 'is_active' => true]);
         SocialContent::create(['type' => 'video', 'title' => 'بررسی بازی', 'slug' => 'game-review', 'views' => 500, 'status' => 'published', 'published_at' => now()]);
 
-        $this->get('/')
+        $this->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Inertia-Partial-Component' => 'Home',
+            'X-Inertia-Partial-Data' => 'contentSections',
+        ])->get('/')
+            ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('contentSections', 1)
                 ->where('contentSections.0.title', 'ویدیوهای محبوب')
@@ -331,7 +336,11 @@ class HomeSettingsTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->get('/')
+        $this->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Inertia-Partial-Component' => 'Home',
+            'X-Inertia-Partial-Data' => 'contentSections',
+        ])->get('/')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('contentSections', 1)
@@ -358,7 +367,11 @@ class HomeSettingsTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->get('/')
+        $this->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Inertia-Partial-Component' => 'Home',
+            'X-Inertia-Partial-Data' => 'contentSections',
+        ])->get('/')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('contentSections', 1)
