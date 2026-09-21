@@ -33,8 +33,8 @@ return [
         'dual_spotlight' => [
             'label' => 'Dual Spotlight',
             'focus' => 'balanced',
-            'description' => 'محصول ویژه و محتوای ویژه با وزن بصری برابر.',
-            'available' => false,
+            'description' => 'محصول ویژه و محتوای ویژه با وزن بصری برابر در موبایل و دسکتاپ.',
+            'available' => true,
         ],
         'storefront' => [
             'label' => 'Storefront',
