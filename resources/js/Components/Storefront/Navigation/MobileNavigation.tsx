@@ -11,10 +11,14 @@ import {
 } from "lucide-react";
 
 import StorefrontBrand from "./StorefrontBrand";
-import NotificationPopover from "../../Notifications/NotificationPopover";
 import type { StorefrontPanel } from "./StorefrontPanels";
 import ThemeToggle from "./ThemeToggle";
+import { lazy, Suspense } from "react";
 import type { StorefrontTheme } from "./types";
+
+const NotificationPopover = lazy(
+    () => import("../../Notifications/NotificationPopover"),
+);
 import type { SharedPageProps } from "../../../types";
 
 interface Props {
@@ -70,7 +74,11 @@ export default function MobileNavigation({
             <header className="mobile-top-nav sticky top-0 z-40 flex min-h-14 min-w-0 items-center gap-1 border-b border-[var(--store-border)] bg-[var(--store-header)] px-2.5 py-1.5 sm:px-4 lg:hidden">
                 <StorefrontBrand compact />
                 <div className="mr-auto flex min-w-0 shrink-0 items-center gap-0 sm:gap-1">
-                    {auth.user && <NotificationPopover />}
+                    {auth.user && (
+        <Suspense fallback={<span aria-hidden="true" className="inline-flex size-11 shrink-0" />}>
+            <NotificationPopover />
+        </Suspense>
+    )}
                     <ThemeToggle onToggle={onToggleTheme} theme={theme} />
                     <Button
                         aria-label="جستجو"
