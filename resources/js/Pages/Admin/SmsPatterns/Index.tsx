@@ -17,8 +17,11 @@ interface PatternOption {
 
 export default function SmsPatterns({
     patterns,
+    activeProviderLabel,
 }: {
     patterns: PatternOption[];
+    activeProvider: string;
+    activeProviderLabel: string;
 }) {
     const form = useForm({
         patterns: patterns.map((pattern) => ({
@@ -31,7 +34,7 @@ export default function SmsPatterns({
     return (
         <AdminLayout
             title="پترن‌های پیامک"
-            description="مدیریت مستقل Body IDهای ملی پیامک؛ بدون نیاز به تغییر فایل env"
+            description={`مدیریت شناسه قالب‌های ${activeProviderLabel}؛ هر پنل شناسه‌های مستقل خودش را نگه می‌دارد`}
         >
             <Head title="پترن‌های پیامک" />
 
@@ -39,14 +42,14 @@ export default function SmsPatterns({
                 <Card.Header className="flex flex-col gap-3 border-b border-slate-800 p-5 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <h2 className="font-black text-white">
-                            رجیستری Patternهای ملی پیامک
+                            رجیستری Patternهای {activeProviderLabel}
                         </h2>
                         <p className="mt-1 max-w-3xl text-xs leading-6 text-slate-500">
-                            همه قالب‌ها از همین حالا آماده ارسال‌اند و هیچ تنظیم
-                            اولیه‌ای لازم نیست. اگر بعداً Body ID واقعی وارد
-                            کنید، سیستم خودکار از Pattern ملی پیامک استفاده
-                            می‌کند؛ در غیر این صورت متن پیش‌فرض از مسیر ارسال
-                            عادی فرستاده می‌شود.
+                            شناسه‌های قالب برای هر سرویس جدا ذخیره می‌شوند. اگر
+                            برای این پنل شناسه‌ای وارد نکنید، سیستم از متن
+                            پیش‌فرض و ارسال عادی همان سرویس استفاده می‌کند؛
+                            بنابراین تعویض پنل شناسه‌های سرویس قبلی را خراب
+                            نمی‌کند.
                         </p>
                     </div>
                     <Link href="/admin/sms-test">
@@ -166,7 +169,7 @@ export default function SmsPatterns({
                                         {!ready
                                             ? "غیرفعال"
                                             : usesProviderPattern
-                                              ? "Pattern ملی پیامک فعال"
+                                              ? `Pattern ${activeProviderLabel} فعال`
                                               : "قالب پیش‌فرض آماده ارسال"}
                                     </span>
                                 </div>
