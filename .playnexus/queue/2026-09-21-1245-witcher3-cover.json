@@ -1,0 +1,11 @@
+{
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game",
+    "id": 20,
+    "slot": "cover",
+    "source_url": "https://press.cdn.cdpr.app/media/thumbnails/d26db09389435602252a802257a67748_q90_680x680.png",
+    "name": "witcher3-remastered-cover.png",
+    "alt": "The Witcher 3: Wild Hunt — Remastered"
+  }
+}
