@@ -1,0 +1,129 @@
+name: Home Experience Check
+
+on:
+  push:
+    paths:
+      - '.github/workflows/home-experience-check.yml'
+      - 'app/Http/Controllers/HomeController.php'
+      - 'app/Http/Controllers/Admin/HomeSettingsController.php'
+      - 'app/Http/Controllers/Admin/CommerceSettingsController.php'
+      - 'app/Http/Controllers/NewsletterSubscriptionController.php'
+      - 'app/Http/Requests/Admin/HomeSettingsRequest.php'
+      - 'app/Http/Requests/Account/UpdateHomeExperiencePreferenceRequest.php'
+      - 'app/Models/HomeSetting.php'
+      - 'app/Models/NewsletterSubscription.php'
+      - 'app/Services/HomeExperienceService.php'
+      - 'app/Services/CommerceSettings.php'
+      - 'config/home-experience.php'
+      - 'database/migrations/*home*'
+      - 'database/migrations/*newsletter*'
+      - 'resources/js/Components/Home/**'
+      - 'resources/js/Components/Storefront/Product/ProductCard.tsx'
+      - 'resources/js/Layouts/AdminLayout.tsx'
+      - 'resources/js/Pages/Admin/Home/Edit.tsx'
+      - 'resources/js/Pages/Home.tsx'
+      - 'routes/web.php'
+      - 'tests/Feature/HomeExperienceTest.php'
+      - 'tests/Feature/NewsletterSubscriptionTest.php'
+      - 'tests/Feature/Admin/HomeSettingsTest.php'
+      - 'tests/Feature/Admin/CommerceSettingsTest.php'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'composer.json'
+      - 'composer.lock'
+  pull_request:
+    paths:
+      - '.github/workflows/home-experience-check.yml'
+      - 'app/Http/Controllers/HomeController.php'
+      - 'app/Http/Controllers/Admin/HomeSettingsController.php'
+      - 'app/Http/Controllers/Admin/CommerceSettingsController.php'
+      - 'app/Http/Controllers/NewsletterSubscriptionController.php'
+      - 'app/Http/Requests/Admin/HomeSettingsRequest.php'
+      - 'app/Http/Requests/Account/UpdateHomeExperiencePreferenceRequest.php'
+      - 'app/Services/HomeExperienceService.php'
+      - 'config/home-experience.php'
+      - 'resources/js/Components/Home/**'
+      - 'resources/js/Layouts/AdminLayout.tsx'
+      - 'resources/js/Pages/Admin/Home/Edit.tsx'
+      - 'resources/js/Pages/Home.tsx'
+      - 'routes/web.php'
+      - 'tests/Feature/HomeExperienceTest.php'
+      - 'tests/Feature/NewsletterSubscriptionTest.php'
+      - 'tests/Feature/Admin/HomeSettingsTest.php'
+      - 'tests/Feature/Admin/CommerceSettingsTest.php'
+
+permissions:
+  contents: read
+
+jobs:
+  home-experience:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: inertia_testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          php -l app/Http/Controllers/HomeController.php
+          php -l app/Http/Controllers/Admin/HomeSettingsController.php
+          php -l app/Http/Controllers/Admin/CommerceSettingsController.php
+          php -l app/Http/Controllers/NewsletterSubscriptionController.php
+          php -l app/Http/Requests/Admin/HomeSettingsRequest.php
+          php -l app/Http/Requests/Account/UpdateHomeExperiencePreferenceRequest.php
+          php -l app/Services/HomeExperienceService.php
+          php -l config/home-experience.php
+          php -l routes/web.php
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Build frontend and SSR
+        run: |
+          set -Eeuo pipefail
+          npm ci
+          npm run build
+          test -s public/build/manifest.json
+          test -s bootstrap/ssr/ssr.js
+
+      - name: Run Home experience feature tests
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: inertia_testing
+          DB_USERNAME: root
+          DB_PASSWORD: ''
+        run: |
+          set -Eeuo pipefail
+          php artisan test \
+            tests/Feature/HomeExperienceTest.php \
+            tests/Feature/NewsletterSubscriptionTest.php \
+            tests/Feature/Admin/HomeSettingsTest.php \
+            tests/Feature/Admin/CommerceSettingsTest.php
