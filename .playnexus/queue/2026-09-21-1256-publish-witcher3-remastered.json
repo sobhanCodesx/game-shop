@@ -3,7 +3,7 @@
   "arguments": {
     "resource": "game",
     "id": 20,
-    "state": "published"
+    "state": "active"
   },
   "purpose": "publish_witcher3_remastered_after_verified_cdn_uploads"
 }
