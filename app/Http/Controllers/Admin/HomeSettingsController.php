@@ -165,12 +165,12 @@ class HomeSettingsController extends Controller
 
             throw $exception;
         } finally {
+            $homeExperience->invalidate();
+
             foreach ($claimedTokens as $token) {
                 $uploads->forget($request->user()->id, $token);
             }
         }
-
-        $homeExperience->invalidate();
 
         $referencedImagePaths = HomeSlide::query()
             ->get(['desktop_image', 'mobile_image'])
