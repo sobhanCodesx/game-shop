@@ -3348,108 +3348,48 @@ export default function Home({
                 freshContentAt={storefront.fresh_content_at}
             />
             <main>
-                {isDualSpotlight && (
+                {usesTemplateHero && (
                     <>
-                        <DualSpotlightHero
-                            contentItems={templateContent}
-                            heading={seo.heading}
-                            products={dualSpotlightProducts}
-                        />
-                        {settings.featured_products_enabled &&
-                            featuredProducts.length > 0 && (
-                                <section
-                                    className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 pb-5 pt-2 sm:px-4 sm:pb-8"
-                                    id="featured-products"
-                                >
-                                    <div className="mb-4 flex items-end justify-between gap-4">
-                                        <div>
-                                            <p className="text-[10px] font-black tracking-[.18em] text-cyan-500 sm:text-xs">
-                                                STORE PICKS
-                                            </p>
-                                            <h2 className="mt-1 text-xl font-black sm:text-2xl">
-                                                {settings.featured_products_title}
-                                            </h2>
-                                        </div>
-                                        <Link
-                                            className="text-xs font-black text-indigo-500"
-                                            href="/shop"
-                                        >
-                                            همه محصولات
-                                        </Link>
-                                    </div>
-                                    <ProductGrid products={featuredProducts} />
-                                </section>
-                            )}
-                    </>
-                )}
-                {isStorefront && (
-                    <>
-                        <StorefrontCommerceHero
+                        <HomeTemplateHero
                             categories={categories}
                             contentItems={templateContent}
+                            featuredProducts={featuredProducts}
                             heading={seo.heading}
                             latestProducts={latestProducts}
-                            products={featuredProducts}
+                            templateKey={homeExperience.effective_template}
                         />
-                        {settings.featured_products_enabled &&
-                            featuredProducts.length > 0 && (
-                                <section
-                                    className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 pb-5 pt-1 sm:px-4 sm:pb-8"
+                        {templateRuntime.featuredPlacement === "template_top" &&
+                            settings.featured_products_enabled && (
+                                <TemplateProductSection
+                                    compactTop
+                                    dense={
+                                        templateRuntime.productRailDensity ===
+                                        "dense"
+                                    }
+                                    eyebrow={templateRuntime.featuredEyebrow}
                                     id="featured-products"
-                                >
-                                    <div className="mb-4 flex items-end justify-between gap-4">
-                                        <div>
-                                            <p className="text-[10px] font-black tracking-[.18em] text-cyan-500 sm:text-xs">
-                                                FEATURED SHELF
-                                            </p>
-                                            <h2 className="mt-1 text-xl font-black sm:text-2xl lg:text-3xl">
-                                                {settings.featured_products_title}
-                                            </h2>
-                                        </div>
-                                        <Link
-                                            className="text-xs font-black text-indigo-500"
-                                            href="/shop"
-                                        >
-                                            مشاهده همه
-                                        </Link>
-                                    </div>
-                                    <ProductGrid
-                                        dense
-                                        products={featuredProducts}
-                                    />
-                                </section>
+                                    linkLabel={templateRuntime.featuredLinkLabel}
+                                    products={featuredProducts}
+                                    title={settings.featured_products_title}
+                                />
                             )}
-                        {settings.latest_products_enabled &&
-                            latestProducts.length > 0 && (
-                                <section
-                                    className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 pb-6 pt-1 sm:px-4 sm:pb-9"
+                        {templateRuntime.latestPlacement === "template_top" &&
+                            settings.latest_products_enabled && (
+                                <TemplateProductSection
+                                    dense={
+                                        templateRuntime.productRailDensity ===
+                                        "dense"
+                                    }
+                                    eyebrow={templateRuntime.latestEyebrow}
                                     id="latest-products"
-                                >
-                                    <div className="mb-4 flex items-end justify-between gap-4">
-                                        <div>
-                                            <p className="text-[10px] font-black tracking-[.18em] text-emerald-500 sm:text-xs">
-                                                JUST LANDED
-                                            </p>
-                                            <h2 className="mt-1 text-xl font-black sm:text-2xl lg:text-3xl">
-                                                {settings.latest_products_title}
-                                            </h2>
-                                        </div>
-                                        <Link
-                                            className="text-xs font-black text-indigo-500"
-                                            href="/shop"
-                                        >
-                                            فروشگاه کامل
-                                        </Link>
-                                    </div>
-                                    <ProductGrid
-                                        dense
-                                        products={latestProducts}
-                                    />
-                                </section>
+                                    linkLabel={templateRuntime.latestLinkLabel}
+                                    products={latestProducts}
+                                    title={settings.latest_products_title}
+                                />
                             )}
                     </>
                 )}
-                {!usesTemplateHero &&
+                {templateRuntime.campaignPlacement === "legacy" &&
                     auth.user &&
                     personalizedHome &&
                     slides.length > 0 && (
@@ -3460,7 +3400,7 @@ export default function Home({
                         <CampaignBanner slides={slides} variant="signed-in" />
                     </section>
                 )}
-                {!usesTemplateHero &&
+                {templateRuntime.campaignPlacement === "legacy" &&
                     (auth.user && personalizedHome ? (
                     <PersonalizedHomePanel
                         channels={channels}
@@ -3493,7 +3433,7 @@ export default function Home({
                         />
                     </>
                 ))}
-                {usesTemplateHero &&
+                {templateRuntime.campaignPlacement === "after_template" &&
                     slides.length > 0 &&
                     !spotlightUsesCampaignFallback && (
                     <section
