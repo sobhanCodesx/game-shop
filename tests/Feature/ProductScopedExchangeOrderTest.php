@@ -73,15 +73,31 @@ class ProductScopedExchangeOrderTest extends TestCase
         }
     }
 
-    public function test_trade_value_is_capped_at_one_approved_product_price_without_wallet_credit(): void
+    public function test_trade_value_equal_to_product_price_makes_exchange_free(): void
     {
         $user = User::factory()->create(['wallet_balance' => 0]);
         $product = Product::factory()->create(['price' => 5_000_000, 'discount_price' => null, 'stock' => 5, 'status' => 'published', 'visibility' => 'public']);
-        $ticket = $this->exchange($user, $product, 'accepted', 8_000_000);
+        $ticket = $this->exchange($user, $product, 'accepted', 5_000_000);
+
         $order = app(OrderService::class)->create($this->cart($product), $user, [], null, false, $ticket->id);
+
         $this->assertSame(0, $order->payable_amount);
         $this->assertSame(5_000_000, $order->exchange_credit_used);
         $this->assertSame(0, $user->fresh()->wallet_balance);
+    }
+
+    public function test_trade_value_above_product_price_is_rejected_instead_of_becoming_negative(): void
+    {
+        $user = User::factory()->create(['wallet_balance' => 0]);
+        $product = Product::factory()->create(['price' => 5_000_000, 'discount_price' => null, 'stock' => 5, 'status' => 'published', 'visibility' => 'public']);
+        $ticket = $this->exchange($user, $product, 'accepted', 5_000_001);
+
+        try {
+            app(OrderService::class)->preview($this->cart($product), $user, exchangeRequestId: $ticket->id);
+            $this->fail('Exchange amount above the current product price was accepted.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('exchange_request_id', $exception->errors());
+        }
     }
 
     private function exchange(User $user, Product $product, string $status, int $value): Ticket
