@@ -1,0 +1,18 @@
+{
+  "job_id": "2026-09-21-wolverine-merge-update-canonical",
+  "tool": "update_content",
+  "arguments": {
+    "resource": "game",
+    "id": 8,
+    "data": {
+      "studio_id": 8,
+      "developer": "Insomniac Games",
+      "publisher": "Sony Interactive Entertainment",
+      "release_date": "2026-09-15",
+      "age_rating": "M",
+      "platform_ids": [
+        1
+      ]
+    }
+  }
+}
