@@ -356,7 +356,35 @@ def main() -> int:
         if state.get("status") == "failed":
             die(str(state.get("error") or "Deployment failed on server."))
 
-        state = request_json("POST", f"{operation_id}/apply", json_body={})
+        try:
+            state = request_json("POST", f"{operation_id}/apply", json_body={})
+        except Exception as apply_error:
+            try:
+                failed_state = request_json("GET", f"{operation_id}/status")
+                server_error = str(failed_state.get("error") or "").strip()
+                if server_error:
+                    print(f"::error::Server deployment error: {server_error}", file=sys.stderr)
+
+                logs = failed_state.get("logs") or []
+                if isinstance(logs, list):
+                    for entry in logs[-6:]:
+                        if not isinstance(entry, dict):
+                            continue
+                        command = str(entry.get("command") or "unknown")
+                        exit_code = entry.get("exit_code")
+                        output = str(entry.get("output") or "").strip()
+                        print(
+                            f"::error::Server command {command} exited {exit_code}: "
+                            f"{output[:1200] or '<no output>'}",
+                            file=sys.stderr,
+                        )
+            except Exception as diagnostic_error:
+                print(
+                    f"::warning::Could not fetch failed deployment state: {diagnostic_error}",
+                    file=sys.stderr,
+                )
+            raise apply_error
+
         bypass = state.get("maintenance_bypass")
         if isinstance(bypass, str) and bypass:
             # Never log the secret. Establish the Laravel maintenance cookie only.
