@@ -24,7 +24,7 @@ class HomeSettingsTest extends TestCase
     public function test_admin_can_manage_home_settings_and_slider(): void
     {
         Storage::fake('public');
-        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin']);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
 
         $this->actingAs($admin)->post('/admin/home', [
             'settings' => $this->settings(),
@@ -60,7 +60,7 @@ class HomeSettingsTest extends TestCase
     public function test_admin_can_save_three_new_slides_together(): void
     {
         Storage::fake('public');
-        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin']);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
         $slides = collect(range(1, 3))->map(fn (int $index) => [
             'desktop_image_file' => UploadedFile::fake()->image("hero-{$index}.jpg", 1920, 720),
             'alt' => "بنر شماره {$index}",
@@ -89,7 +89,7 @@ class HomeSettingsTest extends TestCase
     public function test_replacing_and_deleting_banner_removes_obsolete_images(): void
     {
         Storage::fake('public');
-        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin']);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
         Storage::disk('public')->put('home/slides/old-desktop.jpg', 'old desktop');
         Storage::disk('public')->put('home/slides/mobile/old-mobile.jpg', 'old mobile');
         $slide = HomeSlide::query()->create([
@@ -144,7 +144,7 @@ class HomeSettingsTest extends TestCase
     public function test_admin_can_remove_mobile_banner_override_without_deleting_desktop_image(): void
     {
         Storage::fake('public');
-        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin']);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
         Storage::disk('public')->put('home/slides/desktop.jpg', 'desktop');
         Storage::disk('public')->put('home/slides/mobile/mobile.jpg', 'mobile');
 
@@ -187,7 +187,7 @@ class HomeSettingsTest extends TestCase
 
     public function test_home_settings_returns_persian_validation_errors_for_invalid_slides(): void
     {
-        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin']);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
 
         $this->actingAs($admin)
             ->from('/admin/home')
@@ -213,7 +213,7 @@ class HomeSettingsTest extends TestCase
 
     public function test_admin_home_exposes_template_registry_and_keeps_default_active(): void
     {
-        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin']);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
 
         $this->actingAs($admin)
             ->get('/admin/home')
@@ -232,7 +232,7 @@ class HomeSettingsTest extends TestCase
 
     public function test_admin_can_activate_dual_spotlight_template(): void
     {
-        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin']);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
         $settings = $this->settings();
         $settings['home_template'] = 'dual_spotlight';
 
@@ -253,7 +253,7 @@ class HomeSettingsTest extends TestCase
 
     public function test_admin_can_activate_storefront_template(): void
     {
-        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin']);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
         $settings = $this->settings();
         $settings['home_template'] = 'storefront';
 
@@ -274,7 +274,7 @@ class HomeSettingsTest extends TestCase
 
     public function test_partial_home_save_cannot_delete_existing_slides_or_sections(): void
     {
-        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin']);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
         $slide = HomeSlide::create($this->slide([
             'title' => 'بنر موجود',
             'desktop_image' => 'home/slides/existing.jpg',
