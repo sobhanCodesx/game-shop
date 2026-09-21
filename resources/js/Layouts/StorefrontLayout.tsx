@@ -1,7 +1,9 @@
 import { router, usePage } from "@inertiajs/react";
-import type { PropsWithChildren } from "react";
+import { lazy, Suspense, type PropsWithChildren, useEffect, useState } from "react";
 
-import StorefrontAuthOverlay from "../Components/Auth/StorefrontAuthOverlay";
+const StorefrontAuthOverlay = lazy(
+    () => import("../Components/Auth/StorefrontAuthOverlay"),
+);
 import StorefrontFooter from "../Components/Storefront/StorefrontFooter";
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
 import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
@@ -9,6 +11,32 @@ import type { SharedPageProps } from "../types";
 
 interface Props extends PropsWithChildren {
     announcement?: { enabled: boolean; text: string; url: string };
+}
+
+function DeferredAuthOverlay() {
+    const [ready, setReady] = useState(false);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => setReady(true), 1400);
+        const activate = () => setReady(true);
+        window.addEventListener("pointerdown", activate, {
+            once: true,
+            passive: true,
+        });
+
+        return () => {
+            window.clearTimeout(timer);
+            window.removeEventListener("pointerdown", activate);
+        };
+    }, []);
+
+    if (!ready) return null;
+
+    return (
+        <Suspense fallback={null}>
+            <DeferredAuthOverlay />
+        </Suspense>
+    );
 }
 
 export default function StorefrontLayout({ children, announcement }: Props) {
