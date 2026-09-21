@@ -46,6 +46,27 @@ class AccountManagementTest extends TestCase
         Storage::disk('public')->assertExists($user->avatar);
     }
 
+    public function test_customer_can_store_and_reset_home_experience_preference(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->put(route('account.home-experience.update'), [
+                'preference' => 'products',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('products', $user->fresh()->home_focus_preference);
+
+        $this->actingAs($user)
+            ->put(route('account.home-experience.update'), [
+                'preference' => 'system',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($user->fresh()->home_focus_preference);
+    }
+
     public function test_customer_orders_are_filterable_and_paginated_in_dashboard(): void
     {
         $user = User::factory()->create();
