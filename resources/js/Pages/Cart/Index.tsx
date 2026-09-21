@@ -93,6 +93,8 @@ export default function Cart({
                                             <img
                                                 alt={item.title}
                                                 className="h-24 w-20 rounded-xl object-cover"
+                                                decoding="async"
+                                                loading="lazy"
                                                 src={item.cover_url}
                                             />
                                         )}
