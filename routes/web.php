@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductTypeController;
 use App\Http\Controllers\Admin\ShortController as AdminShortController;
 use App\Http\Controllers\Admin\SmsPatternController;
+use App\Http\Controllers\Admin\SmsProviderSettingsController;
 use App\Http\Controllers\Admin\SmsTestController;
 use App\Http\Controllers\Admin\StudioController as AdminStudioController;
 use App\Http\Controllers\Admin\SystemMaintenanceController;
@@ -181,6 +182,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('coupons', AdminCouponController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('settings', [CommerceSettingsController::class, 'edit'])->name('settings.edit');
     Route::put('settings', [CommerceSettingsController::class, 'update'])->name('settings.update');
+    Route::get('sms-providers', [SmsProviderSettingsController::class, 'index'])->name('sms-providers.index');
+    Route::put('sms-providers/{provider}', [SmsProviderSettingsController::class, 'update'])
+        ->whereIn('provider', ['payamak_panel', 'sms_ir'])
+        ->name('sms-providers.update');
+    Route::delete('sms-providers/{provider}', [SmsProviderSettingsController::class, 'destroy'])
+        ->whereIn('provider', ['payamak_panel', 'sms_ir'])
+        ->name('sms-providers.destroy');
     Route::get('sms-patterns', [SmsPatternController::class, 'index'])->name('sms-patterns.index');
     Route::put('sms-patterns', [SmsPatternController::class, 'update'])->name('sms-patterns.update');
     Route::get('sms-test', [SmsTestController::class, 'index'])->name('sms-test.index');

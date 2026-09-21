@@ -5,15 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class SmsPatternConfiguration extends Model
+class SmsProviderSetting extends Model
 {
-    protected $table = 'sms_patterns';
-
-    protected $fillable = ['code', 'provider_id', 'provider_ids', 'is_active', 'updated_by'];
+    protected $fillable = ['provider', 'settings', 'is_active', 'updated_by'];
 
     protected function casts(): array
     {
-        return ['provider_ids' => 'array', 'is_active' => 'boolean'];
+        return [
+            'settings' => 'encrypted:array',
+            'is_active' => 'boolean',
+        ];
     }
 
     public function editor(): BelongsTo
