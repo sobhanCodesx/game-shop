@@ -1,0 +1,1 @@
+{"tool":"query_playnexus_graph","arguments":{"query":"query { games(limit: 100) { nodes { id name slug status releaseDate studio { id name slug } } pageInfo { hasNextPage endCursor } } }"}}
