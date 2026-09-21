@@ -435,6 +435,7 @@ function PlaylistPanel({ playlist }: { playlist: PlaylistContext }) {
                                         alt=""
                                         className="size-full object-cover"
                                         height={63}
+                                        decoding="async"
                                         loading="lazy"
                                         src={item.thumbnail_url}
                                         width={112}
@@ -924,7 +925,7 @@ export default function Show({
                         </article>
 
                         {content.type === "video" && (
-                            <section className="order-1 mt-5" id="comments">
+                            <section className="pn-deferred-zone order-1 mt-5" id="comments">
                                 <div className="overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-sm sm:rounded-[28px]">
                                     <div className="flex items-center gap-3 px-4 pt-3.5">
                                         <span className="grid size-8 place-items-center rounded-full bg-indigo-500/10 text-indigo-500">
