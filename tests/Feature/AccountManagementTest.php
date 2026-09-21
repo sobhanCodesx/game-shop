@@ -67,6 +67,19 @@ class AccountManagementTest extends TestCase
         $this->assertNull($user->fresh()->home_focus_preference);
     }
 
+    public function test_customer_cannot_select_an_unavailable_home_experience(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->put(route('account.home-experience.update'), [
+                'preference' => 'content',
+            ])
+            ->assertSessionHasErrors('preference');
+
+        $this->assertNull($user->fresh()->home_focus_preference);
+    }
+
     public function test_customer_orders_are_filterable_and_paginated_in_dashboard(): void
     {
         $user = User::factory()->create();
