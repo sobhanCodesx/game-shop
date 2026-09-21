@@ -974,8 +974,13 @@ html[data-storefront-theme="light"]
     background: rgb(250 252 255 / 98%);
 }
 
-.storefront-theme[data-pn-scrolling="true"] main img {
+.storefront-theme[data-pn-scrolling="true"] main img,
+.storefront-theme[data-pn-scrolling="true"] main [class*="transition"] {
     transition-duration: 0ms !important;
+}
+
+.storefront-theme[data-pn-scrolling="true"] main [class*="animate-"] {
+    animation-play-state: paused !important;
 }
 
 /* Below-the-fold Home zones stay in the DOM/SSR output but the browser skips
