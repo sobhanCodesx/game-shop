@@ -91,7 +91,8 @@ class HomeSettingsController extends Controller
         $obsoleteImagePaths = [];
         try {
             DB::transaction(function () use ($request, $validated, $uploads, &$claimedTokens, &$newImagePaths, &$obsoleteImagePaths, &$keptIds, &$keptSectionIds): void {
-                $homeSetting = HomeSetting::query()->firstOrCreate(['id' => 1], ['content' => []]);
+                HomeSetting::query()->firstOrCreate(['id' => 1], ['content' => []]);
+                $homeSetting = HomeSetting::query()->whereKey(1)->lockForUpdate()->firstOrFail();
                 $homeSetting->update([
                     'content' => [
                         ...($homeSetting->content ?? []),
@@ -169,6 +170,8 @@ class HomeSettingsController extends Controller
             }
         }
 
+        $homeExperience->invalidate();
+
         $referencedImagePaths = HomeSlide::query()
             ->get(['desktop_image', 'mobile_image'])
             ->flatMap(fn (HomeSlide $slide) => [$slide->desktop_image, $slide->mobile_image])
@@ -176,8 +179,6 @@ class HomeSettingsController extends Controller
             ->all();
         $unusedImagePaths = array_values(array_diff(array_unique($obsoleteImagePaths), $referencedImagePaths));
         MediaStorage::disk()->delete($unusedImagePaths);
-
-        $homeExperience->invalidate();
 
         return back()->with('success', 'تنظیمات صفحه اصلی با موفقیت ذخیره شد.');
     }
