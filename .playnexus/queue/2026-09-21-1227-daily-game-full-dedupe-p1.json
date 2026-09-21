@@ -1,7 +1,7 @@
 {
   "tool": "query_playnexus_graph",
   "arguments": {
-    "query": "{ games(first: 100, orderBy: \"id\", orderDir: \"asc\") { nodes { id name slug status releaseDate studio { id name slug } } pageInfo { hasNextPage endCursor } } }",
+    "query": "{ games(first: 100, orderBy: \"id\", orderDir: \"asc\") { nodes { id name slug status releaseDate studio { id name slug } } pageInfo { currentPage lastPage perPage total } } }",
     "variables": {}
   },
   "purpose": "daily_game_full_dedupe_page_1",
