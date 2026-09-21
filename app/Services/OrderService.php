@@ -212,8 +212,19 @@ class OrderService
             $query->lockForUpdate();
         }
         $exchange = $query->firstOrFail();
-        if ($exchange->type !== 'exchange' || $exchange->user_id !== $user->id || $exchange->exchange_status !== 'accepted' || $exchange->exchange_order_id || ! $exchange->target_product_id || ! $exchange->exchange_offer_amount) {
-            throw ValidationException::withMessages(['exchange_request_id' => 'اعتبار معاوضه انتخاب‌شده معتبر یا قابل استفاده نیست.']);
+        if (
+            $exchange->type !== 'exchange'
+            || $exchange->user_id !== $user->id
+            || $exchange->exchange_status !== 'accepted'
+            || $exchange->exchange_order_id
+            || ! $exchange->product_id
+            || ! $exchange->target_product_id
+            || (int) $exchange->target_product_id !== (int) $exchange->product_id
+            || ! $exchange->exchange_offer_amount
+        ) {
+            throw ValidationException::withMessages([
+                'exchange_request_id' => 'اعتبار معاوضه انتخاب‌شده فقط برای همان محصول درخواست‌شده معتبر است.',
+            ]);
         }
         if ($exchange->exchange_credit_expires_at?->isPast()) {
             if ($lock) {
@@ -221,7 +232,7 @@ class OrderService
             }
             throw ValidationException::withMessages(['exchange_request_id' => 'مهلت استفاده از این اعتبار معاوضه تمام شده است.']);
         }
-        $itemKey = $items->search(fn ($item) => (int) $item['product_id'] === (int) $exchange->target_product_id);
+        $itemKey = $items->search(fn ($item) => (int) $item['product_id'] === (int) $exchange->product_id);
         if ($itemKey === false) {
             throw ValidationException::withMessages(['exchange_request_id' => 'این اعتبار فقط برای محصول هدف همان معاوضه قابل استفاده است.']);
         }
