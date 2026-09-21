@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Account\AddressRequest;
 use App\Http\Requests\Account\UpdateContentNotificationPreferencesRequest;
+use App\Http\Requests\Account\UpdateHomeExperiencePreferenceRequest;
 use App\Http\Requests\Account\UpdatePasswordRequest;
 use App\Http\Requests\Account\UpdateProfileRequest;
 use App\Models\UserAddress;
@@ -54,6 +55,7 @@ class AccountController extends Controller
                 'email_enabled' => $user->contentNotificationPreference?->email_enabled ?? false,
                 'feed_enabled' => $user->contentNotificationPreference?->feed_enabled ?? false,
             ],
+            'homeExperiencePreference' => $user->home_focus_preference ?? 'system',
             'profileCompletion' => collect([$user->name, $user->email, $user->phone, $user->avatar, $user->addresses()->exists()])->filter()->count() * 20,
         ]);
     }
@@ -127,6 +129,16 @@ class AccountController extends Controller
         $request->user()->contentNotificationPreference()->updateOrCreate([], $request->validated());
 
         return back()->with('success', 'تنظیمات اطلاع‌رسانی محتوا ذخیره شد.');
+    }
+
+    public function updateHomeExperiencePreference(UpdateHomeExperiencePreferenceRequest $request): RedirectResponse
+    {
+        $preference = $request->validated('preference');
+        $request->user()->update([
+            'home_focus_preference' => $preference === 'system' ? null : $preference,
+        ]);
+
+        return back()->with('success', 'اولویت صفحه اصلی ذخیره شد.');
     }
 
     public function readNotification(Request $request, string $notification): RedirectResponse
