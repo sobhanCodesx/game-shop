@@ -72,7 +72,7 @@ function LeadProduct({ product }: { product: StorefrontProduct }) {
             : 0;
 
     return (
-        <article className="group relative min-h-[460px] overflow-hidden rounded-[28px] border border-cyan-400/20 bg-[#061019] text-white shadow-[0_36px_100px_-60px_rgba(34,211,238,.8)] sm:min-h-[540px] lg:min-h-[620px]">
+        <article className="group relative min-h-[390px] overflow-hidden rounded-[28px] border border-cyan-400/20 bg-[#061019] text-white shadow-[0_36px_100px_-60px_rgba(34,211,238,.8)] sm:min-h-[540px] lg:min-h-[620px]">
             {product.cover_url ? (
                 <img
                     alt={product.cover_alt}
@@ -121,7 +121,7 @@ function LeadProduct({ product }: { product: StorefrontProduct }) {
 
             <Link
                 aria-label={`مشاهده ${product.title}`}
-                className="absolute inset-0 z-[5]"
+                className="absolute inset-0 z-[5] focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-cyan-300"
                 href={product.url}
             />
 
@@ -129,9 +129,9 @@ function LeadProduct({ product }: { product: StorefrontProduct }) {
                 <p className="text-[10px] font-black tracking-[.18em] text-cyan-200/70">
                     PLAYNEXUS STORE
                 </p>
-                <h1 className="mt-2 max-w-3xl text-2xl font-black leading-[1.35] sm:text-4xl lg:text-5xl">
+                <h2 className="mt-2 max-w-3xl text-2xl font-black leading-[1.35] sm:text-4xl lg:text-5xl">
                     {product.title}
-                </h1>
+                </h2>
                 <div className="mt-4">
                     <ProductPrice product={product} />
                 </div>
@@ -162,7 +162,7 @@ function QuickProductCard({
 
     return (
         <Link
-            className="group relative flex min-h-[150px] overflow-hidden rounded-[22px] border border-white/8 bg-[#08101b] text-white transition hover:-translate-y-0.5 hover:border-cyan-300/30"
+            className="group relative flex min-h-[145px] w-[78vw] max-w-[300px] shrink-0 snap-start overflow-hidden rounded-[22px] border border-white/8 bg-[#08101b] text-white transition hover:-translate-y-0.5 hover:border-cyan-300/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 sm:w-auto sm:max-w-none"
             href={product.url}
         >
             <span className="relative w-[42%] shrink-0 overflow-hidden bg-slate-950">
@@ -234,7 +234,7 @@ function ContentPulse({ items }: { items: StorefrontPulseItem[] }) {
             <div className="home-slider -mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {items.slice(0, 6).map((item) => (
                     <Link
-                        className="group relative aspect-[16/10] w-[72vw] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-[18px] bg-slate-950 text-white sm:w-[250px]"
+                        className="group relative aspect-[16/10] w-[72vw] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-[18px] bg-slate-950 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-300 sm:w-[250px]"
                         href={item.url}
                         key={item.key}
                     >
@@ -344,7 +344,7 @@ export default function StorefrontCommerceHero({
             {lead ? (
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(320px,.75fr)]">
                     <LeadProduct product={lead} />
-                    <aside className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                    <aside className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-1">
                         {quickProducts.map((product) => (
                             <QuickProductCard
                                 featured={featured.some(
@@ -377,7 +377,7 @@ export default function StorefrontCommerceHero({
                 <div className="home-slider mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {categories.slice(0, 8).map((category) => (
                         <Link
-                            className="flex min-w-[150px] shrink-0 snap-start items-center gap-2.5 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:border-indigo-500/40"
+                            className="flex min-w-[150px] shrink-0 snap-start items-center gap-2.5 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:border-indigo-500/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
                             href={`/categories/${category.slug}`}
                             key={category.id}
                         >
