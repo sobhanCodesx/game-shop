@@ -211,7 +211,9 @@ function TemplateLivePreview({
     template: HomeTemplate;
     onClose: () => void;
 }) {
-    const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
+    const [viewport, setViewport] = useState<
+        "desktop" | "mobile" | "mobile-small"
+    >("desktop");
     const [refreshKey, setRefreshKey] = useState(0);
     const src = `/?preview_home_template=${encodeURIComponent(template.key)}&admin_template_preview=1&preview_refresh=${refreshKey}`;
 
@@ -284,7 +286,20 @@ function TemplateLivePreview({
                                 type="button"
                             >
                                 <Smartphone size={14} />
-                                موبایل
+                                390px
+                            </button>
+                            <button
+                                aria-pressed={viewport === "mobile-small"}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                                    viewport === "mobile-small"
+                                        ? "bg-indigo-600 text-white"
+                                        : "text-slate-400 hover:text-white"
+                                }`}
+                                onClick={() => setViewport("mobile-small")}
+                                type="button"
+                            >
+                                <Smartphone size={13} />
+                                320px
                             </button>
                         </div>
                         <button
@@ -320,7 +335,9 @@ function TemplateLivePreview({
                         className={`h-full overflow-hidden bg-white shadow-2xl transition-[width] duration-200 ${
                             viewport === "mobile"
                                 ? "w-[390px] max-w-full rounded-[28px] border-[8px] border-slate-800"
-                                : "w-full max-w-[1366px] rounded-xl border border-slate-800"
+                                : viewport === "mobile-small"
+                                  ? "w-[320px] max-w-full rounded-[24px] border-[7px] border-slate-800"
+                                  : "w-full max-w-[1366px] rounded-xl border border-slate-800"
                         }`}
                     >
                         <iframe
