@@ -11,6 +11,7 @@ import json
 import mimetypes
 import os
 import socket
+import subprocess
 import sys
 import tempfile
 import urllib.error
@@ -327,6 +328,115 @@ def sanitized_name(value: str, fallback: str = "asset.bin") -> str:
     return name[:255]
 
 
+def require_media_tools() -> None:
+    for command in ("ffmpeg", "ffprobe"):
+        try:
+            subprocess.run(
+                [command, "-version"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            fail(f"{command} is required for video validation/transcoding.")
+
+
+def probe_video(path: Path) -> dict[str, Any]:
+    require_media_tools()
+    try:
+        completed = subprocess.run(
+            [
+                "ffprobe",
+                "-v", "error",
+                "-show_entries",
+                "format=duration:stream=index,codec_type,width,height",
+                "-of", "json",
+                str(path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        payload = json.loads(completed.stdout)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+        fail(f"Could not inspect video asset with ffprobe: {exc}")
+
+    streams = payload.get("streams") if isinstance(payload, dict) else None
+    fmt = payload.get("format") if isinstance(payload, dict) else None
+    if not isinstance(streams, list) or not isinstance(fmt, dict):
+        fail("ffprobe returned invalid video metadata.")
+
+    video_stream = next((item for item in streams if item.get("codec_type") == "video"), None)
+    has_audio = any(item.get("codec_type") == "audio" for item in streams)
+    if not isinstance(video_stream, dict):
+        fail("Video asset has no video stream.")
+
+    try:
+        duration = float(fmt.get("duration"))
+    except (TypeError, ValueError):
+        fail("Video asset duration could not be determined.")
+
+    if duration <= 0:
+        fail("Video asset duration is invalid.")
+
+    width = int(video_stream.get("width") or 0)
+    height = int(video_stream.get("height") or 0)
+    if width < 1 or height < 1:
+        fail("Video asset dimensions could not be determined.")
+
+    return {
+        "duration_seconds": duration,
+        "width": width,
+        "height": height,
+        "has_audio": has_audio,
+    }
+
+
+def materialize_hls(
+    source_url: str,
+    target: Path,
+    *,
+    max_height: int | None,
+) -> None:
+    require_media_tools()
+    validate_public_https_url(source_url)
+
+    command = [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel", "error",
+        "-y",
+        "-i", source_url,
+        "-map", "0:v:0",
+        "-map", "0:a:0?",
+    ]
+
+    if max_height is not None:
+        if max_height < 144 or max_height > 2160:
+            fail("transcode_max_height must be between 144 and 2160.")
+        command += [
+            "-vf", f"scale=-2:{max_height}:force_original_aspect_ratio=decrease",
+            "-c:v", "libx264",
+            "-preset", "medium",
+            "-crf", "23",
+            "-c:a", "aac",
+            "-b:a", "128k",
+        ]
+    else:
+        command += ["-c", "copy"]
+
+    command += ["-movflags", "+faststart", str(target)]
+
+    try:
+        subprocess.run(command, check=True, timeout=900)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        fail(f"Could not materialize HLS video with ffmpeg: {exc}")
+
+    if not target.is_file() or target.stat().st_size < 1:
+        fail("HLS materialization produced an empty file.")
+
+
 def materialize_source(arguments: dict[str, Any], directory: Path) -> tuple[Path, str, str]:
     source_url = arguments.get("source_url")
     file_path = arguments.get("file_path")
@@ -348,44 +458,75 @@ def materialize_source(arguments: dict[str, Any], directory: Path) -> tuple[Path
 
         source_url = source_url.strip()
         validate_public_https_url(source_url)
-        request = urllib.request.Request(
-            source_url,
-            headers={
-                "Accept": "*/*",
-                "User-Agent": "PlayNexus-GitHub-Publisher/2.1",
-            },
-        )
-        opener = urllib.request.build_opener(SafeRedirectHandler())
 
-        try:
-            with opener.open(request, timeout=60) as response, target.open("wb") as handle:
-                validate_public_https_url(response.geturl())
-                content_length = response.headers.get("Content-Length")
-                if content_length:
-                    try:
-                        if int(content_length) > max_size:
-                            fail("Remote asset is larger than the publisher source limit.")
-                    except ValueError:
-                        pass
+        if arguments.get("resource") == "video" and arguments.get("slot") == "video":
+            if "/microtrailer." in source_url.casefold():
+                fail("Steam microtrailer assets are not valid publishable videos.")
 
-                total = 0
-                while True:
-                    chunk = response.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    total += len(chunk)
-                    if total > max_size:
-                        fail("Remote asset exceeded the publisher source limit.")
-                    handle.write(chunk)
+        parsed_source = urllib.parse.urlparse(source_url)
+        is_hls = parsed_source.path.casefold().endswith(".m3u8")
 
-                detected_mime = response.headers.get_content_type() or ""
-        except urllib.error.HTTPError as exc:
-            fail(f"Asset source returned HTTP {exc.code}.")
-        except urllib.error.URLError as exc:
-            fail(f"Could not download asset source: {exc.reason}")
+        if is_hls:
+            if parsed_source.hostname not in {
+                "video.akamai.steamstatic.com",
+                "video.fastly.steamstatic.com",
+            }:
+                fail("HLS source host is not approved for publisher materialization.")
 
-        url_name = urllib.parse.unquote(Path(urllib.parse.urlparse(source_url).path).name)
-        name = sanitized_name(str(requested_name or url_name or "asset.bin"))
+            transcode_height = arguments.get("transcode_max_height")
+            if transcode_height is not None:
+                try:
+                    transcode_height = int(transcode_height)
+                except (TypeError, ValueError):
+                    fail("transcode_max_height must be an integer.")
+
+            target = directory / "source.mp4"
+            materialize_hls(
+                source_url,
+                target,
+                max_height=transcode_height,
+            )
+            detected_mime = "video/mp4"
+            name = sanitized_name(str(requested_name or "video.mp4"))
+        else:
+            request = urllib.request.Request(
+                source_url,
+                headers={
+                    "Accept": "*/*",
+                    "User-Agent": "PlayNexus-GitHub-Publisher/2.2",
+                },
+            )
+            opener = urllib.request.build_opener(SafeRedirectHandler())
+
+            try:
+                with opener.open(request, timeout=60) as response, target.open("wb") as handle:
+                    validate_public_https_url(response.geturl())
+                    content_length = response.headers.get("Content-Length")
+                    if content_length:
+                        try:
+                            if int(content_length) > max_size:
+                                fail("Remote asset is larger than the publisher source limit.")
+                        except ValueError:
+                            pass
+
+                    total = 0
+                    while True:
+                        chunk = response.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        total += len(chunk)
+                        if total > max_size:
+                            fail("Remote asset exceeded the publisher source limit.")
+                        handle.write(chunk)
+
+                    detected_mime = response.headers.get_content_type() or ""
+            except urllib.error.HTTPError as exc:
+                fail(f"Asset source returned HTTP {exc.code}.")
+            except urllib.error.URLError as exc:
+                fail(f"Could not download asset source: {exc.reason}")
+
+            url_name = urllib.parse.unquote(Path(parsed_source.path).name)
+            name = sanitized_name(str(requested_name or url_name or "asset.bin"))
 
     elif file_path is not None:
         if not isinstance(file_path, str) or not file_path.strip():
@@ -463,6 +604,38 @@ def upload_asset(
 
     with tempfile.TemporaryDirectory(prefix="playnexus-asset-") as temporary:
         source, name, mime = materialize_source(arguments, Path(temporary))
+
+        probe: dict[str, Any] | None = None
+        if str(mime).casefold().startswith("video/"):
+            probe = probe_video(source)
+
+            require_audio = arguments.get("require_audio")
+            if require_audio is None:
+                require_audio = arguments.get("resource") == "video" and arguments.get("slot") == "video"
+            if bool(require_audio) and not probe["has_audio"]:
+                fail("Video asset has no audio stream.")
+
+            min_duration = arguments.get("min_duration_seconds")
+            if min_duration is not None and probe["duration_seconds"] < float(min_duration):
+                fail(
+                    "Video asset is shorter than min_duration_seconds "
+                    f"({probe['duration_seconds']:.2f}s < {float(min_duration):.2f}s)."
+                )
+
+            max_duration = arguments.get("max_duration_seconds")
+            if max_duration is not None and probe["duration_seconds"] > float(max_duration):
+                fail(
+                    "Video asset exceeds max_duration_seconds "
+                    f"({probe['duration_seconds']:.2f}s > {float(max_duration):.2f}s)."
+                )
+
+            max_height = arguments.get("max_height")
+            if max_height is not None and probe["height"] > int(max_height):
+                fail(
+                    "Video asset exceeds max_height "
+                    f"({probe['height']}p > {int(max_height)}p)."
+                )
+
         size = source.stat().st_size
         digest = sha256_file(source)
         chunk_size = positive_env_int("PLAYNEXUS_PUBLISHER_CHUNK_SIZE", DEFAULT_CHUNK_SIZE)
@@ -483,6 +656,9 @@ def upload_asset(
         for key in ("alt", "sort_order", "duration"):
             if key in arguments and arguments[key] is not None:
                 start_arguments[key] = arguments[key]
+
+        if probe is not None and arguments.get("slot") == "video":
+            start_arguments["duration"] = max(1, int(round(probe["duration_seconds"])))
 
         start = rpc_request(
             url,
@@ -515,7 +691,7 @@ def upload_asset(
                         timeout=90,
                     )
 
-            return rpc_request(
+            response = rpc_request(
                 url,
                 token,
                 tool="complete_asset_upload",
@@ -523,6 +699,13 @@ def upload_asset(
                 request_id=f"{request_id}:complete",
                 timeout=120,
             )
+            if probe is not None:
+                result = structured_result(response)
+                result["publisher_probe"] = {
+                    **probe,
+                    "size_bytes": size,
+                }
+            return response
         except BaseException:
             # Best-effort cleanup. If the network is unavailable the server-side
             # upload session expires automatically.
