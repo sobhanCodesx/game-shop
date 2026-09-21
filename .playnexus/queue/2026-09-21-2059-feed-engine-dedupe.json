@@ -1,0 +1,9 @@
+{
+  "job_id": "feed-engine-20260921-2059-dedupe",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query RecentFeeds($first: Int!, $offset: Int!) { feeds(first: $first, offset: $offset, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title slug status publishedAt } pageInfo { total first offset hasMore nextOffset } } }",
+    "variables": {"first": 50, "offset": 0},
+    "operation_name": "RecentFeeds"
+  }
+}
