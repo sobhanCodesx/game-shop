@@ -182,6 +182,27 @@ class HomeSettingsTest extends TestCase
                 ->has('homeTemplates', 6));
     }
 
+    public function test_admin_can_activate_dual_spotlight_template(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $settings = $this->settings();
+        $settings['home_template'] = 'dual_spotlight';
+
+        $this->actingAs($admin)
+            ->post('/admin/home', [
+                'settings' => $settings,
+                'slides' => [],
+                'sections' => [],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success');
+
+        $this->assertSame(
+            'dual_spotlight',
+            HomeSetting::query()->firstOrFail()->content['home_template'],
+        );
+    }
+
     public function test_home_returns_configured_social_content_rail(): void
     {
         HomeSection::create(['title' => 'ویدیوهای محبوب', 'content_type' => 'videos', 'query_type' => 'popular', 'items_limit' => 8, 'is_active' => true]);
