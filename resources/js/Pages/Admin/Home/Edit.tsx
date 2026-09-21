@@ -12,13 +12,18 @@ import { Head, Link, useForm } from "@inertiajs/react";
 import {
     ArrowDown,
     ArrowUp,
+    ExternalLink,
     Eye,
     ImagePlus,
     LayoutTemplate,
+    Monitor,
     Plus,
+    RefreshCw,
     Save,
+    Smartphone,
     Trash2,
     UploadCloud,
+    X,
 } from "lucide-react";
 import {
     type ChangeEvent,
@@ -196,6 +201,140 @@ function TemplateMiniPreview({
                 />
             ))}
         </span>
+    );
+}
+
+function TemplateLivePreview({
+    template,
+    onClose,
+}: {
+    template: HomeTemplate;
+    onClose: () => void;
+}) {
+    const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
+    const [refreshKey, setRefreshKey] = useState(0);
+    const src = `/?preview_home_template=${encodeURIComponent(template.key)}&admin_template_preview=1&preview_refresh=${refreshKey}`;
+
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") onClose();
+        };
+
+        window.addEventListener("keydown", onKeyDown);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener("keydown", onKeyDown);
+        };
+    }, [onClose]);
+
+    return (
+        <div
+            aria-label={`پیش‌نمایش زنده ${template.label}`}
+            aria-modal="true"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-2 backdrop-blur-sm sm:p-5"
+            role="dialog"
+        >
+            <button
+                aria-label="بستن پیش‌نمایش"
+                className="absolute inset-0 cursor-default"
+                onClick={onClose}
+                type="button"
+            />
+            <div className="relative z-10 flex h-[94vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-3xl border border-slate-700 bg-[#080b12] shadow-2xl shadow-black/60">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3 sm:px-5">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-emerald-400" />
+                            <strong className="truncate text-sm text-white sm:text-base">
+                                پیش‌نمایش زنده — {template.label}
+                            </strong>
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                            فقط هنگام باز بودن این پنجره بارگذاری می‌شود و انتخاب شما را ذخیره نمی‌کند.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex rounded-xl border border-slate-800 bg-slate-950 p-1">
+                            <button
+                                aria-pressed={viewport === "desktop"}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                                    viewport === "desktop"
+                                        ? "bg-indigo-600 text-white"
+                                        : "text-slate-400 hover:text-white"
+                                }`}
+                                onClick={() => setViewport("desktop")}
+                                type="button"
+                            >
+                                <Monitor size={14} />
+                                دسکتاپ
+                            </button>
+                            <button
+                                aria-pressed={viewport === "mobile"}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                                    viewport === "mobile"
+                                        ? "bg-indigo-600 text-white"
+                                        : "text-slate-400 hover:text-white"
+                                }`}
+                                onClick={() => setViewport("mobile")}
+                                type="button"
+                            >
+                                <Smartphone size={14} />
+                                موبایل
+                            </button>
+                        </div>
+                        <button
+                            aria-label="بارگذاری مجدد پیش‌نمایش"
+                            className="grid size-9 place-items-center rounded-xl border border-slate-800 text-slate-400 transition hover:border-slate-700 hover:text-white"
+                            onClick={() => setRefreshKey((value) => value + 1)}
+                            type="button"
+                        >
+                            <RefreshCw size={15} />
+                        </button>
+                        <a
+                            className="grid size-9 place-items-center rounded-xl border border-slate-800 text-slate-400 transition hover:border-slate-700 hover:text-white"
+                            href={src}
+                            rel="noreferrer"
+                            target="_blank"
+                            title="باز کردن پیش‌نمایش در تب جدید"
+                        >
+                            <ExternalLink size={15} />
+                        </a>
+                        <button
+                            aria-label="بستن"
+                            className="grid size-9 place-items-center rounded-xl border border-slate-800 text-slate-400 transition hover:border-rose-500/50 hover:text-rose-300"
+                            onClick={onClose}
+                            type="button"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto bg-slate-950/80 p-2 sm:p-4">
+                    <div
+                        className={`h-full overflow-hidden bg-white shadow-2xl transition-[width] duration-200 ${
+                            viewport === "mobile"
+                                ? "w-[390px] max-w-full rounded-[28px] border-[8px] border-slate-800"
+                                : "w-full max-w-[1366px] rounded-xl border border-slate-800"
+                        }`}
+                    >
+                        <iframe
+                            className="h-full w-full bg-white"
+                            key={`${template.key}-${refreshKey}`}
+                            loading="lazy"
+                            referrerPolicy="same-origin"
+                            src={src}
+                            title={`پیش‌نمایش ${template.label}`}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
 
