@@ -166,7 +166,7 @@ export default function CategoryShow({
                     </div>
                 </header>
                 {!!category.children.length && (
-                    <section className="mb-10 flex gap-3 overflow-x-auto pb-2">
+                    <section className="pn-deferred-zone mb-10 flex gap-3 overflow-x-auto pb-2">
                         {category.children.map((child) => (
                             <Link
                                 className="flex min-w-40 items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3"
@@ -213,7 +213,7 @@ export default function CategoryShow({
                             : "نمایش کالاهای قابل معاوضه"}
                     </button>
                 </div>
-                <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-6">
+                <section className="pn-deferred-zone grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-6">
                     {products.data.map((product) => (
                         <ProductCard key={product.id} product={product} />
                     ))}
