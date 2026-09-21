@@ -530,7 +530,9 @@ export default function GameRadarIndex({
                                 alt=""
                                 aria-hidden="true"
                                 className="absolute inset-0 -z-30 size-full object-cover object-center"
+                                decoding="async"
                                 fetchPriority="high"
+                                loading="eager"
                                 src={
                                     hero.banner_url ??
                                     hero.cover_url ??
