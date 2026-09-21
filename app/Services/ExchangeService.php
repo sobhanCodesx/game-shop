@@ -51,6 +51,14 @@ class ExchangeService
                 $locked->update(['exchange_status' => 'expired', 'exchange_expired_at' => now()]);
                 throw ValidationException::withMessages(['decision' => 'مهلت این پیشنهاد تمام شده است.']);
             }
+            if (
+                $decision === 'accepted'
+                && (int) $locked->target_product_id !== (int) $locked->product_id
+            ) {
+                throw ValidationException::withMessages([
+                    'decision' => 'این پیشنهاد به محصول درخواست‌شده متصل نیست؛ پشتیبانی باید پیشنهاد را اصلاح کند.',
+                ]);
+            }
             $locked->update(['exchange_status' => $decision, 'exchange_offer_responded_at' => now()]);
 
             return $locked->fresh();
