@@ -1,9 +1,0 @@
-{
-  "job_id":"feed-engine-20260921-2106-townfall-final-graph",
-  "tool":"query_playnexus_graph",
-  "arguments":{
-    "query":"query VerifyPublishedFeed($first: Int!, $offset: Int!) { feeds(first: $first, offset: $offset, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title slug status publishedAt game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }",
-    "variables":{"first":10,"offset":0},
-    "operation_name":"VerifyPublishedFeed"
-  }
-}
