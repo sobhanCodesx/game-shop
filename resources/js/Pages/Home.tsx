@@ -3061,7 +3061,7 @@ function CampaignBanner({
                     <>
                         <Button
                             aria-label="اسلاید قبلی"
-                            className="absolute right-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-black/65 sm:right-4 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                            className="absolute right-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg transition hover:scale-105 hover:bg-black/65 sm:right-4 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
                             isIconOnly
                             onPress={() => go(-1)}
                             size="sm"
@@ -3071,7 +3071,7 @@ function CampaignBanner({
                         </Button>
                         <Button
                             aria-label="اسلاید بعدی"
-                            className="absolute left-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-black/65 sm:left-4 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                            className="absolute left-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg transition hover:scale-105 hover:bg-black/65 sm:left-4 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
                             isIconOnly
                             onPress={() => go(1)}
                             size="sm"
@@ -3084,7 +3084,7 @@ function CampaignBanner({
             </div>
 
             {slides.length > 1 && (
-                <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-white/8 bg-black/45 px-1.5 py-1 shadow-md backdrop-blur-md sm:bottom-2.5">
+                <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-white/8 bg-black/45 px-1.5 py-1 shadow-md sm:bottom-2.5">
                     <button
                         aria-label={
                             paused
