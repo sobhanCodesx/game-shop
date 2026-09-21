@@ -1,7 +1,0 @@
-{
-  "job_id": "2026-09-21-extra-game-duskbloods-dedupe-final",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query {\n      games(first: 100, orderBy: \"id\", orderDir: \"asc\") {\n        nodes { id name slug }\n        pageInfo { total hasMore }\n      }\n      game(slug: \"the-duskbloods\") { id name slug status }\n    }"
-  }
-}
