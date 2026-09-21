@@ -7,7 +7,6 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Game;
 use App\Models\HomeSection;
-use App\Models\HomeSetting;
 use App\Models\HomeSlide;
 use App\Models\Platform;
 use App\Models\Product;
