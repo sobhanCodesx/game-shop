@@ -23,11 +23,12 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import DualSpotlightHero, {
-    type DualSpotlightContentItem,
-} from "../Components/Home/DualSpotlightHero";
 import NewsletterSignup from "../Components/Home/NewsletterSignup";
-import StorefrontCommerceHero from "../Components/Home/StorefrontCommerceHero";
+import {
+    HomeTemplateHero,
+    resolveHomeTemplateRuntime,
+    type HomeTemplateContentItem,
+} from "../Components/Home/Templates/HomeTemplateRegistry";
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
 import type { NavigationCategory } from "../Components/Storefront/Navigation/types";
 import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
@@ -3188,18 +3189,15 @@ export default function Home({
         };
     }, []);
 
-    const isDualSpotlight =
-        homeExperience.effective_template === "dual_spotlight";
-    const isStorefront =
-        homeExperience.effective_template === "storefront";
-    const usesTemplateHero = isDualSpotlight || isStorefront;
-    const dualSpotlightProducts =
-        featuredProducts.length > 0 ? featuredProducts : latestProducts;
-    const dualSpotlightContent = useMemo<DualSpotlightContentItem[]>(() => {
-        const items: DualSpotlightContentItem[] = [];
+    const templateRuntime = resolveHomeTemplateRuntime(
+        homeExperience.effective_template,
+    );
+    const usesTemplateHero = templateRuntime.usesTemplateHero;
+    const templateContent = useMemo<HomeTemplateContentItem[]>(() => {
+        const items: HomeTemplateContentItem[] = [];
         const seen = new Set<string>();
 
-        const push = (item: DualSpotlightContentItem) => {
+        const push = (item: HomeTemplateContentItem) => {
             if (!item.url || seen.has(item.url)) return;
             seen.add(item.url);
             items.push(item);
@@ -3268,8 +3266,8 @@ export default function Home({
         return items.slice(0, 8);
     }, [freshContent, latestFeed, personalizedHome, slides]);
     const spotlightUsesCampaignFallback =
-        dualSpotlightContent.length > 0 &&
-        dualSpotlightContent.every((item) => item.kind === "campaign");
+        templateContent.length > 0 &&
+        templateContent.every((item) => item.kind === "campaign");
 
     return (
         <div
@@ -3298,7 +3296,7 @@ export default function Home({
                 {isDualSpotlight && (
                     <>
                         <DualSpotlightHero
-                            contentItems={dualSpotlightContent}
+                            contentItems={templateContent}
                             heading={seo.heading}
                             products={dualSpotlightProducts}
                         />
@@ -3333,7 +3331,7 @@ export default function Home({
                     <>
                         <StorefrontCommerceHero
                             categories={categories}
-                            contentItems={dualSpotlightContent}
+                            contentItems={templateContent}
                             heading={seo.heading}
                             latestProducts={latestProducts}
                             products={featuredProducts}
