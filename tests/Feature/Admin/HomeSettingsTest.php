@@ -228,6 +228,34 @@ class HomeSettingsTest extends TestCase
         );
     }
 
+    public function test_partial_home_save_cannot_delete_existing_slides_or_sections(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $slide = HomeSlide::create($this->slide([
+            'title' => 'بنر موجود',
+            'desktop_image' => 'home/slides/existing.jpg',
+        ]));
+        $section = HomeSection::create([
+            'title' => 'سکشن موجود',
+            'content_type' => 'products',
+            'query_type' => 'latest',
+            'layout' => 'carousel',
+            'items_limit' => 8,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->from('/admin/home')
+            ->post('/admin/home', [
+                'settings' => $this->settings(),
+            ])
+            ->assertRedirect('/admin/home')
+            ->assertSessionHasErrors(['slides', 'sections']);
+
+        $this->assertDatabaseHas('home_slides', ['id' => $slide->id]);
+        $this->assertDatabaseHas('home_sections', ['id' => $section->id]);
+    }
+
     public function test_home_returns_configured_social_content_rail(): void
     {
         HomeSection::create(['title' => 'ویدیوهای محبوب', 'content_type' => 'videos', 'query_type' => 'popular', 'items_limit' => 8, 'is_active' => true]);
