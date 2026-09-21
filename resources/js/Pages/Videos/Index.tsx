@@ -155,7 +155,7 @@ export default function Videos({
                         />
                     )}
                     {videos.data.length > 1 && (
-                        <section className="mt-10">
+                        <section className="pn-deferred-zone mt-10">
                             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <span className="flex items-center gap-2 text-xs font-black text-indigo-500">
