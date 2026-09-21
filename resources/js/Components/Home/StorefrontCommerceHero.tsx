@@ -232,10 +232,10 @@ function ContentPulse({ items }: { items: StorefrontPulseItem[] }) {
                     <ArrowLeft size={12} />
                 </Link>
             </header>
-            <div className="home-slider -mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="home-slider -mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0 xl:grid-cols-6">
                 {items.slice(0, 6).map((item) => (
                     <Link
-                        className="group relative aspect-[16/10] w-[72vw] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-[18px] bg-slate-950 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-300 sm:w-[250px]"
+                        className="group relative aspect-[16/10] w-[72vw] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-[18px] bg-slate-950 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-300 sm:w-[250px] lg:w-auto lg:max-w-none"
                         href={item.url}
                         key={item.key}
                     >
@@ -322,7 +322,7 @@ export default function StorefrontCommerceHero({
             className="pn-render-zone mx-auto w-full max-w-[1536px] px-3 pb-5 pt-3 sm:px-4 sm:pb-7 sm:pt-5"
         >
             <header className="mb-4 flex flex-wrap items-end justify-between gap-3 px-1">
-                <div>
+                <div className="min-w-0 flex-1">
                     <p className="text-[10px] font-black tracking-[.2em] text-cyan-500 sm:text-xs">
                         STOREFRONT MODE
                     </p>
@@ -334,7 +334,7 @@ export default function StorefrontCommerceHero({
                     </p>
                 </div>
                 <Link
-                    className="inline-flex items-center gap-1 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-xs font-black text-indigo-500"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-xs font-black text-indigo-500"
                     href="/shop"
                 >
                     همه محصولات
@@ -375,10 +375,10 @@ export default function StorefrontCommerceHero({
             )}
 
             {categories.length > 0 && (
-                <div className="home-slider mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="home-slider mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-4 lg:overflow-visible xl:grid-cols-8">
                     {categories.slice(0, 8).map((category) => (
                         <Link
-                            className="flex min-w-[150px] shrink-0 snap-start items-center gap-2.5 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:border-indigo-500/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+                            className="flex min-w-[150px] shrink-0 snap-start items-center gap-2.5 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:border-indigo-500/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 lg:min-w-0"
                             href={`/categories/${category.slug}`}
                             key={category.id}
                         >
