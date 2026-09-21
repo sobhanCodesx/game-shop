@@ -222,6 +222,8 @@ export default function AndroidAppIndex({
                                         <img
                                             alt={heroMedia.alt}
                                             className="aspect-[4/5] size-full rounded-[1.7rem] object-cover"
+                                            decoding="async"
+                                            fetchPriority="high"
                                             loading="eager"
                                             src={heroMedia.url}
                                         />
