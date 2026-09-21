@@ -26,6 +26,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import DualSpotlightHero, {
     type DualSpotlightContentItem,
 } from "../Components/Home/DualSpotlightHero";
+import NewsletterSignup from "../Components/Home/NewsletterSignup";
 import StorefrontCommerceHero from "../Components/Home/StorefrontCommerceHero";
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
 import type { NavigationCategory } from "../Components/Storefront/Navigation/types";
@@ -2867,9 +2868,11 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
 function CampaignBanner({
     slides,
     variant,
+    priority = true,
 }: {
     slides: Slide[];
     variant: "public" | "signed-in";
+    priority?: boolean;
 }) {
     const [activeSlide, setActiveSlide] = useState(0);
     const [paused, setPaused] = useState(false);
@@ -2976,8 +2979,8 @@ function CampaignBanner({
                         alt={slide.alt || slide.title}
                         className="block size-full scale-[1.015] object-contain object-center sm:scale-100 sm:object-cover lg:object-cover"
                         decoding="async"
-                        fetchPriority="high"
-                        loading="eager"
+                        fetchPriority={priority ? "high" : "auto"}
+                        loading={priority ? "eager" : "lazy"}
                         src={slide.desktop_image_url}
                     />
                 </picture>
@@ -3442,6 +3445,7 @@ export default function Home({
                         className="mx-auto w-full max-w-[1460px] px-3 pb-3 pt-1 sm:px-4 sm:pb-5"
                     >
                         <CampaignBanner
+                            priority={false}
                             slides={slides}
                             variant={auth.user ? "signed-in" : "public"}
                         />
@@ -3722,38 +3726,10 @@ export default function Home({
                     ))}
                 </div>
                 {settings.newsletter_enabled && (
-                    <section className="mx-auto max-w-[1536px] px-3 py-8 sm:px-4 sm:py-14">
-                        <Card
-                            className="storefront-dark-panel overflow-hidden border border-indigo-500/30 bg-gradient-to-l from-indigo-950 to-slate-900"
-                            variant="secondary"
-                        >
-                            <Card.Content className="flex flex-col gap-5 p-5 sm:p-7 md:flex-row md:items-center md:justify-between md:p-10">
-                                <div>
-                                    <h2 className="text-xl font-black text-white sm:text-2xl">
-                                        {settings.newsletter_title}
-                                    </h2>
-                                    <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300 sm:mt-3 sm:text-base sm:leading-7">
-                                        {settings.newsletter_description}
-                                    </p>
-                                </div>
-                                <div className="grid w-full min-w-0 max-w-md grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                                    <Input
-                                        aria-label="ایمیل خبرنامه"
-                                        className="min-w-0"
-                                        dir="ltr"
-                                        placeholder="you@example.com"
-                                        type="email"
-                                    />
-                                    <Button
-                                        className="w-full shrink-0 sm:w-auto"
-                                        variant="primary"
-                                    >
-                                        عضویت
-                                    </Button>
-                                </div>
-                            </Card.Content>
-                        </Card>
-                    </section>
+                    <NewsletterSignup
+                        description={settings.newsletter_description}
+                        title={settings.newsletter_title}
+                    />
                 )}
             </main>
             <footer
