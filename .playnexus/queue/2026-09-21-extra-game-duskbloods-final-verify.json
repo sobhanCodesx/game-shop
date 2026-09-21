@@ -1,0 +1,7 @@
+{
+  "job_id": "2026-09-21-extra-game-duskbloods-final-verify",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query {\n      game(slug: \"the-duskbloods\") {\n        id name slug status developer publisher releaseDate coverUrl backgroundUrl\n        studio { id name slug }\n        platforms { id name slug }\n      }\n      games(first: 100, orderBy: \"id\", orderDir: \"asc\") {\n        nodes { id name slug status studio { id name slug } }\n        pageInfo { total hasMore nextOffset }\n      }\n    }"
+  }
+}
