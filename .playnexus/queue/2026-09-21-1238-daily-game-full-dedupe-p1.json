@@ -1,8 +1,0 @@
-{
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "{ games(first: 100, offset: 0, orderBy: \"id\", orderDir: \"asc\") { nodes { id name slug status releaseDate studio { id name slug } } pageInfo { total hasMore nextOffset } } }",
-    "variables": {}
-  },
-  "purpose": "daily_game_full_dedupe_page_1"
-}
