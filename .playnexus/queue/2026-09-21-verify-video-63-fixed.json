@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-09-21-verify-video-63-fixed",
-  "tool": "get_content",
-  "arguments": {
-    "resource": "video",
-    "id": 63,
-    "include_deleted": false
-  }
-}
