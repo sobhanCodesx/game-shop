@@ -387,6 +387,9 @@ export default function Edit({
     const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
     const [uploadingKeys, setUploadingKeys] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<HomeEditorTab>("banners");
+    const [previewTemplateKey, setPreviewTemplateKey] = useState<string | null>(
+        null,
+    );
     const feedbackRef = useRef<HTMLDivElement>(null);
     const previewObjectUrls = useRef<Set<string>>(new Set());
     const uploadsInProgress = uploadingKeys.size > 0;
@@ -401,6 +404,26 @@ export default function Edit({
     const activeSlides = useMemo(
         () => data.slides.filter((slide) => slide.is_active).length,
         [data.slides],
+    );
+    const previewTemplate = useMemo(
+        () =>
+            previewTemplateKey
+                ? homeTemplates.find(
+                      (template) =>
+                          template.key === previewTemplateKey &&
+                          template.available,
+                  ) ?? null
+                : null,
+        [homeTemplates, previewTemplateKey],
+    );
+    const selectedTemplate = useMemo(
+        () =>
+            homeTemplates.find(
+                (template) =>
+                    template.key === data.settings.home_template &&
+                    template.available,
+            ) ?? null,
+        [data.settings.home_template, homeTemplates],
     );
 
     const updateSetting = <K extends keyof HomeSettings>(
@@ -562,16 +585,17 @@ export default function Edit({
 
     const actions = (
         <>
-            <Link
-                href={`/?preview_home_template=${encodeURIComponent(data.settings.home_template)}`}
-                rel="noreferrer"
-                target="_blank"
+            <Button
+                isDisabled={!selectedTemplate}
+                onPress={() =>
+                    selectedTemplate &&
+                    setPreviewTemplateKey(selectedTemplate.key)
+                }
+                variant="secondary"
             >
-                <Button variant="secondary">
-                    <Eye size={17} />
-                    پیش‌نمایش قالب
-                </Button>
-            </Link>
+                <Eye size={17} />
+                پیش‌نمایش قالب
+            </Button>
             {recentlySuccessful && (
                 <Chip
                     className="bg-emerald-500/10 text-emerald-300"
@@ -1275,62 +1299,85 @@ export default function Edit({
                                           : "متعادل";
 
                                 return (
-                                    <button
-                                        aria-pressed={selected}
-                                        className={`rounded-2xl border p-4 text-right transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 ${selected ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-950/20" : "border-slate-800 bg-slate-950/50"} ${template.available ? "hover:border-indigo-500/60" : "cursor-not-allowed opacity-60"}`}
-                                        disabled={!template.available}
+                                    <article
+                                        className={`rounded-2xl border p-4 text-right transition ${selected ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-950/20" : "border-slate-800 bg-slate-950/50"} ${template.available ? "hover:border-indigo-500/60" : "opacity-60"}`}
                                         key={template.key}
-                                        onClick={() =>
-                                            template.available &&
-                                            updateSetting(
-                                                "home_template",
-                                                template.key,
-                                            )
-                                        }
-                                        type="button"
                                     >
-                                        <TemplateMiniPreview
-                                            focus={template.focus}
-                                            templateKey={template.key}
-                                        />
-                                        <span className="flex items-start justify-between gap-3">
-                                            <span>
-                                                <strong className="block text-sm text-white">
-                                                    {template.label}
-                                                </strong>
-                                                <small className="mt-1 block text-[10px] font-bold text-indigo-300">
-                                                    {focusLabel}
-                                                </small>
+                                        <button
+                                            aria-pressed={selected}
+                                            className={`block w-full text-right focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400 ${template.available ? "" : "cursor-not-allowed"}`}
+                                            disabled={!template.available}
+                                            onClick={() =>
+                                                template.available &&
+                                                updateSetting(
+                                                    "home_template",
+                                                    template.key,
+                                                )
+                                            }
+                                            type="button"
+                                        >
+                                            <TemplateMiniPreview
+                                                focus={template.focus}
+                                                templateKey={template.key}
+                                            />
+                                            <span className="flex items-start justify-between gap-3">
+                                                <span>
+                                                    <strong className="block text-sm text-white">
+                                                        {template.label}
+                                                    </strong>
+                                                    <small className="mt-1 block text-[10px] font-bold text-indigo-300">
+                                                        {focusLabel}
+                                                    </small>
+                                                </span>
+                                                <Chip
+                                                    color={
+                                                        selected
+                                                            ? "accent"
+                                                            : undefined
+                                                    }
+                                                    size="sm"
+                                                    variant="soft"
+                                                >
+                                                    {selected
+                                                        ? persisted
+                                                            ? "فعال"
+                                                            : "انتخاب‌شده"
+                                                        : persisted
+                                                          ? "فعال روی سایت"
+                                                          : template.available
+                                                            ? "آماده"
+                                                            : "در حال ساخت"}
+                                                </Chip>
                                             </span>
-                                            <Chip
-                                                color={
-                                                    selected
-                                                        ? "accent"
-                                                        : undefined
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">
+                                                {template.description}
+                                            </p>
+                                            {selected && !persisted && (
+                                                <p className="mt-2 text-[10px] font-bold text-amber-300">
+                                                    این انتخاب هنوز ذخیره نشده و فقط در پیش‌نمایش دیده می‌شود.
+                                                </p>
+                                            )}
+                                        </button>
+
+                                        <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-800/80 pt-3">
+                                            <span className="text-[10px] text-slate-500">
+                                                پیش‌نمایش فقط در صورت درخواست بارگذاری می‌شود.
+                                            </span>
+                                            <Button
+                                                isDisabled={!template.available}
+                                                onPress={() =>
+                                                    setPreviewTemplateKey(
+                                                        template.key,
+                                                    )
                                                 }
                                                 size="sm"
-                                                variant="soft"
+                                                variant="secondary"
                                             >
-                                                {selected
-                                                    ? persisted
-                                                        ? "فعال"
-                                                        : "انتخاب‌شده"
-                                                    : persisted
-                                                      ? "فعال روی سایت"
-                                                      : template.available
-                                                        ? "آماده"
-                                                        : "در حال ساخت"}
-                                            </Chip>
-                                        </span>
-                                        <p className="mt-3 text-xs leading-6 text-slate-400">
-                                            {template.description}
-                                        </p>
-                                        {selected && !persisted && (
-                                            <p className="mt-2 text-[10px] font-bold text-amber-300">
-                                                این انتخاب هنوز ذخیره نشده و فقط در پیش‌نمایش دیده می‌شود.
-                                            </p>
-                                        )}
-                                    </button>
+                                                <Eye size={14} />
+                                                پیش‌نمایش زنده
+                                            </Button>
+                                        </div>
+                                    </article>
                                 );
                             })}
                         </Card.Content>
@@ -1544,6 +1591,13 @@ export default function Edit({
                     </Card>
                 </div>
             </form>
+
+            {previewTemplate && (
+                <TemplateLivePreview
+                    onClose={() => setPreviewTemplateKey(null)}
+                    template={previewTemplate}
+                />
+            )}
         </AdminLayout>
     );
 }
