@@ -12,6 +12,7 @@ final class CommerceSettings
 
         return [
             'delivery_fee' => max(0, (int) ($content['delivery_fee'] ?? 0)),
+            'pickup_address' => trim((string) ($content['pickup_address'] ?? '')),
             'cashback_percent' => min(100, max(0, (float) ($content['cashback_percent'] ?? 2))),
         ];
     }
