@@ -1,7 +1,0 @@
-{
-  "job_id": "2026-09-21-game-auto-read-wolverine",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query { games(first: 20, search: \"Marvel's Wolverine\", orderBy: \"id\", orderDir: \"asc\") { nodes { id name slug status releaseDate studio { id name } } pageInfo { total } } }"
-  }
-}
