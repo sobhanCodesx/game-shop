@@ -1,9 +1,5 @@
 {
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "{ games(first: 100, orderBy: \"id\", orderDir: \"asc\") { nodes { id name slug status releaseDate studio { id name slug } } pageInfo { currentPage lastPage perPage total } } }",
-    "variables": {}
-  },
-  "purpose": "daily_game_full_dedupe_page_1",
-  "requested_at": "2026-09-21T12:27:00+03:30"
+  "tool": "describe_playnexus_graph",
+  "arguments": {},
+  "purpose": "inspect_graph_schema_for_daily_game_dedupe"
 }
