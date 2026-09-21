@@ -2,9 +2,13 @@ import "../css/app.css";
 import "@fontsource-variable/vazirmatn";
 
 import { createInertiaApp, router } from "@inertiajs/react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import PageTransitionLoader from "./Components/PageTransitionLoader";
-import GlobalVideoPreview from "./Components/Storefront/Video/GlobalVideoPreview";
+
+const GlobalVideoPreview = lazy(
+    () => import("./Components/Storefront/Video/GlobalVideoPreview"),
+);
 import {
     createInertiaPageResolver,
     inertiaTitle,
@@ -17,11 +21,24 @@ import {
 
 if ("serviceWorker" in navigator) {
     if (import.meta.env.PROD) {
-        window.addEventListener("load", () => {
+        const registerServiceWorker = () => {
             void navigator.serviceWorker.register("/service-worker.js", {
                 scope: "/",
             });
-        });
+        };
+        window.addEventListener(
+            "load",
+            () => {
+                if ("requestIdleCallback" in window) {
+                    window.requestIdleCallback(registerServiceWorker, {
+                        timeout: 4000,
+                    });
+                } else {
+                    window.setTimeout(registerServiceWorker, 1800);
+                }
+            },
+            { once: true },
+        );
     } else {
         // A production worker/cache left behind on localhost can keep serving
         // stale navigations after switching back to Vite development.
@@ -52,6 +69,87 @@ if ("serviceWorker" in navigator) {
 
 type NativePageProps = { auth?: { user?: { id: number } | null } };
 
+function DeferredGlobalVideoPreview() {
+    const [ready, setReady] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        let timeoutId: number | null = null;
+        let idleId: number | null = null;
+
+        const activate = () => {
+            if (!cancelled) setReady(true);
+        };
+        const activateFromInteraction = () => activate();
+
+        window.addEventListener("pointerdown", activateFromInteraction, {
+            once: true,
+            passive: true,
+        });
+        window.addEventListener("keydown", activateFromInteraction, {
+            once: true,
+        });
+
+        if ("requestIdleCallback" in window) {
+            idleId = window.requestIdleCallback(activate, { timeout: 2200 });
+        } else {
+            timeoutId = window.setTimeout(activate, 1200);
+        }
+
+        return () => {
+            cancelled = true;
+            window.removeEventListener("pointerdown", activateFromInteraction);
+            window.removeEventListener("keydown", activateFromInteraction);
+            if (timeoutId !== null) window.clearTimeout(timeoutId);
+            if (idleId !== null && "cancelIdleCallback" in window) {
+                window.cancelIdleCallback(idleId);
+            }
+        };
+    }, []);
+
+    if (!ready) return null;
+
+    return (
+        <Suspense fallback={null}>
+            <GlobalVideoPreview />
+        </Suspense>
+    );
+}
+
+function installPublicScrollPerformanceMode(): void {
+    let frame: number | null = null;
+    let settleTimer: number | null = null;
+    let activeRoot: HTMLElement | null = null;
+
+    const markScrolling = () => {
+        frame = null;
+        const root =
+            activeRoot?.isConnected === true
+                ? activeRoot
+                : document.querySelector<HTMLElement>(".storefront-theme");
+        if (!root) return;
+
+        activeRoot = root;
+        root.dataset.pnScrolling = "true";
+        if (settleTimer !== null) window.clearTimeout(settleTimer);
+        settleTimer = window.setTimeout(() => {
+            delete root.dataset.pnScrolling;
+            settleTimer = null;
+        }, 120);
+    };
+
+    window.addEventListener(
+        "scroll",
+        () => {
+            if (frame !== null) return;
+            frame = window.requestAnimationFrame(markScrolling);
+        },
+        { passive: true },
+    );
+}
+
+installPublicScrollPerformanceMode();
+
 const resolveInertiaPage = createInertiaPageResolver(
     import.meta.glob("./Pages/**/*.tsx") as InertiaPageModules,
 );
@@ -66,6 +164,8 @@ const syncNativeBridge = (): void => {
 };
 
 const scheduleNativeBridgeSync = (): void => {
+    if (!window.ReactNativeWebView) return;
+
     for (const timer of nativeSyncTimers) {
         window.clearTimeout(timer);
     }
@@ -109,7 +209,7 @@ createInertiaApp({
         const application = (
             <>
                 <App {...props} />
-                <GlobalVideoPreview />
+                <DeferredGlobalVideoPreview />
                 <PageTransitionLoader />
             </>
         );
