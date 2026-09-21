@@ -23,6 +23,7 @@ import {
 import {
     type ChangeEvent,
     type FormEvent,
+    useEffect,
     useMemo,
     useRef,
     useState,
@@ -248,7 +249,16 @@ export default function Edit({
     const [uploadingKeys, setUploadingKeys] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<HomeEditorTab>("banners");
     const feedbackRef = useRef<HTMLDivElement>(null);
+    const previewObjectUrls = useRef<Set<string>>(new Set());
     const uploadsInProgress = uploadingKeys.size > 0;
+
+    useEffect(
+        () => () => {
+            previewObjectUrls.current.forEach((url) => URL.revokeObjectURL(url));
+            previewObjectUrls.current.clear();
+        },
+        [],
+    );
     const activeSlides = useMemo(
         () => data.slides.filter((slide) => slide.is_active).length,
         [data.slides],
@@ -286,16 +296,34 @@ export default function Edit({
         event.target.value = "";
         if (!file) return;
         const key = `${index}-${kind}`;
+        const imageUrlKey =
+            kind === "desktop" ? "desktop_image_url" : "mobile_image_url";
+        const uploadTokenKey =
+            kind === "desktop" ? "desktop_upload_token" : "mobile_upload_token";
+        const previousPreview = data.slides[index]?.[imageUrlKey];
+
         setUploadErrors((current) => ({ ...current, [key]: "" }));
         setUploadingKeys((current) => new Set(current).add(key));
+
+        if (previousPreview?.startsWith("blob:")) {
+            URL.revokeObjectURL(previousPreview);
+            previewObjectUrls.current.delete(previousPreview);
+        }
+
         const preview = URL.createObjectURL(file);
-        updateSlide(index, `${kind}_image_url` as keyof HomeSlide, preview);
+        previewObjectUrls.current.add(preview);
+        updateSlide(index, imageUrlKey, preview);
+
         try {
             const token = await uploadFileInChunks(file, (progress) =>
                 setUploadProgress((current) => ({ ...current, [key]: progress })),
             );
-            updateSlide(index, `${kind}_upload_token` as keyof HomeSlide, token);
+            updateSlide(index, uploadTokenKey, token);
         } catch (error) {
+            URL.revokeObjectURL(preview);
+            previewObjectUrls.current.delete(preview);
+            updateSlide(index, imageUrlKey, previousPreview ?? "");
+            updateSlide(index, uploadTokenKey, undefined);
             setUploadErrors((current) => ({
                 ...current,
                 [key]: error instanceof Error ? error.message : "آپلود تصویر انجام نشد.",
@@ -336,6 +364,10 @@ export default function Edit({
                     Props,
                     "settings" | "slides" | "sections"
                 >;
+                previewObjectUrls.current.forEach((url) =>
+                    URL.revokeObjectURL(url),
+                );
+                previewObjectUrls.current.clear();
                 setData({
                     settings: fresh.settings,
                     slides: fresh.slides,
