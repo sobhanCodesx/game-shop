@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-21-verify-video-63-assets",
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "video",
+    "id": 63
+  }
+}
