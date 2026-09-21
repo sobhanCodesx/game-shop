@@ -1,7 +1,0 @@
-{
-  "job_id": "2026-09-21-video-0750-diagnose",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query {\n      videos(first: 12, orderBy: \"published_at\", orderDir: \"desc\") {\n        nodes { id title slug status publishedAt game { id name slug } }\n        pageInfo { total hasMore }\n      }\n    }"
-  }
-}
