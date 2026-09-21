@@ -596,6 +596,70 @@ export default function Edit({
                                             </div>
                                         )}
                                         {uploadErrors[`${index}-desktop`] && <p className="text-sm text-red-400">{uploadErrors[`${index}-desktop`]}</p>}
+
+                                        <FormField
+                                            description="اختیاری؛ اگر انتخاب نشود تصویر دسکتاپ استفاده می‌شود. نسبت پیشنهادی ۸۰۰×۱۰۰۰."
+                                            label="تصویر مخصوص موبایل"
+                                        >
+                                            {previewUrl(
+                                                slide.mobile_image_file,
+                                                slide.mobile_image_url,
+                                            ) && (
+                                                <div className="mb-3 flex justify-center rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                                                    <div className="aspect-[4/5] w-28 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
+                                                        <img
+                                                            alt="پیش‌نمایش موبایل بنر"
+                                                            className="size-full object-cover"
+                                                            src={previewUrl(
+                                                                slide.mobile_image_file,
+                                                                slide.mobile_image_url,
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/60 text-center transition hover:border-indigo-500 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/30">
+                                                <UploadCloud className="mb-2 text-fuchsia-400" size={24} />
+                                                <span className="text-sm font-bold text-white">
+                                                    {slide.mobile_image_url
+                                                        ? "تغییر تصویر موبایل"
+                                                        : "انتخاب تصویر موبایل"}
+                                                </span>
+                                                <input
+                                                    accept="image/jpeg,image/png,image/webp"
+                                                    className="sr-only"
+                                                    onChange={(event) =>
+                                                        void uploadBanner(
+                                                            index,
+                                                            "mobile",
+                                                            event,
+                                                        )
+                                                    }
+                                                    type="file"
+                                                />
+                                            </label>
+                                        </FormField>
+                                        {uploadProgress[`${index}-mobile`] && (
+                                            <div className="space-y-2 text-xs text-slate-400">
+                                                <div className="flex justify-between">
+                                                    <span>در حال آپلود نسخه موبایل</span>
+                                                    <span>
+                                                        {uploadProgress[`${index}-mobile`].percentage.toLocaleString("fa-IR")}٪
+                                                    </span>
+                                                </div>
+                                                <ProgressBar
+                                                    value={
+                                                        uploadProgress[`${index}-mobile`]
+                                                            .percentage
+                                                    }
+                                                />
+                                            </div>
+                                        )}
+                                        {uploadErrors[`${index}-mobile`] && (
+                                            <p className="text-sm text-red-400">
+                                                {uploadErrors[`${index}-mobile`]}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="space-y-4">
                                     <FormField description="برای دسترس‌پذیری و سئو، خود تصویر را کوتاه توصیف کنید." label="متن جایگزین تصویر (alt)" required>
