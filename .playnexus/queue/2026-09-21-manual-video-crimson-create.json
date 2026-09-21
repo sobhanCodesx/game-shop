@@ -1,0 +1,17 @@
+{
+  "job_id": "2026-09-21-manual-video-crimson-create",
+  "tool": "create_video",
+  "arguments": {
+    "title": "تریلر رسمی Crimson Desert Enhanced؛ نسخه ارتقایافته ماجراجویی Pywel",
+    "game_id": 2,
+    "playlist_ids": [
+      1
+    ],
+    "excerpt": "تریلر رسمی Crimson Desert Enhanced با تمرکز بر نسخه ارتقایافته بازی، بهبودهای داستانی و محتوای جدید.",
+    "body": "<p>تریلر رسمی <strong>Crimson Desert Enhanced</strong> نسخه ارتقایافته ماجراجویی جهان‌باز Pearl Abyss را نمایش می‌دهد؛ نسخه‌ای که با لحظات داستانی تازه، بهبود روایت و مجموعه‌ای از آپدیت‌های پس از عرضه گسترش پیدا کرده است.</p><p>Crimson Desert یک بازی اکشن ماجراجویی جهان‌باز در قاره Pywel است و بازیکن در نقش Kliff مسیر بازسازی گروه Greymane را دنبال می‌کند.</p><p>این ویدیو از مدیای رسمی مرتبط با صفحه Steam بازی تهیه شده و فایل نهایی روی CDN خود PlayNexus میزبانی می‌شود.</p>",
+    "seo_title": "تریلر رسمی Crimson Desert Enhanced | PlayNexus",
+    "seo_description": "تریلر رسمی Crimson Desert Enhanced؛ نگاهی کوتاه به نسخه ارتقایافته بازی جهان‌باز Pearl Abyss و ماجراجویی Kliff در Pywel.",
+    "featured": false,
+    "allow_comments": true
+  }
+}
