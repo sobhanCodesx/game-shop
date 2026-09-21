@@ -1,0 +1,12 @@
+{
+  "job_id": "2026-09-21-extra-game-duskbloods-cover",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game",
+    "id": 19,
+    "slot": "cover",
+    "source_url": "https://img-eshop.cdn.nintendo.net/i/1a0152b5a5f033a2055858886af3c931f22ed8f4400fc2673b7a225336f419cd.jpg",
+    "name": "the-duskbloods-cover.jpg",
+    "alt": "کاور رسمی بازی The Duskbloods"
+  }
+}
