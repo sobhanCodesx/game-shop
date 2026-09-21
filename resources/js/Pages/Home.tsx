@@ -598,7 +598,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                             : 0;
                         return (
                             <Link
-                                className={`group w-[calc((100vw-4rem)/2)] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-[18px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] sm:max-w-[330px] sm:rounded-[20px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
+                                className={`group w-[72vw] max-w-[250px] shrink-0 snap-start overflow-hidden rounded-[18px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] sm:max-w-[330px] sm:rounded-[20px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
                                 href={item.url}
                                 key={item.key}
                                 onClick={() => {
