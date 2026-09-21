@@ -131,6 +131,13 @@ class HomeSettingsController extends Controller
                             $obsoleteImagePaths[] = $slide->mobile_image;
                         }
                         $data['mobile_image'] = $newPath;
+                    } elseif (
+                        $slide->exists
+                        && $slide->mobile_image
+                        && blank($data['mobile_image'] ?? null)
+                    ) {
+                        $obsoleteImagePaths[] = $slide->mobile_image;
+                        $data['mobile_image'] = null;
                     }
 
                     abort_if(blank($data['desktop_image'] ?? null), 422, 'تصویر دسکتاپ هر اسلاید الزامی است.');
