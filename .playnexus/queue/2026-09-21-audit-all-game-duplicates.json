@@ -1,0 +1,7 @@
+{
+  "job_id": "2026-09-21-audit-all-game-duplicates",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query { games(first: 200, orderBy: \"id\", orderDir: \"asc\") { nodes { id name slug status releaseDate studio { id name slug } } pageInfo { total } } }"
+  }
+}
