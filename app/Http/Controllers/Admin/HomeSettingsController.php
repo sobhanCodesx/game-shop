@@ -88,7 +88,13 @@ class HomeSettingsController extends Controller
         $obsoleteImagePaths = [];
         try {
             DB::transaction(function () use ($request, $validated, $uploads, &$claimedTokens, &$newImagePaths, &$obsoleteImagePaths, &$keptIds, &$keptSectionIds): void {
-                HomeSetting::query()->updateOrCreate(['id' => 1], ['content' => $validated['settings']]);
+                $homeSetting = HomeSetting::query()->firstOrCreate(['id' => 1], ['content' => []]);
+                $homeSetting->update([
+                    'content' => [
+                        ...($homeSetting->content ?? []),
+                        ...$validated['settings'],
+                    ],
+                ]);
 
                 foreach ($validated['slides'] ?? [] as $index => $data) {
                     $slide = isset($data['id']) ? HomeSlide::query()->findOrFail($data['id']) : new HomeSlide;
