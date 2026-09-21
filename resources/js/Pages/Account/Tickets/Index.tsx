@@ -116,7 +116,7 @@ export default function Index({
                 <div className="mt-7 grid gap-4">
                     {tickets.data.map((ticket) => (
                         <Link
-                            className="group rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 transition hover:-translate-y-1 hover:border-indigo-500/40"
+                            className="pn-card-visibility group rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 transition hover:-translate-y-1 hover:border-indigo-500/40"
                             href={`/account/tickets/${ticket.id}`}
                             key={ticket.id}
                         >
