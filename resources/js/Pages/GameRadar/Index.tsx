@@ -320,7 +320,7 @@ function GameRow({
     if (!items.length) return null;
 
     return (
-        <section>
+        <section className="pn-deferred-zone">
             <header className="mb-4 flex items-end justify-between gap-3">
                 <div>
                     <h3 className="text-lg font-black text-white sm:text-xl">
@@ -366,7 +366,7 @@ function PlatformHub({
 
     return (
         <section
-            className={`relative overflow-hidden rounded-[34px] border p-3 sm:p-5 lg:p-7 ${
+            className={`pn-deferred-zone relative overflow-hidden rounded-[34px] border p-3 sm:p-5 lg:p-7 ${
                 isPs5
                     ? "border-sky-400/15 bg-[radial-gradient(circle_at_90%_0%,rgba(14,165,233,.18),transparent_30%),linear-gradient(180deg,#05111f,#020617_50%)]"
                     : "border-emerald-400/15 bg-[radial-gradient(circle_at_90%_0%,rgba(16,185,129,.16),transparent_30%),linear-gradient(180deg,#041510,#020617_50%)]"
@@ -608,6 +608,8 @@ export default function GameRadarIndex({
                                             <img
                                                 alt={hero.title}
                                                 className="size-full object-cover"
+                                                decoding="async"
+                                                fetchPriority="low"
                                                 src={
                                                     hero.cover_url ??
                                                     heroStore?.image_url ??
