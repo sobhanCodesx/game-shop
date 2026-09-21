@@ -1,1 +1,0 @@
-{"job_id":"2026-09-21-1950-video-graph-schema","tool":"query_playnexus_graph","arguments":{"query":"query { __type(name: \"GameConnection\") { fields { name type { kind name ofType { kind name } } } } __type2: __type(name: \"Query\") { fields { name args { name type { kind name ofType { kind name } } } type { kind name ofType { kind name } } } } }"}}
