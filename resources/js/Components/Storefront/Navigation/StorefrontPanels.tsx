@@ -275,6 +275,8 @@ export default function StorefrontPanels({
                                                     alt=""
                                                     aria-hidden="true"
                                                     className="size-11 shrink-0 rounded-xl object-cover"
+                                                    decoding="async"
+                                                    loading="lazy"
                                                     src={category.image_url}
                                                 />
                                             ) : (
@@ -471,6 +473,8 @@ export default function StorefrontPanels({
                                                 alt=""
                                                 aria-hidden="true"
                                                 className="size-11 rounded-xl object-cover"
+                                                decoding="async"
+                                                loading="lazy"
                                                 src={category.image_url}
                                             />
                                         ) : (
