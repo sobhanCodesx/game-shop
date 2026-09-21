@@ -1,7 +1,0 @@
-{
-  "job_id": "2026-09-21-wolverine-merge-relation-audit",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query {\n      game(slug: \"marvels-wolverine-2\") {\n        id name slug status subscriberCount videoCount productCount\n        products(first: 20) { nodes { id title slug status } pageInfo { total hasMore } }\n        content(first: 50, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id type title slug status } pageInfo { total hasMore } }\n        collections(first: 20) { nodes { id title slug visibility } pageInfo { total hasMore } }\n        events(first: 20) { nodes { id type title status } pageInfo { total hasMore } }\n        sourceStates(first: 20) { nodes { id sourceType sourceName status } pageInfo { total hasMore } }\n      }\n    }"
-  }
-}
