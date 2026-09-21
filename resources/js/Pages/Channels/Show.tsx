@@ -450,6 +450,8 @@ export default function ChannelShow({
                                                 <img
                                                     alt={playlist.title}
                                                     className="size-full object-cover transition group-hover:scale-105"
+                                                    decoding="async"
+                                                    loading="lazy"
                                                     src={playlist.cover_url}
                                                 />
                                             ) : (
