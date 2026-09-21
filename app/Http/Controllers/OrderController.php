@@ -29,7 +29,7 @@ class OrderController extends Controller
         return Inertia::render('Orders/Invoice', [
             'invoice' => [
                 ...$order->only([
-                    'id', 'number', 'status', 'shipping_address', 'regular_subtotal',
+                    'id', 'number', 'status', 'shipping_address', 'delivery_method', 'pickup_address', 'regular_subtotal',
                     'product_discount', 'subtotal', 'coupon_code', 'coupon_discount',
                     'delivery_fee', 'grand_total', 'wallet_used', 'payable_amount',
                     'cashback_amount', 'exchange_request_id', 'exchange_credit_used', 'trade_user_id',
