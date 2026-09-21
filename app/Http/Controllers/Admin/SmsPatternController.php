@@ -15,6 +15,8 @@ class SmsPatternController extends Controller
     {
         return Inertia::render('Admin/SmsPatterns/Index', [
             'patterns' => $patterns->all(),
+            'activeProvider' => $patterns->provider(),
+            'activeProviderLabel' => $patterns->providerLabel(),
         ]);
     }
 
