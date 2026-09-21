@@ -71,8 +71,6 @@ class HomeExperienceTest extends TestCase
 
     public function test_user_preference_wins_when_its_template_is_available(): void
     {
-        config(['home-experience.templates.storefront.available' => true]);
-
         $user = User::factory()->create([
             'home_focus_preference' => 'products',
         ]);
@@ -90,7 +88,7 @@ class HomeExperienceTest extends TestCase
     public function test_user_preference_falls_back_to_system_until_template_is_ready(): void
     {
         $user = User::factory()->create([
-            'home_focus_preference' => 'products',
+            'home_focus_preference' => 'content',
         ]);
 
         $state = app(HomeExperienceService::class)->resolve([
@@ -99,5 +97,22 @@ class HomeExperienceTest extends TestCase
 
         $this->assertSame('default', $state['effective_template']);
         $this->assertSame('system', $state['source']);
+    }
+
+    public function test_storefront_is_an_available_system_template(): void
+    {
+        HomeSetting::query()->create([
+            'content' => ['home_template' => 'storefront'],
+        ]);
+        app(HomeExperienceService::class)->invalidate();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Home')
+                ->where('homeExperience.system_template', 'storefront')
+                ->where('homeExperience.effective_template', 'storefront')
+                ->where('homeExperience.focus', 'products')
+                ->where('homeExperience.source', 'system'));
     }
 }
