@@ -81,6 +81,9 @@ export default function PlaylistShow({
                                 <img
                                     alt={playlist.title}
                                     className="size-full object-cover"
+                                    decoding="async"
+                                    fetchPriority="high"
+                                    loading="eager"
                                     src={playlist.cover_url}
                                 />
                             ) : (
