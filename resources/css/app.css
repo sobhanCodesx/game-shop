@@ -930,7 +930,9 @@ html[data-storefront-theme="dark"] .storefront-theme select {
 }
 
 .storefront-theme[data-pn-scrolling="true"] .pn-media-cloud__tile,
-.storefront-theme[data-pn-scrolling="true"] .playnexus-player-frame::before {
+.storefront-theme[data-pn-scrolling="true"] .playnexus-player-frame::before,
+.storefront-theme[data-pn-scrolling="true"] .playnexus-player-ambient__canvas,
+.storefront-theme[data-pn-scrolling="true"] .playnexus-player-edge {
     animation-play-state: paused !important;
 }
 
@@ -978,13 +980,15 @@ html[data-storefront-theme="light"]
 
 /* Below-the-fold Home zones stay in the DOM/SSR output but the browser skips
    their paint/layout work until they approach the viewport. */
-.pn-render-zone {
+.pn-render-zone,
+.pn-deferred-zone {
     content-visibility: auto;
     contain-intrinsic-size: auto 680px;
 }
 
 @media (max-width: 640px) {
-    .pn-render-zone {
+    .pn-render-zone,
+    .pn-deferred-zone {
         contain-intrinsic-size: auto 540px;
     }
 }
