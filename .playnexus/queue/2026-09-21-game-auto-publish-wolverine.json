@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-09-21-game-auto-publish-wolverine",
-  "tool": "set_content_state",
-  "arguments": {
-    "resource": "game",
-    "id": 18,
-    "state": "active"
-  }
-}
