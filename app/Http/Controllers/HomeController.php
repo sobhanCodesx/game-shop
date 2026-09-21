@@ -34,6 +34,9 @@ class HomeController extends Controller
         $settings = [...HomeSettingsController::DEFAULTS, ...$homeExperience->settings()];
         $homeExperienceState = $homeExperience->resolve($settings, $request->user());
         $limit = (int) $settings['products_limit'];
+        if ($homeExperienceState['focus'] === 'products') {
+            $limit = max(12, $limit);
+        }
         $freshCutoff = now()->subDays(14);
         $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
