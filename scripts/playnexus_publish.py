@@ -153,6 +153,19 @@ def rpc_request(
         details = result.get("structuredContent") or result.get("content") or result
         fail(f"PlayNexus tool failed: {json.dumps(details, ensure_ascii=False)}")
 
+    if tool == "query_playnexus_graph":
+        structured = result.get("structuredContent")
+        graph_result = structured.get("result") if isinstance(structured, dict) else None
+        if not isinstance(graph_result, dict):
+            fail("PlayNexus GraphQL response is missing structuredContent.result.")
+
+        graph_errors = graph_result.get("errors")
+        if graph_errors:
+            fail(
+                "PlayNexus GraphQL query failed: "
+                f"{json.dumps(graph_errors, ensure_ascii=False)}"
+            )
+
     return payload
 
 
