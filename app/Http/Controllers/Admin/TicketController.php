@@ -56,7 +56,12 @@ class TicketController extends Controller
         $ticket->load(['user:id,name,email,phone,wallet_balance', 'order:id,number', 'orderItem', 'product.coverMedia', 'targetProduct:id,title', 'exchangeOrder:id,number', 'replies.user:id,name,is_admin', 'replies.attachments']);
         $ticket->replies->each(fn ($reply) => $reply->attachments->each(fn ($attachment) => $attachment->setAttribute('url', MediaStorage::url($attachment->path))));
 
-        return Inertia::render('Admin/Tickets/Show', ['ticket' => [...$ticket->toArray(), 'cover_url' => MediaStorage::url($ticket->product?->coverMedia?->path)], 'exchangeProducts' => $ticket->type === 'exchange' ? Product::query()->where('trade_enabled', true)->orderBy('title')->get(['id', 'title']) : []]);
+        return Inertia::render('Admin/Tickets/Show', [
+            'ticket' => [
+                ...$ticket->toArray(),
+                'cover_url' => MediaStorage::url($ticket->product?->coverMedia?->path),
+            ],
+        ]);
     }
 
     public function reply(ReplyTicketRequest $request, Ticket $ticket, TicketService $service): RedirectResponse
@@ -69,8 +74,14 @@ class TicketController extends Controller
 
     public function offer(Request $request, Ticket $ticket, ExchangeService $service): RedirectResponse
     {
-        $data = $request->validate(['target_product_id' => ['required', Rule::exists('products', 'id')->where('trade_enabled', true)], 'exchange_offer_amount' => ['required', 'integer', 'min:1', 'max:999999999999']]);
-        $ticket = $service->offer($ticket, Product::findOrFail($data['target_product_id']), (int) $data['exchange_offer_amount']);
+        $data = $request->validate([
+            'exchange_offer_amount' => ['required', 'integer', 'min:1', 'max:999999999999'],
+        ]);
+        $targetProduct = Product::query()
+            ->whereKey($ticket->product_id)
+            ->where('trade_enabled', true)
+            ->firstOrFail();
+        $ticket = $service->offer($ticket, $targetProduct, (int) $data['exchange_offer_amount']);
         $ticket->user->notify(new TicketActivityNotification($ticket, 'پیشنهاد معاوضه آماده است', 'مبلغ پیشنهادی معاوضه ثبت شد؛ برای مشاهده و تأیید وارد درخواست شوید.'));
 
         return back()->with('success', 'پیشنهاد معاوضه ثبت شد.');
