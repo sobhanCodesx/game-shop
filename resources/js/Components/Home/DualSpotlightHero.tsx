@@ -25,6 +25,7 @@ export interface DualSpotlightContentItem {
 
 interface Props {
     contentItems: DualSpotlightContentItem[];
+    heading: string;
     products: StorefrontProduct[];
 }
 
@@ -139,6 +140,7 @@ function ProductSpotlight({
         <section
             aria-label="محصولات ویژه"
             aria-roledescription="carousel"
+            role="region"
             className="group relative min-h-[390px] touch-pan-y overflow-hidden rounded-[28px] border border-indigo-400/20 bg-[#070b14] text-white shadow-[0_30px_90px_-55px_rgba(99,102,241,.9)] sm:min-h-[500px] lg:min-h-[560px]"
             onTouchEnd={(event) =>
                 finishSwipe(event.changedTouches[0].clientX)
@@ -323,6 +325,7 @@ function ContentSpotlight({
         <section
             aria-label="محتوای ویژه"
             aria-roledescription="carousel"
+            role="region"
             className="group relative min-h-[390px] touch-pan-y overflow-hidden rounded-[28px] border border-fuchsia-400/15 bg-[#070b14] text-white shadow-[0_30px_90px_-55px_rgba(217,70,239,.7)] sm:min-h-[500px] lg:min-h-[560px]"
             onTouchEnd={(event) =>
                 finishSwipe(event.changedTouches[0].clientX)
@@ -440,6 +443,7 @@ function ContentSpotlight({
 
 export default function DualSpotlightHero({
     contentItems,
+    heading,
     products,
 }: Props) {
     return (
@@ -453,8 +457,11 @@ export default function DualSpotlightHero({
                         DUAL SPOTLIGHT
                     </p>
                     <h1 className="mt-1 text-xl font-black sm:text-2xl lg:text-3xl">
-                        بازی را ببین، محصول را پیدا کن
+                        {heading}
                     </h1>
+                    <p className="mt-1 text-xs text-[var(--store-muted)] sm:text-sm">
+                        بازی را ببین، محصول را پیدا کن
+                    </p>
                 </div>
                 <Link
                     className="hidden items-center gap-1 text-xs font-black text-indigo-500 sm:flex"
