@@ -16,7 +16,7 @@ export default function ContentCard({
     content: StorefrontContent;
 }) {
     return (
-        <Link className="group block" href={content.url}>
+        <Link className="pn-card-visibility group block" href={content.url}>
             <article>
                 <div
                     className="relative aspect-video overflow-hidden rounded-[22px] bg-[var(--store-surface-strong)] shadow-lg ring-1 ring-[var(--store-border)] transition duration-300 group-hover:-translate-y-1 group-hover:ring-indigo-500/60 sm:rounded-[24px]"
