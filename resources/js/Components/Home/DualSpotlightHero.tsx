@@ -28,6 +28,10 @@ interface Props {
 }
 
 const money = new Intl.NumberFormat("fa-IR");
+const productIsUnavailable = (product: StorefrontProduct) =>
+    product.meta_badges.some(
+        (badge) => badge.key === "availability" && badge.tone === "danger",
+    );
 
 function useRotatingIndex(length: number, delay = 6200) {
     const [active, setActive] = useState(0);
@@ -56,7 +60,17 @@ function ProductSpotlight({
 }: {
     products: StorefrontProduct[];
 }) {
-    const visibleProducts = useMemo(() => products.slice(0, 6), [products]);
+    const visibleProducts = useMemo(
+        () =>
+            [...products]
+                .sort(
+                    (left, right) =>
+                        Number(productIsUnavailable(left)) -
+                        Number(productIsUnavailable(right)),
+                )
+                .slice(0, 6),
+        [products],
+    );
     const [active, setActive] = useRotatingIndex(visibleProducts.length, 6800);
 
     if (!visibleProducts.length) {
