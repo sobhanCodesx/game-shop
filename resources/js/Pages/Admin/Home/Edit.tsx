@@ -523,8 +523,7 @@ export default function Edit({
                         <div>
                             <Card.Title>اسلایدر اصلی</Card.Title>
                             <Card.Description>
-                                تصویر پیشنهادی دسکتاپ ۱۹۲۰×۷۲۰ و موبایل ۸۰۰×۱۰۰۰
-                                پیکسل است.
+                                تصویر پیشنهادی دسکتاپ ۱۹۲۰×۷۲۰ است؛ برای موبایل یک برش افقی نزدیک ۲.۳۵:۱ مثل ۱۲۰۰×۵۲۰ بهترین نتیجه را می‌دهد.
                             </Card.Description>
                         </div>
                         <Button
@@ -598,7 +597,7 @@ export default function Edit({
                                         {uploadErrors[`${index}-desktop`] && <p className="text-sm text-red-400">{uploadErrors[`${index}-desktop`]}</p>}
 
                                         <FormField
-                                            description="اختیاری؛ اگر انتخاب نشود تصویر دسکتاپ استفاده می‌شود. نسبت پیشنهادی ۸۰۰×۱۰۰۰."
+                                            description="اختیاری؛ اگر انتخاب نشود تصویر دسکتاپ استفاده می‌شود. برای وب موبایل برش افقی نزدیک ۲.۳۵:۱ مثل ۱۲۰۰×۵۲۰ پیشنهاد می‌شود."
                                             label="تصویر مخصوص موبایل"
                                         >
                                             {previewUrl(
