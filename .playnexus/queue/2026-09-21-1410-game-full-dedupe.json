@@ -1,8 +1,8 @@
 {
   "tool": "query_playnexus_graph",
   "arguments": {
-    "query": "{ games(limit: 100) { id name slug status releaseDate studio { id name slug } } }",
+    "query": "{ games(first: 100) { nodes { id name slug status releaseDate studio { id name slug } } pageInfo { hasNextPage endCursor } } }",
     "variables": {}
   },
-  "purpose": "daily_game_full_dedupe_20260921_1410"
+  "purpose": "daily_game_full_dedupe_20260921_1410_retry"
 }
