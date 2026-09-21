@@ -1,0 +1,9 @@
+{
+  "job_id": "feed-engine-20260922-neon-abyss-relation",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query FindNeonAbyss { games(first: 20, offset: 0, search: \"Neon Abyss 2\") { nodes { id title slug } pageInfo { total first offset hasMore nextOffset } } }",
+    "variables": {},
+    "operation_name": "FindNeonAbyss"
+  }
+}
