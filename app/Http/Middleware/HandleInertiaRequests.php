@@ -152,7 +152,22 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
-            'notifications' => fn () => $request->user() ? ['unread_count' => $request->user()->unreadNotifications()->count(), 'latest' => $request->user()->notifications()->latest()->limit(8)->get()->map(fn ($item) => ['id' => $item->id, ...$item->data, 'read_at' => $item->read_at, 'created_at' => $item->created_at])] : null,
+            'notifications' => fn () => $request->user() ? [
+                'unread_count' => $request->user()->unreadNotifications()->count(),
+                'latest' => $request->user()->notifications()
+                    ->latest()
+                    ->limit(8)
+                    ->get(['id', 'data', 'read_at', 'created_at'])
+                    ->map(fn ($item) => [
+                        'id' => (string) $item->id,
+                        'title' => (string) ($item->data['title'] ?? 'اعلان جدید'),
+                        'message' => (string) ($item->data['message'] ?? ''),
+                        'url' => $item->data['url'] ?? null,
+                        'read_at' => $item->read_at?->toISOString(),
+                        'created_at' => $item->created_at?->toISOString(),
+                    ])
+                    ->values(),
+            ] : null,
             'cart' => fn () => ['item_count' => collect($request->session()->get('cart', []))->sum(fn ($item) => (int) ($item['quantity'] ?? 0))],
             'admin' => fn () => $request->user()?->is_admin ? ['pending_orders_count' => Order::query()->where('status', 'pending')->count(), 'open_tickets_count' => Ticket::query()->where('status', 'pending')->count()] : null,
             'impersonation' => fn () => $request->session()->has('impersonator_id') ? [
