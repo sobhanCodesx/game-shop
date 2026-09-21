@@ -354,9 +354,7 @@ export default function AdminLayout({
                         <label className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-2.5 text-slate-500 transition focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10">
                             <Search aria-hidden="true" size={18} />
                             <input
-                                aria-autocomplete="list"
                                 aria-controls="admin-search-results"
-                                aria-expanded={searchResults.length > 0}
                                 aria-label="جستجوی سراسری"
                                 className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
                                 onChange={(event) =>
@@ -372,9 +370,11 @@ export default function AdminLayout({
                         </label>
                         {searchQuery.trim() && (
                             <div
+                                aria-label="نتایج جستجوی پنل"
+                                aria-live="polite"
                                 className="absolute inset-x-0 top-[calc(100%+.5rem)] z-50 overflow-hidden rounded-2xl border border-slate-800 bg-[#0b0f18] p-2 shadow-2xl shadow-black/40"
                                 id="admin-search-results"
-                                role="listbox"
+                                role="region"
                             >
                                 {searchResults.length > 0 ? (
                                     searchResults.map((item) => {
@@ -385,8 +385,7 @@ export default function AdminLayout({
                                                 href={item.href}
                                                 key={item.href}
                                                 onClick={() => setSearchQuery("")}
-                                                role="option"
-                                            >
+                                             >
                                                 <Icon
                                                     aria-hidden="true"
                                                     className="text-indigo-400"
