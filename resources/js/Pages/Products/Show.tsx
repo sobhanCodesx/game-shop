@@ -957,7 +957,18 @@ export default function ProductShow({
                         <p className="truncate text-[10px] text-[var(--store-muted)]">
                             {variant?.name ?? product.title}
                         </p>
-                        <Price compact pricing={pricing} />
+                        {exchangeRequestId && exchangeOfferAmount ? (
+                            <div>
+                                <span className="text-[10px] text-[var(--store-muted)] line-through">
+                                    {number.format(pricing.final_price)} تومان
+                                </span>
+                                <strong className="block text-sm text-emerald-600">
+                                    {number.format(exchangeFinalPrice)} تومان
+                                </strong>
+                            </div>
+                        ) : (
+                            <Price compact pricing={pricing} />
+                        )}
                     </div>
                     <Button
                         className="h-11 min-w-36 font-black"
