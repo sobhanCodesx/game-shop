@@ -133,6 +133,74 @@ class OrderCheckoutTest extends TestCase
         $this->assertSame('09120000000', $order->shipping_address['phone']);
     }
 
+    public function test_pickup_checkout_has_no_delivery_fee_and_snapshots_pickup_address(): void
+    {
+        $pickupAddress = 'تهران، خیابان تست، مجتمع پلی نکسوس، طبقه اول';
+        HomeSetting::query()->create([
+            'content' => [
+                'delivery_fee' => 75_000,
+                'pickup_address' => $pickupAddress,
+                'cashback_percent' => 2,
+            ],
+        ]);
+        $user = User::factory()->create();
+        $product = Product::factory()->create([
+            'price' => 500_000,
+            'discount_price' => null,
+            'stock' => 3,
+            'requires_shipping' => true,
+        ]);
+        $session = [
+            'cart' => [
+                "{$product->id}:base" => [
+                    'product_id' => $product->id,
+                    'variant_id' => null,
+                    'quantity' => 1,
+                ],
+            ],
+        ];
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->post(route('checkout.preview'), ['delivery_method' => 'pickup'])
+            ->assertOk()
+            ->assertJsonPath('delivery_method', 'pickup')
+            ->assertJsonPath('delivery_fee', 0)
+            ->assertJsonPath('pickup_address', $pickupAddress);
+
+        $response = $this->actingAs($user)
+            ->withSession($session)
+            ->post(route('checkout.store'), [
+                'delivery_method' => 'pickup',
+                'use_wallet' => false,
+            ]);
+
+        $order = Order::query()->firstOrFail();
+        $response->assertRedirect(route('orders.show', $order));
+        $this->assertSame('pickup', $order->delivery_method);
+        $this->assertSame(0, $order->delivery_fee);
+        $this->assertSame([], $order->shipping_address);
+        $this->assertSame($pickupAddress, $order->pickup_address);
+
+        HomeSetting::query()->firstOrFail()->update([
+            'content' => [
+                'delivery_fee' => 75_000,
+                'pickup_address' => 'آدرس جدید فروشگاه',
+                'cashback_percent' => 2,
+            ],
+        ]);
+        $order->update(['status' => 'delivered']);
+
+        $this->actingAs($user)
+            ->get(route('orders.invoice', $order))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Orders/Invoice')
+                ->where('invoice.delivery_method', 'pickup')
+                ->where('invoice.delivery_fee', 0)
+                ->where('invoice.pickup_address', $pickupAddress));
+    }
+
     public function test_google_customer_must_verify_mobile_before_checkout(): void
     {
         config()->set('services.payamak_panel', [
