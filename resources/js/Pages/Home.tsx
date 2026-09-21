@@ -94,7 +94,6 @@ interface HomePreviewProduct {
 }
 
 interface HomePreviewData {
-    latestFeed: HomeFeedPreviewItem[];
     latestStudios: StudioItem[];
     gameRadar: GameRadarItem[];
     channels: ChannelItem[];
@@ -115,7 +114,8 @@ interface Props {
     contentSections?: ContentSection[];
     freshContent?: FreshItem[];
     channels?: ChannelItem[];
-    latestFeed?: HomeFeedPreviewItem[];
+    latestFeed: HomeFeedPreviewItem[];
+    latestFeedFull?: HomeFeedPreviewItem[];
     latestStudios?: StudioItem[];
     gameRadar?: GameRadarItem[];
     personalizedHome: PersonalizedHomeData | null;
@@ -3219,7 +3219,8 @@ export default function Home({
     contentSections = [],
     freshContent = [],
     channels = [],
-    latestFeed = [],
+    latestFeed,
+    latestFeedFull = [],
     latestStudios = [],
     gameRadar = [],
     personalizedHome,
@@ -3227,7 +3228,7 @@ export default function Home({
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
     const categories = storefront.categories.slice(0, 8);
-    const previewLatestFeed = homePreview.latestFeed ?? [];
+    const previewLatestFeed = latestFeed;
     const previewLatestStudios = homePreview.latestStudios ?? [];
     const previewGameRadar = homePreview.gameRadar ?? [];
     const previewChannels = homePreview.channels ?? [];
@@ -3502,15 +3503,15 @@ export default function Home({
                 </WhenVisible>
                 <WhenVisible
                     buffer={220}
-                    data={["latestFeed", "latestStudios"]}
+                    data={["latestFeedFull", "latestStudios"]}
                     fallback={() => <DeferredHomeSpacer minHeight={330} />}
                 >
-                    {(latestFeed.length > 0 || latestStudios.length > 0) && (
+                    {(latestFeedFull.length > 0 || latestStudios.length > 0) && (
                         <section
                             aria-label="تازه‌های فید و استودیو"
                             className="pn-render-zone mx-auto grid max-w-[1536px] gap-3 px-3 pb-4 sm:px-4 lg:grid-cols-2 lg:gap-4"
                         >
-                            <LatestFeedRail items={latestFeed} />
+                            <LatestFeedRail items={latestFeedFull} />
                             <LatestStudioRail items={latestStudios} />
                         </section>
                     )}
