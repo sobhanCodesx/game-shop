@@ -135,6 +135,9 @@ export default function ChannelShow({
                             <img
                                 alt={`بنر کانال ${channel.name}`}
                                 className="size-full object-cover"
+                                decoding="async"
+                                fetchPriority="high"
+                                loading="eager"
                                 src={channel.background_url}
                             />
                         )}
