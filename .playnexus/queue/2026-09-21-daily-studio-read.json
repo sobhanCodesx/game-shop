@@ -1,1 +1,0 @@
-{"job_id":"20260921-daily-studio-read","tool":"query_playnexus_graph","arguments":{"query":"query { studios(first: 50) { nodes { id name slug } } }"}}
