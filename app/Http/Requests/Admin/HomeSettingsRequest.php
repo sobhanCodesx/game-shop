@@ -32,7 +32,7 @@ class HomeSettingsRequest extends FormRequest
             'settings.newsletter_description' => ['nullable', 'string', 'max:300'],
             'settings.seo_title' => ['required', 'string', 'max:60'],
             'settings.seo_description' => ['required', 'string', 'max:160'],
-            'slides' => ['array', 'max:12'],
+            'slides' => ['present', 'array', 'max:12'],
             'slides.*.id' => ['nullable', 'integer', Rule::exists('home_slides', 'id')],
             'slides.*.title' => ['nullable', 'string', 'max:120'],
             'slides.*.eyebrow' => ['nullable', 'string', 'max:80'],
@@ -55,7 +55,7 @@ class HomeSettingsRequest extends FormRequest
             'slides.*.is_active' => ['boolean'],
             'slides.*.starts_at' => ['nullable', 'date'],
             'slides.*.ends_at' => ['nullable', 'date', 'after_or_equal:slides.*.starts_at'],
-            'sections' => ['array', 'max:16'],
+            'sections' => ['present', 'array', 'max:16'],
             'sections.*.id' => ['nullable', 'integer', Rule::exists('home_sections', 'id')],
             'sections.*.title' => ['required', 'string', 'max:100'],
             'sections.*.subtitle' => ['nullable', 'string', 'max:180'],
@@ -73,6 +73,7 @@ class HomeSettingsRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'slides.present' => 'اطلاعات بنرهای صفحه اصلی باید همراه فرم ارسال شود.',
             'slides.max' => 'حداکثر ۱۲ بنر قابل ثبت است.',
             'slides.*.desktop_image.required_without_all' => 'برای هر بنر باید تصویر دسکتاپ انتخاب و آپلود شود.',
             'slides.*.desktop_image_file.image' => 'فایل تصویر بنر معتبر نیست.',
@@ -90,6 +91,7 @@ class HomeSettingsRequest extends FormRequest
             'settings.latest_products_title.required' => 'عنوان تازه‌ترین محصولات الزامی است.',
             'settings.seo_title.required' => 'عنوان سئو الزامی است.',
             'settings.seo_description.required' => 'توضیحات سئو الزامی است.',
+            'sections.present' => 'اطلاعات سکشن‌های صفحه اصلی باید همراه فرم ارسال شود.',
             'sections.*.title.required' => 'عنوان همه سکشن‌های صفحه اصلی الزامی است.',
             'sections.*.content_type.required' => 'نوع محتوای همه سکشن‌ها الزامی است.',
             'sections.*.query_type.required' => 'روش انتخاب محتوای همه سکشن‌ها الزامی است.',
