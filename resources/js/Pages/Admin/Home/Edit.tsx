@@ -334,9 +334,9 @@ function TemplateLivePreview({
                     <div
                         className={`h-full overflow-hidden bg-white shadow-2xl transition-[width] duration-200 ${
                             viewport === "mobile"
-                                ? "w-[390px] max-w-full rounded-[28px] border-[8px] border-slate-800"
+                                ? "w-[390px] max-w-full rounded-[28px] ring-[8px] ring-slate-800"
                                 : viewport === "mobile-small"
-                                  ? "w-[320px] max-w-full rounded-[24px] border-[7px] border-slate-800"
+                                  ? "w-[320px] max-w-full rounded-[24px] ring-[7px] ring-slate-800"
                                   : "w-full max-w-[1366px] rounded-xl border border-slate-800"
                         }`}
                     >
