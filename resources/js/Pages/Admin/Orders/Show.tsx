@@ -165,15 +165,15 @@ export default function Show({ order }: { order: any }) {
                                 </span>
                             </p>
                             <p className="flex justify-between">
-                                <span>ارسال</span>
-                                <span>{money.format(order.delivery_fee)}</span>
+                                <span>{order.delivery_method === "pickup" ? "تحویل حضوری" : "ارسال با پیک"}</span>
+                                <span>{order.delivery_method === "pickup" ? "رایگان" : money.format(order.delivery_fee)}</span>
                             </p>
                             <p className="flex justify-between text-indigo-400">
                                 <span>کیف پول</span>
                                 <span>− {money.format(order.wallet_used)}</span>
                             </p>
                             <p className="flex justify-between border-t border-slate-800 pt-3 text-lg font-black">
-                                <span>قابل پرداخت درب منزل</span>
+                                <span>{order.delivery_method === "pickup" ? "قابل پرداخت" : "قابل پرداخت درب منزل"}</span>
                                 <span>
                                     {money.format(order.payable_amount)}
                                 </span>
@@ -224,10 +224,12 @@ export default function Show({ order }: { order: any }) {
                             {order.status === "processing" && (
                                 <Button
                                     fullWidth
-                                    onPress={() => act("shipped")}
+                                    onPress={() =>
+                                        act(order.delivery_method === "pickup" ? "delivered" : "shipped")
+                                    }
                                     variant="primary"
                                 >
-                                    ثبت ارسال با پیک
+                                    {order.delivery_method === "pickup" ? "ثبت تحویل حضوری" : "ثبت ارسال با پیک"}
                                 </Button>
                             )}
                             {order.status === "shipped" && (
