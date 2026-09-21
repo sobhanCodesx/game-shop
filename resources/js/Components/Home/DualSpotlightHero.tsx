@@ -167,7 +167,7 @@ function ProductSpotlight({
             <span className="absolute inset-0 bg-[radial-gradient(circle_at_82%_10%,rgba(34,211,238,.16),transparent_38%)]" />
 
             <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4 sm:p-5">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex min-w-0 flex-1 flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200/15 bg-cyan-300/10 px-2.5 py-1 text-[9px] font-black tracking-[.12em] text-cyan-100 max-[360px]:px-2 max-[360px]:text-[8px]">
                         <Sparkles size={11} />
                         FEATURED PRODUCT
@@ -191,7 +191,7 @@ function ProductSpotlight({
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex shrink-0 items-center gap-1.5">
                     {visibleProducts.length > 1 && (
                         <button
                             aria-label={
@@ -351,7 +351,7 @@ function ContentSpotlight({
             <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.05),rgba(2,6,23,.18)_35%,rgba(2,6,23,.94)_83%,#020617_100%)]" />
 
             <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4 sm:p-5">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black tracking-[.12em] text-white/90 backdrop-blur">
+                <span className="inline-flex max-w-[calc(100%_-_5.5rem)] items-center gap-1.5 truncate rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black tracking-[.12em] text-white/90 backdrop-blur">
                     {isVideo ? (
                         <Play fill="currentColor" size={10} />
                     ) : (
@@ -474,8 +474,12 @@ export default function DualSpotlightHero({
             </header>
 
             <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
-                <ContentSpotlight items={contentItems} />
-                <ProductSpotlight products={products} />
+                <div className="order-2 lg:order-1">
+                    <ContentSpotlight items={contentItems} />
+                </div>
+                <div className="order-1 lg:order-2">
+                    <ProductSpotlight products={products} />
+                </div>
             </div>
         </section>
     );
