@@ -154,8 +154,8 @@ function ProductSpotlight({
                     alt={product.cover_alt}
                     className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.025]"
                     decoding="async"
-                    fetchPriority="auto"
-                    loading="lazy"
+                    fetchPriority="high"
+                    loading="eager"
                     src={product.cover_url}
                 />
             ) : (
@@ -340,7 +340,8 @@ function ContentSpotlight({
                     alt={item.title}
                     className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.025]"
                     decoding="async"
-                    fetchPriority="high"
+                    fetchPriority="auto"
+                    loading="lazy"
                     src={item.image}
                 />
             ) : (
