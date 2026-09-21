@@ -161,6 +161,13 @@ class ContentAgentMcpController extends Controller
             default => throw new RuntimeException("Unknown PlayNexus tool: {$name}"),
         };
 
+        if ($name === 'query_playnexus_graph' && ! empty($result['errors'])) {
+            return $this->toolError(
+                'PlayNexus GraphQL query failed.',
+                ['errors' => $result['errors']],
+            );
+        }
+
         return [
             'content' => [[
                 'type' => 'text',
