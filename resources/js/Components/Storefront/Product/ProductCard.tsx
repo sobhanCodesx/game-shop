@@ -48,6 +48,7 @@ export default function ProductCard({
                         <img
                             alt={product.cover_alt}
                             className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                            decoding="async"
                             loading="lazy"
                             src={product.cover_url}
                         />
