@@ -8,7 +8,12 @@ import {
     Search,
     X,
 } from "lucide-react";
-import { type PropsWithChildren, useEffect, useState } from "react";
+import {
+    type PropsWithChildren,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
 
 import BrandMark from "../Components/Admin/BrandMark";
 import NotificationPopover from "../Components/Notifications/NotificationPopover";
@@ -34,6 +39,8 @@ export default function AdminLayout({
     actions,
 }: AdminLayoutProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const searchRef = useRef<HTMLInputElement>(null);
     const page = usePage<SharedPageProps>();
     const { auth, admin } = page.props;
     const [rawPath, rawQuery = ""] = page.url.split("?");
@@ -59,6 +66,34 @@ export default function AdminLayout({
         },
         [],
     );
+
+    const searchableNavigation = visibleNavigation.flatMap((entry) =>
+        entry.type === "link" ? [entry] : entry.children,
+    );
+    const normalizedSearch = searchQuery.trim().toLocaleLowerCase("fa");
+    const searchResults = normalizedSearch
+        ? searchableNavigation
+              .filter((item) =>
+                  item.label.toLocaleLowerCase("fa").includes(normalizedSearch),
+              )
+              .slice(0, 7)
+        : [];
+
+    useEffect(() => {
+        const handleShortcut = (event: KeyboardEvent) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+                event.preventDefault();
+                searchRef.current?.focus();
+            }
+            if (event.key === "Escape" && document.activeElement === searchRef.current) {
+                setSearchQuery("");
+                searchRef.current?.blur();
+            }
+        };
+
+        window.addEventListener("keydown", handleShortcut);
+        return () => window.removeEventListener("keydown", handleShortcut);
+    }, []);
 
     const isActive = (item: NavigationLink) => {
         const [targetRawPath, targetRawQuery = ""] = item.href.split("?");
@@ -315,17 +350,67 @@ export default function AdminLayout({
                         <Menu size={20} />
                     </Button>
 
-                    <label className="hidden max-w-md flex-1 items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-2.5 text-slate-500 md:flex">
-                        <Search aria-hidden="true" size={18} />
-                        <input
-                            aria-label="جستجوی سراسری"
-                            className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
-                            placeholder="جستجو در پنل..."
-                        />
-                        <kbd className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-500">
-                            Ctrl K
-                        </kbd>
-                    </label>
+                    <div className="relative hidden max-w-md flex-1 md:block">
+                        <label className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-2.5 text-slate-500 transition focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/10">
+                            <Search aria-hidden="true" size={18} />
+                            <input
+                                aria-autocomplete="list"
+                                aria-controls="admin-search-results"
+                                aria-expanded={searchResults.length > 0}
+                                aria-label="جستجوی سراسری"
+                                className="w-full bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"
+                                onChange={(event) =>
+                                    setSearchQuery(event.target.value)
+                                }
+                                placeholder="جستجو در پنل..."
+                                ref={searchRef}
+                                value={searchQuery}
+                            />
+                            <kbd className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-500">
+                                Ctrl K
+                            </kbd>
+                        </label>
+                        {searchQuery.trim() && (
+                            <div
+                                className="absolute inset-x-0 top-[calc(100%+.5rem)] z-50 overflow-hidden rounded-2xl border border-slate-800 bg-[#0b0f18] p-2 shadow-2xl shadow-black/40"
+                                id="admin-search-results"
+                                role="listbox"
+                            >
+                                {searchResults.length > 0 ? (
+                                    searchResults.map((item) => {
+                                        const Icon = item.icon;
+                                        return (
+                                            <Link
+                                                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
+                                                href={item.href}
+                                                key={item.href}
+                                                onClick={() => setSearchQuery("")}
+                                                role="option"
+                                            >
+                                                <Icon
+                                                    aria-hidden="true"
+                                                    className="text-indigo-400"
+                                                    size={16}
+                                                />
+                                                <span className="min-w-0 flex-1 truncate">
+                                                    {item.label}
+                                                </span>
+                                                <ChevronLeft
+                                                    aria-hidden="true"
+                                                    className="text-slate-600"
+                                                    size={14}
+                                                />
+                                            </Link>
+                                        );
+                                    })
+                                ) : (
+                                    <p className="px-3 py-4 text-center text-xs text-slate-500">
+                                        نتیجه‌ای در منوی مدیریت پیدا نشد.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
 
                     <div className="mr-auto flex items-center gap-2">
                         <NotificationPopover admin />
