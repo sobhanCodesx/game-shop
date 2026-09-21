@@ -3448,31 +3448,18 @@ export default function Home({
                     </section>
                 )}
                 <FreshReleases items={freshContent} />
-                {isDualSpotlight &&
-                    settings.latest_products_enabled &&
-                    latestProducts.length > 0 && (
-                        <section
-                            className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 pb-6 pt-2 sm:px-4 sm:pb-9"
+                {templateRuntime.latestPlacement === "after_fresh" &&
+                    settings.latest_products_enabled && (
+                        <TemplateProductSection
+                            dense={
+                                templateRuntime.productRailDensity === "dense"
+                            }
+                            eyebrow={templateRuntime.latestEyebrow}
                             id="latest-products"
-                        >
-                            <div className="mb-4 flex items-end justify-between gap-4">
-                                <div>
-                                    <p className="text-[10px] font-black tracking-[.18em] text-emerald-500 sm:text-xs">
-                                        FRESH IN STORE
-                                    </p>
-                                    <h2 className="mt-1 text-xl font-black sm:text-2xl">
-                                        {settings.latest_products_title}
-                                    </h2>
-                                </div>
-                                <Link
-                                    className="text-xs font-black text-indigo-500"
-                                    href="/shop"
-                                >
-                                    فروشگاه کامل
-                                </Link>
-                            </div>
-                            <ProductGrid products={latestProducts} />
-                        </section>
+                            linkLabel={templateRuntime.latestLinkLabel}
+                            products={latestProducts}
+                            title={settings.latest_products_title}
+                        />
                     )}
                 <ChannelRail channels={channels} />
                 {(latestFeed.length > 0 || latestStudios.length > 0) && (
@@ -3684,7 +3671,8 @@ export default function Home({
                             </div>
                         </section>
                     )}
-                {!usesTemplateHero && settings.featured_products_enabled && (
+                {templateRuntime.featuredPlacement === "default" &&
+                    settings.featured_products_enabled && (
                     <section
                         className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-10"
                         id="featured-products"
@@ -3700,7 +3688,8 @@ export default function Home({
                         <ProductGrid products={featuredProducts} />
                     </section>
                 )}
-                {!usesTemplateHero && settings.latest_products_enabled && (
+                {templateRuntime.latestPlacement === "default" &&
+                    settings.latest_products_enabled && (
                     <section
                         className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-36 px-3 py-7 sm:px-4 sm:py-10"
                         id="latest-products"
