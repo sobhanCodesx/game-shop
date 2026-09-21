@@ -991,18 +991,6 @@ html[data-storefront-theme="light"]
     contain-intrinsic-size: auto 680px;
 }
 
-/* Repeated storefront cards can stay mounted for SEO/accessibility while the
-   browser skips their layout/paint when they are far outside the viewport. */
-.pn-card-visibility {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 420px;
-}
-
-.pn-square-visibility {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 260px;
-}
-
 @media (max-width: 640px) {
     .pn-render-zone,
     .pn-deferred-zone {
