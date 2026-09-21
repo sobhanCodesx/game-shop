@@ -52,7 +52,7 @@ export default function NewsletterSignup({
                                 aria-label="ایمیل خبرنامه"
                                 className="min-w-0"
                                 dir="ltr"
-                                isInvalid={Boolean(errors.email)}
+                                aria-invalid={Boolean(errors.email)}
                                 onChange={(event) =>
                                     setData("email", event.target.value)
                                 }
