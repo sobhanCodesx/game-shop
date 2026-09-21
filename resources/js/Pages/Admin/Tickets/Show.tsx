@@ -23,13 +23,7 @@ const exchangeLabels: Record<string, string> = {
     cancelled: "لغوشده",
     expired: "منقضی‌شده",
 };
-export default function Show({
-    ticket,
-    exchangeProducts,
-}: {
-    ticket: any;
-    exchangeProducts: Array<{ id: number; title: string }>;
-}) {
+export default function Show({ ticket }: { ticket: any }) {
     const attachmentCount = ticket.replies.reduce(
         (total: number, reply: any) => total + (reply.attachments?.length ?? 0),
         0,
@@ -167,10 +161,7 @@ export default function Show({
                                 {["pending_review", "offered"].includes(
                                     ticket.exchange_status,
                                 ) && (
-                                    <OfferForm
-                                        ticket={ticket}
-                                        products={exchangeProducts}
-                                    />
+                                    <OfferForm ticket={ticket} />
                                 )}
                                 {ticket.exchange_status ===
                                     "attached_to_order" && (
@@ -278,18 +269,8 @@ export default function Show({
     );
 }
 
-function OfferForm({
-    ticket,
-    products,
-}: {
-    ticket: any;
-    products: Array<{ id: number; title: string }>;
-}) {
-    const form = useForm<{
-        target_product_id: number | "";
-        exchange_offer_amount: number | "";
-    }>({
-        target_product_id: ticket.target_product_id ?? ticket.product_id ?? "",
+function OfferForm({ ticket }: { ticket: any }) {
+    const form = useForm<{ exchange_offer_amount: number | "" }>({
         exchange_offer_amount: ticket.exchange_offer_amount
             ? Number(ticket.exchange_offer_amount)
             : "",
@@ -301,35 +282,19 @@ function OfferForm({
                 form.patch(`/admin/tickets/${ticket.id}/exchange-offer`);
             }}
         >
-            <label className="mb-2 block text-sm font-bold">
-                محصول مقصد مورد تأیید
-            </label>
-            <select
-                className="mb-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
-                onChange={(e) =>
-                    form.setData(
-                        "target_product_id",
-                        e.target.value === "" ? "" : Number(e.target.value),
-                    )
-                }
-                value={form.data.target_product_id}
-            >
-                <option value="">انتخاب محصول مقصد</option>
-                {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                        {product.title}
-                    </option>
-                ))}
-            </select>
-            {form.errors.target_product_id && (
-                <p className="mb-2 text-xs text-red-400">
-                    {form.errors.target_product_id}
+            <div className="mb-3 rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-3 text-sm leading-7">
+                <span className="block text-xs text-slate-400">
+                    محصولی که اعتبار روی آن اعمال می‌شود
+                </span>
+                <strong>{ticket.product?.title}</strong>
+                <p className="mt-1 text-xs text-slate-400">
+                    پس از تأیید مشتری، مبلغ توافقی فقط از قیمت همین محصول کم می‌شود.
                 </p>
-            )}
+            </div>
             <PriceInput
-                description="مبلغی که بابت کالای مشتری از قیمت محصول مقصد کسر می‌شود."
+                description="مبلغی که پس از تأیید مشتری از قیمت همین بازی کسر می‌شود."
                 error={form.errors.exchange_offer_amount}
-                label="مبلغ پیشنهادی"
+                label="مبلغ توافق پیشنهادی"
                 onChange={(value) =>
                     form.setData("exchange_offer_amount", value)
                 }
