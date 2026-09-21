@@ -3,5 +3,6 @@
   "tool": "query_playnexus_graph",
   "arguments": {
     "query": "query { games(first: 50, search: \"Wolverine\", orderBy: \"id\", orderDir: \"asc\") { nodes { id name slug status releaseDate developer publisher studio { id name slug } platforms { id name slug } } pageInfo { total } } }"
-  }
+  },
+  "requested_at": "2026-09-21T08:18:00+03:30"
 }
