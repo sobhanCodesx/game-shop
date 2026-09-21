@@ -27,6 +27,11 @@ class ExchangeService
             if (! $targetProduct->trade_enabled) {
                 throw ValidationException::withMessages(['target_product_id' => 'محصول مقصد باید امکان معاوضه فعال داشته باشد.']);
             }
+            if ((int) $locked->product_id !== (int) $targetProduct->id) {
+                throw ValidationException::withMessages([
+                    'target_product_id' => 'اعتبار معاوضه فقط باید روی همان محصولی اعمال شود که مشتری برای آن درخواست معاوضه ثبت کرده است.',
+                ]);
+            }
             $locked->target_product_id = $targetProduct->id;
             $locked->update(['exchange_offer_amount' => $amount, 'exchange_status' => 'offered', 'exchange_credit_expires_at' => $expiry, 'exchange_offer_responded_at' => null]);
 
