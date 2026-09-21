@@ -12,6 +12,7 @@ import {
     ArrowUpLeft,
     Clock3,
     PackageOpen,
+    Pause,
     Radio,
     Newspaper,
     Radar,
@@ -2871,10 +2872,17 @@ function CampaignBanner({
     variant: "public" | "signed-in";
 }) {
     const [activeSlide, setActiveSlide] = useState(0);
+    const [paused, setPaused] = useState(false);
     const touchStartX = useRef<number | null>(null);
 
     useEffect(() => {
-        if (slides.length < 2) return;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            setPaused(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (slides.length < 2 || paused) return;
 
         const timer = window.setInterval(() => {
             if (document.visibilityState !== "visible") return;
@@ -2882,7 +2890,7 @@ function CampaignBanner({
         }, 6000);
 
         return () => window.clearInterval(timer);
-    }, [slides.length]);
+    }, [paused, slides.length]);
 
     useEffect(() => {
         if (activeSlide < slides.length) return;
@@ -2928,7 +2936,10 @@ function CampaignBanner({
 
         const distance = clientX - touchStartX.current;
         touchStartX.current = null;
-        if (Math.abs(distance) > 45) go(distance > 0 ? -1 : 1);
+        if (Math.abs(distance) > 45) {
+            setPaused(true);
+            go(distance > 0 ? -1 : 1);
+        }
     };
 
     const shellClass =
@@ -2939,6 +2950,7 @@ function CampaignBanner({
     return (
         <div
             aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
+            aria-roledescription="carousel"
             className="pn-stable-slider group relative touch-pan-y"
             onTouchEnd={(event) =>
                 finishSwipe(event.changedTouches[0].clientX)
@@ -3005,20 +3017,36 @@ function CampaignBanner({
             </div>
 
             {slides.length > 1 && (
-                <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/8 bg-black/45 px-2.5 py-1.5 shadow-md backdrop-blur-md sm:bottom-2.5 sm:gap-2 sm:px-3">
+                <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-white/8 bg-black/45 px-1.5 py-1 shadow-md backdrop-blur-md sm:bottom-2.5">
+                    <button
+                        aria-label={
+                            paused
+                                ? "ادامه چرخش خودکار بنرها"
+                                : "توقف چرخش خودکار بنرها"
+                        }
+                        className="grid size-8 place-items-center rounded-full text-white/80 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                        onClick={() => setPaused((current) => !current)}
+                        type="button"
+                    >
+                        {paused ? <Play size={12} /> : <Pause size={12} />}
+                    </button>
                     {slides.map((item, index) => (
                         <button
+                            aria-current={index === activeSlide ? "true" : undefined}
                             aria-label={`اسلاید ${index + 1}`}
-                            className={`relative h-1.5 w-7 overflow-hidden rounded-full bg-[var(--store-muted)]/20 transition-colors duration-200 ${index === activeSlide ? "bg-cyan-300/20" : "hover:bg-indigo-400/20"}`}
+                            className="grid size-8 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
                             key={item.id}
-                            onClick={() => setActiveSlide(index)}
+                            onClick={() => {
+                                setPaused(true);
+                                setActiveSlide(index);
+                            }}
                             type="button"
                         >
                             <span
-                                className={`absolute inset-y-0 right-0 rounded-full transition-[width,background-color] duration-300 ${
+                                className={`h-1.5 rounded-full transition-all duration-300 ${
                                     index === activeSlide
-                                        ? "w-full bg-cyan-300"
-                                        : "w-1.5 bg-[var(--store-muted)]/35"
+                                        ? "w-6 bg-cyan-300"
+                                        : "w-2 bg-white/25"
                                 }`}
                             />
                         </button>
