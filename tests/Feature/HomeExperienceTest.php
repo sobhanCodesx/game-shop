@@ -70,6 +70,44 @@ class HomeExperienceTest extends TestCase
                 ->where('homeExperience.source', 'system'));
     }
 
+    public function test_admin_can_preview_an_available_template_without_persisting_it(): void
+    {
+        HomeSetting::query()->create([
+            'id' => 1,
+            'content' => ['home_template' => 'default'],
+        ]);
+        app(HomeExperienceService::class)->invalidate();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->get('/?preview_home_template=storefront')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('homeExperience.system_template', 'default')
+                ->where('homeExperience.effective_template', 'storefront')
+                ->where('homeExperience.source', 'preview'));
+
+        $this->assertSame(
+            'default',
+            HomeSetting::query()->findOrFail(1)->content['home_template'],
+        );
+    }
+
+    public function test_guest_cannot_override_home_template_with_preview_query(): void
+    {
+        HomeSetting::query()->create([
+            'id' => 1,
+            'content' => ['home_template' => 'default'],
+        ]);
+        app(HomeExperienceService::class)->invalidate();
+
+        $this->get('/?preview_home_template=storefront')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('homeExperience.effective_template', 'default')
+                ->where('homeExperience.source', 'system'));
+    }
+
     public function test_storefront_loads_more_products_than_the_default_home_limit(): void
     {
         HomeSetting::query()->create([
