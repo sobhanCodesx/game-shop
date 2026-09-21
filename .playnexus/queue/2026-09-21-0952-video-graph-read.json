@@ -2,5 +2,7 @@
   "job_id": "2026-09-21-0952-video-graph-read",
   "tool": "query_playnexus_graph",
   "purpose": "video_automation_read_analysis_dedupe",
-  "query": "query VideoAutomationRead { contents(first: 40, types: [VIDEO], orderBy: PUBLISHED_AT_DESC) { nodes { id type title slug publishedAt status linkUrl game { id name slug } media { type url thumbnailUrl mimeType } } } games(first: 40) { nodes { id name slug collections { nodes { id title slug } } } } }"
+  "arguments": {
+    "query": "query VideoAutomationRead { contents(first: 40, types: [VIDEO], orderBy: PUBLISHED_AT_DESC) { nodes { id type title slug publishedAt status linkUrl game { id name slug } media { type url thumbnailUrl mimeType } } } games(first: 40) { nodes { id name slug collections { nodes { id title slug } } } } }"
+  }
 }
