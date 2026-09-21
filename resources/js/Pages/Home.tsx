@@ -438,6 +438,61 @@ function ProductGrid({
     );
 }
 
+function TemplateProductSection({
+    id,
+    title,
+    eyebrow,
+    linkLabel,
+    products,
+    dense = false,
+    compactTop = false,
+}: {
+    id: "featured-products" | "latest-products";
+    title: string;
+    eyebrow: string;
+    linkLabel: string;
+    products: StorefrontProduct[];
+    dense?: boolean;
+    compactTop?: boolean;
+}) {
+    if (!products.length) return null;
+
+    return (
+        <section
+            className={`pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 sm:px-4 ${
+                compactTop
+                    ? "pb-5 pt-1 sm:pb-8"
+                    : "pb-6 pt-2 sm:pb-9"
+            }`}
+            id={id}
+        >
+            <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                    <p
+                        className={`text-[10px] font-black tracking-[.18em] sm:text-xs ${
+                            id === "latest-products"
+                                ? "text-emerald-500"
+                                : "text-cyan-500"
+                        }`}
+                    >
+                        {eyebrow}
+                    </p>
+                    <h2 className="mt-1 text-xl font-black sm:text-2xl lg:text-3xl">
+                        {title}
+                    </h2>
+                </div>
+                <Link
+                    className="text-xs font-black text-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+                    href="/shop"
+                >
+                    {linkLabel}
+                </Link>
+            </div>
+            <ProductGrid dense={dense} products={products} />
+        </section>
+    );
+}
+
 const durationLabel = (seconds?: number | null) =>
     seconds
         ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
