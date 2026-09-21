@@ -179,6 +179,8 @@ class HomeSettingsTest extends TestCase
                 ->where('settings.home_template', 'default')
                 ->where('homeTemplates.0.key', 'default')
                 ->where('homeTemplates.0.available', true)
+                ->where('homeTemplates.1.key', 'dual_spotlight')
+                ->where('homeTemplates.1.available', true)
                 ->has('homeTemplates', 6));
     }
 
