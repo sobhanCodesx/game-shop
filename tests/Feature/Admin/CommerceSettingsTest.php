@@ -14,7 +14,7 @@ class CommerceSettingsTest extends TestCase
 
     public function test_commerce_update_preserves_home_settings_and_invalidates_home_cache(): void
     {
-        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin']);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
         HomeSetting::query()->create([
             'id' => 1,
             'content' => [
