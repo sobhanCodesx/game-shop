@@ -51,8 +51,14 @@ class CheckoutController extends Controller
         $selectedExchangeId = $exchanges->contains('id', $request->integer('exchange_request_id'))
             ? $request->integer('exchange_request_id')
             : ($exchanges->count() === 1 ? (int) $exchanges->first()['id'] : null);
+        $exchangeError = null;
         if ($selectedExchangeId) {
-            $preview = $orders->preview($cart, $request->user(), exchangeRequestId: $selectedExchangeId);
+            try {
+                $preview = $orders->preview($cart, $request->user(), exchangeRequestId: $selectedExchangeId);
+            } catch (ValidationException $exception) {
+                $exchangeError = collect($exception->errors())->flatten()->first();
+                $selectedExchangeId = null;
+            }
         }
 
         return Inertia::render('Checkout/Index', [
@@ -61,6 +67,7 @@ class CheckoutController extends Controller
             'walletBalance' => (int) $request->user()->wallet_balance,
             'availableExchanges' => $exchanges,
             'selectedExchangeId' => $selectedExchangeId,
+            'exchangeError' => $exchangeError,
             'pickupAddress' => $settings->all()['pickup_address'],
             'summary' => collect($preview)->except('items'),
         ]);
