@@ -1,5 +1,0 @@
-{
-  "tool": "describe_playnexus_graph",
-  "arguments": {},
-  "purpose": "inspect_graph_schema_for_daily_game_dedupe"
-}
