@@ -93,6 +93,9 @@ export default function Videos({
                                     <img
                                         alt={featured.title}
                                         className="size-full object-cover transition duration-700 group-hover:scale-[1.025]"
+                                        decoding="async"
+                                        fetchPriority="high"
+                                        loading="eager"
                                         src={featured.thumbnail_url}
                                     />
                                 ) : (
