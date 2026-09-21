@@ -2955,6 +2955,7 @@ function CampaignBanner({
             aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
             aria-roledescription="carousel"
             className="pn-stable-slider group relative touch-pan-y"
+            role="region"
             onTouchEnd={(event) =>
                 finishSwipe(event.changedTouches[0].clientX)
             }
@@ -3298,6 +3299,7 @@ export default function Home({
                     <>
                         <DualSpotlightHero
                             contentItems={dualSpotlightContent}
+                            heading={seo.heading}
                             products={dualSpotlightProducts}
                         />
                         {settings.featured_products_enabled &&
@@ -3332,6 +3334,7 @@ export default function Home({
                         <StorefrontCommerceHero
                             categories={categories}
                             contentItems={dualSpotlightContent}
+                            heading={seo.heading}
                             latestProducts={latestProducts}
                             products={featuredProducts}
                         />
