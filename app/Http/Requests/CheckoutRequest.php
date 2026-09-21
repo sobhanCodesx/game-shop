@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class CheckoutRequest extends FormRequest
 {
@@ -16,18 +17,32 @@ class CheckoutRequest extends FormRequest
     {
         return [
             'address_mode' => ['required', Rule::in(['saved', 'new'])],
-            'address_id' => ['nullable', 'required_if:address_mode,saved', Rule::exists('user_addresses', 'id')->where('user_id', $this->user()->id)],
-            'address' => ['nullable', 'required_if:address_mode,new', 'array'],
-            'address.recipient_name' => ['required_if:address_mode,new', 'string', 'max:100'],
-            'address.phone' => ['required_if:address_mode,new', 'string', 'max:20'],
-            'address.province' => ['required_if:address_mode,new', 'string', Rule::in(['تهران'])],
-            'address.city' => ['required_if:address_mode,new', 'string', 'max:80'],
-            'address.postal_code' => ['nullable', 'digits:10'],
-            'address.address_line' => ['required_if:address_mode,new', 'string', 'max:1000'],
-            'address.plaque' => ['nullable', 'string', 'max:20'], 'address.unit' => ['nullable', 'string', 'max:20'],
+            'address_id' => ['exclude_unless:address_mode,saved', 'required', Rule::exists('user_addresses', 'id')->where('user_id', $this->user()->id)],
+            'address' => ['exclude_unless:address_mode,new', 'required', 'array'],
+            'address.recipient_name' => ['exclude_unless:address_mode,new', 'required', 'string', 'max:100'],
+            'address.phone' => ['exclude_unless:address_mode,new', 'required', 'string', 'max:20'],
+            'address.province' => ['exclude_unless:address_mode,new', 'required', 'string', Rule::in(['تهران'])],
+            'address.city' => ['exclude_unless:address_mode,new', 'required', 'string', 'max:80'],
+            'address.postal_code' => ['exclude_unless:address_mode,new', 'nullable', 'digits:10'],
+            'address.address_line' => ['exclude_unless:address_mode,new', 'required', 'string', 'max:1000'],
+            'address.plaque' => ['exclude_unless:address_mode,new', 'nullable', 'string', 'max:20'], 'address.unit' => ['exclude_unless:address_mode,new', 'nullable', 'string', 'max:20'],
             'coupon_code' => ['nullable', 'string', 'max:50'], 'use_wallet' => ['boolean'], 'save_address' => ['boolean'],
             'exchange_request_id' => ['nullable', 'integer'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $user = $this->user();
+
+            if ($user?->google_id && ! $user->phone_verified_at) {
+                $validator->errors()->add(
+                    'phone_verification',
+                    'برای ثبت سفارش ابتدا شماره موبایل حساب را با کد پیامکی تأیید کنید.',
+                );
+            }
+        });
     }
 
     public function messages(): array
