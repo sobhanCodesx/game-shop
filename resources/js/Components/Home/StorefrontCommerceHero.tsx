@@ -232,7 +232,7 @@ function ContentPulse({ items }: { items: StorefrontPulseItem[] }) {
                     <ArrowLeft size={12} />
                 </Link>
             </header>
-            <div className="home-slider -mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="home-slider -mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {items.slice(0, 6).map((item) => (
                     <Link
                         className="group relative aspect-[16/10] w-[72vw] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-[18px] bg-slate-950 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-300 sm:w-[250px]"
@@ -345,7 +345,7 @@ export default function StorefrontCommerceHero({
             {lead ? (
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(320px,.75fr)]">
                     <LeadProduct product={lead} />
-                    <aside className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-1">
+                    <aside className="home-slider -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-1">
                         {quickProducts.map((product) => (
                             <QuickProductCard
                                 featured={featured.some(
@@ -375,7 +375,7 @@ export default function StorefrontCommerceHero({
             )}
 
             {categories.length > 0 && (
-                <div className="home-slider mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="home-slider mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {categories.slice(0, 8).map((category) => (
                         <Link
                             className="flex min-w-[150px] shrink-0 snap-start items-center gap-2.5 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:border-indigo-500/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
