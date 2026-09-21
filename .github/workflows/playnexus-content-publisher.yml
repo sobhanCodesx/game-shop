@@ -95,6 +95,19 @@ jobs:
             exit 1
           fi
 
+      - name: Ensure media probe tools
+        if: ${{ steps.jobs.outputs.has_jobs == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
+          python3 -m py_compile scripts/playnexus_publish.py
+
       - name: Send jobs to PlayNexus
         if: ${{ steps.jobs.outputs.has_jobs == 'true' }}
         shell: bash
