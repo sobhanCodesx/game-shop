@@ -1,0 +1,7 @@
+{
+  "tool": "query_playnexus_graph",
+  "query": "{ feeds(first: 15, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title slug status feedType feedBadge publishedAt game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }",
+  "variables": {},
+  "purpose": "feed_engine_dedupe",
+  "requested_at": "2026-09-21T09:19:42+03:30"
+}
