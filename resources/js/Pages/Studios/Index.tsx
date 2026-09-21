@@ -49,7 +49,7 @@ export default function StudioIndex({
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {studios.data.map((studio) => (
                             <Link
-                                className="pn-card-visibility group overflow-hidden rounded-3xl border border-[var(--store-border)] bg-[var(--store-panel)] transition duration-200 hover:-translate-y-1 hover:border-indigo-500/50 hover:shadow-xl"
+                                className="group overflow-hidden rounded-3xl border border-[var(--store-border)] bg-[var(--store-panel)] transition duration-200 hover:-translate-y-1 hover:border-indigo-500/50 hover:shadow-xl"
                                 href={studio.url}
                                 key={studio.id}
                             >

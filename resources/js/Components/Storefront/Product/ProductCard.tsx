@@ -36,7 +36,7 @@ export default function ProductCard({
     } as const;
     return (
         <Link
-            className="pn-card-visibility group block h-full rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+            className="group block h-full rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
             href={product.url}
         >
             <Card

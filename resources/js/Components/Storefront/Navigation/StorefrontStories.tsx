@@ -29,12 +29,18 @@ function loadSeenStories(): Set<number> {
     }
 }
 
-function StoryThumbnail({ story }: { story: StorefrontStory }) {
+function StoryThumbnail({
+    story,
+    priority = false,
+}: {
+    story: StorefrontStory;
+    priority?: boolean;
+}) {
     const video = useRef<HTMLVideoElement>(null);
-    const [loadVideoMetadata, setLoadVideoMetadata] = useState(false);
+    const [loadVideoMetadata, setLoadVideoMetadata] = useState(priority);
 
     useEffect(() => {
-        if (story.thumbnail_url || !video.current) return;
+        if (priority || story.thumbnail_url || !video.current) return;
 
         const element = video.current;
         if (!("IntersectionObserver" in window)) {
@@ -54,7 +60,7 @@ function StoryThumbnail({ story }: { story: StorefrontStory }) {
         observer.observe(element);
 
         return () => observer.disconnect();
-    }, [story.id, story.thumbnail_url]);
+    }, [priority, story.id, story.thumbnail_url]);
 
     if (story.thumbnail_url) {
         return (
@@ -63,8 +69,8 @@ function StoryThumbnail({ story }: { story: StorefrontStory }) {
                 aria-hidden="true"
                 className="size-full object-cover transition duration-300 group-hover:scale-110"
                 decoding="async"
-                fetchPriority="low"
-                loading="lazy"
+                fetchPriority={priority ? "auto" : "low"}
+                loading={priority ? "eager" : "lazy"}
                 src={story.thumbnail_url}
             />
         );
@@ -186,7 +192,7 @@ export default function StorefrontStories({
                                     className={`relative mx-auto block size-[58px] rounded-full bg-gradient-to-tr p-[3px] transition duration-300 group-hover:scale-105 sm:size-[66px] ${seen ? "from-slate-500 via-slate-600 to-slate-500 opacity-75" : "from-amber-300 via-fuchsia-500 to-violet-600 shadow-lg shadow-fuchsia-500/25 ring-2 ring-fuchsia-500/15"}`}
                                 >
                                     <span className="block size-full overflow-hidden rounded-full border-[3px] border-[var(--store-header)] bg-slate-900">
-                                        <StoryThumbnail story={item} />
+                                        <StoryThumbnail priority={index < 10} story={item} />
                                     </span>
                                     {!seen && (
                                         <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border-2 border-[var(--store-header)] bg-gradient-to-r from-fuchsia-600 to-violet-600 px-1.5 py-0.5 text-[7px] font-black leading-none text-white shadow-md">
