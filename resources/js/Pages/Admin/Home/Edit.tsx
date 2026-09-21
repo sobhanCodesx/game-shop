@@ -37,6 +37,7 @@ import {
 } from "../../../services/chunkedUpload";
 
 interface HomeSettings {
+    home_template: string;
     announcement_enabled: boolean;
     announcement_text: string;
     announcement_url: string;
@@ -93,8 +94,17 @@ interface HomeSection {
     is_active: boolean;
 }
 
+interface HomeTemplate {
+    key: string;
+    label: string;
+    focus: "balanced" | "products" | "content";
+    description: string;
+    available: boolean;
+}
+
 interface Props {
     settings: HomeSettings;
+    homeTemplates: HomeTemplate[];
     slides: HomeSlide[];
     sections: HomeSection[];
     categories: Array<{ id: number; name: string }>;
@@ -144,6 +154,7 @@ const previewUrl = (file?: File, stored?: string) =>
 
 export default function Edit({
     settings,
+    homeTemplates,
     slides,
     sections,
     categories,
@@ -840,6 +851,81 @@ export default function Edit({
                 </Card>
 
                 <div className={`${activeTab === "general" ? "grid" : "hidden"} gap-6 xl:grid-cols-2`}>
+                    <Card
+                        className="border border-slate-800 bg-slate-900/60 xl:col-span-2"
+                        variant="secondary"
+                    >
+                        <Card.Header className="border-b border-slate-800 p-5">
+                            <div className="flex items-center gap-3">
+                                <span className="grid size-11 place-items-center rounded-2xl bg-indigo-500/10 text-indigo-400">
+                                    <LayoutTemplate size={21} />
+                                </span>
+                                <div>
+                                    <Card.Title>قالب صفحه اصلی</Card.Title>
+                                    <Card.Description>
+                                        قالب فعلی همیشه fallback امن است. قالب‌های جدید بعد از تکمیل نسخه موبایل و دسکتاپ قابل انتخاب می‌شوند.
+                                    </Card.Description>
+                                </div>
+                            </div>
+                        </Card.Header>
+                        <Card.Content className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-3">
+                            {homeTemplates.map((template) => {
+                                const selected =
+                                    data.settings.home_template === template.key;
+                                const focusLabel =
+                                    template.focus === "products"
+                                        ? "محصول‌محور"
+                                        : template.focus === "content"
+                                          ? "محتوامحور"
+                                          : "متعادل";
+
+                                return (
+                                    <button
+                                        className={`rounded-2xl border p-4 text-right transition ${selected ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-950/20" : "border-slate-800 bg-slate-950/50"} ${template.available ? "hover:border-indigo-500/60" : "cursor-not-allowed opacity-60"}`}
+                                        disabled={!template.available}
+                                        key={template.key}
+                                        onClick={() =>
+                                            template.available &&
+                                            updateSetting(
+                                                "home_template",
+                                                template.key,
+                                            )
+                                        }
+                                        type="button"
+                                    >
+                                        <span className="flex items-start justify-between gap-3">
+                                            <span>
+                                                <strong className="block text-sm text-white">
+                                                    {template.label}
+                                                </strong>
+                                                <small className="mt-1 block text-[10px] font-bold text-indigo-300">
+                                                    {focusLabel}
+                                                </small>
+                                            </span>
+                                            <Chip
+                                                color={
+                                                    selected
+                                                        ? "accent"
+                                                        : undefined
+                                                }
+                                                size="sm"
+                                                variant="soft"
+                                            >
+                                                {selected
+                                                    ? "فعال"
+                                                    : template.available
+                                                      ? "آماده"
+                                                      : "در حال ساخت"}
+                                            </Chip>
+                                        </span>
+                                        <p className="mt-3 text-xs leading-6 text-slate-400">
+                                            {template.description}
+                                        </p>
+                                    </button>
+                                );
+                            })}
+                        </Card.Content>
+                    </Card>
                     <Card
                         className="border border-slate-800 bg-slate-900/60"
                         variant="secondary"
