@@ -28,7 +28,23 @@ export default function StorefrontNavigation({
 }: Props) {
     const [panel, setPanel] = useState<StorefrontPanel>(null);
     const [hasFreshContent, setHasFreshContent] = useState(false);
+    // Render both navigation shells for SSR/hydration stability, then prune
+    // the CSS-hidden tree after hydration. This cuts persistent DOM/memory
+    // without changing the visible layout at any breakpoint.
+    const [viewportNavigation, setViewportNavigation] = useState<
+        "both" | "desktop" | "mobile"
+    >("both");
     const closePanel = useCallback(() => setPanel(null), []);
+    useEffect(() => {
+        const media = window.matchMedia("(min-width: 1024px)");
+        const sync = () =>
+            setViewportNavigation(media.matches ? "desktop" : "mobile");
+
+        sync();
+        media.addEventListener("change", sync);
+        return () => media.removeEventListener("change", sync);
+    }, []);
+
     useEffect(() => {
         const openSearch = (event: KeyboardEvent) => {
             if (
@@ -67,22 +83,26 @@ export default function StorefrontNavigation({
                 </Link>
             )}
             <div className="sticky top-0 z-40">
-                <DesktopNavigation
-                    categories={categories}
-                    onOpenAccount={() => setPanel("account")}
-                    onOpenSearch={() => setPanel("search")}
-                    onToggleTheme={onToggleTheme}
-                    theme={theme}
-                    user={user}
-                    hasFreshContent={hasFreshContent}
-                />
-                <MobileNavigation
-                    activePanel={panel}
-                    onOpenPanel={setPanel}
-                    onToggleTheme={onToggleTheme}
-                    theme={theme}
-                    hasFreshContent={hasFreshContent}
-                />
+                {viewportNavigation !== "mobile" && (
+                    <DesktopNavigation
+                        categories={categories}
+                        onOpenAccount={() => setPanel("account")}
+                        onOpenSearch={() => setPanel("search")}
+                        onToggleTheme={onToggleTheme}
+                        theme={theme}
+                        user={user}
+                        hasFreshContent={hasFreshContent}
+                    />
+                )}
+                {viewportNavigation !== "desktop" && (
+                    <MobileNavigation
+                        activePanel={panel}
+                        onOpenPanel={setPanel}
+                        onToggleTheme={onToggleTheme}
+                        theme={theme}
+                        hasFreshContent={hasFreshContent}
+                    />
+                )}
             </div>
             <StorefrontStories stories={stories} />
             {panel && (
