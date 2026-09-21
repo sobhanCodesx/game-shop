@@ -1,0 +1,12 @@
+{
+  "job_id": "feed-engine-20260921-2102-townfall-media",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 64,
+    "slot": "media",
+    "source_url": "https://blog.playstation.com/tachyon/2086/09/fc6106a64932c9dfe6b3d7d6a159d6e823befd62.jpg?crop_strategy=smart&resize=1088%2C612",
+    "name": "silent-hill-townfall-first-person.jpg",
+    "alt": "نمای اول‌شخص و دستگاه CRTV در Silent Hill Townfall"
+  }
+}
