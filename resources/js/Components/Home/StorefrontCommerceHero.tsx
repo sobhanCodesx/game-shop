@@ -28,6 +28,7 @@ interface Props {
     latestProducts: StorefrontProduct[];
     categories: NavigationCategory[];
     contentItems: StorefrontPulseItem[];
+    heading: string;
 }
 
 const money = new Intl.NumberFormat("fa-IR");
@@ -275,6 +276,7 @@ export default function StorefrontCommerceHero({
     latestProducts,
     categories,
     contentItems,
+    heading,
 }: Props) {
     const featured = useMemo(
         () =>
@@ -325,11 +327,10 @@ export default function StorefrontCommerceHero({
                         STOREFRONT MODE
                     </p>
                     <h1 className="mt-1 text-xl font-black sm:text-3xl">
-                        فروشگاه در اولویت، محتوا همیشه در جریان
+                        {heading}
                     </h1>
                     <p className="mt-1 max-w-2xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm">
-                        وقتی کاتالوگ بزرگ می‌شود، محصول‌ها زودتر دیده می‌شوند؛
-                        ولی Pulse محتوایی PlayNexus حذف نمی‌شود.
+                        فروشگاه در اولویت، محتوا همیشه در جریان؛ وقتی کاتالوگ بزرگ می‌شود محصول‌ها زودتر دیده می‌شوند، ولی Pulse محتوایی PlayNexus حذف نمی‌شود.
                     </p>
                 </div>
                 <Link
