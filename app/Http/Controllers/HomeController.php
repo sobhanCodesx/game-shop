@@ -38,6 +38,7 @@ class HomeController extends Controller
             ? $request->string('preview_home_template')->toString()
             : '';
         $templateConfig = config("home-experience.templates.{$previewTemplate}");
+        $isAdminTemplatePreview = false;
         if (
             $previewTemplate !== ''
             && is_array($templateConfig)
@@ -49,6 +50,7 @@ class HomeController extends Controller
                 'focus' => $templateConfig['focus'] ?? 'balanced',
                 'source' => 'preview',
             ];
+            $isAdminTemplatePreview = $request->boolean('admin_template_preview');
         }
 
         $limit = (int) $settings['products_limit'];
@@ -59,10 +61,19 @@ class HomeController extends Controller
         $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
         $latestStudios = collect();
-        $radarItems = collect($radar->linkedSnapshot()['items'] ?? []);
-        $personalizedHome = $this->personalizedHome($request, $feed, $relevance, $gameEvents, $watch, $radarItems);
+        $radarItems = $isAdminTemplatePreview
+            ? collect()
+            : collect($radar->linkedSnapshot()['items'] ?? []);
+        $personalizedHome = $isAdminTemplatePreview
+            ? null
+            : $this->personalizedHome($request, $feed, $relevance, $gameEvents, $watch, $radarItems);
 
-        if (Schema::hasTable('studios') && Schema::hasTable('games') && Schema::hasColumn('games', 'studio_id')) {
+        if (
+            ! $isAdminTemplatePreview
+            && Schema::hasTable('studios')
+            && Schema::hasTable('games')
+            && Schema::hasColumn('games', 'studio_id')
+        ) {
             $latestStudios = Studio::query()->where('status', 'active')
                 ->withCount(['games' => fn ($query) => $query->whereIn('status', ['active', 'published'])])
                 ->latest()->latest('id')->limit(10)->get()
@@ -145,7 +156,9 @@ class HomeController extends Controller
             ...$seo,
             'personalizedHome' => $personalizedHome,
             'homeExperience' => $homeExperienceState,
-            'latestFeed' => $feed->latestImportantPreview($request, 8),
+            'latestFeed' => $isAdminTemplatePreview
+                ? collect()
+                : $feed->latestImportantPreview($request, 8),
             'latestStudios' => $latestStudios,
             'gameRadar' => (function () use ($radarItems) {
                 $items = $radarItems;
