@@ -12,6 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class ExchangeService
 {
+    public function __construct(private readonly ProductPriceService $prices) {}
     public function offer(Ticket $ticket, Product $targetProduct, int $amount, ?CarbonInterface $expiresAt = null): Ticket
     {
         return DB::transaction(function () use ($ticket, $targetProduct, $amount, $expiresAt) {
@@ -30,6 +31,13 @@ class ExchangeService
             if ((int) $locked->product_id !== (int) $targetProduct->id) {
                 throw ValidationException::withMessages([
                     'target_product_id' => 'اعتبار معاوضه فقط باید روی همان محصولی اعمال شود که مشتری برای آن درخواست معاوضه ثبت کرده است.',
+                ]);
+            }
+            $customer = User::query()->findOrFail($locked->user_id);
+            $currentPrice = (int) $this->prices->forUser($targetProduct, $customer)['final_price'];
+            if ($amount > $currentPrice) {
+                throw ValidationException::withMessages([
+                    'exchange_offer_amount' => 'مبلغ توافق نمی‌تواند از قیمت فعلی بازی بیشتر باشد. اگر مبلغ با قیمت بازی برابر باشد، سفارش با معاوضه رایگان می‌شود.',
                 ]);
             }
             $locked->target_product_id = $targetProduct->id;
