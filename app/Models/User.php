@@ -33,6 +33,7 @@ class User extends Authenticatable
         'phone',
         'avatar',
         'birth_date',
+        'home_focus_preference',
         'wallet_balance',
         'status',
         'role',
