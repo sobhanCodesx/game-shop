@@ -81,7 +81,7 @@ export default function Cart({
                     </div>
                 ) : (
                     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-                        <section className="space-y-3">
+                        <section className="pn-deferred-zone space-y-3">
                             {items.map((item) => (
                                 <Card
                                     key={item.key}
