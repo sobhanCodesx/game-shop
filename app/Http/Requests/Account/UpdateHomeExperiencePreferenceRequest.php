@@ -14,8 +14,15 @@ class UpdateHomeExperiencePreferenceRequest extends FormRequest
 
     public function rules(): array
     {
+        $availablePreferences = collect(config('home-experience.preference_map', []))
+            ->filter(fn (string $template) => (bool) config("home-experience.templates.{$template}.available", false))
+            ->keys()
+            ->prepend('system')
+            ->values()
+            ->all();
+
         return [
-            'preference' => ['required', Rule::in(['system', 'balanced', 'products', 'content'])],
+            'preference' => ['required', Rule::in($availablePreferences)],
         ];
     }
 
@@ -23,7 +30,7 @@ class UpdateHomeExperiencePreferenceRequest extends FormRequest
     {
         return [
             'preference.required' => 'نوع چیدمان صفحه اصلی را انتخاب کنید.',
-            'preference.in' => 'انتخاب صفحه اصلی معتبر نیست.',
+            'preference.in' => 'این نوع چیدمان هنوز برای استفاده آماده نیست.',
         ];
     }
 }
