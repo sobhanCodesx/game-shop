@@ -29,12 +29,21 @@ const refreshNotifications = (force = false) => {
 
 const schedulePoll = () => {
     window.clearTimeout(pollTimer);
+    const delay =
+        pollAdminSubscribers > 0
+            ? document.visibilityState === "visible"
+                ? 15_000
+                : 60_000
+            : document.visibilityState === "visible"
+              ? 60_000
+              : 300_000;
+
     pollTimer = window.setTimeout(
         () => {
             refreshNotifications();
             schedulePoll();
         },
-        document.visibilityState === "visible" ? 60_000 : 300_000,
+        delay,
     );
 };
 
