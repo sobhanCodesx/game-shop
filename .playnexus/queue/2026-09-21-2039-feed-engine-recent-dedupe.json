@@ -1,0 +1,9 @@
+{
+  "job_id": "2026-09-21-2039-feed-engine-recent-dedupe",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query RecentFeeds { feeds(first: 50, offset: 0, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title slug status feedType feedBadge publishedAt game { id name slug } relatedProduct { id title slug } relatedContent { id title slug type } } pageInfo { total first offset hasMore nextOffset } } }",
+    "variables": {},
+    "operation_name": "RecentFeeds"
+  }
+}
