@@ -249,7 +249,7 @@ export default function ChannelShow({
                     </section>
                     {storeInfo && (
                         <section
-                            className="mt-5 scroll-mt-24 overflow-hidden rounded-3xl border border-[var(--store-border)] bg-[var(--store-panel)] p-4 sm:p-5"
+                            className="pn-deferred-zone mt-5 scroll-mt-24 overflow-hidden rounded-3xl border border-[var(--store-border)] bg-[var(--store-panel)] p-4 sm:p-5"
                             id="stores"
                         >
                             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -396,7 +396,7 @@ export default function ChannelShow({
                     </nav>
 
                     {feed.length > 0 && (
-                        <section className="scroll-mt-24 py-7 sm:py-9" id="feed">
+                        <section className="pn-deferred-zone scroll-mt-24 py-7 sm:py-9" id="feed">
                             <div className="mb-5 flex items-center gap-2"><Radio className="text-indigo-500" size={18} /><h2 className="text-xl font-black">فید {channel.name}</h2></div>
                             <div className="mx-auto max-w-[720px] space-y-4">
                                 {feed.map((item) => <FeedItem item={item} key={item.id} />)}
