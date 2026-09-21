@@ -9,11 +9,11 @@ class SmsPatternConfiguration extends Model
 {
     protected $table = 'sms_patterns';
 
-    protected $fillable = ['code', 'provider_id', 'is_active', 'updated_by'];
+    protected $fillable = ['code', 'provider_id', 'provider_ids', 'is_active', 'updated_by'];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return ['provider_ids' => 'array', 'is_active' => 'boolean'];
     }
 
     public function editor(): BelongsTo
