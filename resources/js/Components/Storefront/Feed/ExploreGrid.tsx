@@ -481,7 +481,7 @@ function Tile({
         <>
             <button
                 aria-label={`باز کردن ${item.data.title}`}
-                className={`pn-square-visibility group relative min-w-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-[-2px] ${large ? "col-span-2 row-span-2 aspect-square" : "aspect-square"}`}
+                className={`group relative min-w-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-[-2px] ${large ? "col-span-2 row-span-2 aspect-square" : "aspect-square"}`}
                 onClick={onOpen}
                 type="button"
             >
