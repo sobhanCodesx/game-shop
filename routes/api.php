@@ -23,6 +23,10 @@ Route::post('/graphql', ContentAgentGraphqlController::class)
     ->middleware(['content.agent', 'throttle:30,1'])
     ->name('content-agent.graphql');
 
+Route::post('/content-agent/upload/chunk', [ContentAgentMcpController::class, 'uploadChunkFile'])
+    ->middleware(['content.agent', 'throttle:1200,1'])
+    ->name('content-agent.upload.chunk');
+
 Route::prefix('/deployment-agent')
     ->middleware(['throttle:300,1', 'deployment.agent'])
     ->name('deployment-agent.')

@@ -148,6 +148,53 @@ class ContentAgentMediaService
         ];
     }
 
+    public function uploadChunkFile(array $arguments, UploadedFile $chunk): array
+    {
+        $this->ensureUploadsAllowed();
+
+        $data = $this->validate($arguments, [
+            'upload_id' => ['required', 'uuid'],
+            'chunk_index' => ['required', 'integer', 'min:0', 'max:999'],
+        ]);
+
+        $metadata = $this->metadata((string) $data['upload_id']);
+        $index = (int) $data['chunk_index'];
+
+        if ($index >= (int) $metadata['total_chunks']) {
+            throw new RuntimeException('chunk_index is outside this upload.');
+        }
+
+        $size = (int) $chunk->getSize();
+        if ($size < 1 || $size > $this->maxChunkSize()) {
+            throw new RuntimeException('Binary chunk size is outside the configured limit.');
+        }
+
+        $expectedBytes = min(
+            (int) $metadata['chunk_size'],
+            (int) $metadata['size'] - ($index * (int) $metadata['chunk_size']),
+        );
+
+        if ($expectedBytes < 1 || $size !== $expectedBytes) {
+            throw new RuntimeException('Binary chunk size does not match the upload manifest.');
+        }
+
+        $realPath = $chunk->getRealPath();
+        if ($realPath === false || ! File::isFile($realPath)) {
+            throw new RuntimeException('Binary chunk upload is missing its temporary file.');
+        }
+
+        $path = $this->uploadDirectory((string) $data['upload_id']).'/chunks/'.$index;
+        if (! File::copy($realPath, $path)) {
+            throw new RuntimeException('Could not persist binary upload chunk.');
+        }
+
+        return [
+            'upload_id' => (string) $data['upload_id'],
+            'chunk_index' => $index,
+            'received_bytes' => $size,
+        ];
+    }
+
     public function completeUpload(array $arguments): array
     {
         $this->ensureUploadsAllowed();
