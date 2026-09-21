@@ -579,10 +579,10 @@ export default function Edit({
                                 <Card.Content className="grid gap-5 p-5 lg:grid-cols-2">
                                     <div className="space-y-3">
                                         <FormField description="JPG، PNG یا WebP تا ۱۰ مگابایت" label="تصویر بنر" required={!slide.desktop_image}>
-                                            <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/60 text-center transition hover:border-indigo-500">
+                                            <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/60 text-center transition hover:border-indigo-500 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/30">
                                                 <UploadCloud className="mb-2 text-indigo-400" size={28} />
                                                 <span className="text-sm font-bold text-white">انتخاب تصویر</span>
-                                                <input accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void uploadBanner(index, "desktop", event)} type="file" />
+                                                <input accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => void uploadBanner(index, "desktop", event)} type="file" />
                                             </label>
                                         </FormField>
                                         {uploadProgress[`${index}-desktop`] && (
