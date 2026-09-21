@@ -39,8 +39,8 @@ return [
         'storefront' => [
             'label' => 'Storefront',
             'focus' => 'products',
-            'description' => 'برای کاتالوگ بزرگ؛ محصول، دسته‌بندی و پیشنهاد خرید در اولویت.',
-            'available' => false,
+            'description' => 'برای کاتالوگ بزرگ؛ محصول، دسته‌بندی و پیشنهاد خرید در اولویت، با حفظ Nexus Pulse محتوایی.',
+            'available' => true,
         ],
         'editorial' => [
             'label' => 'Editorial',
