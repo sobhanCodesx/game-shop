@@ -282,8 +282,12 @@ class HomeController extends Controller
             })()),
             'settings' => $settings,
             'slides' => $slides,
-            'featuredProducts' => Inertia::optional(fn () => Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap)),
-            'latestProducts' => Inertia::optional(fn () => Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap)),
+            'featuredProducts' => $usesTemplateHero
+                ? $heroFeaturedProducts
+                : Inertia::optional(fn () => Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap)),
+            'latestProducts' => $usesTemplateHero
+                ? $heroLatestProducts
+                : Inertia::optional(fn () => Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap)),
             'contentSections' => Inertia::optional(fn () => HomeSection::query()->where('is_active', true)->orderBy('sort_order')->get()->map(function (HomeSection $section) use ($request, $prices, $storefront, $cardRelations) {
                 if ($section->content_type === 'products') {
                     $query = Product::query()->with($cardRelations)->publiclyVisible()
