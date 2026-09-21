@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\HomeSetting;
+use App\Models\Product;
 use App\Models\User;
 use App\Services\HomeExperienceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -67,6 +68,24 @@ class HomeExperienceTest extends TestCase
                 ->where('homeExperience.effective_template', 'dual_spotlight')
                 ->where('homeExperience.focus', 'balanced')
                 ->where('homeExperience.source', 'system'));
+    }
+
+    public function test_storefront_loads_more_products_than_the_default_home_limit(): void
+    {
+        HomeSetting::query()->create([
+            'content' => [
+                'home_template' => 'storefront',
+                'products_limit' => 8,
+            ],
+        ]);
+        Product::factory()->count(13)->create();
+        app(HomeExperienceService::class)->invalidate();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('latestProducts', 12)
+                ->where('homeExperience.effective_template', 'storefront'));
     }
 
     public function test_user_preference_wins_when_its_template_is_available(): void
