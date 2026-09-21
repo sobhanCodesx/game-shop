@@ -15,7 +15,7 @@ class HomeExperienceService
     {
         return $this->cache()->rememberForever(
             self::SETTINGS_CACHE_KEY,
-            fn () => HomeSetting::query()->first()?->content ?? [],
+            fn () => HomeSetting::query()->find(1)?->content ?? [],
         );
     }
 
