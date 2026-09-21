@@ -3209,20 +3209,25 @@ export default function Home({
                     kind: "video",
                 }),
             );
-        slides.forEach((slide) =>
-            push({
-                key: `campaign-${slide.id}`,
-                title: slide.title,
-                eyebrow: "کمپین PlayNexus",
-                subtitle: slide.alt,
-                url: safeUrl(slide.button_url) ?? "/",
-                image: slide.mobile_image_url ?? slide.desktop_image_url,
-                kind: "campaign",
-            }),
-        );
+        if (items.length === 0) {
+            slides.forEach((slide) =>
+                push({
+                    key: `campaign-${slide.id}`,
+                    title: slide.title,
+                    eyebrow: "کمپین PlayNexus",
+                    subtitle: slide.alt,
+                    url: safeUrl(slide.button_url) ?? "/",
+                    image: slide.mobile_image_url ?? slide.desktop_image_url,
+                    kind: "campaign",
+                }),
+            );
+        }
 
         return items.slice(0, 8);
     }, [freshContent, latestFeed, personalizedHome, slides]);
+    const spotlightUsesCampaignFallback =
+        dualSpotlightContent.length > 0 &&
+        dualSpotlightContent.every((item) => item.kind === "campaign");
 
     return (
         <div
@@ -3385,7 +3390,9 @@ export default function Home({
                         />
                     </>
                 ))}
-                {usesTemplateHero && slides.length > 0 && (
+                {usesTemplateHero &&
+                    slides.length > 0 &&
+                    !spotlightUsesCampaignFallback && (
                     <section
                         aria-label="کمپین‌های PlayNexus"
                         className="mx-auto w-full max-w-[1460px] px-3 pb-3 pt-1 sm:px-4 sm:pb-5"
