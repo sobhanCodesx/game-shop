@@ -3,12 +3,13 @@ import {
     ArrowLeft,
     ArrowUpLeft,
     Gamepad2,
+    Pause,
     Play,
     Repeat2,
     ShoppingBag,
     Sparkles,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { StorefrontProduct } from "../../types";
 
@@ -35,6 +36,7 @@ const productIsUnavailable = (product: StorefrontProduct) =>
 
 function useRotatingIndex(length: number, delay = 6200) {
     const [active, setActive] = useState(0);
+    const [paused, setPaused] = useState(false);
 
     useEffect(() => {
         if (active < length) return;
@@ -42,7 +44,13 @@ function useRotatingIndex(length: number, delay = 6200) {
     }, [active, length]);
 
     useEffect(() => {
-        if (length < 2) return;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            setPaused(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (length < 2 || paused) return;
 
         const timer = window.setInterval(() => {
             if (document.visibilityState !== "visible") return;
@@ -50,9 +58,9 @@ function useRotatingIndex(length: number, delay = 6200) {
         }, delay);
 
         return () => window.clearInterval(timer);
-    }, [delay, length]);
+    }, [delay, length, paused]);
 
-    return [active, setActive] as const;
+    return [active, setActive, paused, setPaused] as const;
 }
 
 function ProductSpotlight({
@@ -71,7 +79,23 @@ function ProductSpotlight({
                 .slice(0, 6),
         [products],
     );
-    const [active, setActive] = useRotatingIndex(visibleProducts.length, 6800);
+    const [active, setActive, paused, setPaused] = useRotatingIndex(
+        visibleProducts.length,
+        6800,
+    );
+    const touchStartX = useRef<number | null>(null);
+    const finishSwipe = (clientX: number) => {
+        if (touchStartX.current === null || visibleProducts.length < 2) return;
+        const distance = clientX - touchStartX.current;
+        touchStartX.current = null;
+        if (Math.abs(distance) < 45) return;
+        setPaused(true);
+        setActive(
+            (current) =>
+                (current + (distance > 0 ? -1 : 1) + visibleProducts.length) %
+                visibleProducts.length,
+        );
+    };
 
     if (!visibleProducts.length) {
         return (
@@ -112,7 +136,17 @@ function ProductSpotlight({
             : 0;
 
     return (
-        <section className="group relative min-h-[430px] overflow-hidden rounded-[28px] border border-indigo-400/20 bg-[#070b14] text-white shadow-[0_30px_90px_-55px_rgba(99,102,241,.9)] sm:min-h-[500px] lg:min-h-[560px]">
+        <section
+            aria-label="محصولات ویژه"
+            aria-roledescription="carousel"
+            className="group relative min-h-[390px] touch-pan-y overflow-hidden rounded-[28px] border border-indigo-400/20 bg-[#070b14] text-white shadow-[0_30px_90px_-55px_rgba(99,102,241,.9)] sm:min-h-[500px] lg:min-h-[560px]"
+            onTouchEnd={(event) =>
+                finishSwipe(event.changedTouches[0].clientX)
+            }
+            onTouchStart={(event) => {
+                touchStartX.current = event.touches[0].clientX;
+            }}
+        >
             {product.cover_url ? (
                 <img
                     alt={product.cover_alt}
@@ -154,19 +188,39 @@ function ProductSpotlight({
                         </span>
                     )}
                 </div>
-                <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur">
-                    {money.format(safeActive + 1)} /{" "}
-                    {money.format(visibleProducts.length)}
-                </span>
+                <div className="flex items-center gap-1.5">
+                    {visibleProducts.length > 1 && (
+                        <button
+                            aria-label={
+                                paused
+                                    ? "ادامه چرخش خودکار محصولات"
+                                    : "توقف چرخش خودکار محصولات"
+                            }
+                            className="grid size-9 place-items-center rounded-full border border-white/10 bg-black/45 text-white/75 backdrop-blur transition hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setPaused((current) => !current);
+                            }}
+                            type="button"
+                        >
+                            {paused ? <Play size={13} /> : <Pause size={13} />}
+                        </button>
+                    )}
+                    <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur">
+                        {money.format(safeActive + 1)} /{" "}
+                        {money.format(visibleProducts.length)}
+                    </span>
+                </div>
             </div>
 
             <Link
                 aria-label={`مشاهده ${product.title}`}
-                className="absolute inset-0 z-[5]"
+                className="absolute inset-0 z-[5] focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-cyan-300"
                 href={product.url}
             />
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 sm:p-6">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 pb-14 sm:p-6 sm:pb-16">
                 <p className="mb-2 text-[10px] font-black tracking-[.14em] text-cyan-200/75">
                     PLAYNEXUS STORE
                 </p>
@@ -195,19 +249,25 @@ function ProductSpotlight({
             </div>
 
             {visibleProducts.length > 1 && (
-                <div className="absolute inset-x-4 bottom-1 z-20 flex justify-center gap-1.5 sm:bottom-2">
+                <div className="absolute inset-x-4 bottom-1 z-20 flex justify-center gap-0 sm:bottom-2">
                     {visibleProducts.map((item, index) => (
                         <button
                             aria-label={item.title}
-                            className={`pointer-events-auto h-1.5 rounded-full transition-all ${index === safeActive ? "w-9 bg-cyan-300" : "w-2 bg-white/25 hover:bg-white/45"}`}
+                            aria-current={index === safeActive ? "true" : undefined}
+                            className="pointer-events-auto grid size-9 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
                             key={item.id}
                             onClick={(event) => {
                                 event.preventDefault();
                                 event.stopPropagation();
+                                setPaused(true);
                                 setActive(index);
                             }}
                             type="button"
-                        />
+                        >
+                            <span
+                                className={`h-1.5 rounded-full transition-all ${index === safeActive ? "w-7 bg-cyan-300" : "w-2 bg-white/25"}`}
+                            />
+                        </button>
                     ))}
                 </div>
             )}
@@ -221,7 +281,23 @@ function ContentSpotlight({
     items: DualSpotlightContentItem[];
 }) {
     const visibleItems = useMemo(() => items.slice(0, 8), [items]);
-    const [active, setActive] = useRotatingIndex(visibleItems.length, 5600);
+    const [active, setActive, paused, setPaused] = useRotatingIndex(
+        visibleItems.length,
+        5600,
+    );
+    const touchStartX = useRef<number | null>(null);
+    const finishSwipe = (clientX: number) => {
+        if (touchStartX.current === null || visibleItems.length < 2) return;
+        const distance = clientX - touchStartX.current;
+        touchStartX.current = null;
+        if (Math.abs(distance) < 45) return;
+        setPaused(true);
+        setActive(
+            (current) =>
+                (current + (distance > 0 ? -1 : 1) + visibleItems.length) %
+                visibleItems.length,
+        );
+    };
 
     if (!visibleItems.length) {
         return (
@@ -244,7 +320,17 @@ function ContentSpotlight({
     const isVideo = item.kind === "video";
 
     return (
-        <section className="group relative min-h-[430px] overflow-hidden rounded-[28px] border border-fuchsia-400/15 bg-[#070b14] text-white shadow-[0_30px_90px_-55px_rgba(217,70,239,.7)] sm:min-h-[500px] lg:min-h-[560px]">
+        <section
+            aria-label="محتوای ویژه"
+            aria-roledescription="carousel"
+            className="group relative min-h-[390px] touch-pan-y overflow-hidden rounded-[28px] border border-fuchsia-400/15 bg-[#070b14] text-white shadow-[0_30px_90px_-55px_rgba(217,70,239,.7)] sm:min-h-[500px] lg:min-h-[560px]"
+            onTouchEnd={(event) =>
+                finishSwipe(event.changedTouches[0].clientX)
+            }
+            onTouchStart={(event) => {
+                touchStartX.current = event.touches[0].clientX;
+            }}
+        >
             {item.image ? (
                 <img
                     alt={item.title}
@@ -269,15 +355,35 @@ function ContentSpotlight({
                     )}
                     {item.eyebrow}
                 </span>
-                <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur">
-                    {money.format(safeActive + 1)} /{" "}
-                    {money.format(visibleItems.length)}
-                </span>
+                <div className="flex items-center gap-1.5">
+                    {visibleItems.length > 1 && (
+                        <button
+                            aria-label={
+                                paused
+                                    ? "ادامه چرخش خودکار محتوا"
+                                    : "توقف چرخش خودکار محتوا"
+                            }
+                            className="grid size-9 place-items-center rounded-full border border-white/10 bg-black/45 text-white/75 backdrop-blur transition hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-fuchsia-300"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setPaused((current) => !current);
+                            }}
+                            type="button"
+                        >
+                            {paused ? <Play size={13} /> : <Pause size={13} />}
+                        </button>
+                    )}
+                    <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur">
+                        {money.format(safeActive + 1)} /{" "}
+                        {money.format(visibleItems.length)}
+                    </span>
+                </div>
             </div>
 
             <Link
                 aria-label={item.title}
-                className="absolute inset-0 z-[5]"
+                className="absolute inset-0 z-[5] focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-fuchsia-300"
                 href={item.url}
             />
 
@@ -287,7 +393,7 @@ function ContentSpotlight({
                 </span>
             )}
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 sm:p-6">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 pb-14 sm:p-6 sm:pb-16">
                 <p className="mb-2 text-[10px] font-black tracking-[.14em] text-fuchsia-200/70">
                     NEXUS SPOTLIGHT
                 </p>
@@ -306,19 +412,25 @@ function ContentSpotlight({
             </div>
 
             {visibleItems.length > 1 && (
-                <div className="absolute inset-x-4 bottom-1 z-20 flex justify-center gap-1.5 sm:bottom-2">
+                <div className="absolute inset-x-4 bottom-1 z-20 flex justify-center gap-0 sm:bottom-2">
                     {visibleItems.map((entry, index) => (
                         <button
                             aria-label={entry.title}
-                            className={`pointer-events-auto h-1.5 rounded-full transition-all ${index === safeActive ? "w-9 bg-fuchsia-300" : "w-2 bg-white/25 hover:bg-white/45"}`}
+                            aria-current={index === safeActive ? "true" : undefined}
+                            className="pointer-events-auto grid size-9 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-fuchsia-300"
                             key={entry.key}
                             onClick={(event) => {
                                 event.preventDefault();
                                 event.stopPropagation();
+                                setPaused(true);
                                 setActive(index);
                             }}
                             type="button"
-                        />
+                        >
+                            <span
+                                className={`h-1.5 rounded-full transition-all ${index === safeActive ? "w-7 bg-fuchsia-300" : "w-2 bg-white/25"}`}
+                            />
+                        </button>
                     ))}
                 </div>
             )}
