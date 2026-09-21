@@ -306,10 +306,13 @@ class HomeSettingsTest extends TestCase
         SocialContent::create(['type' => 'video', 'title' => 'بررسی بازی', 'slug' => 'game-review', 'views' => 500, 'status' => 'published', 'published_at' => now()]);
 
         $this->get('/')
+            ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('contentSections', 1)
-                ->where('contentSections.0.title', 'ویدیوهای محبوب')
-                ->where('contentSections.0.items.0.title', 'بررسی بازی'));
+                ->missing('contentSections')
+                ->reloadOnly('contentSections', fn (Assert $partial) => $partial
+                    ->has('contentSections', 1)
+                    ->where('contentSections.0.title', 'ویدیوهای محبوب')
+                    ->where('contentSections.0.items.0.title', 'بررسی بازی')));
 
         $this->get('/videos/game-review')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Content/Show'));
     }
@@ -334,11 +337,13 @@ class HomeSettingsTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('contentSections', 1)
-                ->where('contentSections.0.title', 'دسته‌بندی‌های محبوب')
-                ->where('contentSections.0.layout', 'grid')
-                ->where('contentSections.0.items.0.title', 'کنسول‌ها')
-                ->where('contentSections.0.items.0.url', '/categories/consoles'));
+                ->missing('contentSections')
+                ->reloadOnly('contentSections', fn (Assert $partial) => $partial
+                    ->has('contentSections', 1)
+                    ->where('contentSections.0.title', 'دسته‌بندی‌های محبوب')
+                    ->where('contentSections.0.layout', 'grid')
+                    ->where('contentSections.0.items.0.title', 'کنسول‌ها')
+                    ->where('contentSections.0.items.0.url', '/categories/consoles')));
     }
 
     public function test_published_game_can_be_selected_and_rendered_in_manual_section(): void
@@ -361,8 +366,10 @@ class HomeSettingsTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('contentSections', 1)
-                ->where('contentSections.0.items.0.title', 'Grand Theft Auto VI'));
+                ->missing('contentSections')
+                ->reloadOnly('contentSections', fn (Assert $partial) => $partial
+                    ->has('contentSections', 1)
+                    ->where('contentSections.0.items.0.title', 'Grand Theft Auto VI')));
     }
 
     public function test_home_only_returns_current_active_slides(): void

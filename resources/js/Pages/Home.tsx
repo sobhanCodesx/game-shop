@@ -1,5 +1,5 @@
 import { Button, Card, Chip } from "@heroui/react";
-import { Link, usePage } from "@inertiajs/react";
+import { Link, usePage, WhenVisible } from "@inertiajs/react";
 import {
     ChevronLeft,
     ChevronRight,
@@ -85,19 +85,39 @@ interface HomeExperienceState {
     user_preference: "balanced" | "products" | "content" | null;
 }
 
+interface HomePreviewProduct {
+    id: number;
+    title: string;
+    url: string;
+    category: string | null;
+    cover_url: string | null;
+}
+
+interface HomePreviewData {
+    latestStudios: StudioItem[];
+    gameRadar: GameRadarItem[];
+    channels: ChannelItem[];
+    freshContent: FreshItem[];
+    latestProducts: HomePreviewProduct[];
+}
+
 interface Props {
     seo: SeoData & { heading: string };
     homeExperience: HomeExperienceState;
     settings: Settings;
     slides: Slide[];
-    featuredProducts: StorefrontProduct[];
-    latestProducts: StorefrontProduct[];
-    contentSections: ContentSection[];
-    freshContent: FreshItem[];
-    channels: ChannelItem[];
+    homePreview: HomePreviewData;
+    heroFeaturedProducts: StorefrontProduct[];
+    heroLatestProducts: StorefrontProduct[];
+    featuredProducts?: StorefrontProduct[];
+    latestProducts?: StorefrontProduct[];
+    contentSections?: ContentSection[];
+    freshContent?: FreshItem[];
+    channels?: ChannelItem[];
     latestFeed: HomeFeedPreviewItem[];
-    latestStudios: StudioItem[];
-    gameRadar: GameRadarItem[];
+    latestFeedFull?: HomeFeedPreviewItem[];
+    latestStudios?: StudioItem[];
+    gameRadar?: GameRadarItem[];
     personalizedHome: PersonalizedHomeData | null;
 }
 interface PersonalizedGame {
@@ -1228,9 +1248,14 @@ function MobilePriorityCarousel({
         const next = items[(active + 1) % items.length];
         if (!next?.image) return;
 
-        const image = new Image();
-        image.decoding = "async";
-        image.src = next.image;
+        const timer = window.setTimeout(() => {
+            const image = new Image();
+            image.decoding = "async";
+            image.fetchPriority = "low";
+            image.src = next.image!;
+        }, 2200);
+
+        return () => window.clearTimeout(timer);
     }, [active, items]);
 
     if (!items.length) return null;
@@ -1360,7 +1385,7 @@ function GuestWelcomePanel({
     channels: ChannelItem[];
     freshContent: FreshItem[];
     latestStudios: StudioItem[];
-    latestProducts: StorefrontProduct[];
+    latestProducts: HomePreviewProduct[];
 }) {
     const feedSlides: MobilePrioritySlide[] = latestFeed.slice(0, 3).map(
         (item) => ({
@@ -1583,7 +1608,7 @@ function PersonalizedHomePanel({
     userName: string;
     latestFeed: HomeFeedPreviewItem[];
     latestStudios: StudioItem[];
-    latestProducts: StorefrontProduct[];
+    latestProducts: HomePreviewProduct[];
     channels: ChannelItem[];
     freshContent: FreshItem[];
     gameRadar: GameRadarItem[];
@@ -3167,24 +3192,48 @@ function RailButtons({
     );
 }
 
+function DeferredHomeSpacer({
+    minHeight = 260,
+}: {
+    minHeight?: number;
+}) {
+    return (
+        <div
+            aria-hidden="true"
+            className="mx-auto w-full max-w-[1536px]"
+            style={{ minHeight }}
+        />
+    );
+}
+
 export default function Home({
     seo,
     homeExperience,
     settings,
     slides,
-    featuredProducts,
-    latestProducts,
-    contentSections,
-    freshContent,
-    channels,
+    homePreview,
+    heroFeaturedProducts,
+    heroLatestProducts,
+    featuredProducts = [],
+    latestProducts = [],
+    contentSections = [],
+    freshContent = [],
+    channels = [],
     latestFeed,
-    latestStudios,
-    gameRadar,
+    latestFeedFull = [],
+    latestStudios = [],
+    gameRadar = [],
     personalizedHome,
 }: Props) {
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
     const categories = storefront.categories.slice(0, 8);
+    const previewLatestFeed = latestFeed;
+    const previewLatestStudios = homePreview.latestStudios ?? [];
+    const previewGameRadar = homePreview.gameRadar ?? [];
+    const previewChannels = homePreview.channels ?? [];
+    const previewFreshContent = homePreview.freshContent ?? [];
+    const previewLatestProducts = homePreview.latestProducts ?? [];
     const categoryRailRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         const motionSurfaces =
@@ -3253,7 +3302,7 @@ export default function Home({
                 kind: item.type === "video" ? "video" : "feed",
             }),
         );
-        latestFeed.forEach((item) =>
+        previewLatestFeed.forEach((item) =>
             push({
                 key: `feed-${item.id}`,
                 title: item.title,
@@ -3264,7 +3313,7 @@ export default function Home({
                 kind: item.type === "video" ? "video" : "feed",
             }),
         );
-        freshContent
+        previewFreshContent
             .filter((item) => item.type === "video")
             .forEach((item) =>
                 push({
@@ -3292,7 +3341,7 @@ export default function Home({
         }
 
         return items.slice(0, 8);
-    }, [freshContent, latestFeed, personalizedHome, slides]);
+    }, [personalizedHome, previewFreshContent, previewLatestFeed, slides]);
     const spotlightUsesCampaignFallback =
         templateContent.length > 0 &&
         templateContent.every((item) => item.kind === "campaign");
@@ -3325,9 +3374,9 @@ export default function Home({
                         <HomeTemplateHero
                             categories={categories}
                             contentItems={templateContent}
-                            featuredProducts={featuredProducts}
+                            featuredProducts={heroFeaturedProducts}
                             heading={seo.heading}
-                            latestProducts={latestProducts}
+                            latestProducts={heroLatestProducts}
                             templateKey={homeExperience.effective_template}
                         />
                         {templateRuntime.featuredPlacement === "template_top" &&
@@ -3341,7 +3390,7 @@ export default function Home({
                                     eyebrow={templateRuntime.featuredEyebrow}
                                     id="featured-products"
                                     linkLabel={templateRuntime.featuredLinkLabel}
-                                    products={featuredProducts}
+                                    products={heroFeaturedProducts}
                                     title={settings.featured_products_title}
                                 />
                             )}
@@ -3355,7 +3404,7 @@ export default function Home({
                                     eyebrow={templateRuntime.latestEyebrow}
                                     id="latest-products"
                                     linkLabel={templateRuntime.latestLinkLabel}
-                                    products={latestProducts}
+                                    products={heroLatestProducts}
                                     title={settings.latest_products_title}
                                 />
                             )}
@@ -3375,13 +3424,13 @@ export default function Home({
                 {templateRuntime.campaignPlacement === "legacy" &&
                     (auth.user && personalizedHome ? (
                     <PersonalizedHomePanel
-                        channels={channels}
+                        channels={previewChannels}
                         data={personalizedHome}
-                        freshContent={freshContent}
-                        gameRadar={gameRadar}
-                        latestFeed={latestFeed}
-                        latestProducts={latestProducts}
-                        latestStudios={latestStudios}
+                        freshContent={previewFreshContent}
+                        gameRadar={previewGameRadar}
+                        latestFeed={previewLatestFeed}
+                        latestProducts={previewLatestProducts}
+                        latestStudios={previewLatestStudios}
                         userName={auth.user.name}
                     />
                 ) : (
@@ -3395,12 +3444,12 @@ export default function Home({
                             </section>
                         )}
                         <GuestWelcomePanel
-                            channels={channels}
-                            freshContent={freshContent}
-                            gameRadar={gameRadar}
-                            latestFeed={latestFeed}
-                            latestProducts={latestProducts}
-                            latestStudios={latestStudios}
+                            channels={previewChannels}
+                            freshContent={previewFreshContent}
+                            gameRadar={previewGameRadar}
+                            latestFeed={previewLatestFeed}
+                            latestProducts={previewLatestProducts}
+                            latestStudios={previewLatestStudios}
                             seo={seo}
                         />
                     </>
@@ -3419,31 +3468,61 @@ export default function Home({
                         />
                     </section>
                 )}
-                <FreshReleases items={freshContent} />
+                <WhenVisible
+                    buffer={240}
+                    data="freshContent"
+                    fallback={() => <DeferredHomeSpacer minHeight={320} />}
+                >
+                    <FreshReleases items={freshContent} />
+                </WhenVisible>
                 {templateRuntime.latestPlacement === "after_fresh" &&
                     settings.latest_products_enabled && (
-                        <TemplateProductSection
-                            dense={
-                                templateRuntime.productRailDensity === "dense"
-                            }
-                            eyebrow={templateRuntime.latestEyebrow}
-                            id="latest-products"
-                            linkLabel={templateRuntime.latestLinkLabel}
-                            products={latestProducts}
-                            title={settings.latest_products_title}
-                        />
+                        <WhenVisible
+                            buffer={220}
+                            data="latestProducts"
+                            fallback={() => <DeferredHomeSpacer minHeight={340} />}
+                        >
+                            <TemplateProductSection
+                                dense={
+                                    templateRuntime.productRailDensity === "dense"
+                                }
+                                eyebrow={templateRuntime.latestEyebrow}
+                                id="latest-products"
+                                linkLabel={templateRuntime.latestLinkLabel}
+                                products={latestProducts}
+                                title={settings.latest_products_title}
+                            />
+                        </WhenVisible>
                     )}
-                <ChannelRail channels={channels} />
-                {(latestFeed.length > 0 || latestStudios.length > 0) && (
-                    <section
-                        aria-label="تازه‌های فید و استودیو"
-                        className="pn-render-zone mx-auto grid max-w-[1536px] gap-3 px-3 pb-4 sm:px-4 lg:grid-cols-2 lg:gap-4"
-                    >
-                        <LatestFeedRail items={latestFeed} />
-                        <LatestStudioRail items={latestStudios} />
-                    </section>
-                )}
-                <GameRadarRail items={gameRadar} />
+                <WhenVisible
+                    buffer={220}
+                    data="channels"
+                    fallback={() => <DeferredHomeSpacer minHeight={280} />}
+                >
+                    <ChannelRail channels={channels} />
+                </WhenVisible>
+                <WhenVisible
+                    buffer={220}
+                    data={["latestFeedFull", "latestStudios"]}
+                    fallback={() => <DeferredHomeSpacer minHeight={330} />}
+                >
+                    {(latestFeedFull.length > 0 || latestStudios.length > 0) && (
+                        <section
+                            aria-label="تازه‌های فید و استودیو"
+                            className="pn-render-zone mx-auto grid max-w-[1536px] gap-3 px-3 pb-4 sm:px-4 lg:grid-cols-2 lg:gap-4"
+                        >
+                            <LatestFeedRail items={latestFeedFull} />
+                            <LatestStudioRail items={latestStudios} />
+                        </section>
+                    )}
+                </WhenVisible>
+                <WhenVisible
+                    buffer={200}
+                    data="gameRadar"
+                    fallback={() => <DeferredHomeSpacer minHeight={420} />}
+                >
+                    <GameRadarRail items={gameRadar} />
+                </WhenVisible>
                 <section className="pn-render-zone home-slider mx-auto flex max-w-[1536px] snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain px-3 py-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-3 sm:px-4 sm:py-8 lg:overflow-hidden">
                     {[
                         [ShieldCheck, "تضمین اصالت", "خرید مطمئن و معتبر"],
@@ -3645,43 +3724,61 @@ export default function Home({
                     )}
                 {templateRuntime.featuredPlacement === "default" &&
                     settings.featured_products_enabled && (
-                    <section
-                        className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-10"
-                        id="featured-products"
+                    <WhenVisible
+                        buffer={220}
+                        data="featuredProducts"
+                        fallback={() => <DeferredHomeSpacer minHeight={360} />}
                     >
-                        <div className="mb-6">
-                            <p className="text-sm font-bold text-rose-400">
-                                منتخب فروشگاه
-                            </p>
-                            <h2 className="mt-1.5 text-xl font-black leading-7 sm:mt-2 sm:text-2xl md:text-3xl">
-                                {settings.featured_products_title}
-                            </h2>
-                        </div>
-                        <ProductGrid products={featuredProducts} />
-                    </section>
+                        <section
+                            className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-10"
+                            id="featured-products"
+                        >
+                            <div className="mb-6">
+                                <p className="text-sm font-bold text-rose-400">
+                                    منتخب فروشگاه
+                                </p>
+                                <h2 className="mt-1.5 text-xl font-black leading-7 sm:mt-2 sm:text-2xl md:text-3xl">
+                                    {settings.featured_products_title}
+                                </h2>
+                            </div>
+                            <ProductGrid products={featuredProducts} />
+                        </section>
+                    </WhenVisible>
                 )}
                 {templateRuntime.latestPlacement === "default" &&
                     settings.latest_products_enabled && (
-                    <section
-                        className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-36 px-3 py-7 sm:px-4 sm:py-10"
-                        id="latest-products"
+                    <WhenVisible
+                        buffer={220}
+                        data="latestProducts"
+                        fallback={() => <DeferredHomeSpacer minHeight={360} />}
                     >
-                        <div className="mb-6">
-                            <p className="text-sm font-bold text-emerald-400">
-                                همین حالا اضافه شد
-                            </p>
-                            <h2 className="mt-1.5 text-xl font-black leading-7 sm:mt-2 sm:text-2xl md:text-3xl">
-                                {settings.latest_products_title}
-                            </h2>
-                        </div>
-                        <ProductGrid products={latestProducts} />
-                    </section>
+                        <section
+                            className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-36 px-3 py-7 sm:px-4 sm:py-10"
+                            id="latest-products"
+                        >
+                            <div className="mb-6">
+                                <p className="text-sm font-bold text-emerald-400">
+                                    همین حالا اضافه شد
+                                </p>
+                                <h2 className="mt-1.5 text-xl font-black leading-7 sm:mt-2 sm:text-2xl md:text-3xl">
+                                    {settings.latest_products_title}
+                                </h2>
+                            </div>
+                            <ProductGrid products={latestProducts} />
+                        </section>
+                    </WhenVisible>
                 )}
-                <div className="pn-render-zone scroll-mt-24" id="community-content">
-                    {contentSections.map((section) => (
-                        <ContentRail key={section.id} section={section} />
-                    ))}
-                </div>
+                <WhenVisible
+                    buffer={180}
+                    data="contentSections"
+                    fallback={() => <DeferredHomeSpacer minHeight={420} />}
+                >
+                    <div className="pn-render-zone scroll-mt-24" id="community-content">
+                        {contentSections.map((section) => (
+                            <ContentRail key={section.id} section={section} />
+                        ))}
+                    </div>
+                </WhenVisible>
                 {settings.newsletter_enabled && (
                     <NewsletterSignup
                         description={settings.newsletter_description}
