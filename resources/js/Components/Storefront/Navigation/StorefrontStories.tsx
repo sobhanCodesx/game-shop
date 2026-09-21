@@ -31,6 +31,30 @@ function loadSeenStories(): Set<number> {
 
 function StoryThumbnail({ story }: { story: StorefrontStory }) {
     const video = useRef<HTMLVideoElement>(null);
+    const [loadVideoMetadata, setLoadVideoMetadata] = useState(false);
+
+    useEffect(() => {
+        if (story.thumbnail_url || !video.current) return;
+
+        const element = video.current;
+        if (!("IntersectionObserver" in window)) {
+            setLoadVideoMetadata(true);
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    setLoadVideoMetadata(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: "240px" },
+        );
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, [story.id, story.thumbnail_url]);
 
     if (story.thumbnail_url) {
         return (
@@ -38,6 +62,9 @@ function StoryThumbnail({ story }: { story: StorefrontStory }) {
                 alt=""
                 aria-hidden="true"
                 className="size-full object-cover transition duration-300 group-hover:scale-110"
+                decoding="async"
+                fetchPriority="low"
+                loading="lazy"
                 src={story.thumbnail_url}
             />
         );
@@ -57,9 +84,9 @@ function StoryThumbnail({ story }: { story: StorefrontStory }) {
                 );
             }}
             playsInline
-            preload="metadata"
+            preload={loadVideoMetadata ? "metadata" : "none"}
             ref={video}
-            src={story.media_url}
+            src={loadVideoMetadata ? story.media_url : undefined}
         />
     );
 }
