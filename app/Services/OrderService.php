@@ -236,8 +236,14 @@ class OrderService
         if ($itemKey === false) {
             throw ValidationException::withMessages(['exchange_request_id' => 'این اعتبار فقط برای محصول هدف همان معاوضه قابل استفاده است.']);
         }
-        $used = min((int) $exchange->exchange_offer_amount, (int) $items[$itemKey]['unit_price']);
+        $unitPrice = (int) $items[$itemKey]['unit_price'];
+        $offerAmount = (int) $exchange->exchange_offer_amount;
+        if ($offerAmount > $unitPrice) {
+            throw ValidationException::withMessages([
+                'exchange_request_id' => 'مبلغ توافق معاوضه از قیمت فعلی این بازی بیشتر شده است؛ مبلغ نهایی نباید منفی شود. پشتیبانی باید مبلغ توافق را اصلاح کند.',
+            ]);
+        }
 
-        return [$exchange, $used, $itemKey];
+        return [$exchange, $offerAmount, $itemKey];
     }
 }
