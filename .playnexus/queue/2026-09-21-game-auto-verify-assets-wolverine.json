@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-21-game-auto-verify-assets-wolverine",
-  "tool": "list_content_assets",
-  "arguments": {
-    "resource": "game",
-    "id": 18
-  }
-}
