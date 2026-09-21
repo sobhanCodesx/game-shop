@@ -90,7 +90,6 @@ interface Props {
     homeExperience: HomeExperienceState;
     settings: Settings;
     slides: Slide[];
-    categories: NavigationCategory[];
     featuredProducts: StorefrontProduct[];
     latestProducts: StorefrontProduct[];
     contentSections: ContentSection[];
@@ -3165,7 +3164,6 @@ export default function Home({
     homeExperience,
     settings,
     slides,
-    categories,
     featuredProducts,
     latestProducts,
     contentSections,
@@ -3178,8 +3176,8 @@ export default function Home({
 }: Props) {
     const { auth, storefront } = usePage<SharedPageProps>().props;
     const { theme, toggleTheme } = useStorefrontTheme();
+    const categories = storefront.categories.slice(0, 8);
     const categoryRailRef = useRef<HTMLDivElement>(null);
-    const storefrontRootRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         const motionSurfaces =
             document.querySelectorAll<HTMLElement>(".pn-media-cloud");
@@ -3210,47 +3208,6 @@ export default function Home({
 
         return () => observer.disconnect();
     }, [personalizedHome]);
-
-    useEffect(() => {
-        const root = storefrontRootRef.current;
-        if (!root) return;
-
-        let settleTimer: number | null = null;
-        let scrollFrame: number | null = null;
-
-        const markScrolling = () => {
-            scrollFrame = null;
-
-            if (root.dataset.pnScrolling !== "true") {
-                root.dataset.pnScrolling = "true";
-            }
-
-            if (settleTimer !== null) {
-                window.clearTimeout(settleTimer);
-            }
-
-            settleTimer = window.setTimeout(() => {
-                delete root.dataset.pnScrolling;
-                settleTimer = null;
-            }, 110);
-        };
-
-        const onScroll = () => {
-            if (scrollFrame !== null) return;
-            scrollFrame = window.requestAnimationFrame(markScrolling);
-        };
-
-        window.addEventListener("scroll", onScroll, { passive: true });
-
-        return () => {
-            window.removeEventListener("scroll", onScroll);
-            if (scrollFrame !== null) {
-                window.cancelAnimationFrame(scrollFrame);
-            }
-            if (settleTimer !== null) window.clearTimeout(settleTimer);
-            delete root.dataset.pnScrolling;
-        };
-    }, []);
 
     const templateRuntime = resolveHomeTemplateRuntime(
         homeExperience.effective_template,
@@ -3334,7 +3291,6 @@ export default function Home({
 
     return (
         <div
-            ref={storefrontRootRef}
             className="storefront-theme min-h-screen w-full max-w-full overflow-x-clip bg-[var(--store-bg)] pb-20 text-[var(--store-text)] transition-colors duration-200 lg:pb-0"
             data-home-focus={homeExperience.focus}
             data-home-template={homeExperience.effective_template}
