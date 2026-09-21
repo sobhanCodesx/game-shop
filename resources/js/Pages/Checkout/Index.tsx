@@ -712,8 +712,10 @@ export default function Checkout({
                                 <p className="flex justify-between border-t pt-3 text-lg font-black">
                                     <span>قابل پرداخت</span>
                                     <span>
-                                        {money.format(summary.payable_amount)}{" "}
-                                        تومان
+                                        {summary.payable_amount === 0 &&
+                                        summary.exchange_credit_used > 0
+                                            ? "رایگان با معاوضه"
+                                            : `${money.format(summary.payable_amount)} تومان`}
                                     </span>
                                 </p>
                             </Card.Content>
