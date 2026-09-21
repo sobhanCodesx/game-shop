@@ -52,6 +52,23 @@ class HomeExperienceTest extends TestCase
                 ->where('homeExperience.source', 'system'));
     }
 
+    public function test_dual_spotlight_is_an_available_system_template(): void
+    {
+        HomeSetting::query()->create([
+            'content' => ['home_template' => 'dual_spotlight'],
+        ]);
+        app(HomeExperienceService::class)->invalidate();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Home')
+                ->where('homeExperience.system_template', 'dual_spotlight')
+                ->where('homeExperience.effective_template', 'dual_spotlight')
+                ->where('homeExperience.focus', 'balanced')
+                ->where('homeExperience.source', 'system'));
+    }
+
     public function test_user_preference_wins_when_its_template_is_available(): void
     {
         config(['home-experience.templates.storefront.available' => true]);
