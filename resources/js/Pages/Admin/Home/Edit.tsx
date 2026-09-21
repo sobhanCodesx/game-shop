@@ -1017,6 +1017,8 @@ export default function Edit({
                             {homeTemplates.map((template) => {
                                 const selected =
                                     data.settings.home_template === template.key;
+                                const persisted =
+                                    settings.home_template === template.key;
                                 const focusLabel =
                                     template.focus === "products"
                                         ? "محصول‌محور"
@@ -1062,15 +1064,24 @@ export default function Edit({
                                                 variant="soft"
                                             >
                                                 {selected
-                                                    ? "فعال"
-                                                    : template.available
-                                                      ? "آماده"
-                                                      : "در حال ساخت"}
+                                                    ? persisted
+                                                        ? "فعال"
+                                                        : "انتخاب‌شده"
+                                                    : persisted
+                                                      ? "فعال روی سایت"
+                                                      : template.available
+                                                        ? "آماده"
+                                                        : "در حال ساخت"}
                                             </Chip>
                                         </span>
                                         <p className="mt-3 text-xs leading-6 text-slate-400">
                                             {template.description}
                                         </p>
+                                        {selected && !persisted && (
+                                            <p className="mt-2 text-[10px] font-bold text-amber-300">
+                                                این انتخاب هنوز ذخیره نشده و فقط در پیش‌نمایش دیده می‌شود.
+                                            </p>
+                                        )}
                                     </button>
                                 );
                             })}
