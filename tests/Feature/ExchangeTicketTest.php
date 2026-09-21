@@ -38,8 +38,16 @@ class ExchangeTicketTest extends TestCase
     public function test_exchange_offer_is_locked_to_the_product_customer_requested(): void
     {
         $user = User::factory()->create();
-        $requested = Product::factory()->create(['trade_enabled' => true]);
-        $other = Product::factory()->create(['trade_enabled' => true]);
+        $requested = Product::factory()->create([
+            'trade_enabled' => true,
+            'price' => 10_000_000,
+            'discount_price' => null,
+        ]);
+        $other = Product::factory()->create([
+            'trade_enabled' => true,
+            'price' => 10_000_000,
+            'discount_price' => null,
+        ]);
         $ticket = Ticket::create([
             'number' => 'TK-EX-1',
             'user_id' => $user->id,
@@ -63,6 +71,38 @@ class ExchangeTicketTest extends TestCase
         app(ExchangeService::class)->offer($ticket, $requested, 6_000_000);
         $this->assertSame($requested->id, $ticket->fresh()->target_product_id);
         $this->assertSame(6_000_000, $ticket->fresh()->exchange_offer_amount);
+    }
+
+    public function test_admin_exchange_offer_cannot_exceed_current_product_price_but_can_equal_it(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::factory()->create([
+            'trade_enabled' => true,
+            'price' => 5_000_000,
+            'discount_price' => null,
+        ]);
+        $ticket = Ticket::create([
+            'number' => 'TK-EX-ZERO-FLOOR',
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'trade_item_title' => 'PS4',
+            'subject' => 'معاوضه',
+            'type' => 'exchange',
+            'status' => 'open',
+            'exchange_status' => 'pending_review',
+            'last_replied_at' => now(),
+            'created_by' => $user->id,
+        ]);
+
+        try {
+            app(ExchangeService::class)->offer($ticket, $product, 5_000_001);
+            $this->fail('Offer above current product price was accepted.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('exchange_offer_amount', $exception->errors());
+        }
+
+        app(ExchangeService::class)->offer($ticket, $product, 5_000_000);
+        $this->assertSame(5_000_000, $ticket->fresh()->exchange_offer_amount);
     }
 
     public function test_accepted_exchange_ticket_links_back_to_the_requested_product(): void
