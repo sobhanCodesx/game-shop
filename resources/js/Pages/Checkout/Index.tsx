@@ -86,7 +86,13 @@ export default function Checkout({
     );
     const fieldErrors = errors as Record<string, string>;
     const continueAddress = () => {
-        if (data.address_mode === "saved" && data.address_id) {
+        if (data.address_mode === "saved") {
+            if (!data.address_id) {
+                setLocalErrors({
+                    address_id: "لطفاً یکی از آدرس‌های ذخیره‌شده را انتخاب کنید.",
+                });
+                return;
+            }
             setLocalErrors({});
             setStep(2);
             return;
@@ -180,11 +186,12 @@ export default function Checkout({
                                                     data.address_id === a.id
                                                 }
                                                 onChange={() => {
-                                                    setData(
-                                                        "address_mode",
-                                                        "saved",
-                                                    );
-                                                    setData("address_id", a.id);
+                                                    setData({
+                                                        ...data,
+                                                        address_mode: "saved",
+                                                        address_id: a.id,
+                                                    });
+                                                    setLocalErrors({});
                                                 }}
                                                 type="radio"
                                             />{" "}
@@ -195,13 +202,25 @@ export default function Checkout({
                                             </p>
                                         </label>
                                     ))}
+                                    {(localErrors.address_id ||
+                                        fieldErrors.address_id) && (
+                                        <p className="rounded-xl bg-rose-500/10 p-3 text-sm font-bold text-rose-500">
+                                            {localErrors.address_id ||
+                                                fieldErrors.address_id}
+                                        </p>
+                                    )}
                                     <label className="block">
                                         <input
                                             checked={
                                                 data.address_mode === "new"
                                             }
-                                            onChange={() =>
-                                                setData("address_mode", "new")
+                                            onChange={() => {
+                                                setData({
+                                                    ...data,
+                                                    address_mode: "new",
+                                                    address_id: null,
+                                                });
+                                                setLocalErrors({});
                                             }
                                             type="radio"
                                         />{" "}
@@ -465,6 +484,14 @@ export default function Checkout({
                                             onPress={() =>
                                                 post("/checkout", {
                                                     onError: (serverErrors) => {
+                                                        if (
+                                                            serverErrors.phone_verification
+                                                        ) {
+                                                            window.location.assign(
+                                                                "/checkout/verify-phone",
+                                                            );
+                                                            return;
+                                                        }
                                                         if (
                                                             Object.keys(
                                                                 serverErrors,
