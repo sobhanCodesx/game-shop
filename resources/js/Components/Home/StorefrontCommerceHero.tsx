@@ -115,7 +115,7 @@ function LeadProduct({ product }: { product: StorefrontProduct }) {
                         </span>
                     )}
                 </div>
-                <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/60 backdrop-blur">
+                <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/60 backdrop-blur max-[380px]:hidden">
                     انتخاب اول فروشگاه
                 </span>
             </div>
@@ -130,7 +130,7 @@ function LeadProduct({ product }: { product: StorefrontProduct }) {
                 <p className="text-[10px] font-black tracking-[.18em] text-cyan-200/70">
                     PLAYNEXUS STORE
                 </p>
-                <h2 className="mt-2 max-w-3xl text-2xl font-black leading-[1.35] sm:text-4xl lg:text-5xl">
+                <h2 className="mt-2 line-clamp-2 max-w-3xl text-2xl font-black leading-[1.35] max-[360px]:text-xl sm:text-4xl lg:text-5xl">
                     {product.title}
                 </h2>
                 <div className="mt-4">
@@ -141,7 +141,7 @@ function LeadProduct({ product }: { product: StorefrontProduct }) {
                         {unavailable ? "مشاهده جزئیات" : "خرید / مشاهده"}
                         <ArrowUpLeft size={15} />
                     </span>
-                    <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold text-white/55 backdrop-blur">
+                    <span className="max-w-[46%] truncate rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold text-white/55 backdrop-blur max-[360px]:hidden">
                         {product.category ?? "فروشگاه PlayNexus"}
                     </span>
                 </div>
@@ -329,7 +329,7 @@ export default function StorefrontCommerceHero({
                     <h1 className="mt-1 text-xl font-black sm:text-3xl">
                         {heading}
                     </h1>
-                    <p className="mt-1 max-w-2xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm">
+                    <p className="mt-1 max-w-2xl text-xs leading-6 text-[var(--store-muted)] max-[360px]:line-clamp-2 sm:text-sm">
                         فروشگاه در اولویت، محتوا همیشه در جریان؛ وقتی کاتالوگ بزرگ می‌شود محصول‌ها زودتر دیده می‌شوند، ولی Pulse محتوایی PlayNexus حذف نمی‌شود.
                     </p>
                 </div>
