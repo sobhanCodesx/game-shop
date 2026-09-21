@@ -25,6 +25,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import DualSpotlightHero, {
     type DualSpotlightContentItem,
 } from "../Components/Home/DualSpotlightHero";
+import StorefrontCommerceHero from "../Components/Home/StorefrontCommerceHero";
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
 import type { NavigationCategory } from "../Components/Storefront/Navigation/types";
 import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
@@ -3147,6 +3148,9 @@ export default function Home({
 
     const isDualSpotlight =
         homeExperience.effective_template === "dual_spotlight";
+    const isStorefront =
+        homeExperience.effective_template === "storefront";
+    const usesTemplateHero = isDualSpotlight || isStorefront;
     const dualSpotlightProducts =
         featuredProducts.length > 0 ? featuredProducts : latestProducts;
     const dualSpotlightContent = useMemo<DualSpotlightContentItem[]>(() => {
@@ -3277,7 +3281,67 @@ export default function Home({
                             )}
                     </>
                 )}
-                {!isDualSpotlight &&
+                {isStorefront && (
+                    <>
+                        <StorefrontCommerceHero
+                            categories={categories}
+                            contentItems={dualSpotlightContent}
+                            latestProducts={latestProducts}
+                            products={featuredProducts}
+                        />
+                        {settings.featured_products_enabled &&
+                            featuredProducts.length > 0 && (
+                                <section
+                                    className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 pb-5 pt-1 sm:px-4 sm:pb-8"
+                                    id="featured-products"
+                                >
+                                    <div className="mb-4 flex items-end justify-between gap-4">
+                                        <div>
+                                            <p className="text-[10px] font-black tracking-[.18em] text-cyan-500 sm:text-xs">
+                                                FEATURED SHELF
+                                            </p>
+                                            <h2 className="mt-1 text-xl font-black sm:text-2xl lg:text-3xl">
+                                                {settings.featured_products_title}
+                                            </h2>
+                                        </div>
+                                        <Link
+                                            className="text-xs font-black text-indigo-500"
+                                            href="/shop"
+                                        >
+                                            مشاهده همه
+                                        </Link>
+                                    </div>
+                                    <ProductGrid products={featuredProducts} />
+                                </section>
+                            )}
+                        {settings.latest_products_enabled &&
+                            latestProducts.length > 0 && (
+                                <section
+                                    className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 pb-6 pt-1 sm:px-4 sm:pb-9"
+                                    id="latest-products"
+                                >
+                                    <div className="mb-4 flex items-end justify-between gap-4">
+                                        <div>
+                                            <p className="text-[10px] font-black tracking-[.18em] text-emerald-500 sm:text-xs">
+                                                JUST LANDED
+                                            </p>
+                                            <h2 className="mt-1 text-xl font-black sm:text-2xl lg:text-3xl">
+                                                {settings.latest_products_title}
+                                            </h2>
+                                        </div>
+                                        <Link
+                                            className="text-xs font-black text-indigo-500"
+                                            href="/shop"
+                                        >
+                                            فروشگاه کامل
+                                        </Link>
+                                    </div>
+                                    <ProductGrid products={latestProducts} />
+                                </section>
+                            )}
+                    </>
+                )}
+                {!usesTemplateHero &&
                     auth.user &&
                     personalizedHome &&
                     slides.length > 0 && (
@@ -3288,7 +3352,7 @@ export default function Home({
                         <CampaignBanner slides={slides} variant="signed-in" />
                     </section>
                 )}
-                {!isDualSpotlight &&
+                {!usesTemplateHero &&
                     (auth.user && personalizedHome ? (
                     <PersonalizedHomePanel
                         channels={channels}
@@ -3321,7 +3385,7 @@ export default function Home({
                         />
                     </>
                 ))}
-                {isDualSpotlight && slides.length > 0 && (
+                {usesTemplateHero && slides.length > 0 && (
                     <section
                         aria-label="کمپین‌های PlayNexus"
                         className="mx-auto w-full max-w-[1460px] px-3 pb-3 pt-1 sm:px-4 sm:pb-5"
@@ -3569,7 +3633,7 @@ export default function Home({
                             </div>
                         </section>
                     )}
-                {!isDualSpotlight && settings.featured_products_enabled && (
+                {!usesTemplateHero && settings.featured_products_enabled && (
                     <section
                         className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-10"
                         id="featured-products"
@@ -3585,7 +3649,7 @@ export default function Home({
                         <ProductGrid products={featuredProducts} />
                     </section>
                 )}
-                {!isDualSpotlight && settings.latest_products_enabled && (
+                {!usesTemplateHero && settings.latest_products_enabled && (
                     <section
                         className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-36 px-3 py-7 sm:px-4 sm:py-10"
                         id="latest-products"
