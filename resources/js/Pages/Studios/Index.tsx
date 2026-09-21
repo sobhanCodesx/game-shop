@@ -58,6 +58,7 @@ export default function StudioIndex({
                                         <img
                                             alt={`پس‌زمینه ${studio.name}`}
                                             className="size-full object-cover transition duration-500 group-hover:scale-105"
+                                            decoding="async"
                                             loading="lazy"
                                             src={studio.background_url}
                                         />
