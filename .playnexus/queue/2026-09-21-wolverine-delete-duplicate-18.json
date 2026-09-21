@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-21-wolverine-delete-duplicate-18",
-  "tool": "delete_content",
-  "arguments": {
-    "resource": "game",
-    "id": 18
-  }
-}
