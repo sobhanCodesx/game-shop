@@ -4,6 +4,12 @@ $ssrPort = (int) env('INERTIA_SSR_PORT', 13714);
 $isLocalApp = env('APP_ENV', 'production') === 'local';
 
 return [
+    'testing' => [
+        // Components are resolved by Vite using resources/js/Pages. Inertia's
+        // generic PHP view finder does not understand that resolver.
+        'ensure_pages_exist' => false,
+    ],
+
     'ssr' => [
         // SSR is production-only. Even if a local .env was copied from
         // production with INERTIA_SSR_ENABLED=true, local config resolves to

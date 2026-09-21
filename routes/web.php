@@ -36,6 +36,7 @@ use App\Http\Controllers\GameRadarController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaStreamController;
 use App\Http\Controllers\MobileDeviceController;
+use App\Http\Controllers\NewsletterSubscriptionController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SitemapController;
@@ -47,6 +48,9 @@ use App\Http\Controllers\VideoCommunityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+Route::post('newsletter', [NewsletterSubscriptionController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('newsletter.store');
 Route::get('android', AndroidAppPageController::class)->name('android.app');
 Route::get('feed', [FeedController::class, 'index'])->name('feed.index');
 Route::get('feed/trending', [FeedController::class, 'trending'])->name('feed.trending');
@@ -85,6 +89,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::patch('profile', [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::put('password', [AccountController::class, 'updatePassword'])->name('password.update');
     Route::put('content-notifications', [AccountController::class, 'updateContentNotificationPreferences'])->name('content-notifications.update');
+    Route::put('home-experience', [AccountController::class, 'updateHomeExperiencePreference'])->name('home-experience.update');
     Route::post('addresses', [AccountController::class, 'storeAddress'])->name('addresses.store');
     Route::put('addresses/{address}', [AccountController::class, 'updateAddress'])->name('addresses.update');
     Route::delete('addresses/{address}', [AccountController::class, 'destroyAddress'])->name('addresses.destroy');
@@ -141,6 +146,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('comments/{comment}', [VideoCommunityController::class, 'destroyComment'])->name('comments.destroy');
     Route::post('channels/{game:slug}/subscription', [VideoCommunityController::class, 'subscribe'])->middleware('throttle:30,1')->name('channels.subscription');
     Route::post('cart/restore', [CartController::class, 'restore'])->name('cart.restore');
+    Route::get('checkout/verify-phone', [CheckoutController::class, 'phoneVerification'])->name('checkout.phone.show');
+    Route::post('checkout/verify-phone/send', [CheckoutController::class, 'sendPhoneVerification'])->middleware('throttle:3,1')->name('checkout.phone.send');
+    Route::post('checkout/verify-phone/confirm', [CheckoutController::class, 'confirmPhoneVerification'])->middleware('throttle:8,1')->name('checkout.phone.confirm');
+    Route::post('checkout/verify-phone/resend', [CheckoutController::class, 'resendPhoneVerification'])->middleware('throttle:2,1')->name('checkout.phone.resend');
     Route::get('checkout', [CheckoutController::class, 'show'])->name('checkout.show');
     Route::post('checkout/preview', [CheckoutController::class, 'preview'])->name('checkout.preview');
     Route::post('checkout', [CheckoutController::class, 'store'])->name('checkout.store');

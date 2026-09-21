@@ -125,7 +125,7 @@ export default function Show({ ticket }: { ticket: any }) {
                                 ticket.exchange_status,
                             ) && (
                                 <p className="mt-2 text-sm">
-                                    محصول مقصد تأییدشده:{" "}
+                                    بازی درخواست‌شده:{" "}
                                     <strong>
                                         {ticket.target_product?.title}
                                     </strong>
@@ -135,8 +135,8 @@ export default function Show({ ticket }: { ticket: any }) {
                                 ticket.target_product?.slug && (
                                     <div className="mt-4 rounded-2xl border border-indigo-500/20 bg-[var(--store-surface)] p-4">
                                         <p className="text-sm font-bold leading-7">
-                                            پیشنهاد پذیرفته شد؛ مبلغ معاوضه از
-                                            قیمت همین محصول کم می‌شود و فقط
+                                            توافق نهایی شد؛ مبلغ معاوضه فقط از
+                                            قیمت همین بازی کم می‌شود و شما فقط
                                             مابه‌التفاوت را پرداخت می‌کنید.
                                         </p>
                                         <Link

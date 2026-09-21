@@ -41,6 +41,8 @@ type Invoice = {
         plaque?: string;
         unit?: string;
     };
+    delivery_method: "courier" | "pickup";
+    pickup_address: string | null;
     customer: { name: string; email: string; phone: string | null };
     items: InvoiceItem[];
     regular_subtotal: number;
@@ -125,6 +127,12 @@ export default function InvoicePage({ invoice }: { invoice: Invoice }) {
                             <dd className="font-bold">{new Date(invoice.created_at).toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" })}</dd>
                             <dt className="invoice-print-muted text-[var(--store-muted)]">وضعیت</dt>
                             <dd><span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-600">تحویل‌شده</span></dd>
+                            <dt className="invoice-print-muted text-[var(--store-muted)]">روش تحویل</dt>
+                            <dd className="font-bold">
+                                {invoice.delivery_method === "pickup"
+                                    ? "تحویل حضوری"
+                                    : "ارسال با پیک"}
+                            </dd>
                         </dl>
                     </header>
 
@@ -134,11 +142,21 @@ export default function InvoicePage({ invoice }: { invoice: Invoice }) {
                             <span dir="ltr">{invoice.customer.phone || address.phone || "—"}</span>
                             <span dir="ltr">{invoice.customer.email}</span>
                         </InfoCard>
-                        <InfoCard icon={MapPin} title="نشانی ارسال">
-                            <strong>{address.recipient_name || invoice.customer.name}</strong>
-                            <span>{[address.province, address.city, address.address_line].filter(Boolean).join("، ") || "—"}</span>
-                            <span>{[address.plaque && `پلاک ${address.plaque}`, address.unit && `واحد ${address.unit}`, address.postal_code && `کدپستی ${address.postal_code}`].filter(Boolean).join(" · ")}</span>
-                        </InfoCard>
+                        {invoice.delivery_method === "pickup" ? (
+                            <InfoCard icon={MapPin} title="محل دریافت حضوری">
+                                <strong>مراجعه برای دریافت سفارش</strong>
+                                <span>{invoice.pickup_address || "آدرس مراجعه ثبت نشده است."}</span>
+                                <span>
+                                    هزینه تحویل حضوری: بدون هزینه ارسال
+                                </span>
+                            </InfoCard>
+                        ) : (
+                            <InfoCard icon={MapPin} title="نشانی ارسال">
+                                <strong>{address.recipient_name || invoice.customer.name}</strong>
+                                <span>{[address.province, address.city, address.address_line].filter(Boolean).join("، ") || "—"}</span>
+                                <span>{[address.plaque && `پلاک ${address.plaque}`, address.unit && `واحد ${address.unit}`, address.postal_code && `کدپستی ${address.postal_code}`].filter(Boolean).join(" · ")}</span>
+                            </InfoCard>
+                        )}
                     </section>
 
                     <section className="py-6">
@@ -235,7 +253,18 @@ export default function InvoicePage({ invoice }: { invoice: Invoice }) {
                         {invoice.exchange_request_id && <SummaryRow label={`ارزش توافق‌شده «${invoice.trade_item_title}»`} value={amount(invoice.approved_trade_value ?? 0)} />}
                         {invoice.exchange_request_id && <SummaryRow discount label={`کسر معاوضه از «${exchangeItem?.title ?? "محصول مقصد"}»`} value={`− ${amount(invoice.exchange_credit_used)}`} />}
                         {invoice.coupon_code && <SummaryRow discount label={`کد تخفیف (${invoice.coupon_code})`} value={`− ${amount(invoice.coupon_discount)}`} />}
-                        <SummaryRow label="هزینه ارسال" value={amount(invoice.delivery_fee)} />
+                        <SummaryRow
+                            label={
+                                invoice.delivery_method === "pickup"
+                                    ? "تحویل حضوری"
+                                    : "هزینه ارسال با پیک"
+                            }
+                            value={
+                                invoice.delivery_method === "pickup"
+                                    ? "رایگان"
+                                    : amount(invoice.delivery_fee)
+                            }
+                        />
                         <SummaryRow label="مبلغ نهایی سفارش" value={amount(invoice.grand_total)} />
                         {invoice.wallet_used > 0 && <SummaryRow discount label="پرداخت از کیف پول" value={`− ${amount(invoice.wallet_used)}`} />}
                         <div className="mt-3 flex items-center justify-between border-t border-[var(--store-border)] pt-4 text-lg font-black">

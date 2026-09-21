@@ -12,6 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class ExchangeService
 {
+    public function __construct(private readonly ProductPriceService $prices) {}
     public function offer(Ticket $ticket, Product $targetProduct, int $amount, ?CarbonInterface $expiresAt = null): Ticket
     {
         return DB::transaction(function () use ($ticket, $targetProduct, $amount, $expiresAt) {
@@ -26,6 +27,18 @@ class ExchangeService
             }
             if (! $targetProduct->trade_enabled) {
                 throw ValidationException::withMessages(['target_product_id' => 'محصول مقصد باید امکان معاوضه فعال داشته باشد.']);
+            }
+            if ((int) $locked->product_id !== (int) $targetProduct->id) {
+                throw ValidationException::withMessages([
+                    'target_product_id' => 'اعتبار معاوضه فقط باید روی همان محصولی اعمال شود که مشتری برای آن درخواست معاوضه ثبت کرده است.',
+                ]);
+            }
+            $customer = User::query()->findOrFail($locked->user_id);
+            $currentPrice = (int) $this->prices->forUser($targetProduct, $customer)['final_price'];
+            if ($amount > $currentPrice) {
+                throw ValidationException::withMessages([
+                    'exchange_offer_amount' => 'مبلغ توافق نمی‌تواند از قیمت فعلی بازی بیشتر باشد. اگر مبلغ با قیمت بازی برابر باشد، سفارش با معاوضه رایگان می‌شود.',
+                ]);
             }
             $locked->target_product_id = $targetProduct->id;
             $locked->update(['exchange_offer_amount' => $amount, 'exchange_status' => 'offered', 'exchange_credit_expires_at' => $expiry, 'exchange_offer_responded_at' => null]);
@@ -45,6 +58,14 @@ class ExchangeService
             if ($locked->exchange_credit_expires_at?->isPast()) {
                 $locked->update(['exchange_status' => 'expired', 'exchange_expired_at' => now()]);
                 throw ValidationException::withMessages(['decision' => 'مهلت این پیشنهاد تمام شده است.']);
+            }
+            if (
+                $decision === 'accepted'
+                && (int) $locked->target_product_id !== (int) $locked->product_id
+            ) {
+                throw ValidationException::withMessages([
+                    'decision' => 'این پیشنهاد به محصول درخواست‌شده متصل نیست؛ پشتیبانی باید پیشنهاد را اصلاح کند.',
+                ]);
             }
             $locked->update(['exchange_status' => $decision, 'exchange_offer_responded_at' => now()]);
 

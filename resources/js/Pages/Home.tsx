@@ -1,4 +1,4 @@
-import { Button, Card, Chip, Input } from "@heroui/react";
+import { Button, Card, Chip } from "@heroui/react";
 import { Link, usePage } from "@inertiajs/react";
 import {
     ChevronLeft,
@@ -12,6 +12,7 @@ import {
     ArrowUpLeft,
     Clock3,
     PackageOpen,
+    Pause,
     Radio,
     Newspaper,
     Radar,
@@ -20,8 +21,14 @@ import {
     Sparkles,
     Truck,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import NewsletterSignup from "../Components/Home/NewsletterSignup";
+import {
+    HomeTemplateHero,
+    resolveHomeTemplateRuntime,
+    type HomeTemplateContentItem,
+} from "../Components/Home/Templates/HomeTemplateRegistry";
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
 import type { NavigationCategory } from "../Components/Storefront/Navigation/types";
 import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
@@ -70,8 +77,17 @@ interface Settings {
     seo_title: string;
     seo_description: string;
 }
+interface HomeExperienceState {
+    system_template: string;
+    effective_template: string;
+    focus: "balanced" | "products" | "content";
+    source: "system" | "user" | "preview";
+    user_preference: "balanced" | "products" | "content" | null;
+}
+
 interface Props {
     seo: SeoData & { heading: string };
+    homeExperience: HomeExperienceState;
     settings: Settings;
     slides: Slide[];
     categories: NavigationCategory[];
@@ -368,7 +384,13 @@ const mixPrioritySlides = (
     return mixed;
 };
 
-function ProductGrid({ products }: { products: StorefrontProduct[] }) {
+function ProductGrid({
+    products,
+    dense = false,
+}: {
+    products: StorefrontProduct[];
+    dense?: boolean;
+}) {
     const railRef = useRef<HTMLDivElement>(null);
     if (!products.length)
         return (
@@ -401,7 +423,11 @@ function ProductGrid({ products }: { products: StorefrontProduct[] }) {
             >
                 {products.map((product) => (
                     <div
-                        className="w-[84vw] max-w-[300px] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
+                        className={
+                            dense
+                                ? "w-[64vw] max-w-[240px] shrink-0 snap-start sm:w-[245px] lg:w-[260px]"
+                                : "w-[84vw] max-w-[300px] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
+                        }
                         key={product.id}
                     >
                         <ProductCard product={product} />
@@ -409,6 +435,61 @@ function ProductGrid({ products }: { products: StorefrontProduct[] }) {
                 ))}
             </div>
         </div>
+    );
+}
+
+function TemplateProductSection({
+    id,
+    title,
+    eyebrow,
+    linkLabel,
+    products,
+    dense = false,
+    compactTop = false,
+}: {
+    id: "featured-products" | "latest-products";
+    title: string;
+    eyebrow: string;
+    linkLabel: string;
+    products: StorefrontProduct[];
+    dense?: boolean;
+    compactTop?: boolean;
+}) {
+    if (!products.length) return null;
+
+    return (
+        <section
+            className={`pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 sm:px-4 ${
+                compactTop
+                    ? "pb-5 pt-1 sm:pb-8"
+                    : "pb-6 pt-2 sm:pb-9"
+            }`}
+            id={id}
+        >
+            <div className="mb-4 flex items-end justify-between gap-4 max-[360px]:flex-col max-[360px]:items-start max-[360px]:gap-2">
+                <div className="min-w-0">
+                    <p
+                        className={`text-[10px] font-black tracking-[.18em] sm:text-xs ${
+                            id === "latest-products"
+                                ? "text-emerald-500"
+                                : "text-cyan-500"
+                        }`}
+                    >
+                        {eyebrow}
+                    </p>
+                    <h2 className="mt-1 text-xl font-black sm:text-2xl lg:text-3xl">
+                        {title}
+                    </h2>
+                </div>
+                <Link
+                    className="shrink-0 text-xs font-black text-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+                    href="/shop"
+                >
+                    {linkLabel}
+                </Link>
+            </div>
+            <ProductGrid dense={dense} products={products} />
+        </section>
     );
 }
 
@@ -517,7 +598,7 @@ function FreshReleases({ items }: { items: FreshItem[] }) {
                             : 0;
                         return (
                             <Link
-                                className={`group w-[calc((100vw-4rem)/2)] max-w-[190px] shrink-0 snap-start overflow-hidden rounded-[18px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] sm:max-w-[330px] sm:rounded-[20px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
+                                className={`group w-[72vw] max-w-[250px] shrink-0 snap-start overflow-hidden rounded-[18px] border bg-[var(--store-panel)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-500/10 sm:w-[320px] sm:max-w-[330px] sm:rounded-[20px] ${unseen ? "border-indigo-500/35" : "border-[var(--store-border)]"}`}
                                 href={item.url}
                                 key={item.key}
                                 onClick={() => {
@@ -2843,15 +2924,24 @@ function GameRadarRail({ items }: { items: GameRadarItem[] }) {
 function CampaignBanner({
     slides,
     variant,
+    priority = true,
 }: {
     slides: Slide[];
     variant: "public" | "signed-in";
+    priority?: boolean;
 }) {
     const [activeSlide, setActiveSlide] = useState(0);
+    const [paused, setPaused] = useState(false);
     const touchStartX = useRef<number | null>(null);
 
     useEffect(() => {
-        if (slides.length < 2) return;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            setPaused(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (slides.length < 2 || paused) return;
 
         const timer = window.setInterval(() => {
             if (document.visibilityState !== "visible") return;
@@ -2859,7 +2949,7 @@ function CampaignBanner({
         }, 6000);
 
         return () => window.clearInterval(timer);
-    }, [slides.length]);
+    }, [paused, slides.length]);
 
     useEffect(() => {
         if (activeSlide < slides.length) return;
@@ -2867,7 +2957,7 @@ function CampaignBanner({
     }, [activeSlide, slides.length]);
 
     useEffect(() => {
-        if (slides.length < 2) return;
+        if (!priority || slides.length < 2) return;
 
         const nextSlide = slides[(activeSlide + 1) % slides.length];
         const source =
@@ -2878,7 +2968,7 @@ function CampaignBanner({
         const image = new Image();
         image.decoding = "async";
         image.src = source;
-    }, [activeSlide, slides]);
+    }, [activeSlide, priority, slides]);
 
     if (!slides.length) {
         if (variant === "signed-in") return null;
@@ -2905,7 +2995,10 @@ function CampaignBanner({
 
         const distance = clientX - touchStartX.current;
         touchStartX.current = null;
-        if (Math.abs(distance) > 45) go(distance > 0 ? -1 : 1);
+        if (Math.abs(distance) > 45) {
+            setPaused(true);
+            go(distance > 0 ? -1 : 1);
+        }
     };
 
     const shellClass =
@@ -2916,7 +3009,9 @@ function CampaignBanner({
     return (
         <div
             aria-label={`بنر ${activeSlide + 1} از ${slides.length}`}
+            aria-roledescription="carousel"
             className="pn-stable-slider group relative touch-pan-y"
+            role="region"
             onTouchEnd={(event) =>
                 finishSwipe(event.changedTouches[0].clientX)
             }
@@ -2941,8 +3036,8 @@ function CampaignBanner({
                         alt={slide.alt || slide.title}
                         className="block size-full scale-[1.015] object-contain object-center sm:scale-100 sm:object-cover lg:object-cover"
                         decoding="async"
-                        fetchPriority="high"
-                        loading="eager"
+                        fetchPriority={priority ? "high" : "auto"}
+                        loading={priority ? "eager" : "lazy"}
                         src={slide.desktop_image_url}
                     />
                 </picture>
@@ -2959,7 +3054,7 @@ function CampaignBanner({
                     <>
                         <Button
                             aria-label="اسلاید قبلی"
-                            className="absolute right-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-black/65 sm:right-4 lg:opacity-0 lg:group-hover:opacity-100"
+                            className="absolute right-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-black/65 sm:right-4 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
                             isIconOnly
                             onPress={() => go(-1)}
                             size="sm"
@@ -2969,7 +3064,7 @@ function CampaignBanner({
                         </Button>
                         <Button
                             aria-label="اسلاید بعدی"
-                            className="absolute left-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-black/65 sm:left-4 lg:opacity-0 lg:group-hover:opacity-100"
+                            className="absolute left-2.5 top-1/2 z-20 size-9 -translate-y-1/2 rounded-full border border-white/25 bg-black/50 text-white shadow-lg backdrop-blur-sm transition hover:scale-105 hover:bg-black/65 sm:left-4 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
                             isIconOnly
                             onPress={() => go(1)}
                             size="sm"
@@ -2982,24 +3077,48 @@ function CampaignBanner({
             </div>
 
             {slides.length > 1 && (
-                <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/8 bg-black/45 px-2.5 py-1.5 shadow-md backdrop-blur-md sm:bottom-2.5 sm:gap-2 sm:px-3">
-                    {slides.map((item, index) => (
-                        <button
-                            aria-label={`اسلاید ${index + 1}`}
-                            className={`relative h-1.5 w-7 overflow-hidden rounded-full bg-[var(--store-muted)]/20 transition-colors duration-200 ${index === activeSlide ? "bg-cyan-300/20" : "hover:bg-indigo-400/20"}`}
-                            key={item.id}
-                            onClick={() => setActiveSlide(index)}
-                            type="button"
-                        >
-                            <span
-                                className={`absolute inset-y-0 right-0 rounded-full transition-[width,background-color] duration-300 ${
-                                    index === activeSlide
-                                        ? "w-full bg-cyan-300"
-                                        : "w-1.5 bg-[var(--store-muted)]/35"
-                                }`}
-                            />
-                        </button>
-                    ))}
+                <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-white/8 bg-black/45 px-1.5 py-1 shadow-md backdrop-blur-md sm:bottom-2.5">
+                    <button
+                        aria-label={
+                            paused
+                                ? "ادامه چرخش خودکار بنرها"
+                                : "توقف چرخش خودکار بنرها"
+                        }
+                        className="grid size-8 place-items-center rounded-full text-white/80 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                        onClick={() => setPaused((current) => !current)}
+                        type="button"
+                    >
+                        {paused ? <Play size={12} /> : <Pause size={12} />}
+                    </button>
+                    <span className="min-w-12 px-1 text-center text-[10px] font-black text-white/80 sm:hidden">
+                        {money.format(activeSlide + 1)} /{" "}
+                        {money.format(slides.length)}
+                    </span>
+                    <div className="hidden items-center gap-0.5 sm:flex">
+                        {slides.map((item, index) => (
+                            <button
+                                aria-current={
+                                    index === activeSlide ? "true" : undefined
+                                }
+                                aria-label={`اسلاید ${index + 1}`}
+                                className="grid size-8 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                                key={item.id}
+                                onClick={() => {
+                                    setPaused(true);
+                                    setActiveSlide(index);
+                                }}
+                                type="button"
+                            >
+                                <span
+                                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                                        index === activeSlide
+                                            ? "w-6 bg-cyan-300"
+                                            : "w-2 bg-white/25"
+                                    }`}
+                                />
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
@@ -3043,6 +3162,7 @@ function RailButtons({
 
 export default function Home({
     seo,
+    homeExperience,
     settings,
     slides,
     categories,
@@ -3132,10 +3252,92 @@ export default function Home({
         };
     }, []);
 
+    const templateRuntime = resolveHomeTemplateRuntime(
+        homeExperience.effective_template,
+    );
+    const usesTemplateHero = templateRuntime.usesTemplateHero;
+    const templateContent = useMemo<HomeTemplateContentItem[]>(() => {
+        const items: HomeTemplateContentItem[] = [];
+        const seen = new Set<string>();
+
+        const push = (item: HomeTemplateContentItem) => {
+            if (!item.url || seen.has(item.url)) return;
+            seen.add(item.url);
+            items.push(item);
+        };
+
+        personalizedHome?.videos.forEach((item) =>
+            push({
+                key: `personalized-video-${item.id}`,
+                title: item.title,
+                eyebrow: item.relevance.signal_label || "ویدیوی پیشنهادی",
+                subtitle: item.relevance.reason,
+                url: item.url,
+                image: feedPreviewImage(item),
+                kind: "video",
+            }),
+        );
+        personalizedHome?.feed.forEach((item) =>
+            push({
+                key: `personalized-feed-${item.id}`,
+                title: item.title,
+                eyebrow: item.relevance.signal_label || "برای تو",
+                subtitle: item.relevance.reason,
+                url: item.url,
+                image: feedPreviewImage(item),
+                kind: item.type === "video" ? "video" : "feed",
+            }),
+        );
+        latestFeed.forEach((item) =>
+            push({
+                key: `feed-${item.id}`,
+                title: item.title,
+                eyebrow: homeFeedBadgeLabels[item.badge ?? ""] ?? "تازه مهم",
+                subtitle: item.author.name,
+                url: item.url,
+                image: feedPreviewImage(item),
+                kind: item.type === "video" ? "video" : "feed",
+            }),
+        );
+        freshContent
+            .filter((item) => item.type === "video")
+            .forEach((item) =>
+                push({
+                    key: item.key,
+                    title: item.title,
+                    eyebrow: item.eyebrow || "ویدیوی تازه",
+                    subtitle: "تازه در PlayNexus",
+                    url: item.url,
+                    image: item.image_url,
+                    kind: "video",
+                }),
+            );
+        if (items.length === 0) {
+            slides.forEach((slide) =>
+                push({
+                    key: `campaign-${slide.id}`,
+                    title: slide.title,
+                    eyebrow: "کمپین PlayNexus",
+                    subtitle: slide.alt,
+                    url: safeUrl(slide.button_url) ?? "/",
+                    image: slide.mobile_image_url ?? slide.desktop_image_url,
+                    kind: "campaign",
+                }),
+            );
+        }
+
+        return items.slice(0, 8);
+    }, [freshContent, latestFeed, personalizedHome, slides]);
+    const spotlightUsesCampaignFallback =
+        templateContent.length > 0 &&
+        templateContent.every((item) => item.kind === "campaign");
+
     return (
         <div
             ref={storefrontRootRef}
             className="storefront-theme min-h-screen w-full max-w-full overflow-x-clip bg-[var(--store-bg)] pb-20 text-[var(--store-text)] transition-colors duration-200 lg:pb-0"
+            data-home-focus={homeExperience.focus}
+            data-home-template={homeExperience.effective_template}
             data-theme={theme}
             dir="rtl"
         >
@@ -3154,7 +3356,51 @@ export default function Home({
                 freshContentAt={storefront.fresh_content_at}
             />
             <main>
-                {auth.user && personalizedHome && slides.length > 0 && (
+                {usesTemplateHero && (
+                    <>
+                        <HomeTemplateHero
+                            categories={categories}
+                            contentItems={templateContent}
+                            featuredProducts={featuredProducts}
+                            heading={seo.heading}
+                            latestProducts={latestProducts}
+                            templateKey={homeExperience.effective_template}
+                        />
+                        {templateRuntime.featuredPlacement === "template_top" &&
+                            settings.featured_products_enabled && (
+                                <TemplateProductSection
+                                    compactTop
+                                    dense={
+                                        templateRuntime.productRailDensity ===
+                                        "dense"
+                                    }
+                                    eyebrow={templateRuntime.featuredEyebrow}
+                                    id="featured-products"
+                                    linkLabel={templateRuntime.featuredLinkLabel}
+                                    products={featuredProducts}
+                                    title={settings.featured_products_title}
+                                />
+                            )}
+                        {templateRuntime.latestPlacement === "template_top" &&
+                            settings.latest_products_enabled && (
+                                <TemplateProductSection
+                                    dense={
+                                        templateRuntime.productRailDensity ===
+                                        "dense"
+                                    }
+                                    eyebrow={templateRuntime.latestEyebrow}
+                                    id="latest-products"
+                                    linkLabel={templateRuntime.latestLinkLabel}
+                                    products={latestProducts}
+                                    title={settings.latest_products_title}
+                                />
+                            )}
+                    </>
+                )}
+                {templateRuntime.campaignPlacement === "legacy" &&
+                    auth.user &&
+                    personalizedHome &&
+                    slides.length > 0 && (
                     <section
                         aria-label="بنرهای PlayNexus"
                         className="mx-auto w-full max-w-[1460px] px-3 pb-0 pt-2 sm:px-4 sm:pb-1 sm:pt-4"
@@ -3162,7 +3408,8 @@ export default function Home({
                         <CampaignBanner slides={slides} variant="signed-in" />
                     </section>
                 )}
-                {auth.user && personalizedHome ? (
+                {templateRuntime.campaignPlacement === "legacy" &&
+                    (auth.user && personalizedHome ? (
                     <PersonalizedHomePanel
                         channels={channels}
                         data={personalizedHome}
@@ -3193,8 +3440,35 @@ export default function Home({
                             seo={seo}
                         />
                     </>
+                ))}
+                {templateRuntime.campaignPlacement === "after_template" &&
+                    slides.length > 0 &&
+                    !spotlightUsesCampaignFallback && (
+                    <section
+                        aria-label="کمپین‌های PlayNexus"
+                        className="mx-auto w-full max-w-[1460px] px-3 pb-3 pt-1 sm:px-4 sm:pb-5"
+                    >
+                        <CampaignBanner
+                            priority={false}
+                            slides={slides}
+                            variant={auth.user ? "signed-in" : "public"}
+                        />
+                    </section>
                 )}
                 <FreshReleases items={freshContent} />
+                {templateRuntime.latestPlacement === "after_fresh" &&
+                    settings.latest_products_enabled && (
+                        <TemplateProductSection
+                            dense={
+                                templateRuntime.productRailDensity === "dense"
+                            }
+                            eyebrow={templateRuntime.latestEyebrow}
+                            id="latest-products"
+                            linkLabel={templateRuntime.latestLinkLabel}
+                            products={latestProducts}
+                            title={settings.latest_products_title}
+                        />
+                    )}
                 <ChannelRail channels={channels} />
                 {(latestFeed.length > 0 || latestStudios.length > 0) && (
                     <section
@@ -3405,7 +3679,8 @@ export default function Home({
                             </div>
                         </section>
                     )}
-                {settings.featured_products_enabled && (
+                {templateRuntime.featuredPlacement === "default" &&
+                    settings.featured_products_enabled && (
                     <section
                         className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-10"
                         id="featured-products"
@@ -3421,7 +3696,8 @@ export default function Home({
                         <ProductGrid products={featuredProducts} />
                     </section>
                 )}
-                {settings.latest_products_enabled && (
+                {templateRuntime.latestPlacement === "default" &&
+                    settings.latest_products_enabled && (
                     <section
                         className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-36 px-3 py-7 sm:px-4 sm:py-10"
                         id="latest-products"
@@ -3443,38 +3719,10 @@ export default function Home({
                     ))}
                 </div>
                 {settings.newsletter_enabled && (
-                    <section className="mx-auto max-w-[1536px] px-3 py-8 sm:px-4 sm:py-14">
-                        <Card
-                            className="storefront-dark-panel overflow-hidden border border-indigo-500/30 bg-gradient-to-l from-indigo-950 to-slate-900"
-                            variant="secondary"
-                        >
-                            <Card.Content className="flex flex-col gap-5 p-5 sm:p-7 md:flex-row md:items-center md:justify-between md:p-10">
-                                <div>
-                                    <h2 className="text-xl font-black text-white sm:text-2xl">
-                                        {settings.newsletter_title}
-                                    </h2>
-                                    <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300 sm:mt-3 sm:text-base sm:leading-7">
-                                        {settings.newsletter_description}
-                                    </p>
-                                </div>
-                                <div className="grid w-full min-w-0 max-w-md grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                                    <Input
-                                        aria-label="ایمیل خبرنامه"
-                                        className="min-w-0"
-                                        dir="ltr"
-                                        placeholder="you@example.com"
-                                        type="email"
-                                    />
-                                    <Button
-                                        className="w-full shrink-0 sm:w-auto"
-                                        variant="primary"
-                                    >
-                                        عضویت
-                                    </Button>
-                                </div>
-                            </Card.Content>
-                        </Card>
-                    </section>
+                    <NewsletterSignup
+                        description={settings.newsletter_description}
+                        title={settings.newsletter_title}
+                    />
                 )}
             </main>
             <footer

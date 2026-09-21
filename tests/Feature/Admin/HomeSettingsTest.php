@@ -24,7 +24,7 @@ class HomeSettingsTest extends TestCase
     public function test_admin_can_manage_home_settings_and_slider(): void
     {
         Storage::fake('public');
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
 
         $this->actingAs($admin)->post('/admin/home', [
             'settings' => $this->settings(),
@@ -60,7 +60,7 @@ class HomeSettingsTest extends TestCase
     public function test_admin_can_save_three_new_slides_together(): void
     {
         Storage::fake('public');
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
         $slides = collect(range(1, 3))->map(fn (int $index) => [
             'desktop_image_file' => UploadedFile::fake()->image("hero-{$index}.jpg", 1920, 720),
             'alt' => "بنر شماره {$index}",
@@ -89,7 +89,7 @@ class HomeSettingsTest extends TestCase
     public function test_replacing_and_deleting_banner_removes_obsolete_images(): void
     {
         Storage::fake('public');
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
         Storage::disk('public')->put('home/slides/old-desktop.jpg', 'old desktop');
         Storage::disk('public')->put('home/slides/mobile/old-mobile.jpg', 'old mobile');
         $slide = HomeSlide::query()->create([
@@ -141,9 +141,53 @@ class HomeSettingsTest extends TestCase
         Storage::disk('public')->assertMissing('home/slides/mobile/old-mobile.jpg');
     }
 
+    public function test_admin_can_remove_mobile_banner_override_without_deleting_desktop_image(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
+        Storage::disk('public')->put('home/slides/desktop.jpg', 'desktop');
+        Storage::disk('public')->put('home/slides/mobile/mobile.jpg', 'mobile');
+
+        $slide = HomeSlide::query()->create([
+            ...$this->slide([
+                'title' => 'بنر تست',
+                'desktop_image' => 'home/slides/desktop.jpg',
+                'mobile_image' => 'home/slides/mobile/mobile.jpg',
+            ]),
+            'alt' => 'بنر تست',
+            'link_type' => 'url',
+            'button_url' => '/products',
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/home', [
+                'settings' => $this->settings(),
+                'slides' => [[
+                    ...$slide->only([
+                        'id',
+                        'title',
+                        'desktop_image',
+                        'alt',
+                        'link_type',
+                        'button_url',
+                        'text_position',
+                        'overlay',
+                        'is_active',
+                    ]),
+                    'mobile_image' => '',
+                ]],
+                'sections' => [],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($slide->fresh()->mobile_image);
+        Storage::disk('public')->assertExists('home/slides/desktop.jpg');
+        Storage::disk('public')->assertMissing('home/slides/mobile/mobile.jpg');
+    }
+
     public function test_home_settings_returns_persian_validation_errors_for_invalid_slides(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
 
         $this->actingAs($admin)
             ->from('/admin/home')
@@ -165,6 +209,95 @@ class HomeSettingsTest extends TestCase
                 'slides.0.alt',
                 'slides.0.button_url',
             ]);
+    }
+
+    public function test_admin_home_exposes_template_registry_and_keeps_default_active(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
+
+        $this->actingAs($admin)
+            ->get('/admin/home')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Home/Edit')
+                ->where('settings.home_template', 'default')
+                ->where('homeTemplates.0.key', 'default')
+                ->where('homeTemplates.0.available', true)
+                ->where('homeTemplates.1.key', 'dual_spotlight')
+                ->where('homeTemplates.1.available', true)
+                ->where('homeTemplates.2.key', 'storefront')
+                ->where('homeTemplates.2.available', true)
+                ->has('homeTemplates', 6));
+    }
+
+    public function test_admin_can_activate_dual_spotlight_template(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
+        $settings = $this->settings();
+        $settings['home_template'] = 'dual_spotlight';
+
+        $this->actingAs($admin)
+            ->post('/admin/home', [
+                'settings' => $settings,
+                'slides' => [],
+                'sections' => [],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success');
+
+        $this->assertSame(
+            'dual_spotlight',
+            HomeSetting::query()->firstOrFail()->content['home_template'],
+        );
+    }
+
+    public function test_admin_can_activate_storefront_template(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
+        $settings = $this->settings();
+        $settings['home_template'] = 'storefront';
+
+        $this->actingAs($admin)
+            ->post('/admin/home', [
+                'settings' => $settings,
+                'slides' => [],
+                'sections' => [],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success');
+
+        $this->assertSame(
+            'storefront',
+            HomeSetting::query()->firstOrFail()->content['home_template'],
+        );
+    }
+
+    public function test_partial_home_save_cannot_delete_existing_slides_or_sections(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
+        $slide = HomeSlide::create($this->slide([
+            'title' => 'بنر موجود',
+            'desktop_image' => 'home/slides/existing.jpg',
+        ]));
+        $section = HomeSection::create([
+            'title' => 'سکشن موجود',
+            'content_type' => 'products',
+            'query_type' => 'latest',
+            'layout' => 'carousel',
+            'items_limit' => 8,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->from('/admin/home')
+            ->post('/admin/home', [
+                'settings' => $this->settings(),
+            ])
+            ->assertRedirect('/admin/home')
+            ->assertSessionHasErrors(['slides', 'sections']);
+
+        $this->assertDatabaseHas('home_slides', ['id' => $slide->id]);
+        $this->assertDatabaseHas('home_sections', ['id' => $section->id]);
     }
 
     public function test_home_returns_configured_social_content_rail(): void
@@ -249,6 +382,7 @@ class HomeSettingsTest extends TestCase
     private function settings(): array
     {
         return [
+            'home_template' => 'default',
             'announcement_enabled' => true,
             'announcement_text' => 'ارسال رایگان',
             'announcement_url' => '/products',

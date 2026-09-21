@@ -8,10 +8,11 @@ final class CommerceSettings
 {
     public function all(): array
     {
-        $content = HomeSetting::query()->first()?->content ?? [];
+        $content = HomeSetting::query()->find(1)?->content ?? [];
 
         return [
             'delivery_fee' => max(0, (int) ($content['delivery_fee'] ?? 0)),
+            'pickup_address' => trim((string) ($content['pickup_address'] ?? '')),
             'cashback_percent' => min(100, max(0, (float) ($content['cashback_percent'] ?? 2))),
         ];
     }

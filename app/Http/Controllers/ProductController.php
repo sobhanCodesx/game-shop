@@ -26,16 +26,26 @@ class ProductController extends Controller
 
         $isPartner = $request->user()?->role === 'partner';
         $exchangeRequestId = null;
-        if ($request->user() && $request->integer('exchange_request_id')) {
-            $exchangeRequestId = Ticket::query()
-                ->whereKey($request->integer('exchange_request_id'))
+        $exchangeOfferAmount = null;
+        if ($request->user()) {
+            $exchangeQuery = Ticket::query()
                 ->where('type', 'exchange')
                 ->where('user_id', $request->user()->id)
                 ->where('exchange_status', 'accepted')
                 ->whereNull('exchange_order_id')
+                ->where('product_id', $product->id)
                 ->where('target_product_id', $product->id)
-                ->where(fn ($query) => $query->whereNull('exchange_credit_expires_at')->orWhere('exchange_credit_expires_at', '>', now()))
-                ->value('id');
+                ->where(fn ($query) => $query->whereNull('exchange_credit_expires_at')->orWhere('exchange_credit_expires_at', '>', now()));
+
+            if ($request->integer('exchange_request_id')) {
+                $exchangeQuery->whereKey($request->integer('exchange_request_id'));
+            } else {
+                $exchangeQuery->latest('exchange_offer_responded_at')->latest('id');
+            }
+
+            $exchange = $exchangeQuery->first(['id', 'exchange_offer_amount']);
+            $exchangeRequestId = $exchange?->id;
+            $exchangeOfferAmount = $exchange?->exchange_offer_amount;
         }
 
         $pricing = $prices->forUser($product, $request->user());
@@ -134,6 +144,7 @@ class ProductController extends Controller
                 'pricing' => $pricing,
             ],
             'exchangeRequestId' => $exchangeRequestId,
+            'exchangeOfferAmount' => $exchangeOfferAmount,
             'latestFeed' => $feed->latestPostsExcept($request, 0),
             'latestVideos' => SocialContent::query()->published()->where('type', 'video')
                 ->with('game:id,name,slug,cover')->latest('published_at')->latest('id')->limit(4)->get()

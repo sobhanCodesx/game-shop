@@ -12,17 +12,23 @@ import { Head, Link, useForm } from "@inertiajs/react";
 import {
     ArrowDown,
     ArrowUp,
+    ExternalLink,
     Eye,
     ImagePlus,
     LayoutTemplate,
+    Monitor,
     Plus,
+    RefreshCw,
     Save,
+    Smartphone,
     Trash2,
     UploadCloud,
+    X,
 } from "lucide-react";
 import {
     type ChangeEvent,
     type FormEvent,
+    useEffect,
     useMemo,
     useRef,
     useState,
@@ -37,6 +43,7 @@ import {
 } from "../../../services/chunkedUpload";
 
 interface HomeSettings {
+    home_template: string;
     announcement_enabled: boolean;
     announcement_text: string;
     announcement_url: string;
@@ -93,8 +100,17 @@ interface HomeSection {
     is_active: boolean;
 }
 
+interface HomeTemplate {
+    key: string;
+    label: string;
+    focus: "balanced" | "products" | "content";
+    description: string;
+    available: boolean;
+}
+
 interface Props {
     settings: HomeSettings;
+    homeTemplates: HomeTemplate[];
     slides: HomeSlide[];
     sections: HomeSection[];
     categories: Array<{ id: number; name: string }>;
@@ -107,6 +123,252 @@ interface FormData {
     sections: HomeSection[];
 }
 type HomeEditorTab = "banners" | "sections" | "general";
+const homeEditorTabs: HomeEditorTab[] = ["banners", "sections", "general"];
+
+function TemplateMiniPreview({
+    templateKey,
+    focus,
+}: {
+    templateKey: string;
+    focus: HomeTemplate["focus"];
+}) {
+    const block = "rounded-md bg-slate-700/80";
+    const accent =
+        focus === "products"
+            ? "bg-cyan-500/80"
+            : focus === "content"
+              ? "bg-fuchsia-500/80"
+              : "bg-indigo-500/80";
+
+    if (templateKey === "dual_spotlight") {
+        return (
+            <span
+                aria-hidden="true"
+                className="mb-4 grid h-24 grid-cols-2 gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-2"
+            >
+                <span className={`${block} bg-fuchsia-500/65`} />
+                <span className={`${block} bg-cyan-500/65`} />
+                <span className="col-span-2 grid grid-cols-4 gap-1.5">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                        <span className={block} key={index} />
+                    ))}
+                </span>
+            </span>
+        );
+    }
+
+    if (templateKey === "storefront") {
+        return (
+            <span
+                aria-hidden="true"
+                className="mb-4 grid h-24 grid-cols-[1.6fr_.8fr] gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-2"
+            >
+                <span className={`${block} bg-cyan-500/65`} />
+                <span className="grid gap-1.5">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <span className={block} key={index} />
+                    ))}
+                </span>
+            </span>
+        );
+    }
+
+    if (templateKey === "default") {
+        return (
+            <span
+                aria-hidden="true"
+                className="mb-4 grid h-24 grid-rows-[1.3fr_.7fr] gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-2"
+            >
+                <span className={`${block} ${accent}`} />
+                <span className="grid grid-cols-3 gap-1.5">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <span className={block} key={index} />
+                    ))}
+                </span>
+            </span>
+        );
+    }
+
+    return (
+        <span
+            aria-hidden="true"
+            className="mb-4 grid h-24 grid-cols-3 grid-rows-2 gap-1.5 rounded-xl border border-slate-800 bg-slate-950/70 p-2"
+        >
+            {Array.from({ length: 6 }).map((_, index) => (
+                <span
+                    className={`${block} ${index === 0 ? accent : ""}`}
+                    key={index}
+                />
+            ))}
+        </span>
+    );
+}
+
+function TemplateLivePreview({
+    template,
+    onClose,
+}: {
+    template: HomeTemplate;
+    onClose: () => void;
+}) {
+    const [viewport, setViewport] = useState<
+        "desktop" | "desktop-compact" | "mobile" | "mobile-small"
+    >("desktop");
+    const [refreshKey, setRefreshKey] = useState(0);
+    const src = `/?preview_home_template=${encodeURIComponent(template.key)}&admin_template_preview=1&preview_refresh=${refreshKey}`;
+
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") onClose();
+        };
+
+        window.addEventListener("keydown", onKeyDown);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener("keydown", onKeyDown);
+        };
+    }, [onClose]);
+
+    return (
+        <div
+            aria-label={`پیش‌نمایش زنده ${template.label}`}
+            aria-modal="true"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-2 backdrop-blur-sm sm:p-5"
+            role="dialog"
+        >
+            <button
+                aria-label="بستن پیش‌نمایش"
+                className="absolute inset-0 cursor-default"
+                onClick={onClose}
+                type="button"
+            />
+            <div className="relative z-10 flex h-[94vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-3xl border border-slate-700 bg-[#080b12] shadow-2xl shadow-black/60">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3 sm:px-5">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-emerald-400" />
+                            <strong className="truncate text-sm text-white sm:text-base">
+                                پیش‌نمایش زنده — {template.label}
+                            </strong>
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                            فقط هنگام باز بودن این پنجره بارگذاری می‌شود و انتخاب شما را ذخیره نمی‌کند.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex rounded-xl border border-slate-800 bg-slate-950 p-1">
+                            <button
+                                aria-pressed={viewport === "desktop"}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                                    viewport === "desktop"
+                                        ? "bg-indigo-600 text-white"
+                                        : "text-slate-400 hover:text-white"
+                                }`}
+                                onClick={() => setViewport("desktop")}
+                                type="button"
+                            >
+                                <Monitor size={14} />
+                                1440px
+                            </button>
+                            <button
+                                aria-pressed={viewport === "desktop-compact"}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                                    viewport === "desktop-compact"
+                                        ? "bg-indigo-600 text-white"
+                                        : "text-slate-400 hover:text-white"
+                                }`}
+                                onClick={() => setViewport("desktop-compact")}
+                                type="button"
+                            >
+                                <Monitor size={13} />
+                                1024px
+                            </button>
+                            <button
+                                aria-pressed={viewport === "mobile"}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                                    viewport === "mobile"
+                                        ? "bg-indigo-600 text-white"
+                                        : "text-slate-400 hover:text-white"
+                                }`}
+                                onClick={() => setViewport("mobile")}
+                                type="button"
+                            >
+                                <Smartphone size={14} />
+                                390px
+                            </button>
+                            <button
+                                aria-pressed={viewport === "mobile-small"}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                                    viewport === "mobile-small"
+                                        ? "bg-indigo-600 text-white"
+                                        : "text-slate-400 hover:text-white"
+                                }`}
+                                onClick={() => setViewport("mobile-small")}
+                                type="button"
+                            >
+                                <Smartphone size={13} />
+                                320px
+                            </button>
+                        </div>
+                        <button
+                            aria-label="بارگذاری مجدد پیش‌نمایش"
+                            className="grid size-9 place-items-center rounded-xl border border-slate-800 text-slate-400 transition hover:border-slate-700 hover:text-white"
+                            onClick={() => setRefreshKey((value) => value + 1)}
+                            type="button"
+                        >
+                            <RefreshCw size={15} />
+                        </button>
+                        <a
+                            className="grid size-9 place-items-center rounded-xl border border-slate-800 text-slate-400 transition hover:border-slate-700 hover:text-white"
+                            href={src}
+                            rel="noreferrer"
+                            target="_blank"
+                            title="باز کردن پیش‌نمایش در تب جدید"
+                        >
+                            <ExternalLink size={15} />
+                        </a>
+                        <button
+                            aria-label="بستن"
+                            className="grid size-9 place-items-center rounded-xl border border-slate-800 text-slate-400 transition hover:border-rose-500/50 hover:text-rose-300"
+                            onClick={onClose}
+                            type="button"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto bg-slate-950/80 p-2 sm:p-4">
+                    <div
+                        className={`h-full overflow-hidden bg-white shadow-2xl transition-[width] duration-200 ${
+                            viewport === "mobile"
+                                ? "w-[390px] max-w-full rounded-[28px] ring-[8px] ring-slate-800"
+                                : viewport === "mobile-small"
+                                  ? "w-[320px] max-w-full rounded-[24px] ring-[7px] ring-slate-800"
+                                  : viewport === "desktop-compact"
+                                    ? "w-[1024px] max-w-full rounded-xl border border-slate-800"
+                                    : "w-[1440px] max-w-full rounded-xl border border-slate-800"
+                        }`}
+                    >
+                        <iframe
+                            className="h-full w-full bg-white"
+                            key={`${template.key}-${refreshKey}`}
+                            loading="lazy"
+                            referrerPolicy="same-origin"
+                            src={src}
+                            title={`پیش‌نمایش ${template.label}`}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 const blankSlide = (): HomeSlide => ({
     title: "",
@@ -144,6 +406,7 @@ const previewUrl = (file?: File, stored?: string) =>
 
 export default function Edit({
     settings,
+    homeTemplates,
     slides,
     sections,
     categories,
@@ -156,11 +419,43 @@ export default function Edit({
     const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
     const [uploadingKeys, setUploadingKeys] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<HomeEditorTab>("banners");
+    const [previewTemplateKey, setPreviewTemplateKey] = useState<string | null>(
+        null,
+    );
     const feedbackRef = useRef<HTMLDivElement>(null);
+    const previewObjectUrls = useRef<Set<string>>(new Set());
     const uploadsInProgress = uploadingKeys.size > 0;
+
+    useEffect(
+        () => () => {
+            previewObjectUrls.current.forEach((url) => URL.revokeObjectURL(url));
+            previewObjectUrls.current.clear();
+        },
+        [],
+    );
     const activeSlides = useMemo(
         () => data.slides.filter((slide) => slide.is_active).length,
         [data.slides],
+    );
+    const previewTemplate = useMemo(
+        () =>
+            previewTemplateKey
+                ? homeTemplates.find(
+                      (template) =>
+                          template.key === previewTemplateKey &&
+                          template.available,
+                  ) ?? null
+                : null,
+        [homeTemplates, previewTemplateKey],
+    );
+    const selectedTemplate = useMemo(
+        () =>
+            homeTemplates.find(
+                (template) =>
+                    template.key === data.settings.home_template &&
+                    template.available,
+            ) ?? null,
+        [data.settings.home_template, homeTemplates],
     );
 
     const updateSetting = <K extends keyof HomeSettings>(
@@ -186,6 +481,34 @@ export default function Edit({
         [next[index], next[target]] = [next[target], next[index]];
         setData("slides", next);
     };
+    const clearMobileImage = (index: number) => {
+        const preview = data.slides[index]?.mobile_image_url;
+        if (preview?.startsWith("blob:")) {
+            URL.revokeObjectURL(preview);
+            previewObjectUrls.current.delete(preview);
+        }
+
+        setData((current) => {
+            const next = [...current.slides];
+            next[index] = {
+                ...next[index],
+                mobile_image: "",
+                mobile_image_url: "",
+                mobile_upload_token: undefined,
+            };
+
+            return { ...current, slides: next };
+        });
+        setUploadErrors((current) => ({
+            ...current,
+            [`${index}-mobile`]: "",
+        }));
+        setUploadProgress((current) => {
+            const next = { ...current };
+            delete next[`${index}-mobile`];
+            return next;
+        });
+    };
     const uploadBanner = async (
         index: number,
         kind: "desktop" | "mobile",
@@ -195,16 +518,34 @@ export default function Edit({
         event.target.value = "";
         if (!file) return;
         const key = `${index}-${kind}`;
+        const imageUrlKey =
+            kind === "desktop" ? "desktop_image_url" : "mobile_image_url";
+        const uploadTokenKey =
+            kind === "desktop" ? "desktop_upload_token" : "mobile_upload_token";
+        const previousPreview = data.slides[index]?.[imageUrlKey];
+
         setUploadErrors((current) => ({ ...current, [key]: "" }));
         setUploadingKeys((current) => new Set(current).add(key));
+
+        if (previousPreview?.startsWith("blob:")) {
+            URL.revokeObjectURL(previousPreview);
+            previewObjectUrls.current.delete(previousPreview);
+        }
+
         const preview = URL.createObjectURL(file);
-        updateSlide(index, `${kind}_image_url` as keyof HomeSlide, preview);
+        previewObjectUrls.current.add(preview);
+        updateSlide(index, imageUrlKey, preview);
+
         try {
             const token = await uploadFileInChunks(file, (progress) =>
                 setUploadProgress((current) => ({ ...current, [key]: progress })),
             );
-            updateSlide(index, `${kind}_upload_token` as keyof HomeSlide, token);
+            updateSlide(index, uploadTokenKey, token);
         } catch (error) {
+            URL.revokeObjectURL(preview);
+            previewObjectUrls.current.delete(preview);
+            updateSlide(index, imageUrlKey, previousPreview ?? "");
+            updateSlide(index, uploadTokenKey, undefined);
             setUploadErrors((current) => ({
                 ...current,
                 [key]: error instanceof Error ? error.message : "آپلود تصویر انجام نشد.",
@@ -245,6 +586,10 @@ export default function Edit({
                     Props,
                     "settings" | "slides" | "sections"
                 >;
+                previewObjectUrls.current.forEach((url) =>
+                    URL.revokeObjectURL(url),
+                );
+                previewObjectUrls.current.clear();
                 setData({
                     settings: fresh.settings,
                     slides: fresh.slides,
@@ -252,10 +597,7 @@ export default function Edit({
                 });
                 setUploadProgress({});
                 setUploadErrors({});
-                window.setTimeout(
-                    () => feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
-                    0,
-                );
+
             },
             onError: (validationErrors) => {
                 const fields = Object.keys(validationErrors);
@@ -275,12 +617,26 @@ export default function Edit({
 
     const actions = (
         <>
-            <Link href="/" target="_blank">
-                <Button variant="secondary">
-                    <Eye size={17} />
-                    مشاهده Home
-                </Button>
-            </Link>
+            <Button
+                isDisabled={!selectedTemplate}
+                onPress={() =>
+                    selectedTemplate &&
+                    setPreviewTemplateKey(selectedTemplate.key)
+                }
+                variant="secondary"
+            >
+                <Eye size={17} />
+                پیش‌نمایش قالب
+            </Button>
+            {recentlySuccessful && (
+                <Chip
+                    className="bg-emerald-500/10 text-emerald-300"
+                    size="sm"
+                    variant="soft"
+                >
+                    ذخیره شد
+                </Chip>
+            )}
             <Button
                 isDisabled={processing || uploadsInProgress}
                 onPress={() =>
@@ -342,14 +698,30 @@ export default function Edit({
                             {([
                                 ["banners", "بنرها", `${activeSlides.toLocaleString("fa-IR")} بنر فعال`],
                                 ["sections", "مدیریت سکشن‌ها", `${data.sections.length.toLocaleString("fa-IR")} سکشن`],
-                                ["general", "اطلاعات کلی سایت", "پیام‌ها، فروشگاه و سئو"],
+                                ["general", "قالب و تنظیمات", "قالب، پیام‌ها، فروشگاه و سئو"],
                             ] as const).map(([id, label, description]) => (
                                 <button
+                                    aria-controls={`home-panel-${id}`}
                                     aria-selected={activeTab === id}
-                                    className={`rounded-xl px-2 py-2.5 text-center transition sm:px-4 sm:py-3 sm:text-right ${activeTab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/30" : "text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}
+                                    className={`rounded-xl px-2 py-2.5 text-center transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 sm:px-4 sm:py-3 sm:text-right ${activeTab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/30" : "text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}
+                                    id={`home-tab-${id}`}
                                     key={id}
                                     onClick={() => setActiveTab(id)}
+                                    onKeyDown={(event) => {
+                                        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+                                        event.preventDefault();
+                                        const current = homeEditorTabs.indexOf(id);
+                                        const offset = event.key === "ArrowLeft" ? 1 : -1;
+                                        const next =
+                                            (current + offset + homeEditorTabs.length) %
+                                            homeEditorTabs.length;
+                                        setActiveTab(homeEditorTabs[next]);
+                                        document
+                                            .getElementById(`home-tab-${homeEditorTabs[next]}`)
+                                            ?.focus();
+                                    }}
                                     role="tab"
+                                    tabIndex={activeTab === id ? 0 : -1}
                                     type="button"
                                 >
                                     <strong className="block text-[11px] sm:text-sm">{label}</strong>
@@ -364,15 +736,17 @@ export default function Edit({
                 </div>
 
                 <Card
+                    aria-labelledby="home-tab-banners"
                     className={`${activeTab === "banners" ? "" : "hidden"} border border-slate-800 bg-slate-900/60`}
+                    id="home-panel-banners"
+                    role="tabpanel"
                     variant="secondary"
                 >
                     <Card.Header className="flex items-center justify-between border-b border-slate-800 p-5">
                         <div>
                             <Card.Title>اسلایدر اصلی</Card.Title>
                             <Card.Description>
-                                تصویر پیشنهادی دسکتاپ ۱۹۲۰×۷۲۰ و موبایل ۸۰۰×۱۰۰۰
-                                پیکسل است.
+                                تصویر پیشنهادی دسکتاپ ۱۹۲۰×۷۲۰ است؛ برای موبایل یک برش افقی نزدیک ۲.۳۵:۱ مثل ۱۲۰۰×۵۲۰ بهترین نتیجه را می‌دهد.
                             </Card.Description>
                         </div>
                         <Button
@@ -431,10 +805,10 @@ export default function Edit({
                                 <Card.Content className="grid gap-5 p-5 lg:grid-cols-2">
                                     <div className="space-y-3">
                                         <FormField description="JPG، PNG یا WebP تا ۱۰ مگابایت" label="تصویر بنر" required={!slide.desktop_image}>
-                                            <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/60 text-center transition hover:border-indigo-500">
+                                            <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/60 text-center transition hover:border-indigo-500 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/30">
                                                 <UploadCloud className="mb-2 text-indigo-400" size={28} />
-                                                <span className="text-sm font-bold text-white">انتخاب یا رها کردن تصویر</span>
-                                                <input accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void uploadBanner(index, "desktop", event)} type="file" />
+                                                <span className="text-sm font-bold text-white">انتخاب تصویر</span>
+                                                <input accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => void uploadBanner(index, "desktop", event)} type="file" />
                                             </label>
                                         </FormField>
                                         {uploadProgress[`${index}-desktop`] && (
@@ -444,6 +818,84 @@ export default function Edit({
                                             </div>
                                         )}
                                         {uploadErrors[`${index}-desktop`] && <p className="text-sm text-red-400">{uploadErrors[`${index}-desktop`]}</p>}
+
+                                        <FormField
+                                            description="اختیاری؛ اگر انتخاب نشود تصویر دسکتاپ استفاده می‌شود. برای وب موبایل برش افقی نزدیک ۲.۳۵:۱ مثل ۱۲۰۰×۵۲۰ پیشنهاد می‌شود."
+                                            label="تصویر مخصوص موبایل"
+                                        >
+                                            {previewUrl(
+                                                slide.mobile_image_file,
+                                                slide.mobile_image_url,
+                                            ) && (
+                                                <div className="mb-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                                                    <div className="flex justify-center">
+                                                        <div className="aspect-[2.35/1] w-full max-w-xs overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
+                                                            <img
+                                                                alt="پیش‌نمایش موبایل بنر"
+                                                                className="size-full object-contain"
+                                                                src={previewUrl(
+                                                                    slide.mobile_image_file,
+                                                                    slide.mobile_image_url,
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-3 flex justify-center">
+                                                        <Button
+                                                            onPress={() =>
+                                                                clearMobileImage(index)
+                                                            }
+                                                            size="sm"
+                                                            variant="danger-soft"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                            حذف نسخه موبایل
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/60 text-center transition hover:border-indigo-500 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/30">
+                                                <UploadCloud className="mb-2 text-fuchsia-400" size={24} />
+                                                <span className="text-sm font-bold text-white">
+                                                    {slide.mobile_image_url
+                                                        ? "تغییر تصویر موبایل"
+                                                        : "انتخاب تصویر موبایل"}
+                                                </span>
+                                                <input
+                                                    accept="image/jpeg,image/png,image/webp"
+                                                    className="sr-only"
+                                                    onChange={(event) =>
+                                                        void uploadBanner(
+                                                            index,
+                                                            "mobile",
+                                                            event,
+                                                        )
+                                                    }
+                                                    type="file"
+                                                />
+                                            </label>
+                                        </FormField>
+                                        {uploadProgress[`${index}-mobile`] && (
+                                            <div className="space-y-2 text-xs text-slate-400">
+                                                <div className="flex justify-between">
+                                                    <span>در حال آپلود نسخه موبایل</span>
+                                                    <span>
+                                                        {uploadProgress[`${index}-mobile`].percentage.toLocaleString("fa-IR")}٪
+                                                    </span>
+                                                </div>
+                                                <ProgressBar
+                                                    value={
+                                                        uploadProgress[`${index}-mobile`]
+                                                            .percentage
+                                                    }
+                                                />
+                                            </div>
+                                        )}
+                                        {uploadErrors[`${index}-mobile`] && (
+                                            <p className="text-sm text-red-400">
+                                                {uploadErrors[`${index}-mobile`]}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="space-y-4">
                                     <FormField description="برای دسترس‌پذیری و سئو، خود تصویر را کوتاه توصیف کنید." label="متن جایگزین تصویر (alt)" required>
@@ -572,7 +1024,10 @@ export default function Edit({
                 </Card>
 
                 <Card
+                    aria-labelledby="home-tab-sections"
                     className={`${activeTab === "sections" ? "" : "hidden"} border border-slate-800 bg-slate-900/60`}
+                    id="home-panel-sections"
+                    role="tabpanel"
                     variant="secondary"
                 >
                     <Card.Header className="flex items-center justify-between border-b border-slate-800 p-5">
@@ -839,7 +1294,126 @@ export default function Edit({
                     </Card.Content>
                 </Card>
 
-                <div className={`${activeTab === "general" ? "grid" : "hidden"} gap-6 xl:grid-cols-2`}>
+                <div
+                    aria-labelledby="home-tab-general"
+                    className={`${activeTab === "general" ? "grid" : "hidden"} gap-6 xl:grid-cols-2`}
+                    id="home-panel-general"
+                    role="tabpanel"
+                >
+                    <Card
+                        className="border border-slate-800 bg-slate-900/60 xl:col-span-2"
+                        variant="secondary"
+                    >
+                        <Card.Header className="border-b border-slate-800 p-5">
+                            <div className="flex items-center gap-3">
+                                <span className="grid size-11 place-items-center rounded-2xl bg-indigo-500/10 text-indigo-400">
+                                    <LayoutTemplate size={21} />
+                                </span>
+                                <div>
+                                    <Card.Title>قالب صفحه اصلی</Card.Title>
+                                    <Card.Description>
+                                        قالب فعلی همیشه fallback امن است. قالب‌های جدید بعد از تکمیل نسخه موبایل و دسکتاپ قابل انتخاب می‌شوند.
+                                    </Card.Description>
+                                </div>
+                            </div>
+                        </Card.Header>
+                        <Card.Content className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-3">
+                            {homeTemplates.map((template) => {
+                                const selected =
+                                    data.settings.home_template === template.key;
+                                const persisted =
+                                    settings.home_template === template.key;
+                                const focusLabel =
+                                    template.focus === "products"
+                                        ? "محصول‌محور"
+                                        : template.focus === "content"
+                                          ? "محتوامحور"
+                                          : "متعادل";
+
+                                return (
+                                    <article
+                                        className={`rounded-2xl border p-4 text-right transition ${selected ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-950/20" : "border-slate-800 bg-slate-950/50"} ${template.available ? "hover:border-indigo-500/60" : "opacity-60"}`}
+                                        key={template.key}
+                                    >
+                                        <button
+                                            aria-pressed={selected}
+                                            className={`block w-full text-right focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400 ${template.available ? "" : "cursor-not-allowed"}`}
+                                            disabled={!template.available}
+                                            onClick={() =>
+                                                template.available &&
+                                                updateSetting(
+                                                    "home_template",
+                                                    template.key,
+                                                )
+                                            }
+                                            type="button"
+                                        >
+                                            <TemplateMiniPreview
+                                                focus={template.focus}
+                                                templateKey={template.key}
+                                            />
+                                            <span className="flex items-start justify-between gap-3">
+                                                <span>
+                                                    <strong className="block text-sm text-white">
+                                                        {template.label}
+                                                    </strong>
+                                                    <small className="mt-1 block text-[10px] font-bold text-indigo-300">
+                                                        {focusLabel}
+                                                    </small>
+                                                </span>
+                                                <Chip
+                                                    color={
+                                                        selected
+                                                            ? "accent"
+                                                            : undefined
+                                                    }
+                                                    size="sm"
+                                                    variant="soft"
+                                                >
+                                                    {selected
+                                                        ? persisted
+                                                            ? "فعال"
+                                                            : "انتخاب‌شده"
+                                                        : persisted
+                                                          ? "فعال روی سایت"
+                                                          : template.available
+                                                            ? "آماده"
+                                                            : "در حال ساخت"}
+                                                </Chip>
+                                            </span>
+                                            <p className="mt-3 text-xs leading-6 text-slate-400">
+                                                {template.description}
+                                            </p>
+                                            {selected && !persisted && (
+                                                <p className="mt-2 text-[10px] font-bold text-amber-300">
+                                                    این انتخاب هنوز ذخیره نشده و فقط در پیش‌نمایش دیده می‌شود.
+                                                </p>
+                                            )}
+                                        </button>
+
+                                        <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-800/80 pt-3">
+                                            <span className="text-[10px] text-slate-500">
+                                                پیش‌نمایش فقط در صورت درخواست بارگذاری می‌شود.
+                                            </span>
+                                            <Button
+                                                isDisabled={!template.available}
+                                                onPress={() =>
+                                                    setPreviewTemplateKey(
+                                                        template.key,
+                                                    )
+                                                }
+                                                size="sm"
+                                                variant="secondary"
+                                            >
+                                                <Eye size={14} />
+                                                پیش‌نمایش زنده
+                                            </Button>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </Card.Content>
+                    </Card>
                     <Card
                         className="border border-slate-800 bg-slate-900/60"
                         variant="secondary"
@@ -1049,6 +1623,13 @@ export default function Edit({
                     </Card>
                 </div>
             </form>
+
+            {previewTemplate && (
+                <TemplateLivePreview
+                    onClose={() => setPreviewTemplateKey(null)}
+                    template={previewTemplate}
+                />
+            )}
         </AdminLayout>
     );
 }

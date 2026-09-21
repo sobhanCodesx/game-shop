@@ -7,7 +7,6 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Game;
 use App\Models\HomeSection;
-use App\Models\HomeSetting;
 use App\Models\HomeSlide;
 use App\Models\Platform;
 use App\Models\Product;
@@ -17,6 +16,7 @@ use App\Services\FeedService;
 use App\Services\FollowedGameWatchService;
 use App\Services\GameEventService;
 use App\Services\GameRadarService;
+use App\Services\HomeExperienceService;
 use App\Services\MediaStorage;
 use App\Services\ProductPriceService;
 use App\Services\StorefrontDataService;
@@ -29,18 +29,51 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar, UserGamingRelevanceService $relevance, GameEventService $gameEvents, FollowedGameWatchService $watch): Response
+    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar, UserGamingRelevanceService $relevance, GameEventService $gameEvents, FollowedGameWatchService $watch, HomeExperienceService $homeExperience): Response
     {
-        $settings = [...HomeSettingsController::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])];
+        $settings = [...HomeSettingsController::DEFAULTS, ...$homeExperience->settings()];
+        $homeExperienceState = $homeExperience->resolve($settings, $request->user());
+
+        $previewTemplate = $request->user()?->is_admin
+            ? $request->string('preview_home_template')->toString()
+            : '';
+        $templateConfig = config("home-experience.templates.{$previewTemplate}");
+        $isAdminTemplatePreview = false;
+        if (
+            $previewTemplate !== ''
+            && is_array($templateConfig)
+            && (bool) ($templateConfig['available'] ?? false)
+        ) {
+            $homeExperienceState = [
+                ...$homeExperienceState,
+                'effective_template' => $previewTemplate,
+                'focus' => $templateConfig['focus'] ?? 'balanced',
+                'source' => 'preview',
+            ];
+            $isAdminTemplatePreview = $request->boolean('admin_template_preview');
+        }
+
         $limit = (int) $settings['products_limit'];
+        if ($homeExperienceState['focus'] === 'products') {
+            $limit = max(12, $limit);
+        }
         $freshCutoff = now()->subDays(14);
         $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
         $latestStudios = collect();
-        $radarItems = collect($radar->linkedSnapshot()['items'] ?? []);
-        $personalizedHome = $this->personalizedHome($request, $feed, $relevance, $gameEvents, $watch, $radarItems);
+        $radarItems = $isAdminTemplatePreview
+            ? collect()
+            : collect($radar->linkedSnapshot()['items'] ?? []);
+        $personalizedHome = $isAdminTemplatePreview
+            ? null
+            : $this->personalizedHome($request, $feed, $relevance, $gameEvents, $watch, $radarItems);
 
-        if (Schema::hasTable('studios') && Schema::hasTable('games') && Schema::hasColumn('games', 'studio_id')) {
+        if (
+            ! $isAdminTemplatePreview
+            && Schema::hasTable('studios')
+            && Schema::hasTable('games')
+            && Schema::hasColumn('games', 'studio_id')
+        ) {
             $latestStudios = Studio::query()->where('status', 'active')
                 ->withCount(['games' => fn ($query) => $query->whereIn('status', ['active', 'published'])])
                 ->latest()->latest('id')->limit(10)->get()
@@ -122,7 +155,10 @@ class HomeController extends Controller
         return Inertia::render('Home', [
             ...$seo,
             'personalizedHome' => $personalizedHome,
-            'latestFeed' => $feed->latestImportantPreview($request, 8),
+            'homeExperience' => $homeExperienceState,
+            'latestFeed' => $isAdminTemplatePreview
+                ? collect()
+                : $feed->latestImportantPreview($request, 8),
             'latestStudios' => $latestStudios,
             'gameRadar' => (function () use ($radarItems) {
                 $items = $radarItems;

@@ -4,11 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\Coupon;
 use App\Models\HomeSetting;
+use App\Models\MobileVerificationCode;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\OrderCashbackNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -91,6 +94,183 @@ class OrderCheckoutTest extends TestCase
         $this->assertNull(Order::query()->latest('id')->firstOrFail()->shipping_address['postal_code'] ?? null);
     }
 
+    public function test_saved_address_checkout_ignores_empty_new_address_payload(): void
+    {
+        $user = User::factory()->create();
+        $address = $user->addresses()->create([
+            'title' => 'خانه',
+            'recipient_name' => 'کاربر تست',
+            'phone' => '09120000000',
+            'province' => 'تهران',
+            'city' => 'تهران',
+            'postal_code' => null,
+            'address_line' => 'خیابان تست، کوچه یک',
+            'plaque' => '12',
+            'unit' => null,
+            'is_default' => true,
+        ]);
+        $product = Product::factory()->create(['stock' => 2]);
+        $session = ['cart' => ["{$product->id}:base" => ['product_id' => $product->id, 'variant_id' => null, 'quantity' => 1]]];
+
+        $response = $this->actingAs($user)->withSession($session)->post(route('checkout.store'), [
+            'address_mode' => 'saved',
+            'address_id' => $address->id,
+            'address' => [
+                'recipient_name' => '',
+                'phone' => '',
+                'province' => 'تهران',
+                'city' => 'تهران',
+                'postal_code' => '',
+                'address_line' => '',
+                'plaque' => '',
+                'unit' => '',
+            ],
+        ]);
+
+        $order = Order::query()->firstOrFail();
+        $response->assertRedirect(route('orders.show', $order));
+        $this->assertSame('خیابان تست، کوچه یک', $order->shipping_address['address_line']);
+        $this->assertSame('09120000000', $order->shipping_address['phone']);
+    }
+
+    public function test_pickup_checkout_has_no_delivery_fee_and_snapshots_pickup_address(): void
+    {
+        $pickupAddress = 'تهران، خیابان تست، مجتمع پلی نکسوس، طبقه اول';
+        HomeSetting::query()->create([
+            'content' => [
+                'delivery_fee' => 75_000,
+                'pickup_address' => $pickupAddress,
+                'cashback_percent' => 2,
+            ],
+        ]);
+        $user = User::factory()->create();
+        $product = Product::factory()->create([
+            'price' => 500_000,
+            'discount_price' => null,
+            'stock' => 3,
+            'requires_shipping' => true,
+        ]);
+        $session = [
+            'cart' => [
+                "{$product->id}:base" => [
+                    'product_id' => $product->id,
+                    'variant_id' => null,
+                    'quantity' => 1,
+                ],
+            ],
+        ];
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->post(route('checkout.preview'), ['delivery_method' => 'pickup'])
+            ->assertOk()
+            ->assertJsonPath('delivery_method', 'pickup')
+            ->assertJsonPath('delivery_fee', 0)
+            ->assertJsonPath('pickup_address', $pickupAddress);
+
+        $response = $this->actingAs($user)
+            ->withSession($session)
+            ->post(route('checkout.store'), [
+                'delivery_method' => 'pickup',
+                'use_wallet' => false,
+            ]);
+
+        $order = Order::query()->firstOrFail();
+        $response->assertRedirect(route('orders.show', $order));
+        $this->assertSame('pickup', $order->delivery_method);
+        $this->assertSame(0, $order->delivery_fee);
+        $this->assertSame([], $order->shipping_address);
+        $this->assertSame($pickupAddress, $order->pickup_address);
+
+        HomeSetting::query()->firstOrFail()->update([
+            'content' => [
+                'delivery_fee' => 75_000,
+                'pickup_address' => 'آدرس جدید فروشگاه',
+                'cashback_percent' => 2,
+            ],
+        ]);
+        $order->update(['status' => 'delivered']);
+
+        $this->actingAs($user)
+            ->get(route('orders.invoice', $order))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Orders/Invoice')
+                ->where('invoice.delivery_method', 'pickup')
+                ->where('invoice.delivery_fee', 0)
+                ->where('invoice.pickup_address', $pickupAddress));
+    }
+
+    public function test_google_customer_must_verify_mobile_before_checkout(): void
+    {
+        config()->set('services.payamak_panel', [
+            'base_url' => 'https://rest.payamak-panel.com/api/SmartSMS',
+            'username' => 'user',
+            'api_key' => 'key',
+            'from' => '5000',
+            'timeout' => 5,
+        ]);
+        Http::fake(['*/Send' => Http::response(['Value' => '30', 'RetStatus' => 1, 'StrRetStatus' => 'Ok'])]);
+
+        $user = User::factory()->create([
+            'google_id' => 'google-checkout-user',
+            'phone' => null,
+            'phone_verified_at' => null,
+        ]);
+        $product = Product::factory()->create(['stock' => 2]);
+        $session = ['cart' => ["{$product->id}:base" => ['product_id' => $product->id, 'variant_id' => null, 'quantity' => 1]]];
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->get(route('checkout.show'))
+            ->assertRedirect(route('checkout.phone.show'));
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->post(route('checkout.store'), [
+                'address_mode' => 'new',
+                'address' => [
+                    'recipient_name' => 'کاربر گوگل',
+                    'phone' => '09121234567',
+                    'province' => 'تهران',
+                    'city' => 'تهران',
+                    'address_line' => 'خیابان تست',
+                ],
+            ])
+            ->assertSessionHasErrors('phone_verification');
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->post(route('checkout.phone.send'), ['phone' => '+989121234567'])
+            ->assertRedirect(route('checkout.phone.show'))
+            ->assertSessionHas('checkout_phone_verification_phone', '09121234567');
+
+        $this->assertSame('09121234567', $user->fresh()->phone);
+        $this->assertNull($user->fresh()->phone_verified_at);
+
+        MobileVerificationCode::query()
+            ->where('phone', '09121234567')
+            ->where('purpose', 'checkout_verify_mobile')
+            ->update(['code_hash' => Hash::make('123456')]);
+
+        $this->actingAs($user)
+            ->withSession([
+                ...$session,
+                'checkout_phone_verification_user_id' => $user->id,
+                'checkout_phone_verification_phone' => '09121234567',
+            ])
+            ->post(route('checkout.phone.confirm'), ['code' => '123456'])
+            ->assertRedirect(route('checkout.show'));
+
+        $this->assertNotNull($user->fresh()->phone_verified_at);
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->get(route('checkout.show'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Checkout/Index'));
+    }
+
     public function test_authenticated_user_can_restore_local_cart_backup(): void
     {
         $user = User::factory()->create();
@@ -139,6 +319,28 @@ class OrderCheckoutTest extends TestCase
             ->where('invoice.status', 'delivered')
             ->where('invoice.payable_amount', 80_000)
             ->where('invoice.items.0.discount_amount', 20_000));
+    }
+
+    public function test_pickup_order_cannot_be_marked_as_shipped(): void
+    {
+        $user = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true, 'role' => 'admin']);
+        $order = $this->orderFor($user, 'processing', 'NP-PICKUP-STATE', [
+            'delivery_method' => 'pickup',
+            'pickup_address' => 'تهران، محل مراجعه',
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.orders.update', $order), ['status' => 'shipped'])
+            ->assertSessionHasErrors('status');
+
+        $this->assertSame('processing', $order->fresh()->status);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.orders.update', $order), ['status' => 'delivered'])
+            ->assertRedirect();
+
+        $this->assertSame('delivered', $order->fresh()->status);
     }
 
     public function test_admin_can_cancel_shipped_order_and_reverse_cashback(): void

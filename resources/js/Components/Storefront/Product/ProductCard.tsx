@@ -35,7 +35,10 @@ export default function ProductCard({
         neutral: "border-white/20 bg-slate-900/90 text-white",
     } as const;
     return (
-        <Link className="group block h-full" href={product.url}>
+        <Link
+            className="group block h-full rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+            href={product.url}
+        >
             <Card
                 className="h-full overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] transition duration-300 hover:-translate-y-1 hover:border-indigo-500/60 hover:shadow-xl hover:shadow-indigo-500/10"
                 variant="secondary"

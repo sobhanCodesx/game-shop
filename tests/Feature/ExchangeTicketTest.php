@@ -35,22 +35,80 @@ class ExchangeTicketTest extends TestCase
         $this->assertCount(1, $ticket->trade_item_images);
     }
 
-    public function test_admin_offer_is_bound_to_an_explicit_product(): void
+    public function test_exchange_offer_is_locked_to_the_product_customer_requested(): void
     {
         $user = User::factory()->create();
-        $requested = Product::factory()->create(['trade_enabled' => true]);
-        $approved = Product::factory()->create(['trade_enabled' => true]);
-        $ticket = Ticket::create(['number' => 'TK-EX-1', 'user_id' => $user->id, 'product_id' => $requested->id, 'trade_item_title' => 'PS4', 'subject' => 'معاوضه', 'type' => 'exchange', 'status' => 'open', 'exchange_status' => 'pending_review', 'last_replied_at' => now(), 'created_by' => $user->id]);
-        app(ExchangeService::class)->offer($ticket, $approved, 6_000_000);
-        $this->assertSame($approved->id, $ticket->fresh()->target_product_id);
+        $requested = Product::factory()->create([
+            'trade_enabled' => true,
+            'price' => 10_000_000,
+            'discount_price' => null,
+        ]);
+        $other = Product::factory()->create([
+            'trade_enabled' => true,
+            'price' => 10_000_000,
+            'discount_price' => null,
+        ]);
+        $ticket = Ticket::create([
+            'number' => 'TK-EX-1',
+            'user_id' => $user->id,
+            'product_id' => $requested->id,
+            'trade_item_title' => 'PS4',
+            'subject' => 'معاوضه',
+            'type' => 'exchange',
+            'status' => 'open',
+            'exchange_status' => 'pending_review',
+            'last_replied_at' => now(),
+            'created_by' => $user->id,
+        ]);
+
+        try {
+            app(ExchangeService::class)->offer($ticket, $other, 6_000_000);
+            $this->fail('Exchange offer was allowed on a different product.');
+        } catch (\Illuminate\Validation\ValidationException) {
+            $this->assertTrue(true);
+        }
+
+        app(ExchangeService::class)->offer($ticket, $requested, 6_000_000);
+        $this->assertSame($requested->id, $ticket->fresh()->target_product_id);
         $this->assertSame(6_000_000, $ticket->fresh()->exchange_offer_amount);
     }
 
-    public function test_accepted_exchange_ticket_exposes_the_target_product_order_link(): void
+    public function test_admin_exchange_offer_cannot_exceed_current_product_price_but_can_equal_it(): void
     {
         $user = User::factory()->create();
-        $requested = Product::factory()->create(['trade_enabled' => true]);
-        $target = Product::factory()->create([
+        $product = Product::factory()->create([
+            'trade_enabled' => true,
+            'price' => 5_000_000,
+            'discount_price' => null,
+        ]);
+        $ticket = Ticket::create([
+            'number' => 'TK-EX-ZERO-FLOOR',
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'trade_item_title' => 'PS4',
+            'subject' => 'معاوضه',
+            'type' => 'exchange',
+            'status' => 'open',
+            'exchange_status' => 'pending_review',
+            'last_replied_at' => now(),
+            'created_by' => $user->id,
+        ]);
+
+        try {
+            app(ExchangeService::class)->offer($ticket, $product, 5_000_001);
+            $this->fail('Offer above current product price was accepted.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('exchange_offer_amount', $exception->errors());
+        }
+
+        app(ExchangeService::class)->offer($ticket, $product, 5_000_000);
+        $this->assertSame(5_000_000, $ticket->fresh()->exchange_offer_amount);
+    }
+
+    public function test_accepted_exchange_ticket_links_back_to_the_requested_product(): void
+    {
+        $user = User::factory()->create();
+        $requested = Product::factory()->create([
             'trade_enabled' => true,
             'status' => 'published',
             'visibility' => 'public',
@@ -59,7 +117,7 @@ class ExchangeTicketTest extends TestCase
             'number' => 'TK-EX-ACCEPTED',
             'user_id' => $user->id,
             'product_id' => $requested->id,
-            'target_product_id' => $target->id,
+            'target_product_id' => $requested->id,
             'trade_item_title' => 'PS4',
             'subject' => 'معاوضه',
             'type' => 'exchange',
@@ -76,15 +134,52 @@ class ExchangeTicketTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Account/Tickets/Show')
                 ->where('ticket.exchange_status', 'accepted')
-                ->where('ticket.target_product.id', $target->id)
-                ->where('ticket.target_product.slug', $target->slug));
+                ->where('ticket.target_product.id', $requested->id)
+                ->where('ticket.target_product.slug', $requested->slug));
 
         $this->get(route('products.show', [
-            'product' => $target,
+            'product' => $requested,
             'exchange_request_id' => $ticket->id,
         ]))->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Products/Show')
-            ->where('exchangeRequestId', $ticket->id));
+            ->where('exchangeRequestId', $ticket->id)
+            ->where('exchangeOfferAmount', 6_000_000));
+    }
+
+    public function test_accepted_exchange_is_automatically_exposed_on_requested_product_page(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::factory()->create([
+            'trade_enabled' => true,
+            'status' => 'published',
+            'visibility' => 'public',
+            'price' => 20_000_000,
+            'discount_price' => null,
+        ]);
+        $ticket = Ticket::create([
+            'number' => 'TK-EX-AUTO',
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'target_product_id' => $product->id,
+            'trade_item_title' => 'PS4',
+            'subject' => 'معاوضه',
+            'type' => 'exchange',
+            'status' => 'open',
+            'exchange_status' => 'accepted',
+            'exchange_offer_amount' => 6_000_000,
+            'exchange_credit_expires_at' => now()->addDay(),
+            'exchange_offer_responded_at' => now(),
+            'last_replied_at' => now(),
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('products.show', $product))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->where('exchangeRequestId', $ticket->id)
+                ->where('exchangeOfferAmount', 6_000_000));
     }
 
     public function test_customer_acceptance_preselects_and_deducts_exchange_at_checkout(): void
@@ -123,13 +218,43 @@ class ExchangeTicketTest extends TestCase
                 'variant_id' => null,
                 'quantity' => 1,
             ]],
-        ])->get(route('checkout.show', ['exchange_request_id' => $ticket->id]))
+        ])->get(route('checkout.show'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Checkout/Index')
                 ->where('selectedExchangeId', $ticket->id)
                 ->where('availableExchanges.0.trade_item_title', 'کنسول PlayStation 4 Pro')
                 ->where('summary.exchange_credit_used', 6_000_000));
+    }
+
+    public function test_customer_cannot_accept_a_legacy_offer_bound_to_another_product(): void
+    {
+        $user = User::factory()->create();
+        $requested = Product::factory()->create(['trade_enabled' => true]);
+        $other = Product::factory()->create(['trade_enabled' => true]);
+        $ticket = Ticket::create([
+            'number' => 'TK-EX-LEGACY-MISMATCH',
+            'user_id' => $user->id,
+            'product_id' => $requested->id,
+            'target_product_id' => $other->id,
+            'trade_item_title' => 'PS4',
+            'subject' => 'معاوضه',
+            'type' => 'exchange',
+            'status' => 'open',
+            'exchange_status' => 'offered',
+            'exchange_offer_amount' => 4_000_000,
+            'exchange_credit_expires_at' => now()->addDay(),
+            'last_replied_at' => now(),
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('account.tickets.exchange-response', $ticket), [
+                'decision' => 'accepted',
+            ])
+            ->assertSessionHasErrors('decision');
+
+        $this->assertSame('offered', $ticket->fresh()->exchange_status);
     }
 
     public function test_admin_can_cancel_an_unattached_exchange_request(): void

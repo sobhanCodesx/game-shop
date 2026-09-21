@@ -18,7 +18,7 @@ class OrderService
 {
     public function __construct(private readonly CartService $carts, private readonly CouponService $coupons, private readonly CommerceSettings $settings) {}
 
-    public function preview(array $cart, User $user, ?string $couponCode = null, bool $useWallet = false, ?int $exchangeRequestId = null): array
+    public function preview(array $cart, User $user, ?string $couponCode = null, bool $useWallet = false, ?int $exchangeRequestId = null, string $deliveryMethod = 'courier'): array
     {
         $items = $this->carts->resolve($cart, $user);
         if ($items->isEmpty()) {
@@ -29,17 +29,23 @@ class OrderService
         $afterExchange = max(0, $summary['subtotal'] - $exchangeUsed);
         $coupon = $this->coupons->validate($couponCode, $afterExchange, $user);
         $commerce = $this->settings->all();
-        $delivery = $summary['requires_shipping'] ? $commerce['delivery_fee'] : 0;
+        $deliveryMethod = in_array($deliveryMethod, ['courier', 'pickup'], true) ? $deliveryMethod : 'courier';
+        if ($deliveryMethod === 'pickup' && $commerce['pickup_address'] === '') {
+            throw ValidationException::withMessages(['delivery_method' => 'تحویل حضوری هنوز توسط فروشگاه فعال نشده است.']);
+        }
+        $delivery = $summary['requires_shipping'] && $deliveryMethod === 'courier'
+            ? $commerce['delivery_fee']
+            : 0;
         $eligible = max(0, $afterExchange - $coupon['discount']);
         $grand = $eligible + $delivery;
         $wallet = $useWallet ? min((int) $user->wallet_balance, $grand) : 0;
 
-        return [...$summary, 'items' => $items, 'exchange_credit_used' => $exchangeUsed, 'coupon_discount' => $coupon['discount'], 'delivery_fee' => $delivery, 'grand_total' => $grand, 'wallet_used' => $wallet, 'payable_amount' => $grand - $wallet, 'cashback_percent' => $commerce['cashback_percent'], 'cashback_amount' => (int) floor($eligible * $commerce['cashback_percent'] / 100)];
+        return [...$summary, 'items' => $items, 'exchange_credit_used' => $exchangeUsed, 'coupon_discount' => $coupon['discount'], 'delivery_method' => $deliveryMethod, 'pickup_address' => $deliveryMethod === 'pickup' ? $commerce['pickup_address'] : null, 'delivery_fee' => $delivery, 'grand_total' => $grand, 'wallet_used' => $wallet, 'payable_amount' => $grand - $wallet, 'cashback_percent' => $commerce['cashback_percent'], 'cashback_amount' => (int) floor($eligible * $commerce['cashback_percent'] / 100)];
     }
 
-    public function create(array $cart, User $user, array $address, ?string $couponCode, bool $useWallet, ?int $exchangeRequestId = null): Order
+    public function create(array $cart, User $user, array $address, ?string $couponCode, bool $useWallet, ?int $exchangeRequestId = null, string $deliveryMethod = 'courier'): Order
     {
-        $order = DB::transaction(function () use ($cart, $user, $address, $couponCode, $useWallet, $exchangeRequestId) {
+        $order = DB::transaction(function () use ($cart, $user, $address, $couponCode, $useWallet, $exchangeRequestId, $deliveryMethod) {
             $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
             $items = $this->carts->resolve($cart, $lockedUser);
             if ($items->isEmpty()) {
@@ -63,7 +69,13 @@ class OrderService
             $afterExchange = max(0, $summary['subtotal'] - $exchangeUsed);
             $couponResult = $this->coupons->validate($couponCode, $afterExchange, $lockedUser, true);
             $commerce = $this->settings->all();
-            $delivery = $summary['requires_shipping'] ? $commerce['delivery_fee'] : 0;
+            $deliveryMethod = in_array($deliveryMethod, ['courier', 'pickup'], true) ? $deliveryMethod : 'courier';
+            if ($deliveryMethod === 'pickup' && $commerce['pickup_address'] === '') {
+                throw ValidationException::withMessages(['delivery_method' => 'تحویل حضوری هنوز توسط فروشگاه فعال نشده است.']);
+            }
+            $delivery = $summary['requires_shipping'] && $deliveryMethod === 'courier'
+                ? $commerce['delivery_fee']
+                : 0;
             $eligible = max(0, $afterExchange - $couponResult['discount']);
             $grand = $eligible + $delivery;
             $walletUsed = $useWallet ? min((int) $lockedUser->wallet_balance, $grand) : 0;
@@ -74,7 +86,10 @@ class OrderService
             $order = Order::query()->create([
                 'number' => 'NP-'.now()->format('ymd').'-'.strtoupper(str()->random(7)), 'user_id' => $lockedUser->id,
                 'coupon_id' => $couponResult['coupon']?->id, 'coupon_code' => $couponResult['coupon']?->code,
-                'shipping_address' => $address, 'status' => 'pending', ...$summary,
+                'shipping_address' => $address,
+                'delivery_method' => $deliveryMethod,
+                'pickup_address' => $deliveryMethod === 'pickup' ? $commerce['pickup_address'] : null,
+                'status' => 'pending', ...$summary,
                 'exchange_request_id' => $exchange?->id, 'exchange_credit_used' => $exchangeUsed,
                 'trade_user_id' => $exchange?->user_id, 'approved_product_id' => $exchange?->target_product_id,
                 'approved_trade_value' => $exchange?->exchange_offer_amount,
@@ -133,6 +148,9 @@ class OrderService
             ];
             if (! in_array($status, $allowed[$order->status] ?? [], true)) {
                 throw ValidationException::withMessages(['status' => 'تغییر وضعیت انتخاب‌شده برای این سفارش مجاز نیست.']);
+            }
+            if ($order->delivery_method === 'pickup' && $status === 'shipped') {
+                throw ValidationException::withMessages(['status' => 'سفارش تحویل حضوری نباید وارد وضعیت ارسال با پیک شود.']);
             }
             $user = User::query()->lockForUpdate()->findOrFail($order->user_id);
 
@@ -194,8 +212,19 @@ class OrderService
             $query->lockForUpdate();
         }
         $exchange = $query->firstOrFail();
-        if ($exchange->type !== 'exchange' || $exchange->user_id !== $user->id || $exchange->exchange_status !== 'accepted' || $exchange->exchange_order_id || ! $exchange->target_product_id || ! $exchange->exchange_offer_amount) {
-            throw ValidationException::withMessages(['exchange_request_id' => 'اعتبار معاوضه انتخاب‌شده معتبر یا قابل استفاده نیست.']);
+        if (
+            $exchange->type !== 'exchange'
+            || $exchange->user_id !== $user->id
+            || $exchange->exchange_status !== 'accepted'
+            || $exchange->exchange_order_id
+            || ! $exchange->product_id
+            || ! $exchange->target_product_id
+            || (int) $exchange->target_product_id !== (int) $exchange->product_id
+            || ! $exchange->exchange_offer_amount
+        ) {
+            throw ValidationException::withMessages([
+                'exchange_request_id' => 'اعتبار معاوضه انتخاب‌شده فقط برای همان محصول درخواست‌شده معتبر است.',
+            ]);
         }
         if ($exchange->exchange_credit_expires_at?->isPast()) {
             if ($lock) {
@@ -203,12 +232,18 @@ class OrderService
             }
             throw ValidationException::withMessages(['exchange_request_id' => 'مهلت استفاده از این اعتبار معاوضه تمام شده است.']);
         }
-        $itemKey = $items->search(fn ($item) => (int) $item['product_id'] === (int) $exchange->target_product_id);
+        $itemKey = $items->search(fn ($item) => (int) $item['product_id'] === (int) $exchange->product_id);
         if ($itemKey === false) {
             throw ValidationException::withMessages(['exchange_request_id' => 'این اعتبار فقط برای محصول هدف همان معاوضه قابل استفاده است.']);
         }
-        $used = min((int) $exchange->exchange_offer_amount, (int) $items[$itemKey]['unit_price']);
+        $unitPrice = (int) $items[$itemKey]['unit_price'];
+        $offerAmount = (int) $exchange->exchange_offer_amount;
+        if ($offerAmount > $unitPrice) {
+            throw ValidationException::withMessages([
+                'exchange_request_id' => 'مبلغ توافق معاوضه از قیمت فعلی این بازی بیشتر شده است؛ مبلغ نهایی نباید منفی شود. پشتیبانی باید مبلغ توافق را اصلاح کند.',
+            ]);
+        }
 
-        return [$exchange, $used, $itemKey];
+        return [$exchange, $offerAmount, $itemKey];
     }
 }

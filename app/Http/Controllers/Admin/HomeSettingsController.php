@@ -13,6 +13,7 @@ use App\Models\HomeSlide;
 use App\Models\Platform;
 use App\Models\Product;
 use App\Models\SocialContent;
+use App\Services\HomeExperienceService;
 use App\Services\MediaStorage;
 use App\Services\TemporaryUploadService;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +26,7 @@ use Throwable;
 class HomeSettingsController extends Controller
 {
     public const DEFAULTS = [
+        'home_template' => 'default',
         'announcement_enabled' => true,
         'announcement_text' => 'ارسال رایگان سفارش‌های منتخب و تضمین اصالت کالا',
         'announcement_url' => '/products',
@@ -42,10 +44,11 @@ class HomeSettingsController extends Controller
         'seo_description' => 'خرید بازی، کنسول و تجهیزات گیمینگ با تضمین اصالت، ارسال سریع و پشتیبانی تخصصی از فروشگاه PlayNexus.',
     ];
 
-    public function edit(): Response
+    public function edit(HomeExperienceService $homeExperience): Response
     {
         return Inertia::render('Admin/Home/Edit', [
-            'settings' => [...self::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])],
+            'settings' => [...self::DEFAULTS, ...(HomeSetting::query()->find(1)?->content ?? [])],
+            'homeTemplates' => $homeExperience->templates(),
             'slides' => HomeSlide::query()->orderBy('sort_order')->get()->map(fn (HomeSlide $slide) => [
                 ...$slide->toArray(),
                 'alt' => $slide->alt ?: $slide->title,
@@ -77,7 +80,7 @@ class HomeSettingsController extends Controller
         ]);
     }
 
-    public function update(HomeSettingsRequest $request, TemporaryUploadService $uploads): RedirectResponse
+    public function update(HomeSettingsRequest $request, TemporaryUploadService $uploads, HomeExperienceService $homeExperience): RedirectResponse
     {
         $validated = $request->validated();
         $keptIds = [];
@@ -88,7 +91,14 @@ class HomeSettingsController extends Controller
         $obsoleteImagePaths = [];
         try {
             DB::transaction(function () use ($request, $validated, $uploads, &$claimedTokens, &$newImagePaths, &$obsoleteImagePaths, &$keptIds, &$keptSectionIds): void {
-                HomeSetting::query()->updateOrCreate(['id' => 1], ['content' => $validated['settings']]);
+                HomeSetting::query()->firstOrCreate(['id' => 1], ['content' => []]);
+                $homeSetting = HomeSetting::query()->whereKey(1)->lockForUpdate()->firstOrFail();
+                $homeSetting->update([
+                    'content' => [
+                        ...($homeSetting->content ?? []),
+                        ...$validated['settings'],
+                    ],
+                ]);
 
                 foreach ($validated['slides'] ?? [] as $index => $data) {
                     $slide = isset($data['id']) ? HomeSlide::query()->findOrFail($data['id']) : new HomeSlide;
@@ -121,6 +131,13 @@ class HomeSettingsController extends Controller
                             $obsoleteImagePaths[] = $slide->mobile_image;
                         }
                         $data['mobile_image'] = $newPath;
+                    } elseif (
+                        $slide->exists
+                        && $slide->mobile_image
+                        && blank($data['mobile_image'] ?? null)
+                    ) {
+                        $obsoleteImagePaths[] = $slide->mobile_image;
+                        $data['mobile_image'] = null;
                     }
 
                     abort_if(blank($data['desktop_image'] ?? null), 422, 'تصویر دسکتاپ هر اسلاید الزامی است.');
@@ -155,6 +172,8 @@ class HomeSettingsController extends Controller
 
             throw $exception;
         } finally {
+            $homeExperience->invalidate();
+
             foreach ($claimedTokens as $token) {
                 $uploads->forget($request->user()->id, $token);
             }
