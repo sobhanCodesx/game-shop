@@ -49,15 +49,15 @@ class CheckoutRequest extends FormRequest
     {
         return [
             'address_mode.required' => 'لطفاً روش انتخاب آدرس را مشخص کنید.',
-            'address_id.required_if' => 'لطفاً یکی از آدرس‌های ذخیره‌شده را انتخاب کنید.',
+            'address_id.required' => 'لطفاً یکی از آدرس‌های ذخیره‌شده را انتخاب کنید.',
             'address_id.exists' => 'آدرس انتخاب‌شده معتبر نیست.',
-            'address.required_if' => 'اطلاعات آدرس جدید را کامل کنید.',
-            'address.recipient_name.required_if' => 'نام تحویل‌گیرنده الزامی است.',
-            'address.phone.required_if' => 'شماره تماس تحویل‌گیرنده الزامی است.',
-            'address.province.required_if' => 'استان الزامی است.',
+            'address.required' => 'اطلاعات آدرس جدید را کامل کنید.',
+            'address.recipient_name.required' => 'نام تحویل‌گیرنده الزامی است.',
+            'address.phone.required' => 'شماره تماس تحویل‌گیرنده الزامی است.',
+            'address.province.required' => 'استان الزامی است.',
             'address.province.in' => 'در حال حاضر ارسال سفارش فقط در شهر تهران انجام می‌شود.',
-            'address.city.required_if' => 'نام شهر الزامی است.',
-            'address.address_line.required_if' => 'نشانی کامل محل تحویل الزامی است.',
+            'address.city.required' => 'نام شهر الزامی است.',
+            'address.address_line.required' => 'نشانی کامل محل تحویل الزامی است.',
             'address.postal_code.digits' => 'کد پستی در صورت وارد کردن باید دقیقاً ۱۰ رقم باشد.',
             'coupon_code.max' => 'کد تخفیف نمی‌تواند بیشتر از ۵۰ کاراکتر باشد.',
         ];
