@@ -255,6 +255,8 @@ function SpotlightCard({
                 <img
                     alt={item.title}
                     className="absolute inset-0 -z-20 size-full object-cover transition duration-700 group-hover:scale-[1.035]"
+                    decoding="async"
+                    loading="lazy"
                     src={image}
                 />
             ) : (
