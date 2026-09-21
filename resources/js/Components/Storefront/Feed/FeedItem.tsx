@@ -138,7 +138,7 @@ function FeedItemComponent({
     };
 
     return (
-        <article className="pn-feed-card overflow-hidden border-y border-[var(--store-border)] shadow-[0_14px_45px_-34px_rgba(0,0,0,.8)] sm:rounded-3xl sm:border">
+        <article className="pn-feed-card pn-deferred-zone overflow-hidden border-y border-[var(--store-border)] shadow-[0_14px_45px_-34px_rgba(0,0,0,.8)] sm:rounded-3xl sm:border">
             <header className="flex items-center gap-3 px-4 py-4 sm:px-5">
                 {item.author.url ? (
                     <Link href={item.author.url}>
