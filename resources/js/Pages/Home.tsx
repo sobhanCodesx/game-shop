@@ -1608,7 +1608,7 @@ function PersonalizedHomePanel({
     userName: string;
     latestFeed: HomeFeedPreviewItem[];
     latestStudios: StudioItem[];
-    latestProducts: StorefrontProduct[];
+    latestProducts: HomePreviewProduct[];
     channels: ChannelItem[];
     freshContent: FreshItem[];
     gameRadar: GameRadarItem[];
@@ -3428,7 +3428,7 @@ export default function Home({
                         freshContent={previewFreshContent}
                         gameRadar={previewGameRadar}
                         latestFeed={previewLatestFeed}
-                        latestProducts={previewLatestProducts as StorefrontProduct[]}
+                        latestProducts={previewLatestProducts}
                         latestStudios={previewLatestStudios}
                         userName={auth.user.name}
                     />
