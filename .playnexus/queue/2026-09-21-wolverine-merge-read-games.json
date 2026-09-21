@@ -1,0 +1,15 @@
+{
+  "job_id": "2026-09-21-wolverine-merge-read-games",
+  "tool": "select_content",
+  "arguments": {
+    "resource": "game",
+    "ids": [
+      8,
+      18
+    ],
+    "include_deleted": false,
+    "limit": 10,
+    "order_by": "id",
+    "order_dir": "asc"
+  }
+}
