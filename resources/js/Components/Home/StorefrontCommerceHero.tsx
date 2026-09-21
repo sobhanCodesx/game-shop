@@ -31,6 +31,10 @@ interface Props {
 }
 
 const money = new Intl.NumberFormat("fa-IR");
+const productIsUnavailable = (product: StorefrontProduct) =>
+    product.meta_badges.some(
+        (badge) => badge.key === "availability" && badge.tone === "danger",
+    );
 
 function ProductPrice({ product }: { product: StorefrontProduct }) {
     const hasDiscount =
@@ -272,9 +276,34 @@ export default function StorefrontCommerceHero({
     categories,
     contentItems,
 }: Props) {
-    const featured = useMemo(() => products.slice(0, 6), [products]);
-    const latest = useMemo(() => latestProducts.slice(0, 8), [latestProducts]);
-    const lead = featured[0] ?? latest[0] ?? null;
+    const featured = useMemo(
+        () =>
+            [...products]
+                .sort(
+                    (left, right) =>
+                        Number(productIsUnavailable(left)) -
+                        Number(productIsUnavailable(right)),
+                )
+                .slice(0, 6),
+        [products],
+    );
+    const latest = useMemo(
+        () =>
+            [...latestProducts]
+                .sort(
+                    (left, right) =>
+                        Number(productIsUnavailable(left)) -
+                        Number(productIsUnavailable(right)),
+                )
+                .slice(0, 8),
+        [latestProducts],
+    );
+    const lead =
+        featured.find((product) => !productIsUnavailable(product)) ??
+        latest.find((product) => !productIsUnavailable(product)) ??
+        featured[0] ??
+        latest[0] ??
+        null;
     const quickProducts = [
         ...featured.slice(1, 4),
         ...latest.filter((item) => item.id !== lead?.id),
