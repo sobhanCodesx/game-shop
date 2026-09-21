@@ -61,6 +61,7 @@ interface Variant {
 interface Props {
     seo: SeoData;
     exchangeRequestId: number | null;
+    exchangeOfferAmount: number | null;
     latestFeed: FeedItemData[];
     latestVideos: StorefrontContent[];
     latestProducts: StorefrontProduct[];
@@ -261,6 +262,7 @@ function GameplayTheater({
 export default function ProductShow({
     seo,
     exchangeRequestId,
+    exchangeOfferAmount,
     product,
     latestFeed,
     latestVideos,
@@ -300,6 +302,14 @@ export default function ProductShow({
         [product.variants, variantId],
     );
     const pricing = variant?.pricing ?? product.pricing;
+    const exchangeDiscount =
+        exchangeRequestId && exchangeOfferAmount
+            ? Math.min(exchangeOfferAmount, pricing.final_price)
+            : 0;
+    const exchangeFinalPrice = Math.max(
+        0,
+        pricing.final_price - exchangeDiscount,
+    );
     const available = variant
         ? variant.stock > 0
         : product.availability !== "out_of_stock";
@@ -671,7 +681,9 @@ export default function ProductShow({
                                     <div className="flex items-end justify-between gap-4 border-t border-[var(--store-border)] pt-5">
                                         <div>
                                             <p className="mb-1 text-xs text-[var(--store-muted)]">
-                                                قیمت انتخاب شما
+                                                {exchangeRequestId
+                                                    ? "قیمت قبل از اعمال معاوضه"
+                                                    : "قیمت انتخاب شما"}
                                             </p>
                                             <Price pricing={pricing} />
                                         </div>
@@ -684,6 +696,31 @@ export default function ProductShow({
                                             {available ? "موجود" : "ناموجود"}
                                         </span>
                                     </div>
+                                    {exchangeRequestId && exchangeOfferAmount && (
+                                        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-4">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div>
+                                                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                                                        مبلغ توافق‌شده معاوضه
+                                                    </p>
+                                                    <p className="mt-1 text-sm text-[var(--store-muted)]">
+                                                        این مبلغ فقط برای حساب شما و همین محصول اعمال می‌شود.
+                                                    </p>
+                                                </div>
+                                                <strong className="whitespace-nowrap text-emerald-600">
+                                                    − {number.format(exchangeDiscount)} تومان
+                                                </strong>
+                                            </div>
+                                            <div className="mt-4 flex items-center justify-between border-t border-emerald-500/20 pt-4">
+                                                <span className="font-black">
+                                                    قیمت نهایی بعد از معاوضه
+                                                </span>
+                                                <strong className="text-xl font-black text-emerald-600">
+                                                    {number.format(exchangeFinalPrice)} تومان
+                                                </strong>
+                                            </div>
+                                        </div>
+                                    )}
                                     {flash.success && (
                                         <div className="flex items-center justify-between rounded-2xl bg-emerald-500/10 p-3 text-xs font-bold text-emerald-600">
                                             <span className="flex items-center gap-2">
