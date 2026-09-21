@@ -31,7 +31,6 @@ import {
 } from "react";
 
 import StorefrontBrand from "./StorefrontBrand";
-import NotificationPopover from "../../Notifications/NotificationPopover";
 import ThemeToggle from "./ThemeToggle";
 
 import type { SharedPageProps } from "../../../types";
@@ -42,6 +41,9 @@ import type {
 } from "./types";
 
 const StorefrontMegaMenu = lazy(() => import("./StorefrontMegaMenu"));
+const NotificationPopover = lazy(
+    () => import("../../Notifications/NotificationPopover"),
+);
 const preloadStorefrontMegaMenu = () => import("./StorefrontMegaMenu");
 
 interface Props extends Pick<StorefrontNavigationProps, "categories" | "user"> {
