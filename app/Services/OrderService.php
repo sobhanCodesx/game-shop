@@ -149,6 +149,9 @@ class OrderService
             if (! in_array($status, $allowed[$order->status] ?? [], true)) {
                 throw ValidationException::withMessages(['status' => 'تغییر وضعیت انتخاب‌شده برای این سفارش مجاز نیست.']);
             }
+            if ($order->delivery_method === 'pickup' && $status === 'shipped') {
+                throw ValidationException::withMessages(['status' => 'سفارش تحویل حضوری نباید وارد وضعیت ارسال با پیک شود.']);
+            }
             $user = User::query()->lockForUpdate()->findOrFail($order->user_id);
 
             if ($status === 'approved' && $order->cashback_amount > 0 && ! $order->cashback_credited_at) {
