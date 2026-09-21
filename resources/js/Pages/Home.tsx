@@ -381,7 +381,13 @@ const mixPrioritySlides = (
     return mixed;
 };
 
-function ProductGrid({ products }: { products: StorefrontProduct[] }) {
+function ProductGrid({
+    products,
+    dense = false,
+}: {
+    products: StorefrontProduct[];
+    dense?: boolean;
+}) {
     const railRef = useRef<HTMLDivElement>(null);
     if (!products.length)
         return (
@@ -414,7 +420,11 @@ function ProductGrid({ products }: { products: StorefrontProduct[] }) {
             >
                 {products.map((product) => (
                     <div
-                        className="w-[84vw] max-w-[300px] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
+                        className={
+                            dense
+                                ? "w-[64vw] max-w-[240px] shrink-0 snap-start sm:w-[245px] lg:w-[260px]"
+                                : "w-[84vw] max-w-[300px] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
+                        }
                         key={product.id}
                     >
                         <ProductCard product={product} />
@@ -3316,7 +3326,10 @@ export default function Home({
                                             مشاهده همه
                                         </Link>
                                     </div>
-                                    <ProductGrid products={featuredProducts} />
+                                    <ProductGrid
+                                        dense
+                                        products={featuredProducts}
+                                    />
                                 </section>
                             )}
                         {settings.latest_products_enabled &&
@@ -3341,7 +3354,10 @@ export default function Home({
                                             فروشگاه کامل
                                         </Link>
                                     </div>
-                                    <ProductGrid products={latestProducts} />
+                                    <ProductGrid
+                                        dense
+                                        products={latestProducts}
+                                    />
                                 </section>
                             )}
                     </>
