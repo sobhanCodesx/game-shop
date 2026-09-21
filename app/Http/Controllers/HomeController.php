@@ -177,20 +177,6 @@ class HomeController extends Controller
             })(),
             'settings' => $settings,
             'slides' => $slides,
-            'categories' => Category::query()
-                ->whereNull('parent_id')
-                ->where('status', 'active')
-                ->withCount('products')
-                ->with([
-                    'children' => fn ($query) => $query
-                        ->where('status', 'active')
-                        ->with(['children' => fn ($query) => $query->where('status', 'active')->orderBy('sort_order')])
-                        ->orderBy('sort_order'),
-                ])
-                ->orderBy('sort_order')
-                ->limit(8)
-                ->get(['id', 'parent_id', 'name', 'slug', 'image'])
-                ->map(fn (Category $category) => $this->navigationCategory($category)),
             'featuredProducts' => Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap),
             'latestProducts' => Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap),
             'contentSections' => HomeSection::query()->where('is_active', true)->orderBy('sort_order')->get()->map(function (HomeSection $section) use ($request, $prices, $storefront, $cardRelations) {
