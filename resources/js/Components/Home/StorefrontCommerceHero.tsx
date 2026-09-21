@@ -51,6 +51,10 @@ function ProductPrice({ product }: { product: StorefrontProduct }) {
 }
 
 function LeadProduct({ product }: { product: StorefrontProduct }) {
+    const availabilityBadge = product.meta_badges.find(
+        (badge) => badge.key === "availability",
+    );
+    const unavailable = availabilityBadge?.tone === "danger";
     const hasDiscount =
         product.pricing.regular_price > product.pricing.final_price;
     const discountPercent =
@@ -98,6 +102,13 @@ function LeadProduct({ product }: { product: StorefrontProduct }) {
                             {money.format(discountPercent)}٪ تخفیف
                         </span>
                     )}
+                    {availabilityBadge && (
+                        <span
+                            className={`rounded-full border px-2.5 py-1 text-[9px] font-black ${unavailable ? "border-rose-300/30 bg-rose-600 text-white" : "border-emerald-300/30 bg-emerald-600 text-white"}`}
+                        >
+                            {availabilityBadge.value}
+                        </span>
+                    )}
                 </div>
                 <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/60 backdrop-blur">
                     انتخاب اول فروشگاه
@@ -122,7 +133,7 @@ function LeadProduct({ product }: { product: StorefrontProduct }) {
                 </div>
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                     <span className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-xs font-black text-slate-950 shadow-xl">
-                        خرید / مشاهده
+                        {unavailable ? "مشاهده جزئیات" : "خرید / مشاهده"}
                         <ArrowUpLeft size={15} />
                     </span>
                     <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold text-white/55 backdrop-blur">
@@ -141,6 +152,10 @@ function QuickProductCard({
     product: StorefrontProduct;
     featured?: boolean;
 }) {
+    const availabilityBadge = product.meta_badges.find(
+        (badge) => badge.key === "availability",
+    );
+
     return (
         <Link
             className="group relative flex min-h-[150px] overflow-hidden rounded-[22px] border border-white/8 bg-[#08101b] text-white transition hover:-translate-y-0.5 hover:border-cyan-300/30"
@@ -173,9 +188,18 @@ function QuickProductCard({
                 <strong className="line-clamp-2 text-sm font-black leading-6">
                     {product.title}
                 </strong>
-                <span className="mt-2 text-xs font-black text-emerald-300">
-                    {money.format(product.pricing.final_price)} تومان
-                </span>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-black text-emerald-300">
+                        {money.format(product.pricing.final_price)} تومان
+                    </span>
+                    {availabilityBadge && (
+                        <span
+                            className={`rounded-full px-2 py-0.5 text-[8px] font-black ${availabilityBadge.tone === "danger" ? "bg-rose-500/15 text-rose-300" : "bg-emerald-500/15 text-emerald-300"}`}
+                        >
+                            {availabilityBadge.value}
+                        </span>
+                    )}
+                </div>
             </span>
         </Link>
     );
