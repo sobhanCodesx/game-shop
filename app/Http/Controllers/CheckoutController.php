@@ -30,7 +30,24 @@ class CheckoutController extends Controller
         $preview = $orders->preview($cart, $request->user());
 
         $productIds = collect($preview['items'])->pluck('product_id');
-        $exchanges = Ticket::query()->where('type', 'exchange')->where('user_id', $request->user()->id)->where('exchange_status', 'accepted')->whereNull('exchange_order_id')->whereIn('target_product_id', $productIds)->where(fn ($q) => $q->whereNull('exchange_credit_expires_at')->orWhere('exchange_credit_expires_at', '>', now()))->with('targetProduct:id,title')->get()->map(fn (Ticket $ticket) => ['id' => $ticket->id, 'number' => $ticket->number, 'amount' => (int) $ticket->exchange_offer_amount, 'trade_item_title' => $ticket->trade_item_title, 'expires_at' => $ticket->exchange_credit_expires_at?->toIso8601String(), 'product' => $ticket->targetProduct]);
+        $exchanges = Ticket::query()
+            ->where('type', 'exchange')
+            ->where('user_id', $request->user()->id)
+            ->where('exchange_status', 'accepted')
+            ->whereNull('exchange_order_id')
+            ->whereColumn('product_id', 'target_product_id')
+            ->whereIn('product_id', $productIds)
+            ->where(fn ($q) => $q->whereNull('exchange_credit_expires_at')->orWhere('exchange_credit_expires_at', '>', now()))
+            ->with('targetProduct:id,title')
+            ->get()
+            ->map(fn (Ticket $ticket) => [
+                'id' => $ticket->id,
+                'number' => $ticket->number,
+                'amount' => (int) $ticket->exchange_offer_amount,
+                'trade_item_title' => $ticket->trade_item_title,
+                'expires_at' => $ticket->exchange_credit_expires_at?->toIso8601String(),
+                'product' => $ticket->targetProduct,
+            ]);
         $selectedExchangeId = $exchanges->contains('id', $request->integer('exchange_request_id'))
             ? $request->integer('exchange_request_id')
             : ($exchanges->count() === 1 ? (int) $exchanges->first()['id'] : null);
