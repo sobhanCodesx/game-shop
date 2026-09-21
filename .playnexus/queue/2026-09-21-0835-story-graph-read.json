@@ -1,0 +1,5 @@
+{
+  "tool": "query_playnexus_graph",
+  "purpose": "story_engine_read_analysis_dedupe",
+  "query": "query StoryEngineRead { contents(first: 24, types: [STORY, VIDEO], orderBy: PUBLISHED_AT_DESC) { nodes { id type title slug excerpt publishedAt status linkUrl game { id name slug } media { type url thumbnailUrl mimeType } } } gameRadar(first: 12) { nodes { id title slug updatedAt game { id name slug } } } }"
+}
