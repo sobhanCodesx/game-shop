@@ -118,6 +118,7 @@ export const adminNavigation: NavigationEntry[] = [
         icon: Settings,
         children: [
             link("تنظیمات", "/admin/settings", Settings),
+            link("پنل‌های پیامکی", "/admin/sms-providers", MessageSquareText),
             link("پترن‌های پیامک", "/admin/sms-patterns", ListChecks),
             link("تست پیامک", "/admin/sms-test", MessageSquareText),
             link("به‌روزرسانی سیستم", "/admin/deployments", Rocket),
