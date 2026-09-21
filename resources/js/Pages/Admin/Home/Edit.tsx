@@ -287,6 +287,34 @@ export default function Edit({
         [next[index], next[target]] = [next[target], next[index]];
         setData("slides", next);
     };
+    const clearMobileImage = (index: number) => {
+        const preview = data.slides[index]?.mobile_image_url;
+        if (preview?.startsWith("blob:")) {
+            URL.revokeObjectURL(preview);
+            previewObjectUrls.current.delete(preview);
+        }
+
+        setData((current) => {
+            const next = [...current.slides];
+            next[index] = {
+                ...next[index],
+                mobile_image: "",
+                mobile_image_url: "",
+                mobile_upload_token: undefined,
+            };
+
+            return { ...current, slides: next };
+        });
+        setUploadErrors((current) => ({
+            ...current,
+            [`${index}-mobile`]: "",
+        }));
+        setUploadProgress((current) => {
+            const next = { ...current };
+            delete next[`${index}-mobile`];
+            return next;
+        });
+    };
     const uploadBanner = async (
         index: number,
         kind: "desktop" | "mobile",
@@ -604,16 +632,30 @@ export default function Edit({
                                                 slide.mobile_image_file,
                                                 slide.mobile_image_url,
                                             ) && (
-                                                <div className="mb-3 flex justify-center rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                                                    <div className="aspect-[4/5] w-28 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
-                                                        <img
-                                                            alt="پیش‌نمایش موبایل بنر"
-                                                            className="size-full object-cover"
-                                                            src={previewUrl(
-                                                                slide.mobile_image_file,
-                                                                slide.mobile_image_url,
-                                                            )}
-                                                        />
+                                                <div className="mb-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                                                    <div className="flex justify-center">
+                                                        <div className="aspect-[2.35/1] w-full max-w-xs overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
+                                                            <img
+                                                                alt="پیش‌نمایش موبایل بنر"
+                                                                className="size-full object-contain"
+                                                                src={previewUrl(
+                                                                    slide.mobile_image_file,
+                                                                    slide.mobile_image_url,
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-3 flex justify-center">
+                                                        <Button
+                                                            onPress={() =>
+                                                                clearMobileImage(index)
+                                                            }
+                                                            size="sm"
+                                                            variant="danger-soft"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                            حذف نسخه موبایل
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             )}
