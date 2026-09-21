@@ -91,9 +91,9 @@ function DeferredGlobalVideoPreview() {
         });
 
         if ("requestIdleCallback" in window) {
-            idleId = window.requestIdleCallback(activate, { timeout: 2200 });
+            idleId = window.requestIdleCallback(activate, { timeout: 6000 });
         } else {
-            timeoutId = window.setTimeout(activate, 1200);
+            timeoutId = window.setTimeout(activate, 4000);
         }
 
         return () => {
