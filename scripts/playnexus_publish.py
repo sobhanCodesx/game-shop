@@ -587,6 +587,69 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def upload_binary_chunk(
+    mcp_url: str,
+    token: str,
+    *,
+    upload_id: str,
+    chunk_index: int,
+    chunk: bytes,
+) -> dict[str, Any]:
+    endpoint = urllib.parse.urljoin(mcp_url, "content-agent/upload/chunk")
+    validate_public_https_url(endpoint)
+
+    boundary = f"----PlayNexusBinary{hashlib.sha256(f'{upload_id}:{chunk_index}'.encode()).hexdigest()[:24]}"
+    boundary_bytes = boundary.encode("ascii")
+
+    body = b"".join([
+        b"--" + boundary_bytes + b"\r\n",
+        b'Content-Disposition: form-data; name="upload_id"\r\n\r\n',
+        upload_id.encode("utf-8") + b"\r\n",
+        b"--" + boundary_bytes + b"\r\n",
+        b'Content-Disposition: form-data; name="chunk_index"\r\n\r\n',
+        str(chunk_index).encode("ascii") + b"\r\n",
+        b"--" + boundary_bytes + b"\r\n",
+        b'Content-Disposition: form-data; name="chunk"; filename="chunk.bin"\r\n',
+        b"Content-Type: application/octet-stream\r\n\r\n",
+        chunk + b"\r\n",
+        b"--" + boundary_bytes + b"--\r\n",
+    ])
+
+    request = urllib.request.Request(
+        url=endpoint,
+        data=body,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            "User-Agent": "PlayNexus-GitHub-Publisher/2.2",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=90) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        fail(f"PlayNexus binary chunk endpoint returned HTTP {exc.code}: {detail[:1000]}")
+    except urllib.error.URLError as exc:
+        fail(f"Could not upload binary chunk to PlayNexus: {exc.reason}")
+
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        fail(f"PlayNexus binary chunk endpoint returned non-JSON data: {raw[:1000]}")
+
+    if not isinstance(payload, dict):
+        fail("PlayNexus binary chunk endpoint returned invalid JSON.")
+
+    if int(payload.get("received_bytes") or 0) != len(chunk):
+        fail("PlayNexus binary chunk endpoint acknowledged the wrong byte count.")
+
+    return payload
+
+
 def upload_asset(
     url: str,
     token: str,
@@ -678,17 +741,12 @@ def upload_asset(
                     if not chunk:
                         fail("Asset source ended before all chunks were read.")
 
-                    rpc_request(
+                    upload_binary_chunk(
                         url,
                         token,
-                        tool="upload_asset_chunk",
-                        arguments={
-                            "upload_id": upload_id,
-                            "chunk_index": index,
-                            "data_base64": base64.b64encode(chunk).decode("ascii"),
-                        },
-                        request_id=f"{request_id}:chunk:{index}",
-                        timeout=90,
+                        upload_id=upload_id,
+                        chunk_index=index,
+                        chunk=chunk,
                     )
 
             response = rpc_request(
