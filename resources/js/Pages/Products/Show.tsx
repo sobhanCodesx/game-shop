@@ -169,7 +169,7 @@ function GameplayTheater({
     return (
         <section
             aria-labelledby="gameplay-title"
-            className="mx-auto max-w-5xl scroll-mt-28"
+            className="pn-deferred-zone mx-auto max-w-5xl scroll-mt-28"
         >
             <div className="mb-4 flex items-end justify-between gap-4">
                 <div>
@@ -410,6 +410,8 @@ export default function ProductShow({
                                             alt=""
                                             aria-hidden
                                             className="absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-3xl"
+                                            decoding="async"
+                                            fetchPriority="low"
                                             src={backdrop}
                                         />
                                     )}
@@ -423,14 +425,17 @@ export default function ProductShow({
                                                     controls
                                                     key={activeMedia.id}
                                                     playsInline
-                                                    preload="auto"
+                                                    preload="metadata"
                                                     src={activeMedia.url}
                                                 />
                                             ) : (
                                                 <img
                                                     alt={activeMedia.alt}
                                                     className="relative z-10 h-full w-full object-contain drop-shadow-2xl"
+                                                    decoding="async"
+                                                    fetchPriority="high"
                                                     key={activeMedia.id}
+                                                    loading="eager"
                                                     onLoad={(event) => {
                                                         const image =
                                                             event.currentTarget;
@@ -531,6 +536,7 @@ export default function ProductShow({
                                                     <img
                                                         alt=""
                                                         className="h-full w-full object-cover"
+                                                        decoding="async"
                                                         loading="lazy"
                                                         src={media.url}
                                                     />
@@ -812,7 +818,7 @@ export default function ProductShow({
                         />
                     )}
                     {(product.description || product.short_description) && (
-                        <section className="relative overflow-hidden rounded-[32px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-xl shadow-slate-950/5">
+                        <section className="pn-deferred-zone relative overflow-hidden rounded-[32px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-xl shadow-slate-950/5">
                             <div className="absolute -left-20 -top-20 size-64 rounded-full bg-indigo-500/10 blur-3xl" />
                             <div className="relative grid lg:grid-cols-[260px_1fr]">
                                 <div className="border-b border-[var(--store-border)] bg-gradient-to-bl from-indigo-500/10 to-transparent p-6 lg:border-b-0 lg:border-l lg:p-8">
@@ -839,7 +845,7 @@ export default function ProductShow({
                             </div>
                         </section>
                     )}
-                    <section>
+                    <section className="pn-deferred-zone">
                         <div className="mb-6">
                             <span className="text-xs font-black text-indigo-500">
                                 GAME INFO
@@ -908,7 +914,7 @@ export default function ProductShow({
                         </div>
                     </section>
                     {!!product.attributes.length && (
-                        <section>
+                        <section className="pn-deferred-zone">
                             <div className="mb-6">
                                 <span className="text-xs font-black text-indigo-500">
                                     DETAILS
@@ -1016,7 +1022,7 @@ function RelatedSection({
     title: string;
 }) {
     return (
-        <section>
+        <section className="pn-deferred-zone">
             <header className="mb-5 flex items-center justify-between gap-3">
                 <h2 className="text-2xl font-black">{title}</h2>
                 <Link
@@ -1044,6 +1050,7 @@ function FeedLink({ item }: { item: FeedItemData }) {
                     <img
                         alt={media.alt}
                         className="aspect-video w-full object-cover"
+                        decoding="async"
                         loading="lazy"
                         src={image}
                     />

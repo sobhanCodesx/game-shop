@@ -126,10 +126,20 @@ class GameRadarService
             return $snapshot;
         }
 
-        $games = Game::query()
-            ->whereIn('status', ['active', 'published'])
-            ->get(['id', 'name', 'slug'])
-            ->keyBy(fn (Game $game) => $this->strictTitleKey($game->name));
+        $games = collect(Cache::remember(
+            'playnexus:game-radar:linked-games:v1',
+            now()->addMinutes(5),
+            fn () => Game::query()
+                ->whereIn('status', ['active', 'published'])
+                ->get(['id', 'name', 'slug'])
+                ->mapWithKeys(fn (Game $game) => [
+                    $this->strictTitleKey($game->name) => [
+                        'id' => $game->id,
+                        'slug' => $game->slug,
+                    ],
+                ])
+                ->all(),
+        ));
 
         $snapshot['items'] = $items
             ->map(function (array $item) use ($games): array {
@@ -138,9 +148,9 @@ class GameRadarService
 
                 return [
                     ...$item,
-                    'playnexus_game_id' => $game?->id,
+                    'playnexus_game_id' => $game['id'] ?? null,
                     'playnexus_url' => $game
-                        ? route('channels.show', $game->slug, false)
+                        ? route('channels.show', $game['slug'], false)
                         : null,
                 ];
             })

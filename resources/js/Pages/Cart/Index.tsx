@@ -81,7 +81,7 @@ export default function Cart({
                     </div>
                 ) : (
                     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-                        <section className="space-y-3">
+                        <section className="pn-deferred-zone space-y-3">
                             {items.map((item) => (
                                 <Card
                                     key={item.key}
@@ -93,6 +93,8 @@ export default function Cart({
                                             <img
                                                 alt={item.title}
                                                 className="h-24 w-20 rounded-xl object-cover"
+                                                decoding="async"
+                                                loading="lazy"
                                                 src={item.cover_url}
                                             />
                                         )}

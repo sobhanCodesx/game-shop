@@ -255,7 +255,6 @@ export default function GlobalVideoPreview() {
         const observed = new WeakSet<Element>();
         let intersectionObserver: IntersectionObserver | null = null;
         let mutationObserver: MutationObserver | null = null;
-        let scanFrame: number | null = null;
 
         const updateMobileCandidate = () => {
             if (hoverQuery.matches) return;
@@ -289,55 +288,62 @@ export default function GlobalVideoPreview() {
             }
         };
 
-        const scan = () => {
-            scanFrame = null;
-            if (hoverQuery.matches) return;
+        const ensureIntersectionObserver = () => {
+            if (intersectionObserver) return intersectionObserver;
 
-            if (!intersectionObserver) {
-                intersectionObserver = new IntersectionObserver(
-                    (entries) => {
-                        entries.forEach((entry) =>
-                            ratios.set(
-                                entry.target,
-                                entry.isIntersecting
-                                    ? entry.intersectionRatio
-                                    : 0,
-                            ),
-                        );
-                        updateMobileCandidate();
-                    },
-                    { threshold: [0, 0.45, 0.72, 0.9] },
-                );
+            intersectionObserver = new IntersectionObserver(
+                (entries) => {
+                    entries.forEach((entry) =>
+                        ratios.set(
+                            entry.target,
+                            entry.isIntersecting ? entry.intersectionRatio : 0,
+                        ),
+                    );
+                    updateMobileCandidate();
+                },
+                { threshold: [0, 0.45, 0.72, 0.9] },
+            );
+
+            return intersectionObserver;
+        };
+
+        const observeAnchor = (anchor: HTMLAnchorElement) => {
+            const candidate = candidateFromAnchor(anchor);
+            if (!candidate || observed.has(candidate.surface)) return;
+
+            observed.add(candidate.surface);
+            candidateBySurface.set(candidate.surface, candidate);
+            ensureIntersectionObserver().observe(candidate.surface);
+        };
+
+        const scanRoot = (root: ParentNode) => {
+            if (root instanceof HTMLAnchorElement) {
+                observeAnchor(root);
             }
 
-            document
+            root
                 .querySelectorAll<HTMLAnchorElement>('a[href*="/videos/"]')
-                .forEach((anchor) => {
-                    const candidate = candidateFromAnchor(anchor);
-                    if (!candidate || observed.has(candidate.surface)) return;
-                    observed.add(candidate.surface);
-                    candidateBySurface.set(candidate.surface, candidate);
-                    intersectionObserver?.observe(candidate.surface);
-                });
+                .forEach(observeAnchor);
         };
 
-        const scheduleScan = () => {
-            if (scanFrame !== null || hoverQuery.matches) return;
-            scanFrame = window.requestAnimationFrame(scan);
-        };
-
-        // Desktop preview is event-delegated and needs no DOM scanning at all.
-        // Mobile needs visibility ratios, so only then observe DOM mutations.
+        // Desktop preview is fully event-delegated. Mobile needs visibility
+        // ratios, but we only inspect nodes that were actually added instead
+        // of rescanning the complete document after every React mutation.
         if (!hoverQuery.matches) {
-            scan();
-            mutationObserver = new MutationObserver(() => {
+            scanRoot(document);
+            mutationObserver = new MutationObserver((records) => {
+                for (const record of records) {
+                    for (const node of record.addedNodes) {
+                        if (node instanceof Element) scanRoot(node);
+                    }
+                }
+
                 if (
                     activeRef.current &&
                     !activeRef.current.candidate.surface.isConnected
                 ) {
                     stop();
                 }
-                scheduleScan();
             });
             mutationObserver.observe(document.body, {
                 childList: true,
@@ -365,9 +371,6 @@ export default function GlobalVideoPreview() {
             document.removeEventListener("pointerout", onPointerOut);
             document.removeEventListener("visibilitychange", onVisibility);
             window.removeEventListener("pagehide", onPageHide);
-            if (scanFrame !== null) {
-                window.cancelAnimationFrame(scanFrame);
-            }
             mutationObserver?.disconnect();
             intersectionObserver?.disconnect();
         };

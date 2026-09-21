@@ -213,7 +213,7 @@ export default function AndroidAppIndex({
                                                 muted
                                                 playsInline
                                                 poster="/logo.png"
-                                                preload="metadata"
+                                                preload="none"
                                             >
                                                 <source src={heroMedia.url} />
                                             </video>
@@ -222,6 +222,8 @@ export default function AndroidAppIndex({
                                         <img
                                             alt={heroMedia.alt}
                                             className="aspect-[4/5] size-full rounded-[1.7rem] object-cover"
+                                            decoding="async"
+                                            fetchPriority="high"
                                             loading="eager"
                                             src={heroMedia.url}
                                         />
@@ -252,7 +254,7 @@ export default function AndroidAppIndex({
                     </div>
                 </section>
 
-                <section className="mx-auto max-w-[1500px] px-4 py-14 sm:px-6 lg:px-10 lg:py-20">
+                <section className="pn-deferred-zone mx-auto max-w-[1500px] px-4 py-14 sm:px-6 lg:px-10 lg:py-20">
                     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                         {features.map(({ icon: Icon, title, description }) => (
                             <article
@@ -274,7 +276,7 @@ export default function AndroidAppIndex({
                 </section>
 
                 {page.media.length > 0 && (
-                    <section className="border-y border-[var(--store-border)] bg-[var(--store-surface)]/40">
+                    <section className="pn-deferred-zone border-y border-[var(--store-border)] bg-[var(--store-surface)]/40">
                         <div className="mx-auto max-w-[1500px] px-4 py-14 sm:px-6 lg:px-10 lg:py-20">
                             <div className="max-w-3xl">
                                 <span className="text-xs font-black tracking-[.12em] text-emerald-400">
@@ -299,7 +301,7 @@ export default function AndroidAppIndex({
                                                 className="aspect-video w-full bg-black object-cover"
                                                 controls
                                                 playsInline
-                                                preload="metadata"
+                                                preload="none"
                                             >
                                                 {item.url && (
                                                     <source src={item.url} />
@@ -310,6 +312,7 @@ export default function AndroidAppIndex({
                                                 <img
                                                     alt={item.alt}
                                                     className="aspect-video w-full object-cover"
+                                                    decoding="async"
                                                     loading="lazy"
                                                     src={item.url}
                                                 />
@@ -328,7 +331,7 @@ export default function AndroidAppIndex({
                 )}
 
                 <section
-                    className="mx-auto max-w-[1500px] px-4 py-14 sm:px-6 lg:px-10 lg:py-20"
+                    className="pn-deferred-zone mx-auto max-w-[1500px] px-4 py-14 sm:px-6 lg:px-10 lg:py-20"
                     id="versions"
                 >
                     <div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr]">
@@ -445,7 +448,7 @@ export default function AndroidAppIndex({
                     </div>
                 </section>
 
-                <section className="border-t border-[var(--store-border)] bg-slate-950 text-white">
+                <section className="pn-deferred-zone border-t border-[var(--store-border)] bg-slate-950 text-white">
                     <div className="mx-auto grid max-w-[1500px] gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-10 lg:py-16">
                         <div>
                             <div className="inline-flex items-center gap-2 text-xs font-black text-emerald-300">

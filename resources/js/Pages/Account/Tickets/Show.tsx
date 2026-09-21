@@ -27,11 +27,43 @@ export default function Show({ ticket }: { ticket: any }) {
         attachments: [] as File[],
     });
     useEffect(() => {
-        const id = setInterval(
-            () => router.reload({ only: ["ticket", "notifications"] }),
-            12000,
-        );
-        return () => clearInterval(id);
+        let timer: number | undefined;
+
+        const refresh = () => {
+            if (document.visibilityState === "visible" && navigator.onLine) {
+                router.reload({
+                    only: ["ticket"],
+                    preserveScroll: true,
+                    preserveState: true,
+                });
+            }
+        };
+        const schedule = () => {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(
+                () => {
+                    refresh();
+                    schedule();
+                },
+                document.visibilityState === "visible" ? 12_000 : 60_000,
+            );
+        };
+        const onVisibility = () => {
+            if (document.visibilityState === "visible") refresh();
+            schedule();
+        };
+
+        document.addEventListener("visibilitychange", onVisibility);
+        window.addEventListener("focus", refresh);
+        window.addEventListener("online", refresh);
+        schedule();
+
+        return () => {
+            window.clearTimeout(timer);
+            document.removeEventListener("visibilitychange", onVisibility);
+            window.removeEventListener("focus", refresh);
+            window.removeEventListener("online", refresh);
+        };
     }, []);
     const submit = (e: FormEvent) => {
         e.preventDefault();
@@ -87,7 +119,7 @@ export default function Show({ ticket }: { ticket: any }) {
                             </div>
                         )}
                     </header>
-                    <section className="min-h-[420px] space-y-5 bg-[radial-gradient(circle_at_1px_1px,var(--store-border)_1px,transparent_0)] bg-[size:22px_22px] p-4 sm:p-7">
+                    <section className="pn-deferred-zone min-h-[420px] space-y-5 bg-[radial-gradient(circle_at_1px_1px,var(--store-border)_1px,transparent_0)] bg-[size:22px_22px] p-4 sm:p-7">
                         {ticket.replies.map((reply: any) => (
                             <TicketMessageBubble
                                 key={reply.id}
@@ -97,7 +129,7 @@ export default function Show({ ticket }: { ticket: any }) {
                         ))}
                     </section>
                     {ticket.type === "exchange" && (
-                        <section className="m-4 rounded-3xl border border-indigo-500/25 bg-indigo-500/5 p-5 sm:m-6">
+                        <section className="pn-deferred-zone m-4 rounded-3xl border border-indigo-500/25 bg-indigo-500/5 p-5 sm:m-6">
                             <h2 className="font-black">
                                 وضعیت معاوضه:{" "}
                                 {exchangeLabels[ticket.exchange_status]}

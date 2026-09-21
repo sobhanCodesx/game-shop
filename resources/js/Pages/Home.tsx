@@ -2958,15 +2958,23 @@ function CampaignBanner({
     useEffect(() => {
         if (!priority || slides.length < 2) return;
 
-        const nextSlide = slides[(activeSlide + 1) % slides.length];
-        const source =
-            window.innerWidth <= 640 && nextSlide.mobile_image_url
-                ? nextSlide.mobile_image_url
-                : nextSlide.desktop_image_url;
+        // Do not let the next campaign image compete with the current LCP.
+        // The carousel interval is long enough to warm the next asset after
+        // the critical render has settled.
+        const timer = window.setTimeout(() => {
+            const nextSlide = slides[(activeSlide + 1) % slides.length];
+            const source =
+                window.innerWidth <= 640 && nextSlide.mobile_image_url
+                    ? nextSlide.mobile_image_url
+                    : nextSlide.desktop_image_url;
 
-        const image = new Image();
-        image.decoding = "async";
-        image.src = source;
+            const image = new Image();
+            image.decoding = "async";
+            image.fetchPriority = "low";
+            image.src = source;
+        }, 2200);
+
+        return () => window.clearTimeout(timer);
     }, [activeSlide, priority, slides]);
 
     if (!slides.length) {

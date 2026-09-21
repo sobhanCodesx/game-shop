@@ -178,7 +178,7 @@ export default function InvoicePage({ invoice }: { invoice: Invoice }) {
                                             <td className="p-3">
                                                 <div className="flex items-center gap-3">
                                                     {item.cover_url ? (
-                                                        <img alt={item.title} className="invoice-product-image size-14 rounded-xl object-cover" src={item.cover_url} />
+                                                        <img alt={item.title} className="invoice-product-image size-14 rounded-xl object-cover" decoding="async" loading="lazy" src={item.cover_url} />
                                                     ) : (
                                                         <span className="invoice-product-image grid size-14 shrink-0 place-items-center rounded-xl bg-[var(--store-bg)] text-[var(--store-muted)]"><ImageOff size={18} /></span>
                                                     )}

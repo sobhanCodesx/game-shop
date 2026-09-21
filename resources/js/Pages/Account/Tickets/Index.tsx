@@ -18,11 +18,43 @@ export default function Index({
     stats: Record<string, number>;
 }) {
     useEffect(() => {
-        const id = setInterval(
-            () => router.reload({ only: ["tickets", "notifications"] }),
-            15000,
-        );
-        return () => clearInterval(id);
+        let timer: number | undefined;
+
+        const refresh = () => {
+            if (document.visibilityState === "visible" && navigator.onLine) {
+                router.reload({
+                    only: ["tickets", "stats"],
+                    preserveScroll: true,
+                    preserveState: true,
+                });
+            }
+        };
+        const schedule = () => {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(
+                () => {
+                    refresh();
+                    schedule();
+                },
+                document.visibilityState === "visible" ? 15_000 : 60_000,
+            );
+        };
+        const onVisibility = () => {
+            if (document.visibilityState === "visible") refresh();
+            schedule();
+        };
+
+        document.addEventListener("visibilitychange", onVisibility);
+        window.addEventListener("focus", refresh);
+        window.addEventListener("online", refresh);
+        schedule();
+
+        return () => {
+            window.clearTimeout(timer);
+            document.removeEventListener("visibilitychange", onVisibility);
+            window.removeEventListener("focus", refresh);
+            window.removeEventListener("online", refresh);
+        };
     }, []);
     return (
         <StorefrontLayout>
@@ -84,7 +116,7 @@ export default function Index({
                 <div className="mt-7 grid gap-4">
                     {tickets.data.map((ticket) => (
                         <Link
-                            className="group rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 transition hover:-translate-y-1 hover:border-indigo-500/40"
+                            className="pn-card-visibility group rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 transition hover:-translate-y-1 hover:border-indigo-500/40"
                             href={`/account/tickets/${ticket.id}`}
                             key={ticket.id}
                         >
@@ -93,6 +125,8 @@ export default function Index({
                                     {ticket.cover_url ? (
                                         <img
                                             className="size-14 rounded-2xl object-cover"
+                                            decoding="async"
+                                            loading="lazy"
                                             src={ticket.cover_url}
                                         />
                                     ) : (

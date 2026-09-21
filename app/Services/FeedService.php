@@ -10,6 +10,7 @@ use App\Support\RichText;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class FeedService
 {
@@ -127,35 +128,43 @@ class FeedService
 
     public function latestImportantPreview(Request $request, int $limit = 8): array
     {
-        $important = $this->homeFeedQuery()
-            ->where(fn (Builder $query) => $query
-                ->where('featured', true)
-                ->orWhereIn('feed_badge', ['breaking', 'news', 'trailer', 'update', 'review']))
-            ->latest('published_at')
-            ->latest('id')
-            ->limit($limit)
-            ->get();
+        $limit = max(1, min(24, $limit));
 
-        if ($important->count() < $limit) {
-            $fallback = $this->homeFeedQuery()
-                ->whereNotIn('id', $important->pluck('id'))
-                ->latest('published_at')
-                ->latest('id')
-                ->limit($limit - $important->count())
-                ->get();
+        return Cache::remember(
+            'playnexus:home-feed-preview:v2:'.$limit,
+            now()->addSeconds(45),
+            function () use ($limit): array {
+                $important = $this->homeFeedQuery()
+                    ->where(fn (Builder $query) => $query
+                        ->where('featured', true)
+                        ->orWhereIn('feed_badge', ['breaking', 'news', 'trailer', 'update', 'review']))
+                    ->latest('published_at')
+                    ->latest('id')
+                    ->limit($limit)
+                    ->get();
 
-            $important = $important->concat($fallback);
-        }
+                if ($important->count() < $limit) {
+                    $fallback = $this->homeFeedQuery()
+                        ->whereNotIn('id', $important->pluck('id'))
+                        ->latest('published_at')
+                        ->latest('id')
+                        ->limit($limit - $important->count())
+                        ->get();
 
-        return $this->mapHomePreviewItems(
-            $important
-                ->sortByDesc(fn (SocialContent $content) => sprintf(
-                    '%s-%020d',
-                    $content->published_at?->format('Y-m-d H:i:s.u') ?? '',
-                    $content->id,
-                ))
-                ->take($limit)
-                ->values(),
+                    $important = $important->concat($fallback);
+                }
+
+                return $this->mapHomePreviewItems(
+                    $important
+                        ->sortByDesc(fn (SocialContent $content) => sprintf(
+                            '%s-%020d',
+                            $content->published_at?->format('Y-m-d H:i:s.u') ?? '',
+                            $content->id,
+                        ))
+                        ->take($limit)
+                        ->values(),
+                );
+            },
         );
     }
 

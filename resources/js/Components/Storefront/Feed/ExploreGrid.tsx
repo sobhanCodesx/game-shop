@@ -72,6 +72,7 @@ function LargeTileVideoPreview({
     poster: string | null;
 }) {
     const ref = useRef<HTMLVideoElement>(null);
+    const [nearViewport, setNearViewport] = useState(false);
     const [visible, setVisible] = useState(false);
     const [ready, setReady] = useState(false);
 
@@ -79,12 +80,23 @@ function LargeTileVideoPreview({
         const video = ref.current;
         if (!video) return;
 
+        if (!("IntersectionObserver" in window)) {
+            setNearViewport(true);
+            setVisible(true);
+            return;
+        }
+
         const observer = new IntersectionObserver(
-            ([entry]) =>
+            ([entry]) => {
+                if (entry.isIntersecting) setNearViewport(true);
                 setVisible(
                     entry.isIntersecting && entry.intersectionRatio >= 0.6,
-                ),
-            { threshold: [0, 0.6, 1] },
+                );
+            },
+            {
+                rootMargin: "240px 0px",
+                threshold: [0, 0.6, 1],
+            },
         );
 
         observer.observe(video);
@@ -93,14 +105,14 @@ function LargeTileVideoPreview({
 
     useEffect(() => {
         const video = ref.current;
-        if (!video) return;
+        if (!video || !nearViewport) return;
 
         if (visible) {
             void video.play().catch(() => undefined);
         } else {
             video.pause();
         }
-    }, [visible]);
+    }, [nearViewport, visible]);
 
     return (
         <span className="relative block size-full bg-black">
@@ -122,9 +134,9 @@ function LargeTileVideoPreview({
                 onCanPlay={() => setReady(true)}
                 playsInline
                 poster={poster ?? undefined}
-                preload="metadata"
+                preload={nearViewport ? "metadata" : "none"}
                 ref={ref}
-                src={src}
+                src={nearViewport ? src : undefined}
             />
         </span>
     );
@@ -469,7 +481,7 @@ function Tile({
         <>
             <button
                 aria-label={`باز کردن ${item.data.title}`}
-                className={`group relative min-w-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-[-2px] ${large ? "col-span-2 row-span-2 aspect-square" : "aspect-square"}`}
+                className={`pn-square-visibility group relative min-w-0 overflow-hidden bg-[var(--store-surface-strong)] text-right focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-[-2px] ${large ? "col-span-2 row-span-2 aspect-square" : "aspect-square"}`}
                 onClick={onOpen}
                 type="button"
             >

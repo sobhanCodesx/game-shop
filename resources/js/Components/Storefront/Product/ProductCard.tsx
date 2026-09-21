@@ -36,7 +36,7 @@ export default function ProductCard({
     } as const;
     return (
         <Link
-            className="group block h-full rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+            className="pn-card-visibility group block h-full rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
             href={product.url}
         >
             <Card
@@ -48,6 +48,7 @@ export default function ProductCard({
                         <img
                             alt={product.cover_alt}
                             className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                            decoding="async"
                             loading="lazy"
                             src={product.cover_url}
                         />

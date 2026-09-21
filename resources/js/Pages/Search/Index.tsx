@@ -126,6 +126,8 @@ export default function SearchPage({
                                                         <img
                                                             alt=""
                                                             className="size-full object-cover"
+                                                            decoding="async"
+                                                            loading="lazy"
                                                             src={
                                                                 channel.cover_url
                                                             }
@@ -167,6 +169,8 @@ export default function SearchPage({
                                                         <img
                                                             alt=""
                                                             className="size-full object-cover"
+                                                            decoding="async"
+                                                            loading="lazy"
                                                             src={
                                                                 category.image_url
                                                             }
@@ -245,7 +249,7 @@ function ResultSection({
     children: ReactNode;
 }) {
     return (
-        <section>
+        <section className="pn-deferred-zone">
             <div className="mb-5 flex items-center gap-3">
                 <span className="grid size-10 place-items-center rounded-xl bg-indigo-500/10 text-indigo-500">
                     {icon}
