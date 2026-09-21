@@ -454,7 +454,7 @@ export default function DualSpotlightHero({
             className="pn-render-zone mx-auto w-full max-w-[1536px] px-3 pb-4 pt-3 sm:px-4 sm:pb-6 sm:pt-5"
         >
             <header className="mb-3 flex items-end justify-between gap-4 px-1 sm:mb-4">
-                <div>
+                <div className="min-w-0 flex-1">
                     <p className="text-[10px] font-black tracking-[.2em] text-cyan-500 sm:text-xs">
                         DUAL SPOTLIGHT
                     </p>
@@ -466,7 +466,7 @@ export default function DualSpotlightHero({
                     </p>
                 </div>
                 <Link
-                    className="hidden items-center gap-1 text-xs font-black text-indigo-500 sm:flex"
+                    className="hidden shrink-0 items-center gap-1 text-xs font-black text-indigo-500 sm:flex"
                     href="/shop"
                 >
                     فروشگاه
