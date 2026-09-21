@@ -81,6 +81,10 @@ function ProductSpotlight({
 
     const safeActive = active < visibleProducts.length ? active : 0;
     const product = visibleProducts[safeActive];
+    const availabilityBadge = product.meta_badges.find(
+        (badge) => badge.key === "availability",
+    );
+    const unavailable = availabilityBadge?.tone === "danger";
     const hasDiscount =
         product.pricing.regular_price > product.pricing.final_price;
     const discountPercent =
@@ -128,6 +132,13 @@ function ProductSpotlight({
                             {money.format(discountPercent)}٪ تخفیف
                         </span>
                     )}
+                    {availabilityBadge && (
+                        <span
+                            className={`rounded-full border px-2.5 py-1 text-[9px] font-black ${unavailable ? "border-rose-300/30 bg-rose-600 text-white" : "border-emerald-300/30 bg-emerald-600 text-white"}`}
+                        >
+                            {availabilityBadge.value}
+                        </span>
+                    )}
                 </div>
                 <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur">
                     {money.format(safeActive + 1)} /{" "}
@@ -160,7 +171,7 @@ function ProductSpotlight({
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2 rounded-xl bg-white px-3.5 py-2.5 text-xs font-black text-slate-950 shadow-xl">
-                        مشاهده محصول
+                        {unavailable ? "مشاهده جزئیات" : "مشاهده محصول"}
                         <ArrowUpLeft size={15} />
                     </span>
                     <span className="text-[10px] text-white/50">
