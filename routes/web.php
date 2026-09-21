@@ -141,6 +141,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('comments/{comment}', [VideoCommunityController::class, 'destroyComment'])->name('comments.destroy');
     Route::post('channels/{game:slug}/subscription', [VideoCommunityController::class, 'subscribe'])->middleware('throttle:30,1')->name('channels.subscription');
     Route::post('cart/restore', [CartController::class, 'restore'])->name('cart.restore');
+    Route::get('checkout/verify-phone', [CheckoutController::class, 'phoneVerification'])->name('checkout.phone.show');
+    Route::post('checkout/verify-phone/send', [CheckoutController::class, 'sendPhoneVerification'])->middleware('throttle:3,1')->name('checkout.phone.send');
+    Route::post('checkout/verify-phone/confirm', [CheckoutController::class, 'confirmPhoneVerification'])->middleware('throttle:8,1')->name('checkout.phone.confirm');
+    Route::post('checkout/verify-phone/resend', [CheckoutController::class, 'resendPhoneVerification'])->middleware('throttle:2,1')->name('checkout.phone.resend');
     Route::get('checkout', [CheckoutController::class, 'show'])->name('checkout.show');
     Route::post('checkout/preview', [CheckoutController::class, 'preview'])->name('checkout.preview');
     Route::post('checkout', [CheckoutController::class, 'store'])->name('checkout.store');
