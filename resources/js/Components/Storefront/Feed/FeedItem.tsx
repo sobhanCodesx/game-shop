@@ -10,10 +10,10 @@ import {
     PlaySquare,
     Share2,
 } from "lucide-react";
-import { memo, useState } from "react";
+import { lazy, memo, Suspense, useState } from "react";
 
 import type { FeedItemData, SharedPageProps } from "../../../types";
-import FeedCommentsSheet from "./FeedCommentsSheet";
+const FeedCommentsSheet = lazy(() => import("./FeedCommentsSheet"));
 import FeedMediaSlider from "./FeedMediaSlider";
 
 const compact = new Intl.NumberFormat("fa-IR", { notation: "compact" });
@@ -326,15 +326,19 @@ function FeedItemComponent({
                     </button>
                 )}
             </footer>
-            <FeedCommentsSheet
-                allowComments={item.allow_comments}
-                onClose={() => setCommentsOpen(false)}
-                onCountChange={(offset) =>
-                    setComments((value) => value + offset)
-                }
-                open={commentsOpen}
-                slug={item.feed_slug}
-            />
+            {commentsOpen && (
+                <Suspense fallback={null}>
+                    <FeedCommentsSheet
+                        allowComments={item.allow_comments}
+                        onClose={() => setCommentsOpen(false)}
+                        onCountChange={(offset) =>
+                            setComments((value) => value + offset)
+                        }
+                        open
+                        slug={item.feed_slug}
+                    />
+                </Suspense>
+            )}
         </article>
     );
 }
