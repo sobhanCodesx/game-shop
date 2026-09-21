@@ -1,0 +1,7 @@
+{
+  "job_id": "2026-09-21-game-auto-read-platforms",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query { platforms(first: 100, status: \"active\", orderBy: \"id\", orderDir: \"asc\") { nodes { id name slug status } pageInfo { total } } }"
+  }
+}
