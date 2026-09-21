@@ -19,6 +19,10 @@ export interface HomeTemplateRuntime {
     featuredPlacement: TemplatePlacement;
     latestPlacement: TemplatePlacement;
     campaignPlacement: CampaignPlacement;
+    featuredEyebrow: string;
+    featuredLinkLabel: string;
+    latestEyebrow: string;
+    latestLinkLabel: string;
 }
 
 interface HomeTemplateHeroProps {
@@ -38,6 +42,10 @@ const runtimeRegistry: Record<string, HomeTemplateRuntime> = {
         featuredPlacement: "default",
         latestPlacement: "default",
         campaignPlacement: "legacy",
+        featuredEyebrow: "منتخب فروشگاه",
+        featuredLinkLabel: "همه محصولات",
+        latestEyebrow: "همین حالا اضافه شد",
+        latestLinkLabel: "فروشگاه کامل",
     },
     dual_spotlight: {
         usesTemplateHero: true,
@@ -45,6 +53,10 @@ const runtimeRegistry: Record<string, HomeTemplateRuntime> = {
         featuredPlacement: "template_top",
         latestPlacement: "after_fresh",
         campaignPlacement: "after_template",
+        featuredEyebrow: "STORE PICKS",
+        featuredLinkLabel: "همه محصولات",
+        latestEyebrow: "FRESH IN STORE",
+        latestLinkLabel: "فروشگاه کامل",
     },
     storefront: {
         usesTemplateHero: true,
@@ -52,6 +64,10 @@ const runtimeRegistry: Record<string, HomeTemplateRuntime> = {
         featuredPlacement: "template_top",
         latestPlacement: "template_top",
         campaignPlacement: "after_template",
+        featuredEyebrow: "FEATURED SHELF",
+        featuredLinkLabel: "مشاهده همه",
+        latestEyebrow: "JUST LANDED",
+        latestLinkLabel: "فروشگاه کامل",
     },
 };
 
