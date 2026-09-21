@@ -79,7 +79,8 @@ function ProductSpotlight({
         );
     }
 
-    const product = visibleProducts[active];
+    const safeActive = active < visibleProducts.length ? active : 0;
+    const product = visibleProducts[safeActive];
     const hasDiscount =
         product.pricing.regular_price > product.pricing.final_price;
     const discountPercent =
@@ -129,7 +130,7 @@ function ProductSpotlight({
                     )}
                 </div>
                 <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur">
-                    {money.format(active + 1)} /{" "}
+                    {money.format(safeActive + 1)} /{" "}
                     {money.format(visibleProducts.length)}
                 </span>
             </div>
@@ -173,7 +174,7 @@ function ProductSpotlight({
                     {visibleProducts.map((item, index) => (
                         <button
                             aria-label={item.title}
-                            className={`pointer-events-auto h-1.5 rounded-full transition-all ${index === active ? "w-9 bg-cyan-300" : "w-2 bg-white/25 hover:bg-white/45"}`}
+                            className={`pointer-events-auto h-1.5 rounded-full transition-all ${index === safeActive ? "w-9 bg-cyan-300" : "w-2 bg-white/25 hover:bg-white/45"}`}
                             key={item.id}
                             onClick={(event) => {
                                 event.preventDefault();
@@ -213,7 +214,8 @@ function ContentSpotlight({
         );
     }
 
-    const item = visibleItems[active];
+    const safeActive = active < visibleItems.length ? active : 0;
+    const item = visibleItems[safeActive];
     const isVideo = item.kind === "video";
 
     return (
@@ -243,7 +245,7 @@ function ContentSpotlight({
                     {item.eyebrow}
                 </span>
                 <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/65 backdrop-blur">
-                    {money.format(active + 1)} /{" "}
+                    {money.format(safeActive + 1)} /{" "}
                     {money.format(visibleItems.length)}
                 </span>
             </div>
@@ -283,7 +285,7 @@ function ContentSpotlight({
                     {visibleItems.map((entry, index) => (
                         <button
                             aria-label={entry.title}
-                            className={`pointer-events-auto h-1.5 rounded-full transition-all ${index === active ? "w-9 bg-fuchsia-300" : "w-2 bg-white/25 hover:bg-white/45"}`}
+                            className={`pointer-events-auto h-1.5 rounded-full transition-all ${index === safeActive ? "w-9 bg-fuchsia-300" : "w-2 bg-white/25 hover:bg-white/45"}`}
                             key={entry.key}
                             onClick={(event) => {
                                 event.preventDefault();
