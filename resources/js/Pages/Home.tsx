@@ -80,7 +80,7 @@ interface HomeExperienceState {
     system_template: string;
     effective_template: string;
     focus: "balanced" | "products" | "content";
-    source: "system" | "user";
+    source: "system" | "user" | "preview";
     user_preference: "balanced" | "products" | "content" | null;
 }
 
