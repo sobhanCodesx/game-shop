@@ -47,6 +47,7 @@ export default function Checkout({
     summary: initial,
     availableExchanges,
     selectedExchangeId,
+    exchangeError,
     pickupAddress,
 }: {
     addresses: Address[];
@@ -61,11 +62,12 @@ export default function Checkout({
         product: { id: number; title: string };
     }>;
     selectedExchangeId: number | null;
+    exchangeError: string | null;
     pickupAddress: string;
 }) {
     const [step, setStep] = useState(1),
         [summary, setSummary] = useState(initial),
-        [couponError, setCouponError] = useState("");
+        [couponError, setCouponError] = useState(exchangeError ?? "");
     const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
     const { data, setData, post, processing, errors } = useForm({
         delivery_method: "courier" as "courier" | "pickup",
@@ -157,7 +159,8 @@ export default function Checkout({
         const body = await r.json();
         if (!r.ok) {
             setCouponError(
-                body.errors?.delivery_method?.[0] ??
+                body.errors?.exchange_request_id?.[0] ??
+                    body.errors?.delivery_method?.[0] ??
                     body.errors?.coupon_code?.[0] ??
                     "محاسبه سفارش انجام نشد.",
             );
