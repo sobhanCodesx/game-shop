@@ -237,6 +237,7 @@ export default function StorefrontStories({
                                     alt=""
                                     aria-hidden="true"
                                     className="size-9 rounded-full border border-white/30 object-cover"
+                                    decoding="async"
                                     src={story.channel_avatar_url}
                                 />
                                 <div className="min-w-0">
@@ -311,6 +312,7 @@ export default function StorefrontStories({
                             <img
                                 alt={story.title}
                                 className="size-full object-cover"
+                                decoding="async"
                                 src={story.media_url}
                             />
                         )}
