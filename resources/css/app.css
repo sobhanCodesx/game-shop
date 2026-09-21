@@ -521,9 +521,9 @@ html[data-storefront-theme="dark"] .storefront-theme select {
     }
 
     .store-nav-icon {
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: 0.85rem;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 0.9rem;
     }
 
     .home-slider {
