@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-09-21-extra-game-duskbloods-get-final",
-  "tool": "get_content",
-  "arguments": {
-    "resource": "game",
-    "id": 19,
-    "include_deleted": false
-  }
-}
