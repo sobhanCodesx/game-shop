@@ -1,8 +1,8 @@
 {
   "tool": "query_playnexus_graph",
   "arguments": {
-    "query": "{ search(query: \"Witcher\", first: 50) { games { id name slug status releaseDate studio { id name slug } platforms { id name slug } } } }",
+    "query": "{ search(query: \"Witcher\", first: 10) { games { id name slug status releaseDate } } }",
     "variables": {}
   },
-  "purpose": "inspect_all_witcher_game_records_for_duplicate"
+  "purpose": "inspect_witcher_game_records"
 }
