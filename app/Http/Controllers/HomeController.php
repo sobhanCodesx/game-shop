@@ -101,6 +101,106 @@ class HomeController extends Controller
         $logo = url((string) config('seo.default_image', '/logo.png'));
         $socialImage = url((string) ($slides->first()['desktop_image_url'] ?? $logo));
         $socialImageAlt = (string) ($slides->first()['alt'] ?? $slides->first()['title'] ?? "لوگوی {$siteName}");
+        $usesTemplateHero = in_array(
+            (string) ($homeExperienceState['effective_template'] ?? 'default'),
+            ['dual_spotlight', 'storefront'],
+            true,
+        );
+
+        $previewProducts = Product::query()
+            ->with(['category:id,name', 'coverMedia'])
+            ->publiclyVisible()
+            ->latest()
+            ->limit(3)
+            ->get()
+            ->map(fn (Product $product) => [
+                'id' => $product->id,
+                'title' => $product->title,
+                'url' => route('products.show', $product->slug, false),
+                'category' => $product->category?->name,
+                'cover_url' => MediaStorage::url($product->coverMedia?->path),
+            ]);
+
+        $previewChannels = Game::query()
+            ->whereIn('status', ['active', 'published'])
+            ->withCount(['videos' => fn ($query) => $query->published()])
+            ->latest()
+            ->latest('id')
+            ->limit(3)
+            ->get(['id', 'name', 'slug', 'cover'])
+            ->map(fn (Game $game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'slug' => $game->slug,
+                'url' => route('channels.show', $game->slug, false),
+                'image_url' => MediaStorage::url($game->cover),
+                'videos_count' => $game->videos_count,
+                'subscribers_count' => 0,
+            ]);
+
+        $previewVideos = SocialContent::query()
+            ->published()
+            ->where('type', 'video')
+            ->where('published_at', '>=', $freshCutoff)
+            ->with('media')
+            ->latest('published_at')
+            ->limit(3)
+            ->get(['id', 'title', 'slug', 'thumbnail', 'published_at', 'duration', 'views'])
+            ->map(function (SocialContent $video) {
+                $primaryVideoMedia = $video->media->first(
+                    fn ($media) => $media->type === 'video' && filled($media->path),
+                );
+                $primaryImageMedia = $video->media->first(
+                    fn ($media) => $media->type === 'image' && filled($media->path),
+                );
+
+                return [
+                    'key' => 'video-'.$video->id,
+                    'type' => 'video',
+                    'title' => $video->title,
+                    'url' => route('content.show', ['type' => 'videos', 'content' => $video->slug], false),
+                    'image_url' => MediaStorage::url(
+                        $video->thumbnail
+                            ?: $primaryVideoMedia?->thumbnail
+                            ?: $primaryImageMedia?->path,
+                    ),
+                    'eyebrow' => 'ویدیوی بلند',
+                    'published_at' => $video->published_at?->toISOString(),
+                    'duration' => $video->duration,
+                    'views' => $video->views,
+                ];
+            });
+
+        $previewRadar = (function () use ($radarItems) {
+            $ps5 = $radarItems
+                ->filter(fn (array $item) => ($item['psn']['available'] ?? false) === true)
+                ->take(2);
+            $xbox = $radarItems
+                ->filter(fn (array $item) => ($item['xbox']['available'] ?? false) === true)
+                ->take(2);
+
+            return $ps5->concat($xbox)->unique('id')->take(3)->values();
+        })();
+
+        $homePreview = [
+            'latestFeed' => $isAdminTemplatePreview
+                ? collect()
+                : collect($feed->latestImportantPreview($request, 3)),
+            'latestStudios' => $latestStudios->take(3)->values(),
+            'gameRadar' => $previewRadar,
+            'channels' => $previewChannels,
+            'freshContent' => $previewVideos,
+            'latestProducts' => $previewProducts,
+        ];
+
+        $heroFeaturedProducts = $usesTemplateHero
+            ? Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap)
+            : collect();
+        $heroLatestProducts = $usesTemplateHero
+            ? Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap)
+            : collect();
+
+
         $seoTitle = trim((string) ($settings['seo_title'] ?? '')) ?: "فروشگاه بازی و تجهیزات گیمینگ | {$siteName}";
         $seoDescription = trim((string) ($settings['seo_description'] ?? ''));
         if ($seoDescription === '') {
@@ -156,11 +256,14 @@ class HomeController extends Controller
             ...$seo,
             'personalizedHome' => $personalizedHome,
             'homeExperience' => $homeExperienceState,
-            'latestFeed' => $isAdminTemplatePreview
+            'homePreview' => $homePreview,
+            'heroFeaturedProducts' => $heroFeaturedProducts,
+            'heroLatestProducts' => $heroLatestProducts,
+            'latestFeed' => Inertia::optional(fn () => $isAdminTemplatePreview
                 ? collect()
-                : $feed->latestImportantPreview($request, 8),
-            'latestStudios' => $latestStudios,
-            'gameRadar' => (function () use ($radarItems) {
+                : $feed->latestImportantPreview($request, 8)),
+            'latestStudios' => Inertia::optional(fn () => $latestStudios),
+            'gameRadar' => Inertia::optional(fn () => (function () use ($radarItems) {
                 $items = $radarItems;
 
                 $ps5 = $items
@@ -174,12 +277,12 @@ class HomeController extends Controller
                     ->concat($xbox)
                     ->unique('id')
                     ->values();
-            })(),
+            })()),
             'settings' => $settings,
             'slides' => $slides,
-            'featuredProducts' => Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap),
-            'latestProducts' => Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap),
-            'contentSections' => HomeSection::query()->where('is_active', true)->orderBy('sort_order')->get()->map(function (HomeSection $section) use ($request, $prices, $storefront, $cardRelations) {
+            'featuredProducts' => Inertia::optional(fn () => Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap)),
+            'latestProducts' => Inertia::optional(fn () => Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap)),
+            'contentSections' => Inertia::optional(fn () => HomeSection::query()->where('is_active', true)->orderBy('sort_order')->get()->map(function (HomeSection $section) use ($request, $prices, $storefront, $cardRelations) {
                 if ($section->content_type === 'products') {
                     $query = Product::query()->with($cardRelations)->publiclyVisible()
                         ->when($section->query_type === 'featured', fn ($query) => $query->where('featured', true))
@@ -315,8 +418,8 @@ class HomeController extends Controller
                     ->concat([$feedSection])
                     ->concat($remaining->slice($discoverIndex))
                     ->values();
-            }),
-            'freshContent' => Product::query()
+            })),
+            'freshContent' => Inertia::optional(fn () => Product::query()
                 ->with(['category:id,name', 'coverMedia'])
                 ->publiclyVisible()
                 ->where(fn ($query) => $query->where('published_at', '>=', $freshCutoff)->orWhere(fn ($query) => $query->whereNull('published_at')->where('created_at', '>=', $freshCutoff)))
@@ -351,8 +454,8 @@ class HomeController extends Controller
                             'published_at' => $video->published_at->toISOString(), 'duration' => $video->duration, 'views' => $video->views,
                         ];
                     }))
-                ->sortByDesc('published_at')->take(10)->values(),
-            'channels' => Game::query()
+                ->sortByDesc('published_at')->take(10)->values()),
+            'channels' => Inertia::optional(fn () => Game::query()
                 ->whereIn('status', ['active', 'published'])
                 ->with(['playlists' => fn ($query) => $query->publiclyVisible()->whereNotNull('logo')->select(['id', 'game_id', 'logo', 'sort_order'])])
                 ->withCount([
@@ -369,7 +472,7 @@ class HomeController extends Controller
                     'image_url' => MediaStorage::url($game->cover ?: $game->playlists->first()?->logo),
                     'videos_count' => $game->videos_count,
                     'subscribers_count' => $game->subscribers_count,
-                ]),
+                ])),
         ]);
     }
 
