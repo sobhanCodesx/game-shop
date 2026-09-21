@@ -212,7 +212,7 @@ function TemplateLivePreview({
     onClose: () => void;
 }) {
     const [viewport, setViewport] = useState<
-        "desktop" | "mobile" | "mobile-small"
+        "desktop" | "desktop-compact" | "mobile" | "mobile-small"
     >("desktop");
     const [refreshKey, setRefreshKey] = useState(0);
     const src = `/?preview_home_template=${encodeURIComponent(template.key)}&admin_template_preview=1&preview_refresh=${refreshKey}`;
@@ -273,7 +273,20 @@ function TemplateLivePreview({
                                 type="button"
                             >
                                 <Monitor size={14} />
-                                دسکتاپ
+                                1440px
+                            </button>
+                            <button
+                                aria-pressed={viewport === "desktop-compact"}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                                    viewport === "desktop-compact"
+                                        ? "bg-indigo-600 text-white"
+                                        : "text-slate-400 hover:text-white"
+                                }`}
+                                onClick={() => setViewport("desktop-compact")}
+                                type="button"
+                            >
+                                <Monitor size={13} />
+                                1024px
                             </button>
                             <button
                                 aria-pressed={viewport === "mobile"}
@@ -337,7 +350,9 @@ function TemplateLivePreview({
                                 ? "w-[390px] max-w-full rounded-[28px] ring-[8px] ring-slate-800"
                                 : viewport === "mobile-small"
                                   ? "w-[320px] max-w-full rounded-[24px] ring-[7px] ring-slate-800"
-                                  : "w-full max-w-[1366px] rounded-xl border border-slate-800"
+                                  : viewport === "desktop-compact"
+                                    ? "w-[1024px] max-w-full rounded-xl border border-slate-800"
+                                    : "w-[1440px] max-w-full rounded-xl border border-slate-800"
                         }`}
                     >
                         <iframe
