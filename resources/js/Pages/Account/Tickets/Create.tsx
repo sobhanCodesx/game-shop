@@ -144,6 +144,8 @@ export default function Create({
                                         <img
                                             alt=""
                                             className="size-16 rounded-xl object-cover"
+                                            decoding="async"
+                                            loading="lazy"
                                             src={exchangeProduct.cover_url}
                                         />
                                     )}
@@ -167,6 +169,8 @@ export default function Create({
                                         <img
                                             alt=""
                                             className="size-16 rounded-xl object-cover"
+                                            decoding="async"
+                                            loading="lazy"
                                             src={selected.cover_url}
                                         />
                                     ) : (
