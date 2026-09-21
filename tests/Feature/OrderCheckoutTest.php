@@ -4,11 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\Coupon;
 use App\Models\HomeSetting;
+use App\Models\MobileVerificationCode;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\OrderCashbackNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -89,6 +92,115 @@ class OrderCheckoutTest extends TestCase
             'address_mode' => 'new', 'address' => ['recipient_name' => 'کاربر', 'phone' => '09120000000', 'province' => 'تهران', 'city' => 'تهران', 'address_line' => 'نشانی بدون کد پستی'],
         ])->assertRedirect();
         $this->assertNull(Order::query()->latest('id')->firstOrFail()->shipping_address['postal_code'] ?? null);
+    }
+
+    public function test_saved_address_checkout_ignores_empty_new_address_payload(): void
+    {
+        $user = User::factory()->create();
+        $address = $user->addresses()->create([
+            'title' => 'خانه',
+            'recipient_name' => 'کاربر تست',
+            'phone' => '09120000000',
+            'province' => 'تهران',
+            'city' => 'تهران',
+            'postal_code' => null,
+            'address_line' => 'خیابان تست، کوچه یک',
+            'plaque' => '12',
+            'unit' => null,
+            'is_default' => true,
+        ]);
+        $product = Product::factory()->create(['stock' => 2]);
+        $session = ['cart' => ["{$product->id}:base" => ['product_id' => $product->id, 'variant_id' => null, 'quantity' => 1]]];
+
+        $response = $this->actingAs($user)->withSession($session)->post(route('checkout.store'), [
+            'address_mode' => 'saved',
+            'address_id' => $address->id,
+            'address' => [
+                'recipient_name' => '',
+                'phone' => '',
+                'province' => 'تهران',
+                'city' => 'تهران',
+                'postal_code' => '',
+                'address_line' => '',
+                'plaque' => '',
+                'unit' => '',
+            ],
+        ]);
+
+        $order = Order::query()->firstOrFail();
+        $response->assertRedirect(route('orders.show', $order));
+        $this->assertSame('خیابان تست، کوچه یک', $order->shipping_address['address_line']);
+        $this->assertSame('09120000000', $order->shipping_address['phone']);
+    }
+
+    public function test_google_customer_must_verify_mobile_before_checkout(): void
+    {
+        config()->set('services.payamak_panel', [
+            'base_url' => 'https://rest.payamak-panel.com/api/SmartSMS',
+            'username' => 'user',
+            'api_key' => 'key',
+            'from' => '5000',
+            'timeout' => 5,
+        ]);
+        Http::fake(['*/Send' => Http::response(['Value' => '30', 'RetStatus' => 1, 'StrRetStatus' => 'Ok'])]);
+
+        $user = User::factory()->create([
+            'google_id' => 'google-checkout-user',
+            'phone' => null,
+            'phone_verified_at' => null,
+        ]);
+        $product = Product::factory()->create(['stock' => 2]);
+        $session = ['cart' => ["{$product->id}:base" => ['product_id' => $product->id, 'variant_id' => null, 'quantity' => 1]]];
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->get(route('checkout.show'))
+            ->assertRedirect(route('checkout.phone.show'));
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->post(route('checkout.store'), [
+                'address_mode' => 'new',
+                'address' => [
+                    'recipient_name' => 'کاربر گوگل',
+                    'phone' => '09121234567',
+                    'province' => 'تهران',
+                    'city' => 'تهران',
+                    'address_line' => 'خیابان تست',
+                ],
+            ])
+            ->assertSessionHasErrors('phone_verification');
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->post(route('checkout.phone.send'), ['phone' => '+989121234567'])
+            ->assertRedirect(route('checkout.phone.show'))
+            ->assertSessionHas('checkout_phone_verification_phone', '09121234567');
+
+        $this->assertSame('09121234567', $user->fresh()->phone);
+        $this->assertNull($user->fresh()->phone_verified_at);
+
+        MobileVerificationCode::query()
+            ->where('phone', '09121234567')
+            ->where('purpose', 'checkout_verify_mobile')
+            ->update(['code_hash' => Hash::make('123456')]);
+
+        $this->actingAs($user)
+            ->withSession([
+                ...$session,
+                'checkout_phone_verification_user_id' => $user->id,
+                'checkout_phone_verification_phone' => '09121234567',
+            ])
+            ->post(route('checkout.phone.confirm'), ['code' => '123456'])
+            ->assertRedirect(route('checkout.show'));
+
+        $this->assertNotNull($user->fresh()->phone_verified_at);
+
+        $this->actingAs($user)
+            ->withSession($session)
+            ->get(route('checkout.show'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Checkout/Index'));
     }
 
     public function test_authenticated_user_can_restore_local_cart_backup(): void
