@@ -292,9 +292,11 @@ export default function StorefrontCommerceHero({
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(320px,.75fr)]">
                     <LeadProduct product={lead} />
                     <aside className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                        {quickProducts.map((product, index) => (
+                        {quickProducts.map((product) => (
                             <QuickProductCard
-                                featured={index < Math.max(0, featured.length - 1)}
+                                featured={featured.some(
+                                    (item) => item.id === product.id,
+                                )}
                                 key={product.id}
                                 product={product}
                             />
