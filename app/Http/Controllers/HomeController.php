@@ -182,10 +182,11 @@ class HomeController extends Controller
             return $ps5->concat($xbox)->unique('id')->take(3)->values();
         })();
 
+        $previewLatestFeed = $isAdminTemplatePreview
+            ? collect()
+            : collect($feed->latestImportantPreview($request, 3));
+
         $homePreview = [
-            'latestFeed' => $isAdminTemplatePreview
-                ? collect()
-                : collect($feed->latestImportantPreview($request, 3)),
             'latestStudios' => $latestStudios->take(3)->values(),
             'gameRadar' => $previewRadar,
             'channels' => $previewChannels,
@@ -259,7 +260,8 @@ class HomeController extends Controller
             'homePreview' => $homePreview,
             'heroFeaturedProducts' => $heroFeaturedProducts,
             'heroLatestProducts' => $heroLatestProducts,
-            'latestFeed' => Inertia::optional(fn () => $isAdminTemplatePreview
+            'latestFeed' => $previewLatestFeed,
+            'latestFeedFull' => Inertia::optional(fn () => $isAdminTemplatePreview
                 ? collect()
                 : $feed->latestImportantPreview($request, 8)),
             'latestStudios' => Inertia::optional(fn () => $latestStudios),
