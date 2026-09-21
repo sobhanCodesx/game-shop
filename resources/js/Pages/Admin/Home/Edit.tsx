@@ -117,6 +117,86 @@ interface FormData {
     sections: HomeSection[];
 }
 type HomeEditorTab = "banners" | "sections" | "general";
+const homeEditorTabs: HomeEditorTab[] = ["banners", "sections", "general"];
+
+function TemplateMiniPreview({
+    templateKey,
+    focus,
+}: {
+    templateKey: string;
+    focus: HomeTemplate["focus"];
+}) {
+    const block = "rounded-md bg-slate-700/80";
+    const accent =
+        focus === "products"
+            ? "bg-cyan-500/80"
+            : focus === "content"
+              ? "bg-fuchsia-500/80"
+              : "bg-indigo-500/80";
+
+    if (templateKey === "dual_spotlight") {
+        return (
+            <span
+                aria-hidden="true"
+                className="mb-4 grid h-24 grid-cols-2 gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-2"
+            >
+                <span className={`${block} bg-fuchsia-500/65`} />
+                <span className={`${block} bg-cyan-500/65`} />
+                <span className="col-span-2 grid grid-cols-4 gap-1.5">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                        <span className={block} key={index} />
+                    ))}
+                </span>
+            </span>
+        );
+    }
+
+    if (templateKey === "storefront") {
+        return (
+            <span
+                aria-hidden="true"
+                className="mb-4 grid h-24 grid-cols-[1.6fr_.8fr] gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-2"
+            >
+                <span className={`${block} bg-cyan-500/65`} />
+                <span className="grid gap-1.5">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <span className={block} key={index} />
+                    ))}
+                </span>
+            </span>
+        );
+    }
+
+    if (templateKey === "default") {
+        return (
+            <span
+                aria-hidden="true"
+                className="mb-4 grid h-24 grid-rows-[1.3fr_.7fr] gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-2"
+            >
+                <span className={`${block} ${accent}`} />
+                <span className="grid grid-cols-3 gap-1.5">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <span className={block} key={index} />
+                    ))}
+                </span>
+            </span>
+        );
+    }
+
+    return (
+        <span
+            aria-hidden="true"
+            className="mb-4 grid h-24 grid-cols-3 grid-rows-2 gap-1.5 rounded-xl border border-slate-800 bg-slate-950/70 p-2"
+        >
+            {Array.from({ length: 6 }).map((_, index) => (
+                <span
+                    className={`${block} ${index === 0 ? accent : ""}`}
+                    key={index}
+                />
+            ))}
+        </span>
+    );
+}
 
 const blankSlide = (): HomeSlide => ({
     title: "",
@@ -353,14 +433,30 @@ export default function Edit({
                             {([
                                 ["banners", "بنرها", `${activeSlides.toLocaleString("fa-IR")} بنر فعال`],
                                 ["sections", "مدیریت سکشن‌ها", `${data.sections.length.toLocaleString("fa-IR")} سکشن`],
-                                ["general", "اطلاعات کلی سایت", "پیام‌ها، فروشگاه و سئو"],
+                                ["general", "قالب و تنظیمات", "قالب، پیام‌ها، فروشگاه و سئو"],
                             ] as const).map(([id, label, description]) => (
                                 <button
+                                    aria-controls={`home-panel-${id}`}
                                     aria-selected={activeTab === id}
-                                    className={`rounded-xl px-2 py-2.5 text-center transition sm:px-4 sm:py-3 sm:text-right ${activeTab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/30" : "text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}
+                                    className={`rounded-xl px-2 py-2.5 text-center transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 sm:px-4 sm:py-3 sm:text-right ${activeTab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-950/30" : "text-slate-400 hover:bg-slate-800/70 hover:text-white"}`}
+                                    id={`home-tab-${id}`}
                                     key={id}
                                     onClick={() => setActiveTab(id)}
+                                    onKeyDown={(event) => {
+                                        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+                                        event.preventDefault();
+                                        const current = homeEditorTabs.indexOf(id);
+                                        const offset = event.key === "ArrowLeft" ? 1 : -1;
+                                        const next =
+                                            (current + offset + homeEditorTabs.length) %
+                                            homeEditorTabs.length;
+                                        setActiveTab(homeEditorTabs[next]);
+                                        document
+                                            .getElementById(`home-tab-${homeEditorTabs[next]}`)
+                                            ?.focus();
+                                    }}
                                     role="tab"
+                                    tabIndex={activeTab === id ? 0 : -1}
                                     type="button"
                                 >
                                     <strong className="block text-[11px] sm:text-sm">{label}</strong>
@@ -375,7 +471,10 @@ export default function Edit({
                 </div>
 
                 <Card
+                    aria-labelledby="home-tab-banners"
                     className={`${activeTab === "banners" ? "" : "hidden"} border border-slate-800 bg-slate-900/60`}
+                    id="home-panel-banners"
+                    role="tabpanel"
                     variant="secondary"
                 >
                     <Card.Header className="flex items-center justify-between border-b border-slate-800 p-5">
@@ -444,7 +543,7 @@ export default function Edit({
                                         <FormField description="JPG، PNG یا WebP تا ۱۰ مگابایت" label="تصویر بنر" required={!slide.desktop_image}>
                                             <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/60 text-center transition hover:border-indigo-500">
                                                 <UploadCloud className="mb-2 text-indigo-400" size={28} />
-                                                <span className="text-sm font-bold text-white">انتخاب یا رها کردن تصویر</span>
+                                                <span className="text-sm font-bold text-white">انتخاب تصویر</span>
                                                 <input accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void uploadBanner(index, "desktop", event)} type="file" />
                                             </label>
                                         </FormField>
@@ -583,7 +682,10 @@ export default function Edit({
                 </Card>
 
                 <Card
+                    aria-labelledby="home-tab-sections"
                     className={`${activeTab === "sections" ? "" : "hidden"} border border-slate-800 bg-slate-900/60`}
+                    id="home-panel-sections"
+                    role="tabpanel"
                     variant="secondary"
                 >
                     <Card.Header className="flex items-center justify-between border-b border-slate-800 p-5">
@@ -850,7 +952,12 @@ export default function Edit({
                     </Card.Content>
                 </Card>
 
-                <div className={`${activeTab === "general" ? "grid" : "hidden"} gap-6 xl:grid-cols-2`}>
+                <div
+                    aria-labelledby="home-tab-general"
+                    className={`${activeTab === "general" ? "grid" : "hidden"} gap-6 xl:grid-cols-2`}
+                    id="home-panel-general"
+                    role="tabpanel"
+                >
                     <Card
                         className="border border-slate-800 bg-slate-900/60 xl:col-span-2"
                         variant="secondary"
@@ -881,7 +988,8 @@ export default function Edit({
 
                                 return (
                                     <button
-                                        className={`rounded-2xl border p-4 text-right transition ${selected ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-950/20" : "border-slate-800 bg-slate-950/50"} ${template.available ? "hover:border-indigo-500/60" : "cursor-not-allowed opacity-60"}`}
+                                        aria-pressed={selected}
+                                        className={`rounded-2xl border p-4 text-right transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 ${selected ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-950/20" : "border-slate-800 bg-slate-950/50"} ${template.available ? "hover:border-indigo-500/60" : "cursor-not-allowed opacity-60"}`}
                                         disabled={!template.available}
                                         key={template.key}
                                         onClick={() =>
@@ -893,6 +1001,10 @@ export default function Edit({
                                         }
                                         type="button"
                                     >
+                                        <TemplateMiniPreview
+                                            focus={template.focus}
+                                            templateKey={template.key}
+                                        />
                                         <span className="flex items-start justify-between gap-3">
                                             <span>
                                                 <strong className="block text-sm text-white">
