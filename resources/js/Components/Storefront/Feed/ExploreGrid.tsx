@@ -16,7 +16,7 @@ import {
     ShoppingBag,
     X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type {
@@ -24,7 +24,7 @@ import type {
     StorefrontContent,
     StorefrontProduct,
 } from "../../../types";
-import FeedCommentsSheet from "./FeedCommentsSheet";
+const FeedCommentsSheet = lazy(() => import("./FeedCommentsSheet"));
 
 export interface StorefrontProductMedia extends StorefrontProduct {
     media_url: string;
@@ -980,18 +980,20 @@ export default function ExploreGrid({
                     />
                 ))}
             {commentsContent && commentsItem && (
-                <FeedCommentsSheet
-                    allowComments={commentsContent.allow_comments}
-                    onClose={() => setCommentsItem(null)}
-                    onCountChange={(offset) =>
-                        updateInteraction(commentsItem, (state) => ({
-                            ...state,
-                            comments: Math.max(0, state.comments + offset),
-                        }))
-                    }
-                    open
-                    slug={commentsContent.slug}
-                />
+                <Suspense fallback={null}>
+                    <FeedCommentsSheet
+                        allowComments={commentsContent.allow_comments}
+                        onClose={() => setCommentsItem(null)}
+                        onCountChange={(offset) =>
+                            updateInteraction(commentsItem, (state) => ({
+                                ...state,
+                                comments: Math.max(0, state.comments + offset),
+                            }))
+                        }
+                        open
+                        slug={commentsContent.slug}
+                    />
+                </Suspense>
             )}
         </>
     );
