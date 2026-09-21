@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CheckoutRequest;
+use App\Services\CommerceSettings;
 use App\Services\MobileCodeService;
 use App\Services\OrderService;
 use App\Support\PhoneNumber;
@@ -16,7 +17,7 @@ use Inertia\Response;
 
 class CheckoutController extends Controller
 {
-    public function show(Request $request, OrderService $orders): Response|RedirectResponse
+    public function show(Request $request, OrderService $orders, CommerceSettings $settings): Response|RedirectResponse
     {
         if (empty($request->session()->get('cart', []))) {
             return to_route('cart.index')->with('error', 'سبد خرید خالی است.');
@@ -37,7 +38,15 @@ class CheckoutController extends Controller
             $preview = $orders->preview($cart, $request->user(), exchangeRequestId: $selectedExchangeId);
         }
 
-        return Inertia::render('Checkout/Index', ['addresses' => $request->user()->addresses()->orderByDesc('is_default')->get(), 'profile' => $request->user()->only(['name', 'phone']), 'walletBalance' => (int) $request->user()->wallet_balance, 'availableExchanges' => $exchanges, 'selectedExchangeId' => $selectedExchangeId, 'summary' => collect($preview)->except('items')]);
+        return Inertia::render('Checkout/Index', [
+            'addresses' => $request->user()->addresses()->orderByDesc('is_default')->get(),
+            'profile' => $request->user()->only(['name', 'phone']),
+            'walletBalance' => (int) $request->user()->wallet_balance,
+            'availableExchanges' => $exchanges,
+            'selectedExchangeId' => $selectedExchangeId,
+            'pickupAddress' => $settings->all()['pickup_address'],
+            'summary' => collect($preview)->except('items'),
+        ]);
     }
 
     public function phoneVerification(Request $request): Response|RedirectResponse
@@ -126,8 +135,20 @@ class CheckoutController extends Controller
 
     public function preview(Request $request, OrderService $orders)
     {
-        $data = $request->validate(['coupon_code' => ['nullable', 'string', 'max:50'], 'use_wallet' => ['boolean'], 'exchange_request_id' => ['nullable', 'integer']]);
-        $preview = $orders->preview($request->session()->get('cart', []), $request->user(), $data['coupon_code'] ?? null, (bool) ($data['use_wallet'] ?? false), $data['exchange_request_id'] ?? null);
+        $data = $request->validate([
+            'coupon_code' => ['nullable', 'string', 'max:50'],
+            'use_wallet' => ['boolean'],
+            'exchange_request_id' => ['nullable', 'integer'],
+            'delivery_method' => ['nullable', Rule::in(['courier', 'pickup'])],
+        ]);
+        $preview = $orders->preview(
+            $request->session()->get('cart', []),
+            $request->user(),
+            $data['coupon_code'] ?? null,
+            (bool) ($data['use_wallet'] ?? false),
+            $data['exchange_request_id'] ?? null,
+            $data['delivery_method'] ?? 'courier',
+        );
 
         return response()->json(collect($preview)->except('items'));
     }
@@ -135,16 +156,32 @@ class CheckoutController extends Controller
     public function store(CheckoutRequest $request, OrderService $orders): RedirectResponse
     {
         $data = $request->validated();
-        $address = $data['address_mode'] === 'saved'
-            ? $request->user()->addresses()->findOrFail($data['address_id'])->only(['recipient_name', 'phone', 'province', 'city', 'postal_code', 'address_line', 'plaque', 'unit'])
-            : $data['address'];
-        if (($address['province'] ?? null) !== 'تهران' || ($address['city'] ?? null) !== 'تهران') {
-            throw ValidationException::withMessages(['address.province' => 'در حال حاضر تحویل سفارش فقط برای ساکنان شهر تهران فعال است.']);
+        $deliveryMethod = $data['delivery_method'];
+        $address = [];
+
+        if ($deliveryMethod === 'courier') {
+            $address = $data['address_mode'] === 'saved'
+                ? $request->user()->addresses()->findOrFail($data['address_id'])->only(['recipient_name', 'phone', 'province', 'city', 'postal_code', 'address_line', 'plaque', 'unit'])
+                : $data['address'];
+
+            if (($address['province'] ?? null) !== 'تهران' || ($address['city'] ?? null) !== 'تهران') {
+                throw ValidationException::withMessages(['address.province' => 'در حال حاضر تحویل سفارش با پیک فقط برای ساکنان شهر تهران فعال است.']);
+            }
+
+            if ($data['address_mode'] === 'new' && ($data['save_address'] ?? false)) {
+                $request->user()->addresses()->create([...$address, 'title' => 'آدرس سفارش']);
+            }
         }
-        if ($data['address_mode'] === 'new' && ($data['save_address'] ?? false)) {
-            $request->user()->addresses()->create([...$address, 'title' => 'آدرس سفارش']);
-        }
-        $order = $orders->create($request->session()->get('cart', []), $request->user(), $address, $data['coupon_code'] ?? null, (bool) ($data['use_wallet'] ?? false), $data['exchange_request_id'] ?? null);
+
+        $order = $orders->create(
+            $request->session()->get('cart', []),
+            $request->user(),
+            $address,
+            $data['coupon_code'] ?? null,
+            (bool) ($data['use_wallet'] ?? false),
+            $data['exchange_request_id'] ?? null,
+            $deliveryMethod,
+        );
         $request->session()->forget('cart');
 
         return to_route('orders.show', $order)->with('success', 'سفارش ثبت شد و در انتظار تأیید مدیر است.');
