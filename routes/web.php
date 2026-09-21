@@ -85,6 +85,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::patch('profile', [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::put('password', [AccountController::class, 'updatePassword'])->name('password.update');
     Route::put('content-notifications', [AccountController::class, 'updateContentNotificationPreferences'])->name('content-notifications.update');
+    Route::put('home-experience', [AccountController::class, 'updateHomeExperiencePreference'])->name('home-experience.update');
     Route::post('addresses', [AccountController::class, 'storeAddress'])->name('addresses.store');
     Route::put('addresses/{address}', [AccountController::class, 'updateAddress'])->name('addresses.update');
     Route::delete('addresses/{address}', [AccountController::class, 'destroyAddress'])->name('addresses.destroy');
