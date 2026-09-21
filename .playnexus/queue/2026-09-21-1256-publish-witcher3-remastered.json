@@ -1,9 +1,0 @@
-{
-  "tool": "set_content_state",
-  "arguments": {
-    "resource": "game",
-    "id": 20,
-    "state": "active"
-  },
-  "purpose": "publish_witcher3_remastered_after_verified_cdn_uploads"
-}
