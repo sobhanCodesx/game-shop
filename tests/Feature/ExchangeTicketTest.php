@@ -65,11 +65,10 @@ class ExchangeTicketTest extends TestCase
         $this->assertSame(6_000_000, $ticket->fresh()->exchange_offer_amount);
     }
 
-    public function test_accepted_exchange_ticket_exposes_the_target_product_order_link(): void
+    public function test_accepted_exchange_ticket_links_back_to_the_requested_product(): void
     {
         $user = User::factory()->create();
-        $requested = Product::factory()->create(['trade_enabled' => true]);
-        $target = Product::factory()->create([
+        $requested = Product::factory()->create([
             'trade_enabled' => true,
             'status' => 'published',
             'visibility' => 'public',
@@ -78,7 +77,7 @@ class ExchangeTicketTest extends TestCase
             'number' => 'TK-EX-ACCEPTED',
             'user_id' => $user->id,
             'product_id' => $requested->id,
-            'target_product_id' => $target->id,
+            'target_product_id' => $requested->id,
             'trade_item_title' => 'PS4',
             'subject' => 'معاوضه',
             'type' => 'exchange',
@@ -95,11 +94,11 @@ class ExchangeTicketTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Account/Tickets/Show')
                 ->where('ticket.exchange_status', 'accepted')
-                ->where('ticket.target_product.id', $target->id)
-                ->where('ticket.target_product.slug', $target->slug));
+                ->where('ticket.target_product.id', $requested->id)
+                ->where('ticket.target_product.slug', $requested->slug));
 
         $this->get(route('products.show', [
-            'product' => $target,
+            'product' => $requested,
             'exchange_request_id' => $ticket->id,
         ]))->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Products/Show')
@@ -179,13 +178,43 @@ class ExchangeTicketTest extends TestCase
                 'variant_id' => null,
                 'quantity' => 1,
             ]],
-        ])->get(route('checkout.show', ['exchange_request_id' => $ticket->id]))
+        ])->get(route('checkout.show'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Checkout/Index')
                 ->where('selectedExchangeId', $ticket->id)
                 ->where('availableExchanges.0.trade_item_title', 'کنسول PlayStation 4 Pro')
                 ->where('summary.exchange_credit_used', 6_000_000));
+    }
+
+    public function test_customer_cannot_accept_a_legacy_offer_bound_to_another_product(): void
+    {
+        $user = User::factory()->create();
+        $requested = Product::factory()->create(['trade_enabled' => true]);
+        $other = Product::factory()->create(['trade_enabled' => true]);
+        $ticket = Ticket::create([
+            'number' => 'TK-EX-LEGACY-MISMATCH',
+            'user_id' => $user->id,
+            'product_id' => $requested->id,
+            'target_product_id' => $other->id,
+            'trade_item_title' => 'PS4',
+            'subject' => 'معاوضه',
+            'type' => 'exchange',
+            'status' => 'open',
+            'exchange_status' => 'offered',
+            'exchange_offer_amount' => 4_000_000,
+            'exchange_credit_expires_at' => now()->addDay(),
+            'last_replied_at' => now(),
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('account.tickets.exchange-response', $ticket), [
+                'decision' => 'accepted',
+            ])
+            ->assertSessionHasErrors('decision');
+
+        $this->assertSame('offered', $ticket->fresh()->exchange_status);
     }
 
     public function test_admin_can_cancel_an_unattached_exchange_request(): void
