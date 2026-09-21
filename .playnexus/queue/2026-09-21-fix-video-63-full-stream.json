@@ -1,5 +1,5 @@
 {
-  "job_id": "2026-09-21-fix-video-63-full-stream",
+  "job_id": "2026-09-21-fix-video-63-full-stream-retry",
   "tool": "upload_asset",
   "arguments": {
     "resource": "video",
@@ -12,7 +12,7 @@
     "require_audio": true,
     "min_duration_seconds": 30,
     "max_duration_seconds": 900,
-    "transcode_max_height": 720,
-    "max_height": 720
+    "transcode_max_height": 480,
+    "max_height": 480
   }
 }
