@@ -181,6 +181,8 @@ class HomeSettingsTest extends TestCase
                 ->where('homeTemplates.0.available', true)
                 ->where('homeTemplates.1.key', 'dual_spotlight')
                 ->where('homeTemplates.1.available', true)
+                ->where('homeTemplates.2.key', 'storefront')
+                ->where('homeTemplates.2.available', true)
                 ->has('homeTemplates', 6));
     }
 
@@ -201,6 +203,27 @@ class HomeSettingsTest extends TestCase
 
         $this->assertSame(
             'dual_spotlight',
+            HomeSetting::query()->firstOrFail()->content['home_template'],
+        );
+    }
+
+    public function test_admin_can_activate_storefront_template(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $settings = $this->settings();
+        $settings['home_template'] = 'storefront';
+
+        $this->actingAs($admin)
+            ->post('/admin/home', [
+                'settings' => $settings,
+                'slides' => [],
+                'sections' => [],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success');
+
+        $this->assertSame(
+            'storefront',
             HomeSetting::query()->firstOrFail()->content['home_template'],
         );
     }
