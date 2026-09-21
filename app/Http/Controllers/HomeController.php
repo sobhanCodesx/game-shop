@@ -17,6 +17,7 @@ use App\Services\FeedService;
 use App\Services\FollowedGameWatchService;
 use App\Services\GameEventService;
 use App\Services\GameRadarService;
+use App\Services\HomeExperienceService;
 use App\Services\MediaStorage;
 use App\Services\ProductPriceService;
 use App\Services\StorefrontDataService;
@@ -29,9 +30,10 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar, UserGamingRelevanceService $relevance, GameEventService $gameEvents, FollowedGameWatchService $watch): Response
+    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar, UserGamingRelevanceService $relevance, GameEventService $gameEvents, FollowedGameWatchService $watch, HomeExperienceService $homeExperience): Response
     {
-        $settings = [...HomeSettingsController::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])];
+        $settings = [...HomeSettingsController::DEFAULTS, ...$homeExperience->settings()];
+        $homeExperienceState = $homeExperience->resolve($settings, $request->user());
         $limit = (int) $settings['products_limit'];
         $freshCutoff = now()->subDays(14);
         $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
@@ -122,6 +124,7 @@ class HomeController extends Controller
         return Inertia::render('Home', [
             ...$seo,
             'personalizedHome' => $personalizedHome,
+            'homeExperience' => $homeExperienceState,
             'latestFeed' => $feed->latestImportantPreview($request, 8),
             'latestStudios' => $latestStudios,
             'gameRadar' => (function () use ($radarItems) {
