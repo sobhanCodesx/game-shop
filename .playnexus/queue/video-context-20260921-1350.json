@@ -1,0 +1,1 @@
+{"job_id":"video-context-20260921-1350","tool":"query_playnexus_graph","arguments":{"query":"query { games(first: 20) { data { id slug name } } }"}}

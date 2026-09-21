@@ -1,0 +1,8 @@
+{
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "{ game(id: 20) { id name slug status coverUrl backgroundUrl studio { id name } platforms { id name } } }",
+    "variables": {}
+  },
+  "purpose": "verify_witcher3_media_graph"
+}
