@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-09-21-game-auto-wolverine-cover",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game",
+    "id": 18,
+    "slot": "cover",
+    "source_url": "https://blog.playstation.com/uploads/2026/07/52814601bbbc2c7cdc3b079825045c3cdcf4e745.jpg",
+    "name": "marvels-wolverine-cover.jpg",
+    "mime": "image/jpeg",
+    "alt": "کاور رسمی بازی Marvel's Wolverine با تصویر لوگان و چنگال‌های آدامانتیومی"
+  }
+}
