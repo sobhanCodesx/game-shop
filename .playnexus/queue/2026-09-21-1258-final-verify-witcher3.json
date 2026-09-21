@@ -1,8 +1,0 @@
-{
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "{ game(id: 20) { id name slug status studio { id name slug } platforms { id name slug } } }",
-    "variables": {}
-  },
-  "purpose": "final_verify_witcher3_active"
-}
