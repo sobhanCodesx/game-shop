@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CheckoutRequest;
+use App\Services\MobileCodeService;
 use App\Services\OrderService;
+use App\Support\PhoneNumber;
 use App\Models\Ticket;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,6 +20,10 @@ class CheckoutController extends Controller
     {
         if (empty($request->session()->get('cart', []))) {
             return to_route('cart.index')->with('error', 'سبد خرید خالی است.');
+        }
+        if ($this->requiresGooglePhoneVerification($request)) {
+            return to_route('checkout.phone.show')
+                ->with('error', 'برای ثبت سفارش ابتدا شماره موبایل خود را با کد پیامکی تأیید کنید.');
         }
         $cart = $request->session()->get('cart', []);
         $preview = $orders->preview($cart, $request->user());
@@ -31,6 +38,90 @@ class CheckoutController extends Controller
         }
 
         return Inertia::render('Checkout/Index', ['addresses' => $request->user()->addresses()->orderByDesc('is_default')->get(), 'profile' => $request->user()->only(['name', 'phone']), 'walletBalance' => (int) $request->user()->wallet_balance, 'availableExchanges' => $exchanges, 'selectedExchangeId' => $selectedExchangeId, 'summary' => collect($preview)->except('items')]);
+    }
+
+    public function phoneVerification(Request $request): Response|RedirectResponse
+    {
+        if (empty($request->session()->get('cart', []))) {
+            return to_route('cart.index')->with('error', 'سبد خرید خالی است.');
+        }
+        if (! $this->requiresGooglePhoneVerification($request)) {
+            return to_route('checkout.show');
+        }
+
+        $sessionUserId = (int) $request->session()->get('checkout_phone_verification_user_id', 0);
+        $sessionPhone = (string) $request->session()->get('checkout_phone_verification_phone', '');
+        $codeSent = $sessionUserId === $request->user()->id && $sessionPhone !== '';
+
+        return Inertia::render('Checkout/VerifyPhone', [
+            'phone' => $codeSent ? $sessionPhone : (string) ($request->user()->phone ?? ''),
+            'codeSent' => $codeSent,
+        ]);
+    }
+
+    public function sendPhoneVerification(Request $request, MobileCodeService $codes): RedirectResponse
+    {
+        if (! $this->requiresGooglePhoneVerification($request)) {
+            return to_route('checkout.show');
+        }
+
+        $data = $request->validate(['phone' => ['required', 'string']]);
+        $phone = PhoneNumber::normalize($data['phone']);
+        validator(
+            ['phone' => $phone],
+            ['phone' => [Rule::unique('users', 'phone')->ignore($request->user()->id)]],
+            ['phone.unique' => 'این شماره موبایل قبلاً برای حساب دیگری ثبت شده است.'],
+        )->validate();
+
+        $codes->send($phone, 'checkout_verify_mobile');
+
+        $request->user()->forceFill([
+            'phone' => $phone,
+            'phone_verified_at' => null,
+        ])->save();
+
+        $request->session()->put([
+            'checkout_phone_verification_user_id' => $request->user()->id,
+            'checkout_phone_verification_phone' => $phone,
+        ]);
+
+        return to_route('checkout.phone.show')->with('success', 'کد تأیید پیامکی ارسال شد.');
+    }
+
+    public function confirmPhoneVerification(Request $request, MobileCodeService $codes): RedirectResponse
+    {
+        if (! $this->requiresGooglePhoneVerification($request)) {
+            return to_route('checkout.show');
+        }
+
+        $data = $request->validate(['code' => ['required', 'digits:6']]);
+        $phone = $this->pendingCheckoutVerificationPhone($request);
+
+        $codes->verify($phone, 'checkout_verify_mobile', $data['code']);
+
+        $request->user()->forceFill([
+            'phone' => $phone,
+            'phone_verified_at' => now(),
+        ])->save();
+
+        $request->session()->forget([
+            'checkout_phone_verification_user_id',
+            'checkout_phone_verification_phone',
+        ]);
+
+        return to_route('checkout.show')->with('success', 'شماره موبایل شما تأیید شد؛ اکنون می‌توانید سفارش را ثبت کنید.');
+    }
+
+    public function resendPhoneVerification(Request $request, MobileCodeService $codes): RedirectResponse
+    {
+        if (! $this->requiresGooglePhoneVerification($request)) {
+            return to_route('checkout.show');
+        }
+
+        $phone = $this->pendingCheckoutVerificationPhone($request);
+        $codes->send($phone, 'checkout_verify_mobile');
+
+        return back()->with('success', 'کد جدید ارسال شد.');
     }
 
     public function preview(Request $request, OrderService $orders)
@@ -58,4 +149,26 @@ class CheckoutController extends Controller
 
         return to_route('orders.show', $order)->with('success', 'سفارش ثبت شد و در انتظار تأیید مدیر است.');
     }
+
+    private function requiresGooglePhoneVerification(Request $request): bool
+    {
+        $user = $request->user();
+
+        return (bool) ($user?->google_id && ! $user->phone_verified_at);
+    }
+
+    private function pendingCheckoutVerificationPhone(Request $request): string
+    {
+        $sessionUserId = (int) $request->session()->get('checkout_phone_verification_user_id', 0);
+        $phone = (string) $request->session()->get('checkout_phone_verification_phone', '');
+
+        if ($sessionUserId !== $request->user()->id || $phone === '' || $request->user()->phone !== $phone) {
+            throw ValidationException::withMessages([
+                'phone' => 'ابتدا شماره موبایل را وارد کنید و کد تأیید بگیرید.',
+            ]);
+        }
+
+        return $phone;
+    }
+
 }
