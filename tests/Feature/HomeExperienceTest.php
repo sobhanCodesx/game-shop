@@ -17,6 +17,7 @@ class HomeExperienceTest extends TestCase
     public function test_home_settings_are_cached_until_explicitly_invalidated(): void
     {
         HomeSetting::query()->create([
+            'id' => 1,
             'content' => [
                 'home_template' => 'default',
                 'featured_products_title' => 'نسخه اول',
@@ -56,6 +57,7 @@ class HomeExperienceTest extends TestCase
     public function test_dual_spotlight_is_an_available_system_template(): void
     {
         HomeSetting::query()->create([
+            'id' => 1,
             'content' => ['home_template' => 'dual_spotlight'],
         ]);
         app(HomeExperienceService::class)->invalidate();
@@ -111,6 +113,7 @@ class HomeExperienceTest extends TestCase
     public function test_storefront_loads_more_products_than_the_default_home_limit(): void
     {
         HomeSetting::query()->create([
+            'id' => 1,
             'content' => [
                 'home_template' => 'storefront',
                 'products_limit' => 8,
@@ -159,6 +162,7 @@ class HomeExperienceTest extends TestCase
     public function test_storefront_is_an_available_system_template(): void
     {
         HomeSetting::query()->create([
+            'id' => 1,
             'content' => ['home_template' => 'storefront'],
         ]);
         app(HomeExperienceService::class)->invalidate();
