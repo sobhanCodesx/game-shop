@@ -154,7 +154,8 @@ function ProductSpotlight({
                     alt={product.cover_alt}
                     className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-[1.025]"
                     decoding="async"
-                    fetchPriority="high"
+                    fetchPriority="auto"
+                    loading="lazy"
                     src={product.cover_url}
                 />
             ) : (
@@ -167,12 +168,12 @@ function ProductSpotlight({
 
             <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-4 sm:p-5">
                 <div className="flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200/15 bg-cyan-300/10 px-2.5 py-1 text-[9px] font-black tracking-[.12em] text-cyan-100">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200/15 bg-cyan-300/10 px-2.5 py-1 text-[9px] font-black tracking-[.12em] text-cyan-100 max-[360px]:px-2 max-[360px]:text-[8px]">
                         <Sparkles size={11} />
                         FEATURED PRODUCT
                     </span>
                     {product.trade_enabled && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/80 backdrop-blur">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[9px] font-black text-white/80 backdrop-blur max-[360px]:hidden">
                             <Repeat2 size={11} />
                             معاوضه
                         </span>
@@ -222,11 +223,11 @@ function ProductSpotlight({
                 href={product.url}
             />
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 pb-14 sm:p-6 sm:pb-16">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 pb-5 sm:p-6 sm:pb-16">
                 <p className="mb-2 text-[10px] font-black tracking-[.14em] text-cyan-200/75">
                     PLAYNEXUS STORE
                 </p>
-                <h2 className="max-w-xl text-2xl font-black leading-[1.35] sm:text-3xl lg:text-4xl">
+                <h2 className="line-clamp-2 max-w-xl text-2xl font-black leading-[1.35] max-[360px]:text-xl sm:text-3xl lg:text-4xl">
                     {product.title}
                 </h2>
                 <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-1">
@@ -244,14 +245,14 @@ function ProductSpotlight({
                         {unavailable ? "مشاهده جزئیات" : "مشاهده محصول"}
                         <ArrowUpLeft size={15} />
                     </span>
-                    <span className="text-[10px] text-white/50">
+                    <span className="max-w-[42%] truncate text-[10px] text-white/50 max-[360px]:hidden">
                         {product.category ?? "فروشگاه PlayNexus"}
                     </span>
                 </div>
             </div>
 
             {visibleProducts.length > 1 && (
-                <div className="absolute inset-x-4 bottom-1 z-20 flex justify-center gap-0 sm:bottom-2">
+                <div className="absolute inset-x-4 bottom-1 z-20 hidden justify-center gap-0 sm:bottom-2 sm:flex">
                     {visibleProducts.map((item, index) => (
                         <button
                             aria-label={item.title}
@@ -396,11 +397,11 @@ function ContentSpotlight({
                 </span>
             )}
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 pb-14 sm:p-6 sm:pb-16">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 pb-5 sm:p-6 sm:pb-16">
                 <p className="mb-2 text-[10px] font-black tracking-[.14em] text-fuchsia-200/70">
                     NEXUS SPOTLIGHT
                 </p>
-                <h2 className="max-w-xl text-2xl font-black leading-[1.4] sm:text-3xl lg:text-4xl">
+                <h2 className="line-clamp-2 max-w-xl text-2xl font-black leading-[1.4] max-[360px]:text-xl sm:text-3xl lg:text-4xl">
                     {item.title}
                 </h2>
                 {item.subtitle && (
@@ -415,7 +416,7 @@ function ContentSpotlight({
             </div>
 
             {visibleItems.length > 1 && (
-                <div className="absolute inset-x-4 bottom-1 z-20 flex justify-center gap-0 sm:bottom-2">
+                <div className="absolute inset-x-4 bottom-1 z-20 hidden justify-center gap-0 sm:bottom-2 sm:flex">
                     {visibleItems.map((entry, index) => (
                         <button
                             aria-label={entry.title}
