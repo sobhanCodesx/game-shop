@@ -1,0 +1,7 @@
+{
+  "job_id": "2026-09-21-extra-game-run-discovery",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query {\n      games(first: 100, orderBy: \"id\", orderDir: \"asc\") {\n        nodes { id name slug status releaseDate studio { id name slug } platforms { id name slug } }\n        pageInfo { total hasMore nextOffset }\n      }\n      studio(slug: \"fromsoftware\") {\n        id name slug status\n        games(first: 50, orderBy: \"id\", orderDir: \"asc\") {\n          nodes { id name slug status releaseDate }\n          pageInfo { total hasMore nextOffset }\n        }\n      }\n      platforms(first: 50, orderBy: \"id\", orderDir: \"asc\") {\n        nodes { id name slug status manufacturer }\n        pageInfo { total hasMore nextOffset }\n      }\n    }"
+  }
+}
