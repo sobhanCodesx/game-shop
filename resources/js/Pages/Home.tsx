@@ -466,8 +466,8 @@ function TemplateProductSection({
             }`}
             id={id}
         >
-            <div className="mb-4 flex items-end justify-between gap-4">
-                <div>
+            <div className="mb-4 flex items-end justify-between gap-4 max-[360px]:flex-col max-[360px]:items-start max-[360px]:gap-2">
+                <div className="min-w-0">
                     <p
                         className={`text-[10px] font-black tracking-[.18em] sm:text-xs ${
                             id === "latest-products"
@@ -482,7 +482,7 @@ function TemplateProductSection({
                     </h2>
                 </div>
                 <Link
-                    className="text-xs font-black text-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+                    className="shrink-0 text-xs font-black text-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
                     href="/shop"
                 >
                     {linkLabel}
@@ -2957,7 +2957,7 @@ function CampaignBanner({
     }, [activeSlide, slides.length]);
 
     useEffect(() => {
-        if (slides.length < 2) return;
+        if (!priority || slides.length < 2) return;
 
         const nextSlide = slides[(activeSlide + 1) % slides.length];
         const source =
@@ -2968,7 +2968,7 @@ function CampaignBanner({
         const image = new Image();
         image.decoding = "async";
         image.src = source;
-    }, [activeSlide, slides]);
+    }, [activeSlide, priority, slides]);
 
     if (!slides.length) {
         if (variant === "signed-in") return null;
@@ -3090,27 +3090,35 @@ function CampaignBanner({
                     >
                         {paused ? <Play size={12} /> : <Pause size={12} />}
                     </button>
-                    {slides.map((item, index) => (
-                        <button
-                            aria-current={index === activeSlide ? "true" : undefined}
-                            aria-label={`اسلاید ${index + 1}`}
-                            className="grid size-8 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
-                            key={item.id}
-                            onClick={() => {
-                                setPaused(true);
-                                setActiveSlide(index);
-                            }}
-                            type="button"
-                        >
-                            <span
-                                className={`h-1.5 rounded-full transition-all duration-300 ${
-                                    index === activeSlide
-                                        ? "w-6 bg-cyan-300"
-                                        : "w-2 bg-white/25"
-                                }`}
-                            />
-                        </button>
-                    ))}
+                    <span className="min-w-12 px-1 text-center text-[10px] font-black text-white/80 sm:hidden">
+                        {money.format(activeSlide + 1)} /{" "}
+                        {money.format(slides.length)}
+                    </span>
+                    <div className="hidden items-center gap-0.5 sm:flex">
+                        {slides.map((item, index) => (
+                            <button
+                                aria-current={
+                                    index === activeSlide ? "true" : undefined
+                                }
+                                aria-label={`اسلاید ${index + 1}`}
+                                className="grid size-8 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                                key={item.id}
+                                onClick={() => {
+                                    setPaused(true);
+                                    setActiveSlide(index);
+                                }}
+                                type="button"
+                            >
+                                <span
+                                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                                        index === activeSlide
+                                            ? "w-6 bg-cyan-300"
+                                            : "w-2 bg-white/25"
+                                    }`}
+                                />
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
