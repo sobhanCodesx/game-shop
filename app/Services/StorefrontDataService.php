@@ -25,7 +25,6 @@ class StorefrontDataService
                 'id' => $category->id,
                 'name' => $category->name,
                 'slug' => $category->slug,
-                'description' => $category->description,
                 'image_url' => MediaStorage::url($category->image),
                 'products_count' => (int) $category->products_count + $children->sum('products_count'),
                 'children' => $children->all(),
