@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-21-manual-video-crimson-verify-assets",
-  "tool": "list_content_assets",
-  "arguments": {
-    "resource": "video",
-    "id": 63
-  }
-}
