@@ -22,6 +22,9 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import DualSpotlightHero, {
+    type DualSpotlightContentItem,
+} from "../Components/Home/DualSpotlightHero";
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
 import type { NavigationCategory } from "../Components/Storefront/Navigation/types";
 import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
@@ -3142,6 +3145,81 @@ export default function Home({
         };
     }, []);
 
+    const isDualSpotlight =
+        homeExperience.effective_template === "dual_spotlight";
+    const dualSpotlightProducts =
+        featuredProducts.length > 0 ? featuredProducts : latestProducts;
+    const dualSpotlightContent = useMemo<DualSpotlightContentItem[]>(() => {
+        const items: DualSpotlightContentItem[] = [];
+        const seen = new Set<string>();
+
+        const push = (item: DualSpotlightContentItem) => {
+            if (!item.url || seen.has(item.url)) return;
+            seen.add(item.url);
+            items.push(item);
+        };
+
+        personalizedHome?.videos.forEach((item) =>
+            push({
+                key: `personalized-video-${item.id}`,
+                title: item.title,
+                eyebrow: item.relevance.signal_label || "ویدیوی پیشنهادی",
+                subtitle: item.relevance.reason,
+                url: item.url,
+                image: feedPreviewImage(item),
+                kind: "video",
+            }),
+        );
+        personalizedHome?.feed.forEach((item) =>
+            push({
+                key: `personalized-feed-${item.id}`,
+                title: item.title,
+                eyebrow: item.relevance.signal_label || "برای تو",
+                subtitle: item.relevance.reason,
+                url: item.url,
+                image: feedPreviewImage(item),
+                kind: item.type === "video" ? "video" : "feed",
+            }),
+        );
+        latestFeed.forEach((item) =>
+            push({
+                key: `feed-${item.id}`,
+                title: item.title,
+                eyebrow: homeFeedBadgeLabels[item.badge ?? ""] ?? "تازه مهم",
+                subtitle: item.author.name,
+                url: item.url,
+                image: feedPreviewImage(item),
+                kind: item.type === "video" ? "video" : "feed",
+            }),
+        );
+        freshContent
+            .filter((item) => item.type === "video")
+            .forEach((item) =>
+                push({
+                    key: item.key,
+                    title: item.title,
+                    eyebrow: item.eyebrow || "ویدیوی تازه",
+                    subtitle: "تازه در PlayNexus",
+                    url: item.url,
+                    image: item.image_url,
+                    kind: "video",
+                }),
+            );
+        slides.forEach((slide) =>
+            push({
+                key: `campaign-${slide.id}`,
+                title: slide.title,
+                eyebrow: "کمپین PlayNexus",
+                subtitle: slide.alt,
+                url: safeUrl(slide.button_url) ?? "/",
+                image: slide.mobile_image_url ?? slide.desktop_image_url,
+                kind: "campaign",
+            }),
+        );
+
+        return items.slice(0, 8);
+    }, [freshContent, latestFeed, personalizedHome, slides]);
+
     return (
         <div
             ref={storefrontRootRef}
@@ -3166,7 +3244,43 @@ export default function Home({
                 freshContentAt={storefront.fresh_content_at}
             />
             <main>
-                {auth.user && personalizedHome && slides.length > 0 && (
+                {isDualSpotlight && (
+                    <>
+                        <DualSpotlightHero
+                            contentItems={dualSpotlightContent}
+                            products={dualSpotlightProducts}
+                        />
+                        {settings.featured_products_enabled &&
+                            featuredProducts.length > 0 && (
+                                <section
+                                    className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 pb-5 pt-2 sm:px-4 sm:pb-8"
+                                    id="featured-products"
+                                >
+                                    <div className="mb-4 flex items-end justify-between gap-4">
+                                        <div>
+                                            <p className="text-[10px] font-black tracking-[.18em] text-cyan-500 sm:text-xs">
+                                                STORE PICKS
+                                            </p>
+                                            <h2 className="mt-1 text-xl font-black sm:text-2xl">
+                                                {settings.featured_products_title}
+                                            </h2>
+                                        </div>
+                                        <Link
+                                            className="text-xs font-black text-indigo-500"
+                                            href="/shop"
+                                        >
+                                            همه محصولات
+                                        </Link>
+                                    </div>
+                                    <ProductGrid products={featuredProducts} />
+                                </section>
+                            )}
+                    </>
+                )}
+                {!isDualSpotlight &&
+                    auth.user &&
+                    personalizedHome &&
+                    slides.length > 0 && (
                     <section
                         aria-label="بنرهای PlayNexus"
                         className="mx-auto w-full max-w-[1460px] px-3 pb-0 pt-2 sm:px-4 sm:pb-1 sm:pt-4"
@@ -3174,7 +3288,8 @@ export default function Home({
                         <CampaignBanner slides={slides} variant="signed-in" />
                     </section>
                 )}
-                {auth.user && personalizedHome ? (
+                {!isDualSpotlight &&
+                    (auth.user && personalizedHome ? (
                     <PersonalizedHomePanel
                         channels={channels}
                         data={personalizedHome}
@@ -3205,6 +3320,17 @@ export default function Home({
                             seo={seo}
                         />
                     </>
+                ))}
+                {isDualSpotlight && slides.length > 0 && (
+                    <section
+                        aria-label="کمپین‌های PlayNexus"
+                        className="mx-auto w-full max-w-[1460px] px-3 pb-3 pt-1 sm:px-4 sm:pb-5"
+                    >
+                        <CampaignBanner
+                            slides={slides}
+                            variant={auth.user ? "signed-in" : "public"}
+                        />
+                    </section>
                 )}
                 <FreshReleases items={freshContent} />
                 <ChannelRail channels={channels} />
@@ -3417,7 +3543,7 @@ export default function Home({
                             </div>
                         </section>
                     )}
-                {settings.featured_products_enabled && (
+                {!isDualSpotlight && settings.featured_products_enabled && (
                     <section
                         className="pn-render-zone mx-auto max-w-[1536px] scroll-mt-24 px-3 py-7 sm:px-4 sm:py-10"
                         id="featured-products"
