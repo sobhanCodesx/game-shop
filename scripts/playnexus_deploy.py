@@ -192,10 +192,16 @@ def public_health(path: str, expected_kind: str | None = None) -> None:
     last_error: Exception | None = None
 
     for attempt in range(MAX_RETRIES):
+        accept = "*/*"
+        if expected_kind == "html":
+            accept = "text/html,application/xhtml+xml"
+        elif expected_kind == "json":
+            accept = "application/json"
+
         request = urllib.request.Request(
             url,
             headers={
-                "Accept": "application/json,text/html,*/*",
+                "Accept": accept,
                 "User-Agent": "PlayNexus-GitHub-Deploy/2",
             },
             method="GET",

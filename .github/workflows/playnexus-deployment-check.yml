@@ -11,6 +11,7 @@ on:
       - 'app/Http/Requests/Api/DeploymentAgentChunkRequest.php'
       - 'app/Services/Deployment/**'
       - 'config/deployment.php'
+      - 'config/app.php'
       - 'composer.json'
       - 'composer.lock'
       - 'package.json'
@@ -60,6 +61,7 @@ jobs:
           php -l app/Services/Deployment/DeploymentManager.php
           php -l app/Services/Deployment/PackageBuilder.php
           php -l app/Services/Deployment/PackageVerifier.php
+          php -l config/app.php
           php -l config/deployment.php
           php -l routes/api.php
           php -l tests/Feature/DeploymentAgentApiTest.php
