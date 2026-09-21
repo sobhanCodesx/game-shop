@@ -141,6 +141,50 @@ class HomeSettingsTest extends TestCase
         Storage::disk('public')->assertMissing('home/slides/mobile/old-mobile.jpg');
     }
 
+    public function test_admin_can_remove_mobile_banner_override_without_deleting_desktop_image(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['is_admin' => true]);
+        Storage::disk('public')->put('home/slides/desktop.jpg', 'desktop');
+        Storage::disk('public')->put('home/slides/mobile/mobile.jpg', 'mobile');
+
+        $slide = HomeSlide::query()->create([
+            ...$this->slide([
+                'title' => 'بنر تست',
+                'desktop_image' => 'home/slides/desktop.jpg',
+                'mobile_image' => 'home/slides/mobile/mobile.jpg',
+            ]),
+            'alt' => 'بنر تست',
+            'link_type' => 'url',
+            'button_url' => '/products',
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/home', [
+                'settings' => $this->settings(),
+                'slides' => [[
+                    ...$slide->only([
+                        'id',
+                        'title',
+                        'desktop_image',
+                        'alt',
+                        'link_type',
+                        'button_url',
+                        'text_position',
+                        'overlay',
+                        'is_active',
+                    ]),
+                    'mobile_image' => '',
+                ]],
+                'sections' => [],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($slide->fresh()->mobile_image);
+        Storage::disk('public')->assertExists('home/slides/desktop.jpg');
+        Storage::disk('public')->assertMissing('home/slides/mobile/mobile.jpg');
+    }
+
     public function test_home_settings_returns_persian_validation_errors_for_invalid_slides(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
