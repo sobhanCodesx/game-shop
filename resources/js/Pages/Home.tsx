@@ -20,7 +20,7 @@ import {
     Sparkles,
     Truck,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import DualSpotlightHero, {
     type DualSpotlightContentItem,
