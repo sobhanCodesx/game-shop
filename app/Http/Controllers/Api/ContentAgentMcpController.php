@@ -63,6 +63,24 @@ class ContentAgentMcpController extends Controller
         }
     }
 
+    public function uploadChunkFile(Request $request, ContentAgentMediaService $contentMedia): Response
+    {
+        $data = $request->validate([
+            'upload_id' => ['required', 'uuid'],
+            'chunk_index' => ['required', 'integer', 'min:0', 'max:999'],
+            'chunk' => ['required', 'file'],
+        ]);
+
+        $chunk = $request->file('chunk');
+        if ($chunk === null || ! $chunk->isValid()) {
+            return response()->json(['error' => 'Invalid binary upload chunk.'], 422);
+        }
+
+        return response()->json(
+            $contentMedia->uploadChunkFile($data, $chunk)
+        );
+    }
+
     private function initializeResult(array $params): array
     {
         $requested = (string) ($params['protocolVersion'] ?? self::LEGACY_PROTOCOL);
