@@ -1,4 +1,4 @@
-import { Button, Card, Chip, Input } from "@heroui/react";
+import { Button, Card, Chip } from "@heroui/react";
 import { Link, usePage } from "@inertiajs/react";
 import {
     ChevronLeft,
