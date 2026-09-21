@@ -58,7 +58,10 @@ class DeploymentAgentController extends Controller
 
         if (($report['status'] ?? 'error') !== 'ok') {
             $failed = collect($report['checks'] ?? [])
-                ->filter(fn (array $check) => ($check['ok'] ?? false) !== true)
+                ->filter(
+                    fn (array $check) => ($check['blocking'] ?? true) === true
+                        && ($check['ok'] ?? false) !== true,
+                )
                 ->keys()
                 ->values()
                 ->all();

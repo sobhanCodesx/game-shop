@@ -396,11 +396,25 @@ def main() -> int:
             f"{deployed_commit or '<missing>'}"
         )
 
+    checks = health.get("checks") or {}
     print(
         "Authenticated health checks passed: "
-        + ", ".join((health.get("checks") or {}).keys()),
+        + ", ".join(
+            name
+            for name, result in checks.items()
+            if isinstance(result, dict) and result.get("ok") is True
+        ),
         flush=True,
     )
+    warnings = [
+        f"{name}: {result.get('detail', 'warning')}"
+        for name, result in checks.items()
+        if isinstance(result, dict)
+        and result.get("blocking") is False
+        and result.get("detail") not in {None, "", "production/debug-off/url-ok"}
+    ]
+    for warning in warnings:
+        print(f"::warning::Post-deploy diagnostic: {warning}")
 
     public_health("/up")
     public_health("/", "html")

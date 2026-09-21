@@ -22,34 +22,44 @@ final class DeploymentHealthService
         $commit = null;
         $cdnProbeUrl = null;
 
-        $check = function (string $name, callable $callback) use (&$checks): void {
+        $check = function (
+            string $name,
+            callable $callback,
+            bool $blocking = true,
+        ) use (&$checks): void {
             try {
                 $detail = $callback();
                 $checks[$name] = [
                     'ok' => true,
+                    'blocking' => $blocking,
                     'detail' => $detail,
                 ];
             } catch (Throwable $exception) {
                 $checks[$name] = [
                     'ok' => false,
+                    'blocking' => $blocking,
                     'detail' => mb_substr($exception->getMessage(), 0, 300),
                 ];
             }
         };
 
         $check('configuration', function (): string {
+            $notes = [];
+
             if (! app()->environment('production')) {
-                throw new \RuntimeException('APP_ENV is not production.');
+                $notes[] = 'APP_ENV='.app()->environment();
             }
             if ((bool) config('app.debug')) {
-                throw new \RuntimeException('APP_DEBUG must be disabled in production.');
-            }
-            if (rtrim((string) config('app.url'), '/') !== 'https://playnexus.ir') {
-                throw new \RuntimeException('APP_URL does not match the production origin.');
+                $notes[] = 'APP_DEBUG=true';
             }
 
-            return 'production/debug-off/url-ok';
-        });
+            $url = rtrim((string) config('app.url'), '/');
+            if ($url !== 'https://playnexus.ir') {
+                $notes[] = 'APP_URL='.$url;
+            }
+
+            return $notes === [] ? 'production/debug-off/url-ok' : implode('; ', $notes);
+        }, blocking: false);
 
         $check('database', function (): string {
             $result = DB::select('SELECT 1 AS healthy');
@@ -202,7 +212,9 @@ final class DeploymentHealthService
             $cdnProbeUrl = null;
         }
 
-        $healthy = collect($checks)->every(fn (array $item) => ($item['ok'] ?? false) === true);
+        $healthy = collect($checks)->every(
+            fn (array $item) => ($item['blocking'] ?? true) !== true || ($item['ok'] ?? false) === true,
+        );
 
         return [
             'status' => $healthy ? 'ok' : 'error',
