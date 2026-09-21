@@ -47,7 +47,7 @@ class HomeSettingsController extends Controller
     public function edit(HomeExperienceService $homeExperience): Response
     {
         return Inertia::render('Admin/Home/Edit', [
-            'settings' => [...self::DEFAULTS, ...(HomeSetting::query()->first()?->content ?? [])],
+            'settings' => [...self::DEFAULTS, ...(HomeSetting::query()->find(1)?->content ?? [])],
             'homeTemplates' => $homeExperience->templates(),
             'slides' => HomeSlide::query()->orderBy('sort_order')->get()->map(fn (HomeSlide $slide) => [
                 ...$slide->toArray(),
