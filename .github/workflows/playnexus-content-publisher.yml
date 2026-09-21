@@ -106,6 +106,7 @@ jobs:
           fi
           ffmpeg -version | head -n 1
           ffprobe -version | head -n 1
+          python3 -m py_compile scripts/playnexus_publish.py
 
       - name: Send jobs to PlayNexus
         if: ${{ steps.jobs.outputs.has_jobs == 'true' }}
