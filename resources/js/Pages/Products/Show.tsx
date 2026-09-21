@@ -410,6 +410,8 @@ export default function ProductShow({
                                             alt=""
                                             aria-hidden
                                             className="absolute inset-0 h-full w-full scale-110 object-cover opacity-25 blur-3xl"
+                                            decoding="async"
+                                            fetchPriority="low"
                                             src={backdrop}
                                         />
                                     )}
@@ -423,14 +425,17 @@ export default function ProductShow({
                                                     controls
                                                     key={activeMedia.id}
                                                     playsInline
-                                                    preload="auto"
+                                                    preload="metadata"
                                                     src={activeMedia.url}
                                                 />
                                             ) : (
                                                 <img
                                                     alt={activeMedia.alt}
                                                     className="relative z-10 h-full w-full object-contain drop-shadow-2xl"
+                                                    decoding="async"
+                                                    fetchPriority="high"
                                                     key={activeMedia.id}
+                                                    loading="eager"
                                                     onLoad={(event) => {
                                                         const image =
                                                             event.currentTarget;
@@ -531,6 +536,7 @@ export default function ProductShow({
                                                     <img
                                                         alt=""
                                                         className="h-full w-full object-cover"
+                                                        decoding="async"
                                                         loading="lazy"
                                                         src={media.url}
                                                     />
@@ -1044,6 +1050,7 @@ function FeedLink({ item }: { item: FeedItemData }) {
                     <img
                         alt={media.alt}
                         className="aspect-video w-full object-cover"
+                        decoding="async"
                         loading="lazy"
                         src={image}
                     />
