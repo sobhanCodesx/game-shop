@@ -406,7 +406,11 @@ export default function Edit({
                 </Button>
             </Link>
             {recentlySuccessful && (
-                <Chip color="success" size="sm" variant="soft">
+                <Chip
+                    className="bg-emerald-500/10 text-emerald-300"
+                    size="sm"
+                    variant="soft"
+                >
                     ذخیره شد
                 </Chip>
             )}
