@@ -1,6 +1,6 @@
 import { Button, Card, Input } from "@heroui/react";
 import { Head, useForm } from "@inertiajs/react";
-import { Check, Gift, MapPin, TicketPercent, Wallet } from "lucide-react";
+import { Check, Gift, MapPin, Store, TicketPercent, Truck, Wallet } from "lucide-react";
 import { useState } from "react";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 interface Address {
@@ -25,6 +25,8 @@ interface Summary {
     payable_amount: number;
     cashback_percent: number;
     cashback_amount: number;
+    delivery_method: "courier" | "pickup";
+    pickup_address: string | null;
 }
 interface Profile {
     name: string;
@@ -45,6 +47,7 @@ export default function Checkout({
     summary: initial,
     availableExchanges,
     selectedExchangeId,
+    pickupAddress,
 }: {
     addresses: Address[];
     profile: Profile;
@@ -58,12 +61,14 @@ export default function Checkout({
         product: { id: number; title: string };
     }>;
     selectedExchangeId: number | null;
+    pickupAddress: string;
 }) {
     const [step, setStep] = useState(1),
         [summary, setSummary] = useState(initial),
         [couponError, setCouponError] = useState("");
     const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
     const { data, setData, post, processing, errors } = useForm({
+        delivery_method: "courier" as "courier" | "pickup",
         address_mode: addresses.length ? "saved" : "new",
         address_id: addresses[0]?.id ?? null,
         address: {
@@ -86,6 +91,18 @@ export default function Checkout({
     );
     const fieldErrors = errors as Record<string, string>;
     const continueAddress = () => {
+        if (data.delivery_method === "pickup") {
+            if (!pickupAddress.trim()) {
+                setLocalErrors({
+                    delivery_method:
+                        "آدرس مراجعه حضوری هنوز در پنل مدیریت تنظیم نشده است.",
+                });
+                return;
+            }
+            setLocalErrors({});
+            setStep(2);
+            return;
+        }
         if (data.address_mode === "saved") {
             if (!data.address_id) {
                 setLocalErrors({
@@ -117,6 +134,7 @@ export default function Checkout({
         coupon = data.coupon_code,
         wallet = data.use_wallet,
         exchangeRequestId = data.exchange_request_id,
+        deliveryMethod = data.delivery_method,
     ) => {
         setCouponError("");
         const token = document.querySelector<HTMLMetaElement>(
@@ -129,12 +147,19 @@ export default function Checkout({
                 Accept: "application/json",
                 "X-CSRF-TOKEN": token ?? "",
             },
-            body: JSON.stringify({ coupon_code: coupon, use_wallet: wallet, exchange_request_id: exchangeRequestId }),
+            body: JSON.stringify({
+                coupon_code: coupon,
+                use_wallet: wallet,
+                exchange_request_id: exchangeRequestId,
+                delivery_method: deliveryMethod,
+            }),
         });
         const body = await r.json();
         if (!r.ok) {
             setCouponError(
-                body.errors?.coupon_code?.[0] ?? "محاسبه سفارش انجام نشد.",
+                body.errors?.delivery_method?.[0] ??
+                    body.errors?.coupon_code?.[0] ??
+                    "محاسبه سفارش انجام نشد.",
             );
             return;
         }
@@ -146,7 +171,7 @@ export default function Checkout({
             <main className="mx-auto max-w-5xl px-4 py-10">
                 <h1 className="text-3xl font-black">تکمیل سفارش</h1>
                 <div className="my-8 flex gap-2">
-                    {["آدرس", "تخفیف و کیف پول", "تأیید نهایی"].map((x, i) => (
+                    {["روش تحویل", "تخفیف و کیف پول", "تأیید نهایی"].map((x, i) => (
                         <div
                             className={`flex-1 rounded-xl p-3 text-center text-sm font-bold ${step === i + 1 ? "bg-indigo-600 text-white" : "bg-[var(--store-surface)]"}`}
                             key={x}
@@ -162,166 +187,263 @@ export default function Checkout({
                     >
                         <Card.Content className="p-6">
                             {step === 1 && (
-                                <div className="space-y-4">
-                                    <h2 className="flex gap-2 text-xl font-black">
-                                        <MapPin />
-                                        نشانی تحویل
-                                    </h2>
-                                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm leading-7 text-amber-700 dark:text-amber-300">
-                                        <strong>شرایط تحویل:</strong> سفارش با
-                                        پیک درب منزل تحویل می‌شود و مبلغ
-                                        باقی‌مانده را هنگام تحویل پرداخت
-                                        می‌کنید. در حال حاضر ثبت سفارش فقط برای
-                                        ساکنان شهر تهران امکان‌پذیر است.
+                                <div className="space-y-6">
+                                    <div>
+                                        <h2 className="flex gap-2 text-xl font-black">
+                                            <Truck />
+                                            روش تحویل سفارش
+                                        </h2>
+                                        <p className="mt-2 text-sm leading-7 text-[var(--store-muted)]">
+                                            نحوه دریافت سفارش را انتخاب کنید. هزینه نهایی بر اساس همین انتخاب محاسبه می‌شود.
+                                        </p>
                                     </div>
-                                    {addresses.map((a) => (
-                                        <label
-                                            className="block cursor-pointer rounded-2xl border border-[var(--store-border)] p-4"
-                                            key={a.id}
+
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <button
+                                            className={`rounded-2xl border p-4 text-right transition ${
+                                                data.delivery_method === "courier"
+                                                    ? "border-indigo-500 bg-indigo-500/10 ring-2 ring-indigo-500/10"
+                                                    : "border-[var(--store-border)] bg-[var(--store-bg)]"
+                                            }`}
+                                            onClick={async () => {
+                                                setData("delivery_method", "courier");
+                                                setLocalErrors({});
+                                                await preview(
+                                                    data.coupon_code,
+                                                    data.use_wallet,
+                                                    data.exchange_request_id,
+                                                    "courier",
+                                                );
+                                            }}
+                                            type="button"
                                         >
-                                            <input
-                                                checked={
-                                                    data.address_mode ===
-                                                        "saved" &&
-                                                    data.address_id === a.id
-                                                }
-                                                onChange={() => {
-                                                    setData({
-                                                        ...data,
-                                                        address_mode: "saved",
-                                                        address_id: a.id,
-                                                    });
-                                                    setLocalErrors({});
-                                                }}
-                                                type="radio"
-                                            />{" "}
-                                            <strong>{a.title}</strong>
-                                            <p className="mt-2 text-sm text-[var(--store-muted)]">
-                                                {a.province}، {a.city}،{" "}
-                                                {a.address_line}
-                                            </p>
-                                        </label>
-                                    ))}
-                                    {(localErrors.address_id ||
-                                        fieldErrors.address_id) && (
+                                            <span className="flex items-center gap-2 font-black">
+                                                <Truck className="text-indigo-500" size={20} />
+                                                تحویل با پیک
+                                            </span>
+                                            <span className="mt-2 block text-xs leading-6 text-[var(--store-muted)]">
+                                                ارسال به آدرس شما در تهران؛ هزینه پیک طبق مبلغ تنظیم‌شده در پنل محاسبه می‌شود.
+                                            </span>
+                                        </button>
+
+                                        <button
+                                            className={`rounded-2xl border p-4 text-right transition ${
+                                                data.delivery_method === "pickup"
+                                                    ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/10"
+                                                    : "border-[var(--store-border)] bg-[var(--store-bg)]"
+                                            } ${!pickupAddress ? "cursor-not-allowed opacity-60" : ""}`}
+                                            disabled={!pickupAddress}
+                                            onClick={async () => {
+                                                setData("delivery_method", "pickup");
+                                                setLocalErrors({});
+                                                await preview(
+                                                    data.coupon_code,
+                                                    data.use_wallet,
+                                                    data.exchange_request_id,
+                                                    "pickup",
+                                                );
+                                            }}
+                                            type="button"
+                                        >
+                                            <span className="flex items-center gap-2 font-black">
+                                                <Store className="text-emerald-500" size={20} />
+                                                تحویل حضوری
+                                            </span>
+                                            <span className="mt-2 block text-xs leading-6 text-[var(--store-muted)]">
+                                                بدون هزینه پیک؛ پس از آماده‌شدن سفارش برای دریافت حضوری مراجعه می‌کنید.
+                                            </span>
+                                        </button>
+                                    </div>
+
+                                    {(localErrors.delivery_method ||
+                                        fieldErrors.delivery_method) && (
                                         <p className="rounded-xl bg-rose-500/10 p-3 text-sm font-bold text-rose-500">
-                                            {localErrors.address_id ||
-                                                fieldErrors.address_id}
+                                            {localErrors.delivery_method ||
+                                                fieldErrors.delivery_method}
                                         </p>
                                     )}
-                                    <label className="block">
-                                        <input
-                                            checked={
-                                                data.address_mode === "new"
-                                            }
-                                            onChange={() => {
-                                                setData({
-                                                    ...data,
-                                                    address_mode: "new",
-                                                    address_id: null,
-                                                });
-                                                setLocalErrors({});
-                                            }
-                                            type="radio"
-                                        />{" "}
-                                        وارد کردن آدرس جدید
-                                    </label>
-                                    {data.address_mode === "new" && (
-                                        <div className="grid gap-3 sm:grid-cols-2">
-                                            {fields.map(([key, label]) => (
-                                                <div key={key}>
-                                                    <Input
-                                                        placeholder={label}
-                                                        onChange={(e) =>
-                                                            setData("address", {
-                                                                ...data.address,
-                                                                [key]: e.target
-                                                                    .value,
-                                                            })
+
+                                    {data.delivery_method === "pickup" ? (
+                                        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
+                                            <div className="flex items-start gap-3">
+                                                <MapPin className="mt-1 shrink-0 text-emerald-600" size={20} />
+                                                <div>
+                                                    <h3 className="font-black text-emerald-700 dark:text-emerald-300">
+                                                        آدرس مراجعه حضوری
+                                                    </h3>
+                                                    <p className="mt-2 text-sm leading-7 text-[var(--store-muted)]">
+                                                        {pickupAddress ||
+                                                            "آدرس مراجعه هنوز در پنل مدیریت تنظیم نشده است."}
+                                                    </p>
+                                                    <p className="mt-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                                                        این آدرس در فاکتور نهایی سفارش نیز درج می‌شود.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm leading-7 text-amber-700 dark:text-amber-300">
+                                                <strong>تحویل با پیک:</strong> در حال حاضر ارسال با پیک فقط برای شهر تهران فعال است.
+                                            </div>
+
+                                            <h3 className="flex gap-2 font-black">
+                                                <MapPin size={19} />
+                                                آدرس تحویل
+                                            </h3>
+
+                                            {addresses.map((a) => (
+                                                <label
+                                                    className={`block cursor-pointer rounded-2xl border p-4 transition ${
+                                                        data.address_mode === "saved" &&
+                                                        data.address_id === a.id
+                                                            ? "border-indigo-500 bg-indigo-500/5"
+                                                            : "border-[var(--store-border)]"
+                                                    }`}
+                                                    key={a.id}
+                                                >
+                                                    <input
+                                                        checked={
+                                                            data.address_mode ===
+                                                                "saved" &&
+                                                            data.address_id === a.id
                                                         }
-                                                        value={
-                                                            data.address[key]
-                                                        }
-                                                    />
-                                                    {(localErrors[
-                                                        `address.${key}`
-                                                    ] ||
-                                                        fieldErrors[
-                                                            `address.${key}`
-                                                        ]) && (
-                                                        <p className="mt-1 text-xs font-bold text-rose-500">
-                                                            {localErrors[
+                                                        onChange={() => {
+                                                            setData({
+                                                                ...data,
+                                                                address_mode: "saved",
+                                                                address_id: a.id,
+                                                            });
+                                                            setLocalErrors({});
+                                                        }}
+                                                        type="radio"
+                                                    />{" "}
+                                                    <strong>{a.title}</strong>
+                                                    <p className="mt-2 text-sm text-[var(--store-muted)]">
+                                                        {a.province}، {a.city}،{" "}
+                                                        {a.address_line}
+                                                    </p>
+                                                </label>
+                                            ))}
+
+                                            {(localErrors.address_id ||
+                                                fieldErrors.address_id) && (
+                                                <p className="rounded-xl bg-rose-500/10 p-3 text-sm font-bold text-rose-500">
+                                                    {localErrors.address_id ||
+                                                        fieldErrors.address_id}
+                                                </p>
+                                            )}
+
+                                            <label className="block cursor-pointer rounded-2xl border border-[var(--store-border)] p-4">
+                                                <input
+                                                    checked={
+                                                        data.address_mode === "new"
+                                                    }
+                                                    onChange={() => {
+                                                        setData({
+                                                            ...data,
+                                                            address_mode: "new",
+                                                            address_id: null,
+                                                        });
+                                                        setLocalErrors({});
+                                                    }}
+                                                    type="radio"
+                                                />{" "}
+                                                وارد کردن آدرس جدید
+                                            </label>
+
+                                            {data.address_mode === "new" && (
+                                                <div className="grid gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-4 sm:grid-cols-2">
+                                                    {fields.map(([key, label]) => (
+                                                        <div key={key}>
+                                                            <Input
+                                                                placeholder={label}
+                                                                onChange={(e) =>
+                                                                    setData("address", {
+                                                                        ...data.address,
+                                                                        [key]: e.target.value,
+                                                                    })
+                                                                }
+                                                                value={data.address[key]}
+                                                            />
+                                                            {(localErrors[
                                                                 `address.${key}`
                                                             ] ||
                                                                 fieldErrors[
                                                                     `address.${key}`
-                                                                ]}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            <div className="sm:col-span-2">
-                                                <textarea
-                                                    className="min-h-28 w-full rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-4 text-sm outline-none focus:border-indigo-500"
-                                                    onChange={(e) =>
-                                                        setData("address", {
-                                                            ...data.address,
-                                                            address_line:
-                                                                e.target.value,
-                                                        })
-                                                    }
-                                                    placeholder="نشانی کامل محل تحویل *"
-                                                    value={
-                                                        data.address
-                                                            .address_line
-                                                    }
-                                                />
-                                                {(localErrors[
-                                                    "address.address_line"
-                                                ] ||
-                                                    fieldErrors[
-                                                        "address.address_line"
-                                                    ]) && (
-                                                    <p className="mt-1 text-xs font-bold text-rose-500">
-                                                        {localErrors[
+                                                                ]) && (
+                                                                <p className="mt-1 text-xs font-bold text-rose-500">
+                                                                    {localErrors[
+                                                                        `address.${key}`
+                                                                    ] ||
+                                                                        fieldErrors[
+                                                                            `address.${key}`
+                                                                        ]}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                    <div className="sm:col-span-2">
+                                                        <textarea
+                                                            className="min-h-28 w-full rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-4 text-sm outline-none focus:border-indigo-500"
+                                                            onChange={(e) =>
+                                                                setData("address", {
+                                                                    ...data.address,
+                                                                    address_line:
+                                                                        e.target.value,
+                                                                })
+                                                            }
+                                                            placeholder="نشانی کامل محل تحویل *"
+                                                            value={
+                                                                data.address
+                                                                    .address_line
+                                                            }
+                                                        />
+                                                        {(localErrors[
                                                             "address.address_line"
                                                         ] ||
                                                             fieldErrors[
                                                                 "address.address_line"
-                                                            ]}
-                                                    </p>
-                                                )}
-                                                <p className="mt-1 text-xs text-[var(--store-muted)]">
-                                                    نام خیابان، کوچه و جزئیات
-                                                    لازم برای تحویل را بنویسید.
+                                                            ]) && (
+                                                            <p className="mt-1 text-xs font-bold text-rose-500">
+                                                                {localErrors[
+                                                                    "address.address_line"
+                                                                ] ||
+                                                                    fieldErrors[
+                                                                        "address.address_line"
+                                                                    ]}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <label className="sm:col-span-2 flex items-center gap-2 text-sm">
+                                                        <input
+                                                            checked={data.save_address}
+                                                            onChange={(e) =>
+                                                                setData(
+                                                                    "save_address",
+                                                                    e.target.checked,
+                                                                )
+                                                            }
+                                                            type="checkbox"
+                                                        />
+                                                        این آدرس برای خریدهای بعدی ذخیره شود
+                                                    </label>
+                                                </div>
+                                            )}
+
+                                            {fieldErrors["address.province"] && (
+                                                <p className="rounded-xl bg-rose-500/10 p-3 text-sm font-bold text-rose-500">
+                                                    {fieldErrors["address.province"]}
                                                 </p>
-                                            </div>
-                                            <label className="sm:col-span-2 flex items-center gap-2 text-sm">
-                                                <input
-                                                    checked={data.save_address}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "save_address",
-                                                            e.target.checked,
-                                                        )
-                                                    }
-                                                    type="checkbox"
-                                                />{" "}
-                                                این آدرس برای خریدهای بعدی در
-                                                حساب من ذخیره شود
-                                            </label>
+                                            )}
                                         </div>
                                     )}
-                                    {fieldErrors["address.province"] && (
-                                        <p className="rounded-xl bg-rose-500/10 p-3 text-sm font-bold text-rose-500">
-                                            {fieldErrors["address.province"]}
-                                        </p>
-                                    )}
+
                                     <Button
                                         onPress={continueAddress}
                                         variant="primary"
                                     >
-                                        ادامه
+                                        ادامه به تخفیف و پرداخت
                                     </Button>
                                 </div>
                             )}
@@ -459,6 +581,18 @@ export default function Checkout({
                                         سفارش بدون پرداخت آنلاین و با وضعیت «در
                                         انتظار تأیید» ثبت می‌شود.
                                     </p>
+                                    <div className="rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-4 text-sm leading-7">
+                                        <strong className="block">
+                                            {data.delivery_method === "courier"
+                                                ? "تحویل با پیک"
+                                                : "تحویل حضوری"}
+                                        </strong>
+                                        <span className="text-[var(--store-muted)]">
+                                            {data.delivery_method === "courier"
+                                                ? "سفارش به آدرس انتخاب‌شده شما ارسال می‌شود."
+                                                : pickupAddress}
+                                        </span>
+                                    </div>
                                     <div className="rounded-2xl bg-amber-500/10 p-4 text-amber-600">
                                         <Gift />
                                         <p className="mt-2">
@@ -493,6 +627,7 @@ export default function Checkout({
                                                             return;
                                                         }
                                                         if (
+                                                            serverErrors.delivery_method ||
                                                             Object.keys(
                                                                 serverErrors,
                                                             ).some((key) =>
@@ -554,9 +689,15 @@ export default function Checkout({
                                     </p>
                                 )}
                                 <p className="flex justify-between">
-                                    <span>ارسال با پیک</span>
                                     <span>
-                                        {money.format(summary.delivery_fee)}
+                                        {data.delivery_method === "courier"
+                                            ? "ارسال با پیک"
+                                            : "تحویل حضوری"}
+                                    </span>
+                                    <span>
+                                        {data.delivery_method === "pickup"
+                                            ? "رایگان"
+                                            : `${money.format(summary.delivery_fee)} تومان`}
                                     </span>
                                 </p>
                                 <p className="flex justify-between text-indigo-500">
