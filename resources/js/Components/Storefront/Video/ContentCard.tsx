@@ -28,6 +28,7 @@ export default function ContentCard({
                         <img
                             alt={content.title}
                             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                            decoding="async"
                             loading="lazy"
                             src={content.thumbnail_url}
                         />
