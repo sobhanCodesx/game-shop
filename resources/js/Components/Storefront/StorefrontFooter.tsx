@@ -42,7 +42,7 @@ export default function StorefrontFooter({
     androidApp: AndroidApp;
 }) {
     return (
-        <footer className="mt-20 border-t border-[var(--store-border)] bg-[var(--store-surface)]">
+        <footer className="pn-deferred-zone mt-20 border-t border-[var(--store-border)] bg-[var(--store-surface)]">
             <div className="mx-auto w-full max-w-[1600px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
                 <div className="relative overflow-hidden rounded-[2rem] border border-emerald-400/20 bg-slate-950 p-5 text-white shadow-2xl shadow-emerald-950/20 sm:p-7 lg:p-9">
                     <div className="pointer-events-none absolute -left-20 -top-24 size-72 rounded-full bg-emerald-500/15 blur-3xl" />
