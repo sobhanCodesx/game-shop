@@ -70,8 +70,17 @@ interface Settings {
     seo_title: string;
     seo_description: string;
 }
+interface HomeExperienceState {
+    system_template: string;
+    effective_template: string;
+    focus: "balanced" | "products" | "content";
+    source: "system" | "user";
+    user_preference: "balanced" | "products" | "content" | null;
+}
+
 interface Props {
     seo: SeoData & { heading: string };
+    homeExperience: HomeExperienceState;
     settings: Settings;
     slides: Slide[];
     categories: NavigationCategory[];
@@ -3043,6 +3052,7 @@ function RailButtons({
 
 export default function Home({
     seo,
+    homeExperience,
     settings,
     slides,
     categories,
@@ -3136,6 +3146,8 @@ export default function Home({
         <div
             ref={storefrontRootRef}
             className="storefront-theme min-h-screen w-full max-w-full overflow-x-clip bg-[var(--store-bg)] pb-20 text-[var(--store-text)] transition-colors duration-200 lg:pb-0"
+            data-home-focus={homeExperience.focus}
+            data-home-template={homeExperience.effective_template}
             data-theme={theme}
             dir="rtl"
         >
