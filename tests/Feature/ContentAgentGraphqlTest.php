@@ -300,4 +300,31 @@ GRAPHQL,
             ->assertJsonPath('result.structuredContent.result.data.graphInfo.name', 'PlayNexus Intelligence Graph')
             ->assertJsonPath('result.structuredContent.result.data.graphInfo.readOnly', true);
     }
+
+
+    public function test_mcp_marks_graphql_execution_errors_as_tool_errors(): void
+    {
+        config()->set('content_agent.token', 'graph-secret');
+
+        $result = $this->withToken('graph-secret')->postJson('/api/mcp', [
+            'jsonrpc' => '2.0',
+            'id' => 3,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'query_playnexus_graph',
+                'arguments' => [
+                    'query' => '{ contents(first: 1, types: ["video"]) { nodes { id } } }',
+                ],
+            ],
+        ]);
+
+        $result->assertOk()
+            ->assertJsonPath('result.isError', true)
+            ->assertJsonPath('result.structuredContent.error', 'PlayNexus GraphQL query failed.');
+
+        $this->assertStringContainsString(
+            'Unknown argument "types"',
+            (string) $result->json('result.structuredContent.errors.0.message'),
+        );
+    }
 }
