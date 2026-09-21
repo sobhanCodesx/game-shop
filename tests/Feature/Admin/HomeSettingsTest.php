@@ -167,6 +167,21 @@ class HomeSettingsTest extends TestCase
             ]);
     }
 
+    public function test_admin_home_exposes_template_registry_and_keeps_default_active(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->get('/admin/home')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Home/Edit')
+                ->where('settings.home_template', 'default')
+                ->where('homeTemplates.0.key', 'default')
+                ->where('homeTemplates.0.available', true)
+                ->has('homeTemplates', 6));
+    }
+
     public function test_home_returns_configured_social_content_rail(): void
     {
         HomeSection::create(['title' => 'ویدیوهای محبوب', 'content_type' => 'videos', 'query_type' => 'popular', 'items_limit' => 8, 'is_active' => true]);
@@ -249,6 +264,7 @@ class HomeSettingsTest extends TestCase
     private function settings(): array
     {
         return [
+            'home_template' => 'default',
             'announcement_enabled' => true,
             'announcement_text' => 'ارسال رایگان',
             'announcement_url' => '/products',
