@@ -24,8 +24,19 @@ import {
     Trash2,
     UserRound,
 } from "lucide-react";
-import { type FormEvent, useRef, useState } from "react";
-import PersianDatePicker from "../../Components/Admin/Form/PersianDatePicker";
+import {
+    lazy,
+    Suspense,
+    type FormEvent,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
+
+const PersianDatePicker = lazy(
+    () => import("../../Components/Admin/Form/PersianDatePicker"),
+);
 import Pagination from "../../Components/Storefront/Pagination";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import type { PaginationLink, SharedPageProps } from "../../types";
@@ -300,7 +311,7 @@ export default function Dashboard({
                             </a>
                         </div>
                     </nav>
-                    <section className="min-w-0 rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:rounded-3xl sm:p-7">
+                    <section className="pn-deferred-zone min-w-0 rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:rounded-3xl sm:p-7">
                         {tab === "overview" && (
                             <>
                                 <Overview
@@ -539,6 +550,7 @@ function Avatar({ profile }: { profile: Profile }) {
     return profile.avatar_url ? (
         <img
             className="size-16 rounded-2xl object-cover ring-4 ring-indigo-500/10 sm:size-24 sm:rounded-3xl"
+            decoding="async"
             src={profile.avatar_url}
         />
     ) : (
@@ -993,6 +1005,18 @@ function ProfileForm({ profile }: { profile: Profile }) {
         remove_avatar: false,
         _method: "patch",
     });
+    const avatarPreview = useMemo(
+        () =>
+            data.avatar
+                ? URL.createObjectURL(data.avatar)
+                : profile.avatar_url,
+        [data.avatar, profile.avatar_url],
+    );
+    useEffect(() => {
+        if (!data.avatar || !avatarPreview) return;
+        return () => URL.revokeObjectURL(avatarPreview);
+    }, [avatarPreview, data.avatar]);
+
     const submit = (e: FormEvent) => {
         e.preventDefault();
         post("/account/profile", { forceFormData: true });
@@ -1007,9 +1031,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
                 <Avatar
                     profile={{
                         ...profile,
-                        avatar_url: data.avatar
-                            ? URL.createObjectURL(data.avatar)
-                            : profile.avatar_url,
+                        avatar_url: avatarPreview,
                     }}
                 />
                 <div>
@@ -1073,16 +1095,22 @@ function ProfileForm({ profile }: { profile: Profile }) {
                         }
                     />
                 </Field>
-                <PersianDatePicker
-                    description="تاریخ به شمسی نمایش داده می‌شود."
-                    error={errors.birth_date}
-                    label="تاریخ تولد (اختیاری)"
-                    maximumToday
-                    name="birth_date"
-                    onChange={(value) => setData("birth_date", value)}
-                    value={data.birth_date}
-                    variant="storefront"
-                />
+                <Suspense
+                    fallback={
+                        <div className="h-[76px] rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)]" />
+                    }
+                >
+                    <PersianDatePicker
+                        description="تاریخ به شمسی نمایش داده می‌شود."
+                        error={errors.birth_date}
+                        label="تاریخ تولد (اختیاری)"
+                        maximumToday
+                        name="birth_date"
+                        onChange={(value) => setData("birth_date", value)}
+                        value={data.birth_date}
+                        variant="storefront"
+                    />
+                </Suspense>
             </div>
             <button
                 className="mt-7 min-h-12 w-full rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-black text-white disabled:opacity-50 sm:w-auto"
