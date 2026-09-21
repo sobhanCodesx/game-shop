@@ -126,6 +126,8 @@ export default function SearchPage({
                                                         <img
                                                             alt=""
                                                             className="size-full object-cover"
+                                                            decoding="async"
+                                                            loading="lazy"
                                                             src={
                                                                 channel.cover_url
                                                             }
@@ -167,6 +169,8 @@ export default function SearchPage({
                                                         <img
                                                             alt=""
                                                             className="size-full object-cover"
+                                                            decoding="async"
+                                                            loading="lazy"
                                                             src={
                                                                 category.image_url
                                                             }
