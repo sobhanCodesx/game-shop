@@ -33,6 +33,24 @@ class HomeController extends Controller
     {
         $settings = [...HomeSettingsController::DEFAULTS, ...$homeExperience->settings()];
         $homeExperienceState = $homeExperience->resolve($settings, $request->user());
+
+        $previewTemplate = $request->user()?->is_admin
+            ? $request->string('preview_home_template')->toString()
+            : '';
+        $templateConfig = config("home-experience.templates.{$previewTemplate}");
+        if (
+            $previewTemplate !== ''
+            && is_array($templateConfig)
+            && (bool) ($templateConfig['available'] ?? false)
+        ) {
+            $homeExperienceState = [
+                ...$homeExperienceState,
+                'effective_template' => $previewTemplate,
+                'focus' => $templateConfig['focus'] ?? 'balanced',
+                'source' => 'preview',
+            ];
+        }
+
         $limit = (int) $settings['products_limit'];
         if ($homeExperienceState['focus'] === 'products') {
             $limit = max(12, $limit);
