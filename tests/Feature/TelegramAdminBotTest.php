@@ -220,7 +220,9 @@ class TelegramAdminBotTest extends TestCase
             'status' => 'succeeded',
         ]);
 
-        Http::assertSentCount(1);
+        // /status intentionally performs two Telegram calls. Replaying the
+        // same update must not execute the command a second time.
+        Http::assertSentCount(2);
     }
 
     public function test_tool_registry_covers_the_existing_content_agent_read_write_and_media_surface(): void
