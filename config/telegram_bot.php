@@ -9,7 +9,10 @@ return [
     'destructive_enabled' => filter_var(env('TELEGRAM_BOT_DESTRUCTIVE_ENABLED', false), FILTER_VALIDATE_BOOL),
     'media_enabled' => filter_var(env('TELEGRAM_BOT_MEDIA_ENABLED', true), FILTER_VALIDATE_BOOL),
 
+    'transport_mode' => (string) env('TELEGRAM_BOT_TRANSPORT_MODE', 'auto'),
     'api_base_url' => rtrim((string) env('TELEGRAM_BOT_API_BASE_URL', 'https://api.telegram.org'), '/'),
+    'relay_base_url' => rtrim((string) env('TELEGRAM_BOT_RELAY_BASE_URL', ''), '/'),
+    'relay_key' => (string) env('TELEGRAM_BOT_RELAY_KEY', ''),
     'request_timeout' => max(5, (int) env('TELEGRAM_BOT_REQUEST_TIMEOUT', 30)),
     'connect_timeout' => max(2, (int) env('TELEGRAM_BOT_CONNECT_TIMEOUT', 10)),
     'max_download_bytes' => min(
