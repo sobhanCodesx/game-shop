@@ -57,9 +57,16 @@ final class TelegramUserLinkService
             'telegram_linked_at' => now(),
         ])->save();
 
-        $user->contentNotificationPreference()->updateOrCreate([], [
-            'telegram_enabled' => true,
-        ]);
+        $preference = $user->contentNotificationPreference()->firstOrNew();
+        if (! $preference->exists) {
+            $preference->fill([
+                'sms_enabled' => true,
+                'email_enabled' => false,
+                'feed_enabled' => false,
+            ]);
+        }
+        $preference->telegram_enabled = true;
+        $preference->save();
 
         return $user->fresh();
     }
@@ -72,9 +79,16 @@ final class TelegramUserLinkService
             'telegram_linked_at' => null,
         ])->save();
 
-        $user->contentNotificationPreference()->updateOrCreate([], [
-            'telegram_enabled' => false,
-        ]);
+        $preference = $user->contentNotificationPreference()->firstOrNew();
+        if (! $preference->exists) {
+            $preference->fill([
+                'sms_enabled' => true,
+                'email_enabled' => false,
+                'feed_enabled' => false,
+            ]);
+        }
+        $preference->telegram_enabled = false;
+        $preference->save();
     }
 
     public function byTelegramUserId(string $telegramUserId): ?User
