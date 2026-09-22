@@ -11,7 +11,7 @@ permissions:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,7 +54,7 @@ jobs:
               --only-categories=performance,accessibility,best-practices,seo \
               --output=json \
               --output-path="benchmark-reports/${label}-${preset}-${run}.json" \
-              --max-wait-for-load=90000 \
+              --max-wait-for-load=30000 \
               $preset_arg || true
           }
 
@@ -68,10 +68,6 @@ jobs:
             run_lh "https://www.digikala.com/" "digikala-home" "desktop" "$i"
           done
 
-          run_lh "https://playnexus.ir/feed" "playnexus-feed" "mobile" "1"
-          run_lh "https://playnexus.ir/videos" "playnexus-videos" "mobile" "1"
-          run_lh "https://playnexus.ir/game-radar" "playnexus-radar" "mobile" "1"
-          run_lh "https://playnexus.ir/studios" "playnexus-studios" "mobile" "1"
 
       - name: Summarize benchmark
         shell: bash
@@ -163,12 +159,6 @@ jobs:
             };
           }
 
-          const routeLabels = ['playnexus-feed','playnexus-videos','playnexus-radar','playnexus-studios'];
-          const routes = {};
-          for (const label of routeLabels) {
-            routes[label] = rows.find(r => r.file?.startsWith(label + '-mobile-')) ?? null;
-          }
-
           const result = {
             environment: rows.find(r => r.lighthouseVersion)
               ? {
@@ -177,7 +167,6 @@ jobs:
                 }
               : null,
             summary,
-            routes,
           };
 
           fs.writeFileSync('benchmark-summary.json', JSON.stringify(result, null, 2));
