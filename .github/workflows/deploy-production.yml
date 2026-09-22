@@ -24,7 +24,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  auth-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:MxB3sypjSv/hgL1A0+W5h3I2R0c1uvmkUN7nxGgDg+Y=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install test dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run authentication regression gate
+        run: >-
+          php artisan test
+          tests/Feature/AuthAndCheckoutSecurityTest.php
+          tests/Feature/CustomerAuthenticationTest.php
+          tests/Feature/TelegramUserNotificationsTest.php
+          tests/Feature/MobileApiTest.php
+
   build-and-deploy:
+    needs: auth-regression
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
