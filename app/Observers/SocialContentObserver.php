@@ -81,6 +81,8 @@ class SocialContentObserver
             app(StorefrontPageCache::class)->invalidate('playlist', 'channel');
         } elseif ($content->type === 'post') {
             app(StorefrontPageCache::class)->invalidate('channel');
+        } elseif ($content->type === 'short') {
+            app(StorefrontPageCache::class)->invalidate('short');
         }
     }
 
