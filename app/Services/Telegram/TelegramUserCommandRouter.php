@@ -49,6 +49,14 @@ final class TelegramUserCommandRouter
                     "✅ <b>تلگرام با موفقیت وصل شد</b>\n"
                     ."حساب <b>".$this->escape((string) $user->name)."</b> از این به بعد می‌تواند اعلان‌های PlayNexus و کد ورود درخواستی را در همین چت دریافت کند.\n\n"
                     ."🔐 منو و دسترسی ادمین برای کاربران عادی کاملاً جداست.",
+                    [
+                        'inline_keyboard' => [[[
+                            'text' => '↩️ بازگشت به حساب PlayNexus',
+                            'url' => route('account.dashboard', [
+                                'tab' => 'content-notifications',
+                            ]),
+                        ]]],
+                    ],
                 );
 
                 return ['action' => 'user_linked', 'resource' => 'user', 'resource_id' => $user->id];

@@ -12,8 +12,10 @@ use App\Services\Telegram\TelegramApiClient;
 use App\Services\Telegram\TelegramBotExecutor;
 use App\Services\Telegram\TelegramBotSettings;
 use App\Services\Telegram\TelegramBotToolRegistry;
+use App\Services\Telegram\TelegramUserLinkService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class TelegramAdminBotTest extends TestCase
@@ -379,6 +381,139 @@ class TelegramAdminBotTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('telegram_bot_audits', 0);
+    }
+
+    public function test_dashboard_link_flow_marks_regular_user_connected_and_returns_fresh_status(): void
+    {
+        $setting = $this->configureBot();
+        $setting->forceFill([
+            'bot_username' => 'play_nexus_game_bot',
+        ])->save();
+
+        $user = User::factory()->create([
+            'name' => 'کاربر اتصال تلگرام',
+            'email' => 'telegram-link@example.test',
+            'status' => 'active',
+            'is_admin' => false,
+        ]);
+
+        $link = app(TelegramUserLinkService::class)->begin($user);
+        parse_str((string) parse_url($link, PHP_URL_QUERY), $query);
+        $startPayload = (string) ($query['start'] ?? '');
+
+        $this->assertMatchesRegularExpression(
+            '/^connect_[A-Za-z0-9]{32}$/',
+            $startPayload,
+        );
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson(
+            '/api/telegram/webhook',
+            $this->telegramUpdate(1010, '888888888', '/start '.$startPayload),
+        )->assertOk();
+
+        $user->refresh();
+
+        $this->assertSame('888888888', $user->telegram_user_id);
+        $this->assertSame('888888888', $user->telegram_chat_id);
+        $this->assertNotNull($user->telegram_linked_at);
+        $this->assertTrue(
+            (bool) $user->contentNotificationPreference?->telegram_enabled,
+        );
+        $this->assertDatabaseHas('telegram_bot_audits', [
+            'update_id' => 1010,
+            'user_id' => '888888888',
+            'status' => 'succeeded',
+            'action' => 'user_linked',
+            'resource' => 'user',
+            'resource_id' => $user->id,
+        ]);
+
+        Http::assertSent(function ($request): bool {
+            if (! str_ends_with($request->url(), '/sendMessage')) {
+                return false;
+            }
+
+            $buttons = $request->data()['reply_markup']['inline_keyboard'] ?? [];
+
+            return str_contains(
+                (string) ($request->data()['text'] ?? ''),
+                'تلگرام با موفقیت وصل شد',
+            ) && collect($buttons)
+                ->flatten(1)
+                ->contains(
+                    fn ($button): bool => is_array($button)
+                        && str_contains(
+                            (string) ($button['url'] ?? ''),
+                            '/account?tab=content-notifications',
+                        ),
+                );
+        });
+
+        $this->actingAs($user)
+            ->get('/account?tab=content-notifications')
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Account/Dashboard')
+                    ->where('telegramIntegration.connected', true)
+                    ->where(
+                        'contentNotificationPreferences.telegram_enabled',
+                        true,
+                    ),
+            );
+    }
+
+    public function test_bot_owner_can_also_complete_dashboard_account_link(): void
+    {
+        $setting = $this->configureBot();
+        $setting->forceFill([
+            'bot_username' => 'play_nexus_game_bot',
+        ])->save();
+
+        $user = User::factory()->create([
+            'name' => 'مالک ربات',
+            'email' => 'owner-link@example.test',
+            'status' => 'active',
+        ]);
+
+        $link = app(TelegramUserLinkService::class)->begin($user);
+        parse_str((string) parse_url($link, PHP_URL_QUERY), $query);
+        $startPayload = (string) ($query['start'] ?? '');
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson(
+            '/api/telegram/webhook',
+            $this->telegramUpdate(1011, '777777777', '/start '.$startPayload),
+        )->assertOk();
+
+        $user->refresh();
+
+        $this->assertSame('777777777', $user->telegram_user_id);
+        $this->assertNotNull($user->telegram_linked_at);
+        $this->assertDatabaseHas('telegram_bot_audits', [
+            'update_id' => 1011,
+            'user_id' => '777777777',
+            'status' => 'succeeded',
+            'action' => 'user_linked',
+            'resource_id' => $user->id,
+        ]);
     }
 
     public function test_non_owner_private_chat_is_isolated_from_admin_router(): void
