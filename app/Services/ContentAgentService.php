@@ -441,6 +441,7 @@ class ContentAgentService
 
         if (array_key_exists('platform_ids', $data)) {
             $game->platforms()->sync($data['platform_ids']);
+            app(StorefrontPageCache::class)->invalidate('channel');
         }
 
         return $this->serializeGame($game->fresh());
