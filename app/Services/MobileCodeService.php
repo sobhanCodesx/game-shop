@@ -24,13 +24,28 @@ class MobileCodeService
 
     public function send(string $phone, string $purpose): void
     {
-        $existing = MobileVerificationCode::query()->where(compact('phone', 'purpose'))->first();
-        if ($existing?->sent_at?->gt(now()->subSeconds(60))) {
-            throw ValidationException::withMessages(['phone' => 'برای ارسال دوباره کد، کمی صبر کنید.']);
-        }
-
         DB::transaction(function () use ($phone, $purpose): void {
-            [$record, $code, $sentAt] = $this->issue($phone, $purpose);
+            $record = MobileVerificationCode::query()
+                ->where(compact('phone', 'purpose'))
+                ->lockForUpdate()
+                ->first();
+
+            if ($record?->sent_at?->gt(now()->subSeconds(60))) {
+                throw ValidationException::withMessages([
+                    'phone' => 'برای ارسال دوباره کد، کمی صبر کنید.',
+                ]);
+            }
+
+            $code = $this->reusableCode($record);
+            $sentAt = now();
+
+            if ($code !== null && $record) {
+                // Resends keep the same still-valid OTP so SMS and Telegram
+                // never show the user two competing codes.
+                $record->forceFill(['sent_at' => $sentAt])->save();
+            } else {
+                [$record, $code, $sentAt] = $this->issue($phone, $purpose);
+            }
 
             $pattern = match ($purpose) {
                 'reset_password' => SmsPattern::OtpResetPassword,
@@ -75,17 +90,16 @@ class MobileCodeService
             ]);
         }
 
-        $code = null;
-        if ($record && $record->expires_at?->isFuture() && filled($record->code_ciphertext)) {
-            try {
-                $code = Crypt::decryptString((string) $record->code_ciphertext);
-            } catch (Throwable) {
-                $code = null;
-            }
-        }
+        $code = $this->reusableCode($record);
 
-        if (! is_string($code) || ! preg_match('/^\\d{6}$/', $code)) {
-            [$record, $code] = $this->issue($phone, $purpose);
+        if ($code === null) {
+            // A Telegram-first login must not block an immediate SMS fallback.
+            // sent_at remains outside the SMS cooldown window until SMS is requested.
+            [$record, $code] = $this->issue(
+                $phone,
+                $purpose,
+                now()->subSeconds(61),
+            );
         }
 
         $title = match ($purpose) {
@@ -149,11 +163,34 @@ class MobileCodeService
         $record->delete();
     }
 
-    /** @return array{0:MobileVerificationCode,1:string,2:\Illuminate\Support\Carbon} */
-    private function issue(string $phone, string $purpose): array
+    private function reusableCode(?MobileVerificationCode $record): ?string
     {
+        if (
+            ! $record
+            || $record->attempts >= 5
+            || ! $record->expires_at?->isFuture()
+            || blank($record->code_ciphertext)
+        ) {
+            return null;
+        }
+
+        try {
+            $code = Crypt::decryptString((string) $record->code_ciphertext);
+        } catch (Throwable) {
+            return null;
+        }
+
+        return preg_match('/^\\d{6}$/', $code) ? $code : null;
+    }
+
+    /** @return array{0:MobileVerificationCode,1:string,2:\Illuminate\Support\Carbon} */
+    private function issue(
+        string $phone,
+        string $purpose,
+        ?\Illuminate\Support\Carbon $sentAt = null,
+    ): array {
         $code = (string) random_int(100000, 999999);
-        $sentAt = now();
+        $sentAt ??= now();
 
         $record = MobileVerificationCode::query()->updateOrCreate(
             compact('phone', 'purpose'),
@@ -169,4 +206,5 @@ class MobileCodeService
 
         return [$record, $code, $sentAt];
     }
+
 }
