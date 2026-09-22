@@ -110,4 +110,30 @@ class StorefrontCachePhaseFourTest extends TestCase
                 ->where('homePreview.channels.0.name', 'Home Channel After')
                 ->where('homePreview.channels.0.videos_count', 1));
     }
+
+    public function test_home_channel_cache_invalidates_when_a_new_game_is_created(): void
+    {
+        Game::factory()->create([
+            'name' => 'Existing Home Game',
+            'slug' => 'existing-home-game',
+            'status' => 'published',
+        ]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('homePreview.channels.0.name', 'Existing Home Game'));
+
+        Game::factory()->create([
+            'name' => 'Newer Home Game',
+            'slug' => 'newer-home-game',
+            'status' => 'published',
+        ]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('homePreview.channels.0.name', 'Newer Home Game'));
+    }
+
 }
