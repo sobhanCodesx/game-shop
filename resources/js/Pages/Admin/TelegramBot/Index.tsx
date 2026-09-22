@@ -227,6 +227,43 @@ export default function TelegramBotIndex({
             preserveScroll: true,
         });
 
+    const runBot = () =>
+        form.post("/admin/telegram-bot/run", {
+            preserveScroll: true,
+        });
+
+    const stopBot = () => {
+        if (!window.confirm("Bot متوقف شود؟ Webhook هم تا حد ممکن از Telegram حذف می‌شود.")) {
+            return;
+        }
+
+        router.post(
+            "/admin/telegram-bot/stop",
+            {},
+            { preserveScroll: true },
+        );
+    };
+
+    const applyFullAdminPreset = () =>
+        form.setData({
+            ...form.data,
+            enabled: true,
+            write_enabled: true,
+            publish_enabled: true,
+            media_enabled: true,
+            destructive_enabled: true,
+        });
+
+    const applySafePreset = () =>
+        form.setData({
+            ...form.data,
+            enabled: true,
+            write_enabled: false,
+            publish_enabled: false,
+            media_enabled: true,
+            destructive_enabled: false,
+        });
+
     const action = (
         method: "post" | "delete",
         url: string,
@@ -528,6 +565,137 @@ export default function TelegramBotIndex({
                     }
                     value={String(webhookInfo?.pending_update_count ?? 0)}
                 />
+            </section>
+
+            <section className={`${glassPanel} mb-5`}>
+                <div className="grid gap-0 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)]">
+                    <div className="relative overflow-hidden border-b border-white/[0.06] p-5 md:p-6 xl:border-b-0 xl:border-l xl:border-white/[0.06]">
+                        <div className="pointer-events-none absolute -left-20 top-0 size-64 rounded-full bg-emerald-400/[0.07] blur-3xl" />
+
+                        <div className="relative">
+                            <div className="flex items-center gap-3">
+                                <div className="grid size-12 place-items-center rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.08] text-emerald-200 shadow-xl shadow-emerald-950/20">
+                                    <Power size={22} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300/70">
+                                        ONE-CLICK CONTROL
+                                    </p>
+                                    <h3 className="mt-1 text-lg font-black text-white">
+                                        Bot Control
+                                    </h3>
+                                </div>
+                            </div>
+
+                            <p className="mt-4 max-w-2xl text-xs leading-6 text-slate-500">
+                                Run همه کارهای لازم را خودش انجام می‌دهد: ذخیره فرم فعلی، تست Telegram،
+                                شناسایی Bot، Sync فرمان‌ها و Webhook و فعال‌کردن Runtime.
+                            </p>
+
+                            <div className="mt-5 flex flex-wrap gap-2">
+                                <Button
+                                    className="border border-emerald-300/15 bg-emerald-400/10 shadow-xl shadow-emerald-950/20 backdrop-blur-xl transition duration-200 hover:-translate-y-0.5"
+                                    isDisabled={form.processing}
+                                    onPress={runBot}
+                                    variant="primary"
+                                >
+                                    <Power size={17} />
+                                    {settings.enabled
+                                        ? "Restart / Repair Bot"
+                                        : "Run Bot"}
+                                </Button>
+
+                                <Button
+                                    className={glassButton}
+                                    isDisabled={form.processing || !settings.enabled}
+                                    onPress={stopBot}
+                                    variant="secondary"
+                                >
+                                    <Trash2 size={16} />
+                                    Stop Bot
+                                </Button>
+
+                                {settings.bot_username && (
+                                    <a
+                                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-cyan-300/10 bg-cyan-400/[0.055] px-4 text-xs font-black text-cyan-200 shadow-lg shadow-black/10 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-cyan-300/20"
+                                        href={`https://t.me/${settings.bot_username}`}
+                                        rel="noreferrer"
+                                        target="_blank"
+                                    >
+                                        <Send size={15} />
+                                        Open in Telegram
+                                    </a>
+                                )}
+                            </div>
+
+                            {form.errors.telegram && (
+                                <div className="mt-4 flex items-start gap-2 rounded-2xl border border-rose-400/15 bg-rose-400/[0.045] p-3 text-xs leading-6 text-rose-200">
+                                    <AlertTriangle
+                                        className="mt-0.5 shrink-0"
+                                        size={15}
+                                    />
+                                    {form.errors.telegram}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="p-5 md:p-6">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">
+                                    ACCESS PRESET
+                                </p>
+                                <h3 className="mt-1 text-sm font-black text-white">
+                                    سطح دسترسی با یک کلیک
+                                </h3>
+                            </div>
+                            <ShieldCheck className="text-violet-200" size={20} />
+                        </div>
+
+                        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                            <button
+                                className={`${glassInset} group p-4 text-right transition hover:border-violet-300/20 hover:bg-violet-400/[0.04]`}
+                                onClick={applyFullAdminPreset}
+                                type="button"
+                            >
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="text-sm font-black text-slate-200">
+                                        Full Admin
+                                    </span>
+                                    <span className="rounded-full border border-violet-300/10 bg-violet-400/[0.06] px-2 py-1 text-[9px] font-bold text-violet-200">
+                                        FULL
+                                    </span>
+                                </div>
+                                <p className="mt-2 text-[10px] leading-5 text-slate-500">
+                                    Write + Publish + Media + Destructive روشن می‌شوند؛ confirmationها باقی می‌مانند.
+                                </p>
+                            </button>
+
+                            <button
+                                className={`${glassInset} group p-4 text-right transition hover:border-cyan-300/20 hover:bg-cyan-400/[0.04]`}
+                                onClick={applySafePreset}
+                                type="button"
+                            >
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="text-sm font-black text-slate-200">
+                                        Safe Mode
+                                    </span>
+                                    <span className="rounded-full border border-cyan-300/10 bg-cyan-400/[0.06] px-2 py-1 text-[9px] font-bold text-cyan-200">
+                                        READ
+                                    </span>
+                                </div>
+                                <p className="mt-2 text-[10px] leading-5 text-slate-500">
+                                    Read و Media در دسترس می‌مانند و Write/Publish/Delete خاموش می‌شوند.
+                                </p>
+                            </button>
+                        </div>
+
+                        <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3 text-[10px] leading-5 text-slate-600">
+                            پیشنهاد برای Bot شخصی خودت: <b className="text-slate-400">Full Admin</b> را بزن و سپس <b className="text-slate-400">Run Bot</b>.
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_400px]">
@@ -1389,7 +1557,7 @@ export default function TelegramBotIndex({
                                 : "تنظیمات با آخرین وضعیت همگام است"}
                         </p>
                         <p className="mt-1 truncate text-[9px] text-slate-600">
-                            Secretهای خالی مقدار فعلی را تغییر نمی‌دهند.
+                            Run Bot هم تغییرات فعلی فرم را خودکار ذخیره می‌کند؛ Save برای ذخیره بدون اجراست.
                         </p>
                     </div>
                     <Button
