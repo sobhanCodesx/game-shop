@@ -4,20 +4,18 @@ namespace App\Observers;
 
 use App\Jobs\BroadcastContentPublished;
 use App\Models\Product;
+use App\Services\FeedPageCache;
 use App\Services\GameEventService;
 use Illuminate\Support\Carbon;
 
 class ProductObserver
 {
-    public function created(Product $product): void
-    {
-        if ($this->isPublished($product)) {
-            $this->dispatch($product);
-        }
-    }
-
     public function updated(Product $product): void
     {
+        if ($product->wasChanged(['title', 'slug', 'price', 'discount_price', 'status', 'visibility', 'published_at'])) {
+            app(FeedPageCache::class)->invalidate();
+        }
+
         if (! $this->wasPublished($product) && $this->isPublished($product)) {
             $this->dispatch($product);
         }
@@ -25,6 +23,25 @@ class ProductObserver
         if ($product->wasChanged(['price', 'discount_price', 'expires_at', 'status', 'visibility'])) {
             app(GameEventService::class)->syncFromProduct($product);
         }
+    }
+
+    public function created(Product $product): void
+    {
+        app(FeedPageCache::class)->invalidate();
+
+        if ($this->isPublished($product)) {
+            $this->dispatch($product);
+        }
+    }
+
+    public function deleted(Product $product): void
+    {
+        app(FeedPageCache::class)->invalidate();
+    }
+
+    public function restored(Product $product): void
+    {
+        app(FeedPageCache::class)->invalidate();
     }
 
     private function dispatch(Product $product): void
