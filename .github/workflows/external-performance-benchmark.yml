@@ -1,0 +1,196 @@
+name: External Performance Benchmark
+
+on:
+  push:
+    branches:
+      - perf/benchmark-2026-09-22
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Lighthouse
+        run: npm install --global lighthouse@latest
+
+      - name: Show benchmark environment
+        run: |
+          google-chrome --version
+          node --version
+          lighthouse --version
+
+      - name: Run controlled Lighthouse benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p benchmark-reports
+
+          run_lh() {
+            local url="$1"
+            local label="$2"
+            local preset="$3"
+            local run="$4"
+
+            local preset_arg=""
+            if [[ "$preset" == "desktop" ]]; then
+              preset_arg="--preset=desktop"
+            fi
+
+            echo "=== $label | $preset | run $run ==="
+            lighthouse "$url" \
+              --quiet \
+              --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --output=json \
+              --output-path="benchmark-reports/${label}-${preset}-${run}.json" \
+              --max-wait-for-load=90000 \
+              $preset_arg || true
+          }
+
+          for i in 1 2 3; do
+            run_lh "https://playnexus.ir/" "playnexus-home" "mobile" "$i"
+            run_lh "https://www.digikala.com/" "digikala-home" "mobile" "$i"
+          done
+
+          for i in 1 2 3; do
+            run_lh "https://playnexus.ir/" "playnexus-home" "desktop" "$i"
+            run_lh "https://www.digikala.com/" "digikala-home" "desktop" "$i"
+          done
+
+          run_lh "https://playnexus.ir/feed" "playnexus-feed" "mobile" "1"
+          run_lh "https://playnexus.ir/videos" "playnexus-videos" "mobile" "1"
+          run_lh "https://playnexus.ir/game-radar" "playnexus-radar" "mobile" "1"
+          run_lh "https://playnexus.ir/studios" "playnexus-studios" "mobile" "1"
+
+      - name: Summarize benchmark
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const dir = 'benchmark-reports';
+          const files = fs.existsSync(dir)
+            ? fs.readdirSync(dir).filter(f => f.endsWith('.json'))
+            : [];
+
+          const median = values => {
+            const clean = values.filter(v => Number.isFinite(v)).sort((a,b)=>a-b);
+            if (!clean.length) return null;
+            const mid = Math.floor(clean.length / 2);
+            return clean.length % 2 ? clean[mid] : (clean[mid - 1] + clean[mid]) / 2;
+          };
+
+          function read(file) {
+            try {
+              const j = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
+              const a = j.audits || {};
+              const c = j.categories || {};
+              return {
+                file,
+                requestedUrl: j.requestedUrl,
+                finalUrl: j.finalUrl,
+                fetchTime: j.fetchTime,
+                lighthouseVersion: j.lighthouseVersion,
+                userAgent: j.userAgent,
+                scores: {
+                  performance: c.performance?.score == null ? null : Math.round(c.performance.score * 100),
+                  accessibility: c.accessibility?.score == null ? null : Math.round(c.accessibility.score * 100),
+                  bestPractices: c['best-practices']?.score == null ? null : Math.round(c['best-practices'].score * 100),
+                  seo: c.seo?.score == null ? null : Math.round(c.seo.score * 100),
+                },
+                metrics: {
+                  fcpMs: a['first-contentful-paint']?.numericValue ?? null,
+                  lcpMs: a['largest-contentful-paint']?.numericValue ?? null,
+                  speedIndexMs: a['speed-index']?.numericValue ?? null,
+                  tbtMs: a['total-blocking-time']?.numericValue ?? null,
+                  cls: a['cumulative-layout-shift']?.numericValue ?? null,
+                  ttiMs: a['interactive']?.numericValue ?? null,
+                  serverResponseMs: a['server-response-time']?.numericValue ?? null,
+                  mainThreadMs: a['mainthread-work-breakdown']?.numericValue ?? null,
+                  totalBytes: a['total-byte-weight']?.numericValue ?? null,
+                  requests: a['network-requests']?.details?.items?.length ?? null,
+                },
+                error: j.runtimeError?.message ?? null,
+              };
+            } catch (e) {
+              return { file, parseError: String(e) };
+            }
+          }
+
+          const rows = files.map(read);
+          const groups = [
+            ['playnexus-home','mobile'],
+            ['digikala-home','mobile'],
+            ['playnexus-home','desktop'],
+            ['digikala-home','desktop'],
+          ];
+
+          const summary = {};
+          for (const [label, preset] of groups) {
+            const group = rows.filter(r => r.file?.startsWith(label + '-' + preset + '-'));
+            summary[label + ':' + preset] = {
+              runs: group.length,
+              errors: group.map(r => r.error).filter(Boolean),
+              median: {
+                performance: median(group.map(r => r.scores?.performance)),
+                accessibility: median(group.map(r => r.scores?.accessibility)),
+                bestPractices: median(group.map(r => r.scores?.bestPractices)),
+                seo: median(group.map(r => r.scores?.seo)),
+                fcpMs: median(group.map(r => r.metrics?.fcpMs)),
+                lcpMs: median(group.map(r => r.metrics?.lcpMs)),
+                speedIndexMs: median(group.map(r => r.metrics?.speedIndexMs)),
+                tbtMs: median(group.map(r => r.metrics?.tbtMs)),
+                cls: median(group.map(r => r.metrics?.cls)),
+                ttiMs: median(group.map(r => r.metrics?.ttiMs)),
+                serverResponseMs: median(group.map(r => r.metrics?.serverResponseMs)),
+                mainThreadMs: median(group.map(r => r.metrics?.mainThreadMs)),
+                totalBytes: median(group.map(r => r.metrics?.totalBytes)),
+                requests: median(group.map(r => r.metrics?.requests)),
+              },
+              raw: group,
+            };
+          }
+
+          const routeLabels = ['playnexus-feed','playnexus-videos','playnexus-radar','playnexus-studios'];
+          const routes = {};
+          for (const label of routeLabels) {
+            routes[label] = rows.find(r => r.file?.startsWith(label + '-mobile-')) ?? null;
+          }
+
+          const result = {
+            environment: rows.find(r => r.lighthouseVersion)
+              ? {
+                  lighthouseVersion: rows.find(r => r.lighthouseVersion).lighthouseVersion,
+                  userAgent: rows.find(r => r.userAgent).userAgent,
+                }
+              : null,
+            summary,
+            routes,
+          };
+
+          fs.writeFileSync('benchmark-summary.json', JSON.stringify(result, null, 2));
+          console.log('BENCHMARK_JSON_START');
+          console.log(JSON.stringify(result, null, 2));
+          console.log('BENCHMARK_JSON_END');
+          NODE
+
+      - name: Upload benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-benchmark
+          path: |
+            benchmark-summary.json
+            benchmark-reports/*.json
+          if-no-files-found: error
