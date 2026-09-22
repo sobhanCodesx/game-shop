@@ -830,6 +830,49 @@ function ContentNotificationsPanel({
     const { data, setData, put, processing, recentlySuccessful } =
         useForm<ContentNotificationPreferences>(preferences);
     const [copied, setCopied] = useState(false);
+    const lastTelegramRefreshAt = useRef(0);
+    const lastTelegramPreference = useRef(preferences.telegram_enabled);
+
+    useEffect(() => {
+        if (
+            lastTelegramPreference.current !== preferences.telegram_enabled
+        ) {
+            lastTelegramPreference.current = preferences.telegram_enabled;
+            setData("telegram_enabled", preferences.telegram_enabled);
+        }
+    }, [preferences.telegram_enabled, setData]);
+
+    useEffect(() => {
+        const refreshTelegramState = () => {
+            if (
+                document.visibilityState !== "visible" ||
+                Date.now() - lastTelegramRefreshAt.current < 1200
+            ) {
+                return;
+            }
+
+            lastTelegramRefreshAt.current = Date.now();
+            router.reload({
+                only: [
+                    "telegramIntegration",
+                    "contentNotificationPreferences",
+                ],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        };
+
+        window.addEventListener("focus", refreshTelegramState);
+        document.addEventListener("visibilitychange", refreshTelegramState);
+
+        return () => {
+            window.removeEventListener("focus", refreshTelegramState);
+            document.removeEventListener(
+                "visibilitychange",
+                refreshTelegramState,
+            );
+        };
+    }, []);
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
