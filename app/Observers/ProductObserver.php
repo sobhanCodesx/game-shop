@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Jobs\BroadcastContentPublished;
 use App\Models\Product;
 use App\Services\GameEventService;
+use App\Services\SitemapCacheService;
 use App\Services\StorefrontPageCache;
 use Illuminate\Support\Carbon;
 
@@ -13,6 +14,7 @@ class ProductObserver
     public function created(Product $product): void
     {
         app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product');
+        app(SitemapCacheService::class)->invalidate();
 
         if ($this->isPublished($product)) {
             $this->dispatch($product);
@@ -21,6 +23,8 @@ class ProductObserver
 
     public function updated(Product $product): void
     {
+        app(SitemapCacheService::class)->invalidate();
+
         if ($product->wasChanged([
             'category_id', 'brand_id', 'title', 'slug', 'sku', 'short_description', 'description',
             'release_date', 'seo_title', 'seo_description', 'status', 'visibility', 'published_at',
@@ -40,11 +44,13 @@ class ProductObserver
     public function deleted(Product $product): void
     {
         app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product');
+        app(SitemapCacheService::class)->invalidate();
     }
 
     public function restored(Product $product): void
     {
         app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product');
+        app(SitemapCacheService::class)->invalidate();
     }
 
     private function dispatch(Product $product): void
