@@ -12,12 +12,14 @@ class NexusAiSettings
 
     public const DEFAULTS = [
         'nexus_ai_enabled' => true,
-        'nexus_ai_show_in_nav' => true,
+        'nexus_ai_show_in_nav' => false,
         'nexus_ai_title' => 'Nexus AI',
         'nexus_ai_description' => 'دستیار گیمینگ PlayNexus برای سؤال درباره بازی‌ها، اصطلاحات، راهنما و انتخاب بازی.',
         'nexus_ai_nav_label' => 'Nexus AI',
-        'nexus_ai_iframe_url' => 'https://nexus-ai-relay.sobhankhorshidi1397.workers.dev',
-        'nexus_ai_min_height' => 760,
+        'nexus_ai_worker_url' => 'https://nexus-ai-relay.sobhankhorshidi1397.workers.dev',
+        'nexus_ai_launcher_label' => 'سؤال گیم داری؟',
+        'nexus_ai_welcome_title' => 'چی تو ذهنت داری؟',
+        'nexus_ai_welcome_text' => 'درباره بازی‌ها، لور، انتخاب بازی، Build، باس‌ها و اصطلاحات گیم ازم بپرس.',
         'nexus_ai_status_text' => 'نسخه آزمایشی',
     ];
 
@@ -40,8 +42,10 @@ class NexusAiSettings
             'title' => (string) $settings['nexus_ai_title'],
             'description' => (string) $settings['nexus_ai_description'],
             'nav_label' => (string) $settings['nexus_ai_nav_label'],
-            'iframe_url' => (string) $settings['nexus_ai_iframe_url'],
-            'min_height' => (int) $settings['nexus_ai_min_height'],
+            'worker_url' => (string) $settings['nexus_ai_worker_url'],
+            'launcher_label' => (string) $settings['nexus_ai_launcher_label'],
+            'welcome_title' => (string) $settings['nexus_ai_welcome_title'],
+            'welcome_text' => (string) $settings['nexus_ai_welcome_text'],
             'status_text' => (string) $settings['nexus_ai_status_text'],
         ];
     }
