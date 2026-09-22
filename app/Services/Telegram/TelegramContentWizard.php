@@ -549,7 +549,7 @@ final class TelegramContentWizard
 
         return [
             'action' => 'wizard_confirmation',
-            'resource' => $arguments['resource'] ?? ($arguments['game_id'] ?? null ? 'event' : null),
+            'resource' => $arguments['resource'] ?? ($tool === 'upsert_game_event' ? 'event' : null),
             'resource_id' => $arguments['id'] ?? $arguments['collection_id'] ?? null,
         ];
     }
