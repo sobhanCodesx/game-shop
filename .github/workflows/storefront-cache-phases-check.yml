@@ -24,6 +24,20 @@ jobs:
   check:
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: inertia_testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -80,13 +94,22 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend and SSR bundles
+        run: |
+          npm run build
+          test -s public/build/manifest.json
+          test -s bootstrap/ssr/ssr.js
+
       - name: Run cache regression suite
-        env:
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ':memory:'
-          CACHE_STORE: array
-          SESSION_DRIVER: array
-          QUEUE_CONNECTION: sync
         run: |
           php artisan test \
             tests/Feature/StorefrontCachePhaseOneTest.php \
@@ -98,23 +121,13 @@ jobs:
             tests/Feature/StorefrontCachePhaseSevenTest.php \
             tests/Feature/StorefrontCachePreDeployIntegrationTest.php
 
+      - name: Run critical storefront regressions
+        run: |
+          php artisan test \
+            tests/Feature/VideoCommunityTest.php \
+            tests/Feature/SearchPerformanceSeoTest.php \
+            tests/Feature/SitemapTest.php \
+            tests/Feature/HomeExperienceTest.php
+
       - name: Run full backend test suite
-        env:
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ':memory:'
-          CACHE_STORE: array
-          SESSION_DRIVER: array
-          QUEUE_CONNECTION: sync
         run: php artisan test
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install frontend dependencies
-        run: npm ci --no-audit --no-fund
-
-      - name: Build frontend bundles
-        run: npm run build
