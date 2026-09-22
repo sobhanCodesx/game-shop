@@ -9,6 +9,12 @@ return [
     'destructive_enabled' => filter_var(env('TELEGRAM_BOT_DESTRUCTIVE_ENABLED', false), FILTER_VALIDATE_BOOL),
     'media_enabled' => filter_var(env('TELEGRAM_BOT_MEDIA_ENABLED', true), FILTER_VALIDATE_BOOL),
 
+    'mtproto' => [
+        'enabled' => filter_var(env('TELEGRAM_MTPROTO_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'api_id' => (int) env('TELEGRAM_MTPROTO_API_ID', 0),
+        'api_hash' => trim((string) env('TELEGRAM_MTPROTO_API_HASH', '')),
+    ],
+
     'transport_mode' => (string) env('TELEGRAM_BOT_TRANSPORT_MODE', 'auto'),
     'api_base_url' => rtrim((string) env('TELEGRAM_BOT_API_BASE_URL', 'https://api.telegram.org'), '/'),
     'relay_base_url' => rtrim((string) env('TELEGRAM_BOT_RELAY_BASE_URL', ''), '/'),
