@@ -328,6 +328,7 @@ class ContentAgentMediaService
                 'mime' => $media->mime,
                 'alt' => $media->alt,
                 'sort_order' => (int) $media->sort_order,
+                'storage_exists' => filled($media->path) && MediaStorage::disk()->exists($media->path),
             ])->values()->all(),
             'story' => array_values(array_filter([
                 $this->directAsset('media', $target->media_type ?: $this->kindFromMime($target->video_mime), $target->video_path, $target->video_mime),
@@ -346,6 +347,7 @@ class ContentAgentMediaService
                 'alt' => $media->alt,
                 'sort_order' => (int) $media->sort_order,
                 'is_primary' => (bool) $media->is_primary,
+                'storage_exists' => filled($media->path) && MediaStorage::disk()->exists($media->path),
             ])->values()->all(),
         };
 
@@ -777,6 +779,7 @@ class ContentAgentMediaService
             'size' => (int) $asset->size,
             'alt' => $asset->alt,
             'sort_order' => (int) $asset->sort_order,
+            'storage_exists' => filled($asset->path) && MediaStorage::disk()->exists($asset->path),
         ];
     }
 
@@ -793,6 +796,7 @@ class ContentAgentMediaService
             'path' => $path,
             'url' => MediaStorage::url($path),
             'mime' => $mime,
+            'storage_exists' => MediaStorage::disk()->exists($path),
         ];
     }
 
