@@ -9,6 +9,7 @@ final class TelegramMtProtoCompatibilityService
     public function report(): array
     {
         $required = [
+            'madelineproto_loaded' => class_exists(\danog\MadelineProto\API::class),
             'php_version' => PHP_VERSION_ID >= 80200,
             'php_64bit' => PHP_INT_SIZE >= 8,
             'json' => extension_loaded('json'),
