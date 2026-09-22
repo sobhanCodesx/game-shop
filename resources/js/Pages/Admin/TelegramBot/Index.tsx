@@ -29,7 +29,9 @@ interface BotSettings {
     publish_enabled: boolean;
     destructive_enabled: boolean;
     media_enabled: boolean;
+    transport_mode: "auto" | "relay" | "proxy" | "direct";
     api_base_url: string;
+    relay_base_url: string;
     use_proxy: boolean;
     proxy_type: "socks5" | "socks5h" | "http" | "https";
     proxy_host: string;
@@ -43,6 +45,8 @@ interface BotSettings {
     last_error?: string | null;
     source: "database" | "environment";
     bot_token_configured: boolean;
+    relay_key_configured: boolean;
+    relay_configured: boolean;
     proxy_password_configured: boolean;
     webhook_secret_configured: boolean;
     configured: boolean;
@@ -107,7 +111,10 @@ export default function TelegramBotIndex({
         publish_enabled: settings.publish_enabled,
         destructive_enabled: settings.destructive_enabled,
         media_enabled: settings.media_enabled,
+        transport_mode: settings.transport_mode || "auto",
         api_base_url: settings.api_base_url || "https://api.telegram.org",
+        relay_base_url: settings.relay_base_url ?? "",
+        relay_key: "",
         use_proxy: settings.use_proxy,
         proxy_type: settings.proxy_type || "socks5h",
         proxy_host: settings.proxy_host ?? "",
@@ -307,147 +314,233 @@ export default function TelegramBotIndex({
                                 </span>
                                 <div>
                                     <h2 className="font-black text-white">
-                                        Telegram API و Proxy
+                                        مسیر اتصال Telegram
                                     </h2>
-                                    <p className="mt-1 text-xs text-slate-500">
-                                        برای سرور ایران SOCKS5H پیشنهاد می‌شود تا DNS مقصد هم از سمت Proxy resolve شود.
+                                    <p className="mt-1 text-xs leading-6 text-slate-500">
+                                        پیشنهاد PlayNexus: حالت Auto + Cloudflare Relay خصوصی. در صورت خرابی Relay، SOCKS و سپس Direct به‌صورت fallback امتحان می‌شوند.
                                     </p>
                                 </div>
                             </div>
                         </Card.Header>
                         <Card.Content className="space-y-5 p-5">
-                            <label>
-                                <span className="mb-2 block text-xs font-bold text-slate-400">
-                                    Bot API Base URL
-                                </span>
-                                <Input
-                                    dir="ltr"
-                                    value={form.data.api_base_url}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            "api_base_url",
-                                            event.target.value,
-                                        )
-                                    }
-                                />
-                            </label>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <label>
+                                    <span className="mb-2 block text-xs font-bold text-slate-400">
+                                        Transport Mode
+                                    </span>
+                                    <select
+                                        className="h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-200 outline-none focus:border-indigo-500"
+                                        dir="ltr"
+                                        value={form.data.transport_mode}
+                                        onChange={(event) => {
+                                            const value = event.target.value as "auto" | "relay" | "proxy" | "direct";
+                                            form.setData("transport_mode", value);
+                                            if (value === "proxy") form.setData("use_proxy", true);
+                                        }}
+                                    >
+                                        <option value="auto">Auto — Relay → Proxy → Direct</option>
+                                        <option value="relay">Cloudflare Relay only</option>
+                                        <option value="proxy">SOCKS / HTTP Proxy only</option>
+                                        <option value="direct">Direct only</option>
+                                    </select>
+                                </label>
 
-                            <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-800 bg-slate-950/30 p-4">
-                                <div>
-                                    <strong className="text-sm text-slate-200">
-                                        استفاده از Proxy
-                                    </strong>
-                                    <p className="mt-1 text-xs leading-6 text-slate-500">
-                                        تمام درخواست‌های Telegram API و دانلود فایل از همین Proxy عبور می‌کنند.
+                                <label>
+                                    <span className="mb-2 block text-xs font-bold text-slate-400">
+                                        Telegram API Base URL
+                                    </span>
+                                    <Input
+                                        dir="ltr"
+                                        value={form.data.api_base_url}
+                                        onChange={(event) =>
+                                            form.setData("api_base_url", event.target.value)
+                                        }
+                                    />
+                                    <p className="mt-1 text-[10px] leading-5 text-slate-600">
+                                        برای اتصال مستقیم معمولاً همین https://api.telegram.org بماند. Workerهای transparent قدیمی هم با این فیلد سازگارند.
                                     </p>
-                                </div>
-                                <Switch
-                                    isSelected={form.data.use_proxy}
-                                    onValueChange={(value) =>
-                                        form.setData("use_proxy", value)
-                                    }
-                                />
+                                </label>
                             </div>
 
-                            {form.data.use_proxy && (
-                                <div className="grid gap-4 md:grid-cols-2">
-                                    <label>
-                                        <span className="mb-2 block text-xs font-bold text-slate-400">
-                                            Proxy type
-                                        </span>
-                                        <select
-                                            className="h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-200 outline-none focus:border-indigo-500"
-                                            dir="ltr"
-                                            value={form.data.proxy_type}
-                                            onChange={(event) =>
-                                                form.setData(
-                                                    "proxy_type",
-                                                    event.target.value as
-                                                        | "socks5"
-                                                        | "socks5h"
-                                                        | "http"
-                                                        | "https",
-                                                )
-                                            }
-                                        >
-                                            <option value="socks5h">SOCKS5H</option>
-                                            <option value="socks5">SOCKS5</option>
-                                            <option value="https">HTTPS</option>
-                                            <option value="http">HTTP</option>
-                                        </select>
-                                    </label>
+                            {(form.data.transport_mode === "auto" ||
+                                form.data.transport_mode === "relay") && (
+                                <div className="space-y-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <strong className="text-sm text-cyan-200">
+                                                Cloudflare Relay خصوصی
+                                            </strong>
+                                            <p className="mt-1 text-xs leading-6 text-slate-500">
+                                                Token در URL عمومی Worker قرار نمی‌گیرد و Relay Key جداگانه نیز درخواست را محافظت می‌کند.
+                                            </p>
+                                        </div>
+                                        <Chip size="sm">
+                                            {settings.relay_configured ? "Configured" : "Optional"}
+                                        </Chip>
+                                    </div>
 
-                                    <label>
-                                        <span className="mb-2 block text-xs font-bold text-slate-400">
-                                            Host
-                                        </span>
-                                        <Input
-                                            dir="ltr"
-                                            placeholder="proxy.example.com"
-                                            value={form.data.proxy_host}
-                                            onChange={(event) =>
-                                                form.setData(
-                                                    "proxy_host",
-                                                    event.target.value,
-                                                )
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <label>
+                                            <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                Relay URL
+                                            </span>
+                                            <Input
+                                                dir="ltr"
+                                                placeholder="https://playnexus-telegram-relay.your-account.workers.dev"
+                                                value={form.data.relay_base_url}
+                                                onChange={(event) =>
+                                                    form.setData("relay_base_url", event.target.value)
+                                                }
+                                            />
+                                            {form.errors.relay_base_url && (
+                                                <p className="mt-1 text-xs text-rose-400">
+                                                    {form.errors.relay_base_url}
+                                                </p>
+                                            )}
+                                        </label>
+
+                                        <label>
+                                            <span className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-400">
+                                                <KeyRound size={13} />
+                                                Relay Key
+                                            </span>
+                                            <Input
+                                                dir="ltr"
+                                                type="password"
+                                                placeholder={
+                                                    settings.relay_key_configured
+                                                        ? "•••••••• (برای تغییر مقدار جدید وارد کن)"
+                                                        : "همان RELAY_KEY داخل Worker"
+                                                }
+                                                value={form.data.relay_key}
+                                                onChange={(event) =>
+                                                    form.setData("relay_key", event.target.value)
+                                                }
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <p className="text-[10px] leading-5 text-slate-600">
+                                        سورس Worker امن داخل deploy/cloudflare/telegram-relay قرار دارد؛ فقط همان Worker حساب Cloudflare خودت را استفاده کن.
+                                    </p>
+                                </div>
+                            )}
+
+                            {(form.data.transport_mode === "auto" ||
+                                form.data.transport_mode === "proxy") && (
+                                <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <strong className="text-sm text-slate-200">
+                                                SOCKS / HTTP Proxy fallback
+                                            </strong>
+                                            <p className="mt-1 text-xs leading-6 text-slate-500">
+                                                در Auto فقط زمانی استفاده می‌شود که Relay جواب ندهد. SOCKS5H برای DNS سمت Proxy مناسب‌تر است.
+                                            </p>
+                                        </div>
+                                        <Switch
+                                            isSelected={form.data.use_proxy}
+                                            onValueChange={(value) =>
+                                                form.setData("use_proxy", value)
                                             }
                                         />
-                                    </label>
+                                    </div>
 
-                                    <label>
-                                        <span className="mb-2 block text-xs font-bold text-slate-400">
-                                            Port
-                                        </span>
-                                        <Input
-                                            dir="ltr"
-                                            type="number"
-                                            value={String(form.data.proxy_port)}
-                                            onChange={(event) =>
-                                                form.setData(
-                                                    "proxy_port",
-                                                    Number(event.target.value),
-                                                )
-                                            }
-                                        />
-                                    </label>
+                                    {form.data.use_proxy && (
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <label>
+                                                <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                    Proxy type
+                                                </span>
+                                                <select
+                                                    className="h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-200 outline-none focus:border-indigo-500"
+                                                    dir="ltr"
+                                                    value={form.data.proxy_type}
+                                                    onChange={(event) =>
+                                                        form.setData(
+                                                            "proxy_type",
+                                                            event.target.value as
+                                                                | "socks5"
+                                                                | "socks5h"
+                                                                | "http"
+                                                                | "https",
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="socks5h">SOCKS5H</option>
+                                                    <option value="socks5">SOCKS5</option>
+                                                    <option value="https">HTTPS</option>
+                                                    <option value="http">HTTP</option>
+                                                </select>
+                                            </label>
 
-                                    <label>
-                                        <span className="mb-2 block text-xs font-bold text-slate-400">
-                                            Username
-                                        </span>
-                                        <Input
-                                            dir="ltr"
-                                            value={form.data.proxy_username}
-                                            onChange={(event) =>
-                                                form.setData(
-                                                    "proxy_username",
-                                                    event.target.value,
-                                                )
-                                            }
-                                        />
-                                    </label>
+                                            <label>
+                                                <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                    Host
+                                                </span>
+                                                <Input
+                                                    dir="ltr"
+                                                    placeholder="proxy.example.com"
+                                                    value={form.data.proxy_host}
+                                                    onChange={(event) =>
+                                                        form.setData("proxy_host", event.target.value)
+                                                    }
+                                                />
+                                            </label>
 
-                                    <label className="md:col-span-2">
-                                        <span className="mb-2 block text-xs font-bold text-slate-400">
-                                            Password
-                                        </span>
-                                        <Input
-                                            dir="ltr"
-                                            placeholder={
-                                                settings.proxy_password_configured
-                                                    ? "•••••••• (برای تغییر مقدار جدید وارد کن)"
-                                                    : ""
-                                            }
-                                            type="password"
-                                            value={form.data.proxy_password}
-                                            onChange={(event) =>
-                                                form.setData(
-                                                    "proxy_password",
-                                                    event.target.value,
-                                                )
-                                            }
-                                        />
-                                    </label>
+                                            <label>
+                                                <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                    Port
+                                                </span>
+                                                <Input
+                                                    dir="ltr"
+                                                    type="number"
+                                                    value={String(form.data.proxy_port)}
+                                                    onChange={(event) =>
+                                                        form.setData("proxy_port", Number(event.target.value))
+                                                    }
+                                                />
+                                            </label>
+
+                                            <label>
+                                                <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                    Username
+                                                </span>
+                                                <Input
+                                                    dir="ltr"
+                                                    value={form.data.proxy_username}
+                                                    onChange={(event) =>
+                                                        form.setData("proxy_username", event.target.value)
+                                                    }
+                                                />
+                                            </label>
+
+                                            <label className="md:col-span-2">
+                                                <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                    Password
+                                                </span>
+                                                <Input
+                                                    dir="ltr"
+                                                    placeholder={
+                                                        settings.proxy_password_configured
+                                                            ? "•••••••• (برای تغییر مقدار جدید وارد کن)"
+                                                            : ""
+                                                    }
+                                                    type="password"
+                                                    value={form.data.proxy_password}
+                                                    onChange={(event) =>
+                                                        form.setData("proxy_password", event.target.value)
+                                                    }
+                                                />
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {form.data.transport_mode === "direct" && (
+                                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs leading-6 text-amber-200">
+                                    Direct فقط برای سروری مناسب است که به api.telegram.org دسترسی مستقیم داشته باشد.
                                 </div>
                             )}
                         </Card.Content>
