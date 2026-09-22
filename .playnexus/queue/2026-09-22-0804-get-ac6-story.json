@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-22-0804-get-ac6-story",
+  "tool": "get_content",
+  "arguments": {
+    "resource": "video",
+    "id": 67
+  }
+}
