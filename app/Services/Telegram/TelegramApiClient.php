@@ -2,6 +2,8 @@
 
 namespace App\Services\Telegram;
 
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -12,6 +14,7 @@ final class TelegramApiClient
 {
     public function __construct(
         private readonly TelegramBotSettings $settings,
+        private readonly TelegramTransportManager $transports,
     ) {}
 
     public function getMe(): array
@@ -106,34 +109,42 @@ final class TelegramApiClient
             throw new RuntimeException('Telegram bot token is not configured.');
         }
 
-        $url = rtrim((string) ($settings['api_base_url'] ?? 'https://api.telegram.org'), '/')
-            .'/bot'.$token.'/'.$method;
+        $failures = [];
 
-        try {
-            $response = Http::acceptJson()
-                ->asJson()
-                ->connectTimeout((int) config('telegram_bot.connect_timeout', 10))
-                ->timeout((int) config('telegram_bot.request_timeout', 30))
-                ->retry(2, 250, throw: false)
-                ->withOptions($this->httpOptions())
-                ->post($url, $payload);
-        } catch (Throwable $exception) {
-            throw new RuntimeException('Telegram API transport failed: '.$exception->getMessage(), 0, $exception);
+        foreach ($this->transports->candidates() as $candidate) {
+            try {
+                $response = $this->http($candidate)
+                    ->post($this->transports->apiUrl($candidate, $method, $token), $payload);
+            } catch (Throwable $exception) {
+                $failures[] = $candidate['name'].': transport failure';
+                continue;
+            }
+
+            $telegramError = $this->telegramError($response);
+            if ($telegramError !== null) {
+                throw new RuntimeException('Telegram API error: '.$telegramError);
+            }
+
+            if (! $response->successful()) {
+                $failures[] = $candidate['name'].': HTTP '.$response->status();
+                continue;
+            }
+
+            $json = $response->json();
+            if (! is_array($json) || ! ($json['ok'] ?? false)) {
+                $failures[] = $candidate['name'].': invalid response';
+                continue;
+            }
+
+            $result = $json['result'] ?? [];
+
+            return is_array($result) ? $result : ['value' => $result];
         }
 
-        if (! $response->successful()) {
-            throw new RuntimeException('Telegram API returned HTTP '.$response->status().'.');
-        }
-
-        $json = $response->json();
-        if (! is_array($json) || ! ($json['ok'] ?? false)) {
-            $description = is_array($json) ? (string) ($json['description'] ?? 'Unknown Telegram error') : 'Invalid Telegram response';
-            throw new RuntimeException('Telegram API error: '.$description);
-        }
-
-        $result = $json['result'] ?? [];
-
-        return is_array($result) ? $result : ['value' => $result];
+        throw new RuntimeException(
+            'Telegram API is unavailable through the configured transports'
+            .($failures ? ' ('.implode(', ', $failures).').' : '.'),
+        );
     }
 
     public function downloadFile(
@@ -157,9 +168,6 @@ final class TelegramApiClient
 
         $settings = $this->settings->resolved();
         $token = trim((string) ($settings['bot_token'] ?? ''));
-        $apiBase = rtrim((string) ($settings['api_base_url'] ?? 'https://api.telegram.org'), '/');
-        $fileBase = preg_replace('#/bot$#', '', $apiBase) ?: 'https://api.telegram.org';
-        $url = $fileBase.'/file/bot'.$token.'/'.$path;
 
         $directory = storage_path('app/telegram-bot/tmp');
         File::ensureDirectoryExists($directory);
@@ -167,25 +175,39 @@ final class TelegramApiClient
         $name = basename((string) ($originalName ?: basename($path)));
         $name = preg_replace('/[^A-Za-z0-9._-]+/', '-', $name) ?: 'telegram-file.bin';
         $target = $directory.'/'.Str::uuid().'-'.$name;
+        $failures = [];
 
-        try {
-            $response = Http::connectTimeout((int) config('telegram_bot.connect_timeout', 10))
-                ->timeout(max(60, (int) config('telegram_bot.request_timeout', 30)))
-                ->retry(2, 300, throw: false)
-                ->withOptions([...$this->httpOptions(), 'sink' => $target])
-                ->get($url);
-
-            if (! $response->successful() || ! File::isFile($target)) {
-                File::delete($target);
-                throw new RuntimeException('Telegram file download failed with HTTP '.$response->status().'.');
-            }
-        } catch (Throwable $exception) {
+        foreach ($this->transports->candidates() as $candidate) {
             File::delete($target);
-            if ($exception instanceof RuntimeException) {
-                throw $exception;
-            }
 
-            throw new RuntimeException('Telegram file download failed: '.$exception->getMessage(), 0, $exception);
+            try {
+                $options = $candidate['options'];
+                $options['sink'] = $target;
+
+                $response = Http::connectTimeout((int) config('telegram_bot.connect_timeout', 10))
+                    ->timeout(max(60, (int) config('telegram_bot.request_timeout', 30)))
+                    ->withHeaders($candidate['headers'])
+                    ->withOptions($options)
+                    ->get($this->transports->fileUrl($candidate, $path, $token));
+
+                if (! $response->successful() || ! File::isFile($target)) {
+                    $failures[] = $candidate['name'].': HTTP '.$response->status();
+                    File::delete($target);
+                    continue;
+                }
+
+                break;
+            } catch (Throwable $exception) {
+                $failures[] = $candidate['name'].': transport failure';
+                File::delete($target);
+            }
+        }
+
+        if (! File::isFile($target)) {
+            throw new RuntimeException(
+                'Telegram file download failed through the configured transports'
+                .($failures ? ' ('.implode(', ', $failures).').' : '.'),
+            );
         }
 
         $actualSize = File::size($target);
@@ -203,10 +225,24 @@ final class TelegramApiClient
         ];
     }
 
-    private function httpOptions(): array
+    private function http(array $candidate): PendingRequest
     {
-        $proxy = $this->settings->proxyUrl();
+        return Http::acceptJson()
+            ->asJson()
+            ->connectTimeout((int) config('telegram_bot.connect_timeout', 10))
+            ->timeout((int) config('telegram_bot.request_timeout', 30))
+            ->withHeaders($candidate['headers'])
+            ->withOptions($candidate['options']);
+    }
 
-        return $proxy ? ['proxy' => $proxy] : [];
+    private function telegramError(Response $response): ?string
+    {
+        $json = $response->json();
+
+        if (! is_array($json) || ($json['ok'] ?? null) !== false || ! isset($json['description'])) {
+            return null;
+        }
+
+        return Str::limit((string) $json['description'], 500);
     }
 }
