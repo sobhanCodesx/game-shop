@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Jobs\BroadcastContentPublished;
 use App\Models\SocialContent;
 use App\Services\GameEventService;
+use App\Services\SitemapCacheService;
 use App\Services\StorefrontPageCache;
 use Illuminate\Support\Carbon;
 
@@ -12,6 +13,9 @@ class SocialContentObserver
 {
     public function created(SocialContent $content): void
     {
+        if (in_array($content->type, ['post', 'video', 'short'], true)) {
+            app(SitemapCacheService::class)->invalidate();
+        }
         if ($content->type === 'video') {
             app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'home', 'studio');
         } elseif ($content->type === 'post') {
@@ -33,9 +37,11 @@ class SocialContentObserver
         ) {
             if ($content->wasChanged([
                 'game_id', 'related_product_id', 'related_content_id', 'type', 'feed_type', 'feed_badge',
-                'title', 'slug', 'excerpt', 'body', 'thumbnail', 'video_path', 'duration',
+                'title', 'slug', 'excerpt', 'body', 'seo_title', 'seo_description',
+                'thumbnail', 'video_path', 'video_mime', 'duration',
                 'allow_comments', 'featured', 'status', 'published_at',
             ])) {
+                app(SitemapCacheService::class)->invalidate();
                 app(StorefrontPageCache::class)->invalidate('channel');
 
                 if ($content->type === 'video' || $content->getRawOriginal('type') === 'video') {
@@ -53,6 +59,7 @@ class SocialContentObserver
             ])
         ) {
             app(StorefrontPageCache::class)->invalidate('short');
+            app(SitemapCacheService::class)->invalidate();
         }
 
         $wasPublished = $this->wasPublished($content);
@@ -77,6 +84,9 @@ class SocialContentObserver
 
     public function deleted(SocialContent $content): void
     {
+        if (in_array($content->type, ['post', 'video', 'short'], true)) {
+            app(SitemapCacheService::class)->invalidate();
+        }
         if ($content->type === 'video') {
             app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'home', 'studio');
         } elseif ($content->type === 'post') {
