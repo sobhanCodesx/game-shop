@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\User;
 use App\Support\Seo;
@@ -70,6 +71,49 @@ final class FeedPageDataService
 
             $pageData['item'] = $apply($pageData['item']);
             $pageData['latestFeed'] = collect($pageData['latestFeed'] ?? [])->map($apply)->values()->all();
+        }
+
+        $productIds = collect([$pageData['item']['related_product']['id'] ?? null])
+            ->merge(collect($pageData['latestFeed'] ?? [])->pluck('related_product.id'))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($productIds->isNotEmpty()) {
+            $products = Product::query()
+                ->whereKey($productIds)
+                ->get(['id', 'price', 'discount_price', 'status', 'visibility'])
+                ->keyBy('id');
+
+            $applyProduct = static function (array $item) use ($products): array {
+                $related = $item['related_product'] ?? null;
+
+                if (! is_array($related) || empty($related['id'])) {
+                    return $item;
+                }
+
+                $product = $products->get((int) $related['id']);
+
+                if (! $product || $product->status !== 'published' || $product->visibility !== 'public') {
+                    $item['related_product'] = null;
+
+                    return $item;
+                }
+
+                $item['related_product'] = [
+                    ...$related,
+                    'price' => $product->discount_price ?: $product->price,
+                ];
+
+                return $item;
+            };
+
+            $pageData['item'] = $applyProduct($pageData['item']);
+            $pageData['latestFeed'] = collect($pageData['latestFeed'] ?? [])
+                ->map($applyProduct)
+                ->values()
+                ->all();
         }
 
         $videoIds = collect($pageData['latestVideos'] ?? [])->pluck('id')->filter()
