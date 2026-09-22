@@ -22,7 +22,7 @@ class CheckoutController extends Controller
         if (empty($request->session()->get('cart', []))) {
             return to_route('cart.index')->with('error', 'سبد خرید خالی است.');
         }
-        if ($this->requiresGooglePhoneVerification($request)) {
+        if ($this->requiresPhoneVerification($request)) {
             return to_route('checkout.phone.show')
                 ->with('error', 'برای ثبت سفارش ابتدا شماره موبایل خود را با کد پیامکی تأیید کنید.');
         }
@@ -78,7 +78,7 @@ class CheckoutController extends Controller
         if (empty($request->session()->get('cart', []))) {
             return to_route('cart.index')->with('error', 'سبد خرید خالی است.');
         }
-        if (! $this->requiresGooglePhoneVerification($request)) {
+        if (! $this->requiresPhoneVerification($request)) {
             return to_route('checkout.show');
         }
 
@@ -94,7 +94,7 @@ class CheckoutController extends Controller
 
     public function sendPhoneVerification(Request $request, MobileCodeService $codes): RedirectResponse
     {
-        if (! $this->requiresGooglePhoneVerification($request)) {
+        if (! $this->requiresPhoneVerification($request)) {
             return to_route('checkout.show');
         }
 
@@ -123,7 +123,7 @@ class CheckoutController extends Controller
 
     public function confirmPhoneVerification(Request $request, MobileCodeService $codes): RedirectResponse
     {
-        if (! $this->requiresGooglePhoneVerification($request)) {
+        if (! $this->requiresPhoneVerification($request)) {
             return to_route('checkout.show');
         }
 
@@ -147,7 +147,7 @@ class CheckoutController extends Controller
 
     public function resendPhoneVerification(Request $request, MobileCodeService $codes): RedirectResponse
     {
-        if (! $this->requiresGooglePhoneVerification($request)) {
+        if (! $this->requiresPhoneVerification($request)) {
             return to_route('checkout.show');
         }
 
@@ -179,6 +179,13 @@ class CheckoutController extends Controller
 
     public function store(CheckoutRequest $request, OrderService $orders): RedirectResponse
     {
+        if ($this->requiresPhoneVerification($request)) {
+            return to_route('checkout.phone.show')->with(
+                'error',
+                'برای ثبت سفارش، تأیید شماره موبایل الزامی است.',
+            );
+        }
+
         $data = $request->validated();
         $deliveryMethod = $data['delivery_method'];
         $address = [];
@@ -211,11 +218,11 @@ class CheckoutController extends Controller
         return to_route('orders.show', $order)->with('success', 'سفارش ثبت شد و در انتظار تأیید مدیر است.');
     }
 
-    private function requiresGooglePhoneVerification(Request $request): bool
+    private function requiresPhoneVerification(Request $request): bool
     {
         $user = $request->user();
 
-        return (bool) ($user?->google_id && ! $user->phone_verified_at);
+        return ! $user || ! $user->phone_verified_at;
     }
 
     private function pendingCheckoutVerificationPhone(Request $request): string

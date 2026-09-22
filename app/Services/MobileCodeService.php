@@ -47,16 +47,24 @@ class MobileCodeService
         });
     }
 
-    public function sendViaTelegram(string $phone, string $purpose): void
-    {
-        $user = User::query()
+    public function sendViaTelegram(
+        string $phone,
+        string $purpose,
+        bool $allowUnverifiedPhone = false,
+    ): void {
+        $query = User::query()
             ->where('phone', $phone)
             ->where('status', 'active')
             ->whereNotNull('telegram_chat_id')
-            ->whereNotNull('telegram_linked_at')
-            ->first();
+            ->whereNotNull('telegram_linked_at');
 
-        if (! $user || ! $this->telegramAvailable($phone)) {
+        if (! $allowUnverifiedPhone) {
+            $query->whereNotNull('phone_verified_at');
+        }
+
+        $user = $query->first();
+
+        if (! $user || ! $this->telegramAvailable($phone, $allowUnverifiedPhone)) {
             throw ValidationException::withMessages([
                 'telegram' => 'تلگرام هنوز به این حساب PlayNexus متصل نشده است.',
             ]);
@@ -98,7 +106,7 @@ class MobileCodeService
         $record->forceFill(['telegram_sent_at' => now()])->save();
     }
 
-    public function telegramAvailable(string $phone): bool
+    public function telegramAvailable(string $phone, bool $allowUnverifiedPhone = false): bool
     {
         $settings = $this->telegramSettings->resolved();
 
@@ -106,12 +114,17 @@ class MobileCodeService
             return false;
         }
 
-        return User::query()
+        $query = User::query()
             ->where('phone', $phone)
             ->where('status', 'active')
             ->whereNotNull('telegram_chat_id')
-            ->whereNotNull('telegram_linked_at')
-            ->exists();
+            ->whereNotNull('telegram_linked_at');
+
+        if (! $allowUnverifiedPhone) {
+            $query->whereNotNull('phone_verified_at');
+        }
+
+        return $query->exists();
     }
 
     public function verify(string $phone, string $purpose, string $code): void

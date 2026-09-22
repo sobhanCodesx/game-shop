@@ -31,6 +31,58 @@ final class TelegramUserCommandRouter
         [$command, $payload] = $this->split($text);
 
         try {
+            if ($command === '/start' && str_starts_with($payload, 'verifyphone_')) {
+                $user = $this->links->startPhoneVerification(
+                    substr($payload, 12),
+                    $userId,
+                    $chatId,
+                );
+
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "📱 <b>تأیید امن شماره برای PlayNexus</b>\n"
+                    ."برای اینکه هیچ‌کس نتواند شماره شخص دیگری را دور بزند، فقط دکمه زیر را بزن و <b>شماره خودت</b> را با قابلیت رسمی Telegram به اشتراک بگذار.\n\n"
+                    ."شماره ثبت‌شده در PlayNexus: <code>".$this->escape((string) $user->phone)."</code>",
+                    [
+                        'keyboard' => [[[
+                            'text' => '📱 اشتراک شماره خودم',
+                            'request_contact' => true,
+                        ]]],
+                        'resize_keyboard' => true,
+                        'one_time_keyboard' => true,
+                        'input_field_placeholder' => 'فقط دکمه اشتراک شماره خودم را بزن',
+                    ],
+                );
+
+                return [
+                    'action' => 'phone_contact_requested',
+                    'resource' => 'user',
+                    'resource_id' => $user->id,
+                ];
+            }
+
+            if (is_array($message['contact'] ?? null)) {
+                $user = $this->links->completePhoneVerification(
+                    $userId,
+                    $chatId,
+                    $message['contact'],
+                );
+
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "✅ <b>شماره Telegram با PlayNexus تطبیق داشت</b>\n"
+                    ."حالا به صفحه تأیید ثبت‌نام برگرد و «ارسال کد در تلگرام» را بزن.\n\n"
+                    ."تا وقتی کد ۶ رقمی را وارد نکنی، شماره در PlayNexus تأیید نهایی نمی‌شود.",
+                    ['remove_keyboard' => true],
+                );
+
+                return [
+                    'action' => 'phone_contact_verified',
+                    'resource' => 'user',
+                    'resource_id' => $user->id,
+                ];
+            }
+
             if ($command === '/start' && str_starts_with($payload, 'connect_')) {
                 $user = $this->links->consume(substr($payload, 8), $userId, $chatId);
 

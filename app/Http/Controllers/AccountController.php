@@ -76,6 +76,14 @@ class AccountController extends Controller
     {
         $user = $request->user();
         $data = $request->safe()->except(['avatar', 'remove_avatar']);
+
+        if (
+            array_key_exists('phone', $data)
+            && (string) $data['phone'] !== (string) $user->phone
+        ) {
+            $data['phone_verified_at'] = null;
+        }
+
         if ($request->boolean('remove_avatar') && $user->avatar) {
             MediaStorage::disk()->delete($user->avatar);
             $data['avatar'] = null;

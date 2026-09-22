@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Order;
-use App\Models\TelegramBotAudit;
 use App\Services\Telegram\TelegramBotSessionStore;
 use App\Services\Telegram\TelegramAdminNotificationService;
 use App\Models\SocialContent;
@@ -430,14 +429,7 @@ class TelegramAdminBotTest extends TestCase
         $this->assertTrue(
             (bool) $user->contentNotificationPreference?->telegram_enabled,
         );
-        $this->assertDatabaseHas('telegram_bot_audits', [
-            'update_id' => 1010,
-            'user_id' => '888888888',
-            'status' => 'succeeded',
-            'action' => 'user_linked',
-            'resource' => 'user',
-            'resource_id' => $user->id,
-        ]);
+        $this->assertDatabaseCount('telegram_bot_audits', 0);
 
         Http::assertSent(function ($request): bool {
             if (! str_ends_with($request->url(), '/sendMessage')) {
@@ -509,13 +501,103 @@ class TelegramAdminBotTest extends TestCase
 
         $this->assertSame('777777777', $user->telegram_user_id);
         $this->assertNotNull($user->telegram_linked_at);
-        $this->assertDatabaseHas('telegram_bot_audits', [
-            'update_id' => 1011,
-            'user_id' => '777777777',
-            'status' => 'succeeded',
-            'action' => 'user_linked',
-            'resource_id' => $user->id,
+        $this->assertDatabaseCount('telegram_bot_audits', 0);
+    }
+
+    public function test_registration_telegram_fallback_requires_the_senders_own_matching_contact(): void
+    {
+        $setting = $this->configureBot();
+        $setting->forceFill([
+            'bot_username' => 'play_nexus_game_bot',
+        ])->save();
+
+        $user = User::factory()->create([
+            'name' => 'ثبت نام امن',
+            'phone' => '09123456789',
+            'phone_verified_at' => null,
+            'status' => 'active',
+            'is_admin' => false,
         ]);
+
+        $link = app(TelegramUserLinkService::class)->beginPhoneVerification($user);
+        parse_str((string) parse_url($link, PHP_URL_QUERY), $query);
+        $startPayload = (string) ($query['start'] ?? '');
+
+        $this->assertMatchesRegularExpression(
+            '/^verifyphone_[A-Za-z0-9]{32}$/',
+            $startPayload,
+        );
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson(
+            '/api/telegram/webhook',
+            $this->telegramUpdate(1100, '888888888', '/start '.$startPayload),
+        )->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            $keyboard = $request->data()['reply_markup']['keyboard'] ?? [];
+
+            return str_ends_with($request->url(), '/sendMessage')
+                && collect($keyboard)
+                    ->flatten(1)
+                    ->contains(
+                        fn ($button): bool => is_array($button)
+                            && ($button['request_contact'] ?? false) === true,
+                    );
+        });
+
+        $wrongContact = [
+            'update_id' => 1101,
+            'message' => [
+                'message_id' => 1101,
+                'date' => now()->timestamp,
+                'chat' => ['id' => 888888888, 'type' => 'private'],
+                'from' => [
+                    'id' => 888888888,
+                    'is_bot' => false,
+                    'first_name' => 'User',
+                ],
+                'contact' => [
+                    'phone_number' => '+989123456789',
+                    'first_name' => 'Other',
+                    'user_id' => 999999999,
+                ],
+            ],
+        ];
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson('/api/telegram/webhook', $wrongContact)->assertOk();
+
+        $user->refresh();
+        $this->assertNull($user->telegram_user_id);
+
+        $matchingContact = $wrongContact;
+        $matchingContact['update_id'] = 1102;
+        $matchingContact['message']['message_id'] = 1102;
+        $matchingContact['message']['contact']['first_name'] = 'Owner';
+        $matchingContact['message']['contact']['user_id'] = 888888888;
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson('/api/telegram/webhook', $matchingContact)->assertOk();
+
+        $user->refresh();
+        $this->assertSame('888888888', $user->telegram_user_id);
+        $this->assertSame('888888888', $user->telegram_chat_id);
+        $this->assertNull($user->phone_verified_at);
+        $this->assertTrue(
+            app(TelegramUserLinkService::class)->hasRecentPhoneProof($user),
+        );
+        $this->assertDatabaseCount('telegram_bot_audits', 0);
     }
 
     public function test_non_owner_private_chat_is_isolated_from_admin_router(): void
@@ -535,12 +617,7 @@ class TelegramAdminBotTest extends TestCase
             $this->telegramUpdate(1002, '888888888', '/status'),
         )->assertOk();
 
-        $this->assertDatabaseHas('telegram_bot_audits', [
-            'update_id' => 1002,
-            'user_id' => '888888888',
-            'status' => 'succeeded',
-            'action' => 'user_unlinked_help',
-        ]);
+        $this->assertDatabaseCount('telegram_bot_audits', 0);
 
         Http::assertSent(function ($request): bool {
             $text = (string) ($request->data()['text'] ?? '');
@@ -563,11 +640,7 @@ class TelegramAdminBotTest extends TestCase
         ])->postJson('/api/telegram/webhook', $payload)
             ->assertOk();
 
-        $this->assertDatabaseHas('telegram_bot_audits', [
-            'update_id' => 1003,
-            'status' => 'ignored',
-            'action' => 'unauthorized_or_non_private',
-        ]);
+        $this->assertDatabaseCount('telegram_bot_audits', 0);
 
         Http::assertNothingSent();
     }
@@ -592,12 +665,7 @@ class TelegramAdminBotTest extends TestCase
                 ->assertOk();
         }
 
-        $this->assertDatabaseCount('telegram_bot_audits', 1);
-        $this->assertDatabaseHas('telegram_bot_audits', [
-            'update_id' => 1004,
-            'user_id' => '777777777',
-            'status' => 'succeeded',
-        ]);
+        $this->assertDatabaseCount('telegram_bot_audits', 0);
 
         // /status intentionally performs two Telegram calls. Replaying the
         // same update must not execute the command a second time.

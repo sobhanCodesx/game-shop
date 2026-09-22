@@ -19,7 +19,10 @@ type Props = {
     telegram?: {
         supported: boolean;
         bot_username: string | null;
+        connected?: boolean;
+        connect_url?: string | null;
     };
+    canResendImmediately?: boolean;
 };
 
 export default function VerifyCode({
@@ -27,20 +30,20 @@ export default function VerifyCode({
     channel,
     purpose,
     telegram,
+    canResendImmediately = false,
 }: Props) {
     const { data, setData, post, processing, errors } = useForm({ code: "" });
-    const [seconds, setSeconds] = useState(60);
+    const [seconds, setSeconds] = useState(canResendImmediately ? 0 : 60);
     const [telegramSending, setTelegramSending] = useState(false);
     const [telegramSent, setTelegramSent] = useState(false);
+    const [telegramError, setTelegramError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
     const verifyUrl =
         purpose === "login" ? "/login/otp/verify" : "/verify-email";
     const resendUrl =
         purpose === "login" ? "/login/otp/resend" : "/verify-email/resend";
     const showTelegram =
-        purpose === "login" &&
-        channel === "mobile" &&
-        Boolean(telegram?.supported);
+        channel === "mobile" && Boolean(telegram?.supported);
 
     useEffect(() => {
         if (seconds <= 0) return;
@@ -51,14 +54,60 @@ export default function VerifyCode({
         return () => window.clearInterval(timer);
     }, [seconds]);
 
+    useEffect(() => {
+        if (
+            purpose !== "verify" ||
+            channel !== "mobile" ||
+            !telegram?.supported ||
+            telegram.connected
+        ) {
+            return;
+        }
+
+        let lastRefresh = 0;
+        const refresh = () => {
+            if (
+                document.visibilityState !== "visible" ||
+                Date.now() - lastRefresh < 1200
+            ) {
+                return;
+            }
+
+            lastRefresh = Date.now();
+            router.reload({
+                only: ["telegram"],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        };
+
+        window.addEventListener("focus", refresh);
+        document.addEventListener("visibilitychange", refresh);
+
+        return () => {
+            window.removeEventListener("focus", refresh);
+            document.removeEventListener("visibilitychange", refresh);
+        };
+    }, [channel, purpose, telegram?.connected, telegram?.supported]);
+
     const sendToTelegram = () => {
         setTelegramSending(true);
+        setTelegramError(null);
         router.post(
-            "/login/otp/telegram",
+            purpose === "login"
+                ? "/login/otp/telegram"
+                : "/verify-email/telegram",
             {},
             {
                 preserveScroll: true,
                 onSuccess: () => setTelegramSent(true),
+                onError: (nextErrors) =>
+                    setTelegramError(
+                        String(
+                            nextErrors.telegram ??
+                                "ارسال کد در تلگرام انجام نشد.",
+                        ),
+                    ),
                 onFinish: () => setTelegramSending(false),
             },
         );
@@ -78,7 +127,7 @@ export default function VerifyCode({
                     ? "کد ورود PlayNexus"
                     : "حسابت را تأیید کن"
             }
-            subtitle={`کد امنیتی ۶ رقمی به ${destination} ارسال شد.`}
+            subtitle={`کد امنیتی ۶ رقمی ${channel === "email" ? "ایمیل" : "موبایل"} را برای ${destination} وارد کن.`}
             eyebrow={channel === "email" ? "تأیید ایمیل" : "تأیید موبایل"}
         >
             <form
@@ -155,28 +204,45 @@ export default function VerifyCode({
                                     پیامک نرسید؟
                                 </p>
                                 <p className="mt-1 text-[11px] leading-5 text-slate-400">
-                                    اگر قبلاً از داخل حساب PlayNexus تلگرام را
-                                    متصل کرده باشی، همین کد در Bot هم ارسال می‌شود.
+                                    {purpose === "verify"
+                                        ? telegram?.connected
+                                            ? "شماره Telegram با شماره ثبت‌نام تطبیق داده شده؛ حالا می‌توانی همین کد را در چت خصوصی Bot بگیری."
+                                            : "برای ثبت‌نام، اتصال ساده کافی نیست. Bot فقط وقتی اجازه ارسال کد می‌دهد که شماره خودت را با دکمه رسمی Telegram به اشتراک بگذاری و دقیقاً با شماره ثبت‌نام یکی باشد."
+                                        : "اگر قبلاً Telegram را به همین حساب تأییدشده وصل کرده باشی، می‌توانی کد ورود را در چت خصوصی Bot بگیری."}
                                 </p>
 
                                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                                    <button
-                                        className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-500 px-3 text-xs font-black text-white disabled:opacity-60"
-                                        disabled={telegramSending}
-                                        onClick={sendToTelegram}
-                                        type="button"
-                                    >
-                                        {telegramSent ? (
-                                            <Check size={15} />
-                                        ) : (
+                                    {purpose === "verify" &&
+                                    !telegram?.connected &&
+                                    telegram?.connect_url ? (
+                                        <a
+                                            className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-500 px-3 text-xs font-black text-white"
+                                            href={telegram.connect_url}
+                                            rel="noreferrer"
+                                            target="_blank"
+                                        >
                                             <Send size={15} />
-                                        )}
-                                        {telegramSending
-                                            ? "در حال ارسال…"
-                                            : telegramSent
-                                              ? "درخواست ارسال شد"
-                                              : "ارسال کد در تلگرام"}
-                                    </button>
+                                            اتصال امن و تأیید شماره در Bot
+                                        </a>
+                                    ) : (
+                                        <button
+                                            className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-500 px-3 text-xs font-black text-white disabled:opacity-60"
+                                            disabled={telegramSending}
+                                            onClick={sendToTelegram}
+                                            type="button"
+                                        >
+                                            {telegramSent ? (
+                                                <Check size={15} />
+                                            ) : (
+                                                <Send size={15} />
+                                            )}
+                                            {telegramSending
+                                                ? "در حال ارسال…"
+                                                : telegramSent
+                                                  ? "کد در تلگرام درخواست شد"
+                                                  : "ارسال کد در تلگرام"}
+                                        </button>
+                                    )}
 
                                     {telegram?.bot_username && (
                                         <button
@@ -192,6 +258,12 @@ export default function VerifyCode({
                                         </button>
                                     )}
                                 </div>
+
+                                {telegramError && (
+                                    <p className="mt-2 text-[11px] font-medium leading-5 text-rose-300">
+                                        {telegramError}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -9,6 +9,7 @@ use App\Services\EmailCodeService;
 use App\Services\MobileCodeService;
 use App\Services\Telegram\TelegramAdminNotificationService;
 use App\Services\Telegram\TelegramBotSettings;
+use App\Services\Telegram\TelegramUserLinkService;
 use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,13 +39,58 @@ class AuthController extends Controller
         return Inertia::render('Auth/ForgotPassword');
     }
 
-    public function verifyAccount(Request $request): Response|RedirectResponse
-    {
+    public function verifyAccount(
+        Request $request,
+        TelegramBotSettings $telegramSettings,
+        TelegramUserLinkService $telegramLinks,
+    ): Response|RedirectResponse {
+        $canResendImmediately = (bool) $request->session()->pull('verification_resend_immediately', false);
+
         if ($email = $request->session()->get('verification_email')) {
-            return Inertia::render('Auth/VerifyCode', ['destination' => $email, 'channel' => 'email', 'purpose' => 'verify']);
+            return Inertia::render('Auth/VerifyCode', [
+                'destination' => $email,
+                'channel' => 'email',
+                'purpose' => 'verify',
+                'canResendImmediately' => $canResendImmediately,
+            ]);
         }
+
         if ($phone = $request->session()->get('verification_phone')) {
-            return Inertia::render('Auth/VerifyCode', ['destination' => $phone, 'channel' => 'mobile', 'purpose' => 'verify']);
+            $settings = $telegramSettings->resolved();
+            $user = User::query()
+                ->where('phone', $phone)
+                ->where('status', 'active')
+                ->first();
+
+            $supported = ($settings['enabled'] ?? false)
+                && filled($settings['bot_username'] ?? null);
+            $connected = (bool) ($user
+                && filled($user->telegram_chat_id)
+                && filled($user->telegram_linked_at));
+            $connectUrl = null;
+
+            if ($supported && $user && ! $connected && ! $user->phone_verified_at) {
+                try {
+                    $connectUrl = $telegramLinks->beginPhoneVerification($user);
+                } catch (\Throwable $exception) {
+                    report($exception);
+                }
+            }
+
+            return Inertia::render('Auth/VerifyCode', [
+                'destination' => $phone,
+                'channel' => 'mobile',
+                'purpose' => 'verify',
+                'canResendImmediately' => $canResendImmediately,
+                'telegram' => [
+                    'supported' => $supported,
+                    'connected' => $connected,
+                    'connect_url' => $connectUrl,
+                    'bot_username' => filled($settings['bot_username'] ?? null)
+                        ? '@'.ltrim((string) $settings['bot_username'], '@')
+                        : null,
+                ],
+            ]);
         }
 
         return to_route('register');
@@ -109,19 +155,26 @@ class AuthController extends Controller
         $data['phone'] = PhoneNumber::normalize($data['phone']);
         validator($data, ['phone' => ['unique:users,phone']])->validate();
         $user = User::create([...$data, 'name' => trim($data['first_name'].' '.$data['last_name']), 'email' => null, 'status' => 'active', 'role' => 'user']);
+        $smsSent = true;
         try {
             $mobiles->send($user->phone, 'verify_mobile');
-        } catch (\Throwable $e) {
-            $user->forceDelete();
-            throw $e;
+        } catch (\Throwable $exception) {
+            $smsSent = false;
+            report($exception);
         }
+
         $telegramNotifications->newUser($user, 'web-phone');
         $request->session()->put('verification_phone', $user->phone);
 
-        return to_route('verification.notice')->with('success', 'کد تأیید پیامکی ارسال شد.');
+        return to_route('verification.notice')->with(
+            $smsSent ? 'success' : 'error',
+            $smsSent
+                ? 'کد تأیید پیامکی ارسال شد.'
+                : 'ارسال پیامک با مشکل مواجه شد؛ از گزینه امن تلگرام یا ارسال مجدد کد استفاده کن.',
+        );
     }
 
-    public function authenticate(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse
+    public function authenticate(Request $request): RedirectResponse
     {
         $request->merge(['identifier' => $request->input('identifier', $request->input('email'))]);
         $data = $request->validate(['identifier' => ['required', 'string'], 'password' => ['required', 'string'], 'remember' => ['boolean']]);
@@ -138,17 +191,27 @@ class AuthController extends Controller
         }
         if ($field === 'email' && ! $user->email_verified_at) {
             Auth::logout();
-            $emails->send($user, 'verify_email');
-            $request->session()->put('verification_email', $user->email);
+            $request->session()->put([
+                'verification_email' => $user->email,
+                'verification_resend_immediately' => true,
+            ]);
 
-            return to_route('verification.notice')->with('error', 'ابتدا ایمیل حساب را تأیید کنید.');
+            return to_route('verification.notice')->with(
+                'error',
+                'حساب هنوز تأیید نشده است. ورود با رمز هیچ کد اضافه‌ای ارسال نمی‌کند؛ در صفحه تأیید در صورت نیاز کد تازه بگیر.',
+            );
         }
         if ($field === 'phone' && ! $user->phone_verified_at) {
             Auth::logout();
-            $mobiles->send($user->phone, 'verify_mobile');
-            $request->session()->put('verification_phone', $user->phone);
+            $request->session()->put([
+                'verification_phone' => $user->phone,
+                'verification_resend_immediately' => true,
+            ]);
 
-            return to_route('verification.notice')->with('error', 'ابتدا شماره موبایل را تأیید کنید.');
+            return to_route('verification.notice')->with(
+                'error',
+                'شماره موبایل هنوز تأیید نشده است. ورود با رمز هیچ کد اضافه‌ای ارسال نمی‌کند؛ در صفحه تأیید در صورت نیاز کد تازه بگیر.',
+            );
         }
 
         return $this->completeLogin($request, $user);
@@ -157,23 +220,45 @@ class AuthController extends Controller
     public function sendPasswordlessCode(Request $request, MobileCodeService $codes): RedirectResponse
     {
         $phone = PhoneNumber::normalize((string) $request->validate(['phone' => ['required', 'string']])['phone']);
-        if (User::where('phone', $phone)->where('status', 'active')->exists()) {
-            $codes->send($phone, 'passwordless_login');
+        $eligible = User::query()
+            ->where('phone', $phone)
+            ->where('status', 'active')
+            ->whereNotNull('phone_verified_at')
+            ->exists();
+
+        if ($eligible) {
+            try {
+                $codes->send($phone, 'passwordless_login');
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
         }
+
         $request->session()->put('login_phone', $phone);
 
-        return to_route('login.otp.notice')->with('success', 'اگر حساب تأییدشده‌ای با این شماره وجود داشته باشد، کد ارسال شده است.');
+        return to_route('login.otp.notice')->with(
+            'success',
+            'اگر حساب تأییدشده‌ای با این شماره وجود داشته باشد، کد ورود آماده است؛ اگر SMS نرسید از گزینه تلگرام استفاده کن.',
+        );
     }
 
     public function confirmPasswordlessLogin(Request $request, MobileCodeService $codes): RedirectResponse
     {
         $phone = (string) $request->session()->get('login_phone');
         $data = $request->validate(['code' => ['required', 'digits:6']]);
-        $user = User::where('phone', $phone)->where('status', 'active')->firstOrFail();
-        $codes->verify($phone, 'passwordless_login', $data['code']);
-        if (! $user->phone_verified_at) {
-            $user->forceFill(['phone_verified_at' => now()])->save();
+        $user = User::query()
+            ->where('phone', $phone)
+            ->where('status', 'active')
+            ->whereNotNull('phone_verified_at')
+            ->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'code' => 'کد ورود نامعتبر یا حساب برای ورود با کد آماده نیست.',
+            ]);
         }
+
+        $codes->verify($phone, 'passwordless_login', $data['code']);
         $request->session()->forget('login_phone');
         Auth::login($user);
 
@@ -198,6 +283,36 @@ class AuthController extends Controller
         Auth::login($user);
 
         return $this->completeLogin($request, $user)->with('success', 'حساب شما با موفقیت فعال شد.');
+    }
+
+    public function sendVerificationTelegram(
+        Request $request,
+        MobileCodeService $codes,
+        TelegramUserLinkService $telegramLinks,
+    ): RedirectResponse {
+        $phone = (string) $request->session()->get('verification_phone');
+        $user = $phone !== ''
+            ? User::query()->where('phone', $phone)->where('status', 'active')->first()
+            : null;
+
+        if (! $user || $user->phone_verified_at) {
+            throw ValidationException::withMessages([
+                'telegram' => 'درخواست تأیید موبایل معتبر نیست.',
+            ]);
+        }
+
+        if (! $telegramLinks->hasRecentPhoneProof($user)) {
+            throw ValidationException::withMessages([
+                'telegram' => 'برای جلوگیری از دور زدن تأیید شماره، ابتدا داخل Bot شماره خودت را با دکمه رسمی Telegram به اشتراک بگذار.',
+            ]);
+        }
+
+        $codes->sendViaTelegram($phone, 'verify_mobile', true);
+
+        return back()->with(
+            'success',
+            'کد تأیید همین شماره در چت خصوصی Bot ارسال شد.',
+        );
     }
 
     public function resendVerification(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse

@@ -54,7 +54,7 @@ export default function Login({ redirect }: { redirect?: string }) {
                     onClick={() => setOtp(true)}
                     type="button"
                 >
-                    ورود پیامکی
+                    ورود با کد
                 </button>
             </div>
             {otp ? (
@@ -78,8 +78,12 @@ export default function Login({ redirect }: { redirect?: string }) {
                         />
                     </Field>
                     <button className={authButton} disabled={code.processing}>
-                        دریافت کد ورود
+                        دریافت کد ورود با SMS
                     </button>
+                    <p className="text-center text-[11px] leading-5 text-slate-500">
+                        اگر SMS نرسید، در مرحله بعد می‌توانی کد را از Bot
+                        تلگرامِ متصل به همین حساب بگیری.
+                    </p>
                 </form>
             ) : (
                 <form

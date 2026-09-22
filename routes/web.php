@@ -79,6 +79,7 @@ Route::middleware('guest')->group(function () {
     Route::get('verify-email', [AuthController::class, 'verifyAccount'])->name('verification.notice');
     Route::post('verify-email', [AuthController::class, 'confirmAccount'])->middleware('throttle:8,1')->name('verification.verify');
     Route::post('verify-email/resend', [AuthController::class, 'resendVerification'])->middleware('throttle:2,1')->name('verification.resend');
+    Route::post('verify-email/telegram', [AuthController::class, 'sendVerificationTelegram'])->middleware('throttle:2,1')->name('verification.telegram');
     Route::get('forgot-password', [AuthController::class, 'forgotPassword'])->name('password.request');
     Route::post('forgot-password', [AuthController::class, 'sendResetCode'])->middleware('throttle:3,1')->name('password.email');
     Route::get('reset-password', [AuthController::class, 'resetPassword'])->name('password.reset');
