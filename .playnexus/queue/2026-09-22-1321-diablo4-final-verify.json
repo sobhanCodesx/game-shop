@@ -1,0 +1,1 @@
+{"job_id":"feed-diablo4-final-verify-20260922-1321","tool":"query_playnexus_graph","arguments":{"query":"query VerifyFeed { content(id: 72, type: \"post\") { id type title status publishedAt feedBadge game { id name } } }","variables":{},"operation_name":"VerifyFeed"}}
