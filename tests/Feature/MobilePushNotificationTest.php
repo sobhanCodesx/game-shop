@@ -105,6 +105,7 @@ class MobilePushNotificationTest extends TestCase
 
         $this->postJson('/api/v1/auth/passwordless/request', [
             'phone' => $user->phone,
+            'installation_id' => $trusted->installation_id,
         ])->assertOk();
 
         $record = \App\Models\MobileVerificationCode::query()
@@ -121,6 +122,40 @@ class MobilePushNotificationTest extends TestCase
                 && ($job->payload['code'] ?? null) === $code
                 && ! str_contains((string) ($job->payload['message'] ?? ''), $code);
         });
+    }
+
+    public function test_passwordless_otp_push_rejects_an_installation_owned_by_another_account(): void
+    {
+        config()->set('services.expo_push.enabled', true);
+        Queue::fake();
+
+        $user = User::factory()->create([
+            'phone' => '09129876543',
+            'phone_verified_at' => now(),
+            'status' => 'active',
+        ]);
+        $other = User::factory()->create();
+
+        $otherDevice = MobileDevice::query()->create([
+            'user_id' => $other->id,
+            'installation_id' => (string) Str::uuid(),
+            'push_token' => 'ExponentPushToken[foreign_installation]',
+            'push_provider' => 'expo',
+            'platform' => 'android',
+            'push_enabled' => true,
+            'last_seen_at' => now(),
+        ]);
+
+        $this->postJson('/api/v1/auth/passwordless/request', [
+            'phone' => $user->phone,
+            'installation_id' => $otherDevice->installation_id,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('mobile_verification_codes', [
+            'phone' => $user->phone,
+            'purpose' => 'passwordless_login',
+        ]);
+        Queue::assertNotPushed(SendExpoPushNotification::class);
     }
 
     public function test_expo_rejection_disables_invalid_token(): void
