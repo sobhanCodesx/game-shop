@@ -6,7 +6,9 @@ use App\Jobs\SendExpoPushNotification;
 use App\Models\MobileDevice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -68,6 +70,57 @@ class MobilePushNotificationTest extends TestCase
         $this->actingAs($owner)->deleteJson(route('mobile.devices.destroy', $device->installation_id))
             ->assertOk()->assertJson(['unregistered' => true]);
         $this->assertDatabaseMissing('mobile_devices', ['id' => $device->id]);
+    }
+
+    public function test_passwordless_login_pushes_the_same_otp_only_to_the_users_trusted_devices(): void
+    {
+        config()->set('services.expo_push.enabled', true);
+        Queue::fake();
+
+        $user = User::factory()->create([
+            'phone' => '09121234567',
+            'phone_verified_at' => now(),
+            'status' => 'active',
+        ]);
+        $other = User::factory()->create();
+
+        $trusted = MobileDevice::query()->create([
+            'user_id' => $user->id,
+            'installation_id' => (string) Str::uuid(),
+            'push_token' => 'ExponentPushToken[trusted_auth_device]',
+            'push_provider' => 'expo',
+            'platform' => 'android',
+            'push_enabled' => true,
+            'last_seen_at' => now(),
+        ]);
+        MobileDevice::query()->create([
+            'user_id' => $other->id,
+            'installation_id' => (string) Str::uuid(),
+            'push_token' => 'ExponentPushToken[other_users_device]',
+            'push_provider' => 'expo',
+            'platform' => 'android',
+            'push_enabled' => true,
+            'last_seen_at' => now(),
+        ]);
+
+        $this->postJson('/api/v1/auth/passwordless/request', [
+            'phone' => $user->phone,
+        ])->assertOk();
+
+        $record = \App\Models\MobileVerificationCode::query()
+            ->where('phone', $user->phone)
+            ->where('purpose', 'passwordless_login')
+            ->firstOrFail();
+        $code = Crypt::decryptString((string) $record->code_ciphertext);
+
+        Queue::assertPushed(SendExpoPushNotification::class, function ($job) use ($trusted, $code, $user): bool {
+            return $job->deviceIds === [$trusted->id]
+                && ($job->payload['type'] ?? null) === 'auth_otp'
+                && ($job->payload['purpose'] ?? null) === 'passwordless_login'
+                && ($job->payload['phone'] ?? null) === $user->phone
+                && ($job->payload['code'] ?? null) === $code
+                && ! str_contains((string) ($job->payload['message'] ?? ''), $code);
+        });
     }
 
     public function test_expo_rejection_disables_invalid_token(): void
