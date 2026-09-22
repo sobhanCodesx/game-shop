@@ -52,28 +52,26 @@ class MobileCodeService
         string $purpose,
         bool $allowUnverifiedPhone = false,
     ): void {
-        $query = User::query()
-            ->where('phone', $phone)
-            ->where('status', 'active')
-            ->whereNotNull('telegram_chat_id')
-            ->whereNotNull('telegram_linked_at');
+        $settings = $this->telegramSettings->resolved();
 
-        if (! $allowUnverifiedPhone) {
-            $query->whereNotNull('phone_verified_at');
+        if (! ($settings['enabled'] ?? false) || blank($settings['bot_token'] ?? null)) {
+            throw ValidationException::withMessages([
+                'telegram' => 'ارسال کد از Telegram موقتاً در دسترس نیست؛ از SMS یا رمز عبور استفاده کن.',
+            ]);
         }
 
-        $user = $query->first();
+        $user = $this->telegramUser($phone, $allowUnverifiedPhone);
 
-        if (! $user || ! $this->telegramAvailable($phone, $allowUnverifiedPhone)) {
+        if (! $user) {
             throw ValidationException::withMessages([
-                'telegram' => 'تلگرام هنوز به این حساب PlayNexus متصل نشده است.',
+                'telegram' => 'برای این درخواست امکان ارسال کد در Telegram وجود ندارد؛ از SMS یا رمز عبور استفاده کن.',
             ]);
         }
 
         $record = MobileVerificationCode::query()->where(compact('phone', 'purpose'))->first();
         if ($record?->telegram_sent_at?->gt(now()->subSeconds(60))) {
             throw ValidationException::withMessages([
-                'telegram' => 'کد تلگرام همین الان ارسال شده؛ کمی صبر کنید.',
+                'telegram' => 'کد Telegram همین الان ارسال شده؛ کمی صبر کن و همان کد را استفاده کن.',
             ]);
         }
 
@@ -86,7 +84,7 @@ class MobileCodeService
             }
         }
 
-        if (! is_string($code) || ! preg_match('/^\d{6}$/', $code)) {
+        if (! is_string($code) || ! preg_match('/^\\d{6}$/', $code)) {
             [$record, $code] = $this->issue($phone, $purpose);
         }
 
@@ -96,12 +94,20 @@ class MobileCodeService
             default => 'کد تأیید PlayNexus',
         };
 
-        $this->telegram->sendMessage(
-            (string) $user->telegram_chat_id,
-            "🔐 <b>{$title}</b>\n"
-            ."کد شما: <code>{$code}</code>\n\n"
-            ."این کد را در اختیار هیچ‌کس قرار نده. اعتبار کد ۱۰ دقیقه است.",
-        );
+        try {
+            $this->telegram->sendMessage(
+                (string) $user->telegram_chat_id,
+                "🔐 <b>{$title}</b>\n"
+                ."کد شما: <code>{$code}</code>\n\n"
+                ."این کد را در اختیار هیچ‌کس قرار نده. اعتبار کد ۱۰ دقیقه است.",
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'telegram' => 'ارتباط با Telegram برقرار نشد؛ SMS یا رمز عبور را امتحان کن و کمی بعد دوباره تلاش کن.',
+            ]);
+        }
 
         $record->forceFill(['telegram_sent_at' => now()])->save();
     }
@@ -110,10 +116,13 @@ class MobileCodeService
     {
         $settings = $this->telegramSettings->resolved();
 
-        if (! ($settings['enabled'] ?? false) || blank($settings['bot_token'] ?? null)) {
-            return false;
-        }
+        return ($settings['enabled'] ?? false)
+            && filled($settings['bot_token'] ?? null)
+            && $this->telegramUser($phone, $allowUnverifiedPhone) !== null;
+    }
 
+    private function telegramUser(string $phone, bool $allowUnverifiedPhone = false): ?User
+    {
         $query = User::query()
             ->where('phone', $phone)
             ->where('status', 'active')
@@ -124,7 +133,7 @@ class MobileCodeService
             $query->whereNotNull('phone_verified_at');
         }
 
-        return $query->exists();
+        return $query->first();
     }
 
     public function verify(string $phone, string $purpose, string $code): void
