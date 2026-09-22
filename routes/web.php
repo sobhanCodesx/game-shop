@@ -207,6 +207,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::middleware('super-admin')->group(function () {
         Route::get('telegram-bot', [TelegramBotSettingsController::class, 'index'])->name('telegram-bot.index');
         Route::put('telegram-bot', [TelegramBotSettingsController::class, 'update'])->name('telegram-bot.update');
+        Route::post('telegram-bot/run', [TelegramBotSettingsController::class, 'run'])->middleware('throttle:4,1')->name('telegram-bot.run');
+        Route::post('telegram-bot/stop', [TelegramBotSettingsController::class, 'stop'])->middleware('throttle:4,1')->name('telegram-bot.stop');
         Route::post('telegram-bot/test', [TelegramBotSettingsController::class, 'test'])->middleware('throttle:6,1')->name('telegram-bot.test');
         Route::post('telegram-bot/webhook', [TelegramBotSettingsController::class, 'registerWebhook'])->middleware('throttle:6,1')->name('telegram-bot.webhook.register');
         Route::delete('telegram-bot/webhook', [TelegramBotSettingsController::class, 'deleteWebhook'])->middleware('throttle:6,1')->name('telegram-bot.webhook.destroy');
