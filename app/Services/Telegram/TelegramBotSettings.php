@@ -119,6 +119,10 @@ final class TelegramBotSettings
             'configured' => filled($settings['bot_token']) && filled($settings['admin_user_id']),
             'webhook_url' => $this->webhookUrl($settings),
             'max_download_bytes' => (int) config('telegram_bot.max_download_bytes', 20 * 1024 * 1024),
+            'mtproto_max_download_bytes' => min(
+                (int) config('telegram_bot.mtproto.max_download_bytes', 2 * 1024 * 1024 * 1024),
+                (int) config('content_agent.uploads.max_size', 300 * 1024 * 1024),
+            ),
         ];
     }
 
