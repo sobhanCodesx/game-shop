@@ -1,0 +1,9 @@
+{
+  "job_id": "2026-09-22-1019-publish-ds3-movie",
+  "tool": "set_content_state",
+  "arguments": {
+    "resource": "video",
+    "id": 70,
+    "state": "published"
+  }
+}
