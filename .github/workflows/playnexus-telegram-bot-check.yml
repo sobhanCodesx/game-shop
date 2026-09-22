@@ -13,6 +13,7 @@ on:
       - 'app/Services/Telegram/**'
       - 'config/telegram_bot.php'
       - 'database/migrations/2026_09_22_130000_create_telegram_bot_tables.php'
+      - 'deploy/cloudflare/telegram-relay/**'
       - 'resources/js/Pages/Admin/TelegramBot/**'
       - 'resources/js/config/admin-navigation.ts'
       - 'routes/api.php'
@@ -30,6 +31,7 @@ on:
       - 'app/Services/Telegram/**'
       - 'config/telegram_bot.php'
       - 'database/migrations/2026_09_22_130000_create_telegram_bot_tables.php'
+      - 'deploy/cloudflare/telegram-relay/**'
       - 'resources/js/Pages/Admin/TelegramBot/**'
       - 'resources/js/config/admin-navigation.ts'
       - 'routes/api.php'
@@ -68,6 +70,9 @@ jobs:
           php -l config/telegram_bot.php
           php -l database/migrations/2026_09_22_130000_create_telegram_bot_tables.php
           php -l tests/Feature/TelegramAdminBotTest.php
+
+      - name: Cloudflare relay syntax
+        run: node --check deploy/cloudflare/telegram-relay/worker.js
 
       - name: Validate Composer files
         run: composer validate --no-check-publish
