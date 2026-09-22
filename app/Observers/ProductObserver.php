@@ -12,7 +12,7 @@ class ProductObserver
 {
     public function created(Product $product): void
     {
-        app(StorefrontPageCache::class)->invalidate('channel');
+        app(StorefrontPageCache::class)->invalidate('channel', 'home');
 
         if ($this->isPublished($product)) {
             $this->dispatch($product);
@@ -22,7 +22,7 @@ class ProductObserver
     public function updated(Product $product): void
     {
         if ($product->wasChanged(['title', 'slug', 'price', 'discount_price', 'status', 'visibility', 'published_at'])) {
-            app(StorefrontPageCache::class)->invalidate('channel');
+            app(StorefrontPageCache::class)->invalidate('channel', 'home');
         }
 
         if (! $this->wasPublished($product) && $this->isPublished($product)) {
@@ -36,12 +36,12 @@ class ProductObserver
 
     public function deleted(Product $product): void
     {
-        app(StorefrontPageCache::class)->invalidate('channel');
+        app(StorefrontPageCache::class)->invalidate('channel', 'home');
     }
 
     public function restored(Product $product): void
     {
-        app(StorefrontPageCache::class)->invalidate('channel');
+        app(StorefrontPageCache::class)->invalidate('channel', 'home');
     }
 
     private function dispatch(Product $product): void
