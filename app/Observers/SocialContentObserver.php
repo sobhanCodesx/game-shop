@@ -16,6 +16,8 @@ class SocialContentObserver
             app(StorefrontPageCache::class)->invalidate('playlist', 'channel');
         } elseif ($content->type === 'post') {
             app(StorefrontPageCache::class)->invalidate('channel');
+        } elseif ($content->type === 'short') {
+            app(StorefrontPageCache::class)->invalidate('short');
         }
 
         if ($this->isPublished($content)) {
@@ -40,6 +42,17 @@ class SocialContentObserver
                     app(StorefrontPageCache::class)->invalidate('playlist');
                 }
             }
+        }
+
+        if (
+            ($content->type === 'short' || $content->getRawOriginal('type') === 'short')
+            && $content->wasChanged([
+                'game_id', 'type', 'title', 'slug', 'excerpt', 'body', 'media_type',
+                'thumbnail', 'video_path', 'video_mime', 'duration', 'link_url', 'link_label',
+                'sort_order', 'status', 'published_at',
+            ])
+        ) {
+            app(StorefrontPageCache::class)->invalidate('short');
         }
 
         $wasPublished = $this->wasPublished($content);
