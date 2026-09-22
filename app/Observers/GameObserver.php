@@ -12,6 +12,7 @@ class GameObserver
 {
     public function created(Game $game): void
     {
+        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio');
         app(SitemapCacheService::class)->invalidate();
     }
 
@@ -34,11 +35,13 @@ class GameObserver
 
     public function deleted(Game $game): void
     {
+        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio');
         app(SitemapCacheService::class)->invalidate();
     }
 
     public function restored(Game $game): void
     {
+        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio');
         app(SitemapCacheService::class)->invalidate();
     }
 }
