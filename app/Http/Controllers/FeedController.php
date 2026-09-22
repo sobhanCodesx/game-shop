@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\SocialComment;
 use App\Models\SocialContent;
 use App\Services\ContentViewService;
+use App\Services\FeedPageDataService;
 use App\Services\FeedService;
 use App\Services\MediaStorage;
 use App\Services\StorefrontDataService;
@@ -17,7 +18,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -120,8 +120,13 @@ class FeedController extends Controller
         ]);
     }
 
-    public function show(Request $request, SocialContent $content, FeedService $feed, StorefrontDataService $storefront, ContentViewService $views): RedirectResponse|Response
-    {
+    public function show(
+        Request $request,
+        SocialContent $content,
+        StorefrontDataService $storefront,
+        ContentViewService $views,
+        FeedPageDataService $page,
+    ): RedirectResponse|Response {
         $this->ensureVisible($content);
 
         if ($content->type === 'video') {
@@ -132,25 +137,12 @@ class FeedController extends Controller
         }
 
         $views->record($request, $content);
-        $item = $feed->single($content, $request->user());
-        $canonical = route('posts.show', $content->slug);
-        $description = Str::limit((string) ($item['body'] ?: $content->title), 160, '…');
-        $metaDescription = $content->seo_description ?: $description;
-        $primaryMedia = collect($item['media'])->firstWhere('type', 'image')
-            ?? collect($item['media'])->first();
-        $image = data_get($primaryMedia, 'type') === 'image'
-            ? data_get($primaryMedia, 'url')
-            : data_get($primaryMedia, 'thumbnail');
-        $siteName = (string) config('seo.site_name', 'PlayNexus');
-        $locale = (string) config('seo.locale', 'fa-IR');
-        $logo = url((string) config('seo.default_image', '/logo.png'));
-        $organizationId = route('home').'#organization';
-        $authorUrl = data_get($item, 'author.url');
-        $breadcrumbs = [
-            ['name' => 'خانه', 'url' => route('home', absolute: false), 'current' => false],
-            ['name' => 'فید گیمینگ', 'url' => route('feed.index', absolute: false), 'current' => false],
-            ['name' => $content->title, 'url' => route('posts.show', $content->slug, false), 'current' => true],
-        ];
+
+        $pageData = $page->withLiveState(
+            $page->get($content),
+            $request->user(),
+        );
+
         $productRelations = [
             'category:id,name',
             'type:id,title',
@@ -162,74 +154,19 @@ class FeedController extends Controller
         ];
 
         return Inertia::render('Feed/Show', [
-            ...Seo::page([
-                'title' => $content->seo_title ?: $content->title,
-                'description' => $metaDescription,
-                'canonical' => $canonical,
-                'robots' => 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
-                'type' => 'article',
-                'siteName' => $siteName,
-                'locale' => $locale,
-                'image' => $image ? url($image) : $logo,
-                'imageAlt' => data_get($primaryMedia, 'alt') ?: $content->title,
-                'structuredData' => [
-                    '@context' => 'https://schema.org',
-                    '@graph' => [
-                        [
-                            '@type' => 'Organization',
-                            '@id' => $organizationId,
-                            'name' => $siteName,
-                            'url' => route('home'),
-                            'logo' => ['@type' => 'ImageObject', 'url' => $logo],
-                        ],
-                        [
-                            '@type' => $content->feed_type === 'news' ? 'NewsArticle' : 'Article',
-                            '@id' => $canonical.'#post',
-                            'headline' => $content->title,
-                            'description' => $metaDescription,
-                            'url' => $canonical,
-                            'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $canonical],
-                            'isPartOf' => ['@type' => 'CollectionPage', '@id' => route('feed.index').'#webpage'],
-                            'inLanguage' => $locale,
-                            'datePublished' => $content->published_at?->toISOString(),
-                            'dateModified' => $content->updated_at?->toISOString(),
-                            'author' => ['@id' => $organizationId],
-                            'publisher' => ['@id' => $organizationId],
-                            ...($image ? ['image' => [[
-                                '@type' => 'ImageObject',
-                                'url' => url($image),
-                                ...(data_get($primaryMedia, 'width') ? ['width' => (int) data_get($primaryMedia, 'width')] : []),
-                                ...(data_get($primaryMedia, 'height') ? ['height' => (int) data_get($primaryMedia, 'height')] : []),
-                            ]]] : []),
-                            ...($content->game && $authorUrl ? ['about' => [
-                                '@type' => 'VideoGame',
-                                'name' => $content->game->name,
-                                'url' => url($authorUrl),
-                            ]] : []),
-                        ],
-                        [
-                            '@type' => 'BreadcrumbList',
-                            '@id' => $canonical.'#breadcrumb',
-                            'itemListElement' => collect($breadcrumbs)->map(fn (array $crumb, int $index) => [
-                                '@type' => 'ListItem',
-                                'position' => $index + 1,
-                                'name' => $crumb['name'],
-                                'item' => url($crumb['url']),
-                            ])->all(),
-                        ],
-                    ],
-                ],
-            ]),
-            'item' => $item,
-            'breadcrumbs' => $breadcrumbs,
-            'latestFeed' => $feed->latestPostsExcept($request, $content->id),
-            'latestVideos' => SocialContent::query()->published()->where('type', 'video')
-                ->with('game:id,name,slug,cover')
-                ->latest('published_at')->latest('id')->limit(4)->get()
-                ->map(fn (SocialContent $video) => $storefront->content($video))->values(),
-            'latestProducts' => Product::query()->with($productRelations)->publiclyVisible()
-                ->latest()->limit(4)->get()
-                ->map(fn (Product $product) => $storefront->product($product, $request->user()))->values(),
+            ...$page->seo($pageData['seo_input']),
+            'item' => $pageData['item'],
+            'breadcrumbs' => $pageData['breadcrumbs'],
+            'latestFeed' => $pageData['latestFeed'],
+            'latestVideos' => $pageData['latestVideos'],
+            'latestProducts' => Product::query()
+                ->with($productRelations)
+                ->publiclyVisible()
+                ->latest()
+                ->limit(4)
+                ->get()
+                ->map(fn (Product $product) => $storefront->product($product, $request->user()))
+                ->values(),
         ]);
     }
 
