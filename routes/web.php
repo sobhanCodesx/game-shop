@@ -141,6 +141,7 @@ Route::middleware('auth')->group(function () {
     Route::post('feed/{content:slug}/save', [FeedController::class, 'save'])->middleware('throttle:60,1')->name('feed.save');
     Route::post('feed/{content:slug}/comments', [FeedController::class, 'storeComment'])->middleware('throttle:20,1')->name('feed.comments.store');
     Route::post('videos/{content:slug}/reaction', [VideoCommunityController::class, 'react'])->middleware('throttle:60,1')->name('videos.reaction');
+    Route::post('shorts/{content:slug}/reaction', [VideoCommunityController::class, 'react'])->middleware('throttle:60,1')->name('shorts.reaction');
     Route::post('videos/{content:slug}/comments', [VideoCommunityController::class, 'comment'])->middleware('throttle:20,1')->name('videos.comments.store');
     Route::post('comments/{comment}/like', [VideoCommunityController::class, 'likeComment'])->middleware('throttle:60,1')->name('comments.like');
     Route::delete('comments/{comment}', [VideoCommunityController::class, 'destroyComment'])->name('comments.destroy');
