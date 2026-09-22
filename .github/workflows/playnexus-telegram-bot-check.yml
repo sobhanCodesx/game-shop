@@ -45,7 +45,7 @@ jobs:
     timeout-minutes: 20
     env:
       APP_ENV: testing
-      APP_KEY: base64:dGVzdC10ZWxlZ3JhbS1ib3Qta2V5LTMyaGFzaA==
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       DB_CONNECTION: sqlite
       DB_DATABASE: ':memory:'
       CACHE_STORE: array
