@@ -1,6 +1,7 @@
 import { Avatar, Button, Chip, Input } from "@heroui/react";
 import { Link, router, usePage } from "@inertiajs/react";
 import {
+    Bot,
     ChevronDown,
     ChevronLeft,
     CircleUserRound,
@@ -64,7 +65,7 @@ export default function DesktopNavigation({
     hasFreshContent,
 }: Props) {
     const page = usePage<SharedPageProps>();
-    const { cart } = page.props;
+    const { cart, storefront } = page.props;
     const pathname = page.url.split("?")[0];
     const matchesPath = (...paths: string[]) =>
         paths.some(
@@ -438,6 +439,17 @@ export default function DesktopNavigation({
                         <Radar size={15} className="shrink-0" />
                         رادار بازی‌ها
                     </Link>
+
+                    {storefront.nexus_ai?.enabled &&
+                        storefront.nexus_ai.show_in_nav && (
+                            <Link
+                                className={navLinkClass(matchesPath("/nexus-ai"))}
+                                href="/nexus-ai"
+                            >
+                                <Bot size={15} className="shrink-0" />
+                                {storefront.nexus_ai.nav_label}
+                            </Link>
+                        )}
 
                     <Link
                         className={`${navLinkClass(matchesPath("/videos", "/shorts", "/channels"))} relative`}
