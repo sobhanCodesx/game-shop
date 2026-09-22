@@ -1,0 +1,1 @@
+{"job_id":"feed-engine-20260922-feed68-final","tool":"query_playnexus_graph","arguments":{"query":"query VerifyFeed { content(id: 68, type: \"post\") { id type title status publishedAt game { id name } } }","variables":{},"operation_name":"VerifyFeed"}}
