@@ -82,6 +82,7 @@ export interface StorefrontContent {
     thumbnail_url: string | null;
     video_url: string | null;
     duration: number | null;
+    media_type?: "image" | "video" | null;
     views: number;
     likes_count: number;
     comments_count: number;
