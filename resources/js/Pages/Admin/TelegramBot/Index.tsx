@@ -80,6 +80,7 @@ interface BotSettings {
     configured: boolean;
     webhook_url: string;
     max_download_bytes: number;
+    mtproto_max_download_bytes: number;
 }
 
 interface MtProtoCompatibility {
@@ -253,6 +254,12 @@ export default function TelegramBotIndex({
     const runBot = () =>
         form.post("/admin/telegram-bot/run", {
             preserveScroll: true,
+        });
+
+    const activateLargeFiles = () =>
+        form.post("/admin/telegram-bot/mtproto/test", {
+            preserveScroll: true,
+            onSuccess: () => form.setData("mtproto_enabled", true),
         });
 
     const stopBot = () => {
@@ -924,8 +931,9 @@ export default function TelegramBotIndex({
                                     فقط یک‌بار:
                                 </strong>{" "}
                                 API ID و API Hash حساب Telegram را وارد کن و
-                                <b className="text-slate-200"> Run Bot </b>
-                                را بزن. بعد از آن فایل بزرگ را مثل فایل عادی برای Bot می‌فرستی؛ انتخاب مسیر با خود PlayNexus است.
+                                <b className="text-slate-200"> «فعال‌سازی فایل‌های بزرگ» </b>
+                                را بزن. ذخیره، ساخت session و تست اتصال همگی همان یک کلیک انجام می‌شوند.
+                                بعد از آن فایل بزرگ را مثل فایل عادی برای Bot می‌فرستی.
                             </div>
 
                             <div className="grid gap-4 md:grid-cols-2">
@@ -991,7 +999,7 @@ export default function TelegramBotIndex({
                                 </label>
                             </div>
 
-                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                                 <div className={`${glassInset} p-3`}>
                                     <p className="text-[9px] font-black uppercase tracking-wider text-slate-600">
                                         Host
@@ -1012,17 +1020,30 @@ export default function TelegramBotIndex({
                                 </div>
                                 <div className={`${glassInset} p-3`}>
                                     <p className="text-[9px] font-black uppercase tracking-wider text-slate-600">
-                                        Session
+                                        سقف PlayNexus
                                     </p>
                                     <p className="mt-1 text-xs font-bold text-slate-300">
-                                        {settings.mtproto_initialized_at
-                                            ? "Initialized"
-                                            : "Not initialized"}
+                                        {Math.round(
+                                            settings.mtproto_max_download_bytes /
+                                                1024 /
+                                                1024,
+                                        ).toLocaleString("fa-IR")}{" "}
+                                        MB
                                     </p>
                                 </div>
                                 <div className={`${glassInset} p-3`}>
                                     <p className="text-[9px] font-black uppercase tracking-wider text-slate-600">
-                                        Last health
+                                        Session
+                                    </p>
+                                    <p className="mt-1 text-xs font-bold text-slate-300">
+                                        {settings.mtproto_initialized_at
+                                            ? "آماده ✅"
+                                            : "هنوز ساخته نشده"}
+                                    </p>
+                                </div>
+                                <div className={`${glassInset} p-3`}>
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-600">
+                                        آخرین تست
                                     </p>
                                     <p className="mt-1 text-xs font-bold text-slate-300">
                                         {formatDate(settings.mtproto_last_health_at)}
@@ -1040,23 +1061,47 @@ export default function TelegramBotIndex({
                                 </div>
                             )}
 
-                            <div className="flex flex-wrap gap-2">
+                            {form.errors.mtproto && (
+                                <div className="flex items-start gap-2 rounded-2xl border border-rose-400/15 bg-rose-400/[0.045] p-3 text-xs leading-6 text-rose-200">
+                                    <AlertTriangle
+                                        className="mt-0.5 shrink-0"
+                                        size={15}
+                                    />
+                                    {form.errors.mtproto}
+                                </div>
+                            )}
+
+                            <div className="flex flex-wrap items-center gap-2">
                                 <Button
-                                    className={glassButton}
-                                    isDisabled={!settings.mtproto_configured}
-                                    onPress={() =>
-                                        action(
-                                            "post",
-                                            "/admin/telegram-bot/mtproto/test",
-                                        )
+                                    className="border border-emerald-300/15 bg-emerald-400/10 shadow-xl shadow-emerald-950/20 backdrop-blur-xl"
+                                    isDisabled={
+                                        form.processing ||
+                                        !mtprotoCompatibility.compatible ||
+                                        form.data.mtproto_api_id < 1 ||
+                                        (!form.data.mtproto_api_hash &&
+                                            !settings.mtproto_api_hash_configured)
                                     }
-                                    variant="secondary"
+                                    onPress={activateLargeFiles}
+                                    variant="primary"
                                 >
                                     <CheckCircle2 size={16} />
-                                    تست MTProto
+                                    {settings.mtproto_initialized_at
+                                        ? "تست و تعمیر فایل‌های بزرگ"
+                                        : "فعال‌سازی فایل‌های بزرگ"}
                                 </Button>
-                                <span className="self-center text-[10px] leading-5 text-slate-600">
-                                    برای تست مقادیر تازه، اول Save یا Run Bot را بزن.
+
+                                <a
+                                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 text-xs font-bold text-slate-300 transition hover:border-cyan-300/20 hover:text-cyan-200"
+                                    href="https://my.telegram.org/apps"
+                                    rel="noreferrer"
+                                    target="_blank"
+                                >
+                                    <Globe2 size={15} />
+                                    دریافت API ID / Hash
+                                </a>
+
+                                <span className="text-[10px] leading-5 text-slate-600">
+                                    این دو مقدار فقط یک‌بار لازم‌اند؛ API Hash رمزنگاری‌شده ذخیره می‌شود.
                                 </span>
                             </div>
                         </div>
