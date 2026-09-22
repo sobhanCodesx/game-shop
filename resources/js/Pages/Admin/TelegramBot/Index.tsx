@@ -8,19 +8,40 @@ import {
 import { Head, router, useForm } from "@inertiajs/react";
 import {
     Activity,
+    AlertTriangle,
+    ArrowLeftRight,
     Bot,
+    Check,
     CheckCircle2,
+    Cloud,
+    Database,
+    EyeOff,
+    FileKey2,
+    Gauge,
+    Globe2,
     KeyRound,
     LockKeyhole,
     Network,
+    Power,
+    Radio,
     RefreshCw,
+    Rocket,
+    Save,
     Send,
     ServerCog,
     ShieldCheck,
+    Sparkles,
     Trash2,
     Webhook,
+    Wifi,
+    Zap,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
 import AdminLayout from "../../../Layouts/AdminLayout";
+
+type TransportMode = "auto" | "relay" | "proxy" | "direct";
+type ProxyType = "socks5" | "socks5h" | "http" | "https";
 
 interface BotSettings {
     enabled: boolean;
@@ -29,11 +50,11 @@ interface BotSettings {
     publish_enabled: boolean;
     destructive_enabled: boolean;
     media_enabled: boolean;
-    transport_mode: "auto" | "relay" | "proxy" | "direct";
+    transport_mode: TransportMode;
     api_base_url: string;
     relay_base_url: string;
     use_proxy: boolean;
-    proxy_type: "socks5" | "socks5h" | "http" | "https";
+    proxy_type: ProxyType;
     proxy_host: string;
     proxy_port: number;
     proxy_username: string;
@@ -77,6 +98,14 @@ interface AuditRow {
     created_at?: string | null;
 }
 
+interface StatusTileProps {
+    icon: LucideIcon;
+    label: string;
+    value: string;
+    detail?: string;
+    tone?: "cyan" | "emerald" | "violet" | "amber" | "rose";
+}
+
 const formatDate = (value?: string | null) =>
     value
         ? new Intl.DateTimeFormat("fa-IR", {
@@ -92,10 +121,75 @@ const statusTone = (status: string) => {
     return "default";
 };
 
-const glassCard =
-    "overflow-hidden border border-white/10 bg-slate-950/60 backdrop-blur-2xl shadow-2xl shadow-black/20 ring-1 ring-inset ring-cyan-400/5";
+const toneMap = {
+    cyan: {
+        icon: "border-cyan-300/15 bg-cyan-400/10 text-cyan-200",
+        glow: "shadow-cyan-950/20",
+        dot: "bg-cyan-300",
+    },
+    emerald: {
+        icon: "border-emerald-300/15 bg-emerald-400/10 text-emerald-200",
+        glow: "shadow-emerald-950/20",
+        dot: "bg-emerald-300",
+    },
+    violet: {
+        icon: "border-violet-300/15 bg-violet-400/10 text-violet-200",
+        glow: "shadow-violet-950/20",
+        dot: "bg-violet-300",
+    },
+    amber: {
+        icon: "border-amber-300/15 bg-amber-400/10 text-amber-200",
+        glow: "shadow-amber-950/20",
+        dot: "bg-amber-300",
+    },
+    rose: {
+        icon: "border-rose-300/15 bg-rose-400/10 text-rose-200",
+        glow: "shadow-rose-950/20",
+        dot: "bg-rose-300",
+    },
+} as const;
+
+const glassPanel =
+    "relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950/60 shadow-2xl shadow-black/20 ring-1 ring-inset ring-white/[0.025] backdrop-blur-3xl";
+const glassInset =
+    "rounded-2xl border border-white/10 bg-white/[0.028] shadow-lg shadow-black/10 backdrop-blur-2xl";
 const glassButton =
-    "border border-white/10 backdrop-blur-xl shadow-lg shadow-black/10 transition-transform duration-200 hover:-translate-y-0.5";
+    "border border-white/10 bg-white/[0.035] shadow-lg shadow-black/10 backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:border-white/20";
+const labelClass =
+    "mb-2 flex items-center gap-2 text-[11px] font-black tracking-wide text-slate-400";
+
+function StatusTile({
+    icon: Icon,
+    label,
+    value,
+    detail,
+    tone = "cyan",
+}: StatusTileProps) {
+    const palette = toneMap[tone];
+
+    return (
+        <div className={`${glassInset} flex min-h-28 items-start gap-3 p-4`}>
+            <div
+                className={`grid size-10 shrink-0 place-items-center rounded-2xl border shadow-xl ${palette.icon} ${palette.glow}`}
+            >
+                <Icon size={18} />
+            </div>
+            <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">
+                    {label}
+                </p>
+                <p className="mt-1 truncate text-sm font-black text-white">
+                    {value}
+                </p>
+                {detail && (
+                    <p className="mt-1 line-clamp-2 text-[10px] leading-5 text-slate-500">
+                        {detail}
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+}
 
 export default function TelegramBotIndex({
     settings,
@@ -138,7 +232,7 @@ export default function TelegramBotIndex({
         url: string,
         confirmation?: string,
     ) => {
-        if (confirmation && !confirm(confirmation)) return;
+        if (confirmation && !window.confirm(confirmation)) return;
 
         if (method === "delete") {
             router.delete(url, { preserveScroll: true });
@@ -153,125 +247,324 @@ export default function TelegramBotIndex({
         webhookInfo?.url === settings.webhook_url &&
         !webhookInfo?.last_error_message;
 
+    const transportReady =
+        form.data.transport_mode === "relay"
+            ? Boolean(
+                  form.data.relay_base_url &&
+                      (form.data.relay_key || settings.relay_key_configured),
+              )
+            : form.data.transport_mode === "proxy"
+              ? Boolean(form.data.use_proxy && form.data.proxy_host)
+              : true;
+
+    const setupChecks = [
+        {
+            label: "Bot Token",
+            ready: settings.bot_token_configured || Boolean(form.data.bot_token),
+        },
+        {
+            label: "Owner ID",
+            ready: Boolean(form.data.admin_user_id),
+        },
+        {
+            label: "Transport",
+            ready: transportReady,
+        },
+        {
+            label: "Webhook",
+            ready: webhookHealthy,
+        },
+    ];
+
+    const setupReadyCount = setupChecks.filter((item) => item.ready).length;
+    const setupPercent = Math.round(
+        (setupReadyCount / setupChecks.length) * 100,
+    );
+
+    const permissions = [
+        {
+            key: "enabled" as const,
+            icon: Power,
+            title: "Bot Runtime",
+            text: "کل Bot را روشن یا خاموش می‌کند.",
+            tone: "emerald" as const,
+        },
+        {
+            key: "write_enabled" as const,
+            icon: Zap,
+            title: "Write",
+            text: "Create و Update با تأیید نهایی.",
+            tone: "cyan" as const,
+        },
+        {
+            key: "publish_enabled" as const,
+            icon: Rocket,
+            title: "Publish",
+            text: "Publish و تغییر state عمومی.",
+            tone: "violet" as const,
+        },
+        {
+            key: "media_enabled" as const,
+            icon: Cloud,
+            title: "Media",
+            text: "دریافت و انتقال مدیا به PlayNexus.",
+            tone: "cyan" as const,
+        },
+        {
+            key: "destructive_enabled" as const,
+            icon: Trash2,
+            title: "Destructive",
+            text: "Delete و عملیات حساس destructive.",
+            tone: "rose" as const,
+        },
+    ];
+
+    const transportOptions: Array<{
+        mode: TransportMode;
+        icon: LucideIcon;
+        title: string;
+        subtitle: string;
+        badge: string;
+    }> = [
+        {
+            mode: "auto",
+            icon: Sparkles,
+            title: "Auto",
+            subtitle: "Relay → Proxy → Direct",
+            badge: "Recommended",
+        },
+        {
+            mode: "relay",
+            icon: Cloud,
+            title: "Cloudflare Relay",
+            subtitle: "Worker خصوصی PlayNexus",
+            badge: "Low friction",
+        },
+        {
+            mode: "proxy",
+            icon: Network,
+            title: "SOCKS / Proxy",
+            subtitle: "SOCKS5H یا HTTP(S)",
+            badge: "Fallback",
+        },
+        {
+            mode: "direct",
+            icon: Globe2,
+            title: "Direct",
+            subtitle: "api.telegram.org",
+            badge: "Native",
+        },
+    ];
+
     return (
         <AdminLayout
             title="ربات اختصاصی Telegram"
-            description="کنسول امن مدیریت PlayNexus از تلگرام؛ فقط Telegram User ID تعریف‌شده در چت خصوصی اجازه اجرا دارد."
+            description="کنسول Owner-only مدیریت PlayNexus، مسیر ارتباطی چندلایه و کنترل کامل عملیات Content Agent."
             actions={
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Chip size="sm">
                         {settings.source === "database"
                             ? "Database override"
                             : "ENV fallback"}
                     </Chip>
                     <Chip size="sm">
-                        Bot API: {settings.bot_username ? `@${settings.bot_username}` : "Not linked"}
+                        {settings.bot_username
+                            ? `@${settings.bot_username}`
+                            : "Bot not linked"}
                     </Chip>
                 </div>
             }
         >
             <Head title="ربات تلگرام" />
 
-            <div className="relative mb-5 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/65 p-5 shadow-2xl shadow-black/30 backdrop-blur-3xl ring-1 ring-inset ring-indigo-400/10 md:p-7">
-                <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-indigo-500/10 blur-3xl" />
-                <div className="pointer-events-none absolute -bottom-28 left-10 size-64 rounded-full bg-cyan-400/10 blur-3xl" />
+            <section className={`${glassPanel} mb-5 p-5 md:p-7`}>
+                <div className="pointer-events-none absolute -right-28 -top-32 size-96 rounded-full bg-indigo-500/15 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-36 left-16 size-80 rounded-full bg-cyan-400/10 blur-3xl" />
+                <div className="pointer-events-none absolute left-1/2 top-0 h-px w-2/3 -translate-x-1/2 bg-gradient-to-r from-transparent via-cyan-300/40 to-transparent" />
 
-                <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+                <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px] xl:items-center">
                     <div className="flex items-start gap-4">
-                        <div className="relative grid size-16 shrink-0 place-items-center rounded-3xl border border-cyan-300/15 bg-white/[0.04] text-cyan-200 shadow-xl shadow-cyan-950/20 backdrop-blur-2xl">
+                        <div className="relative grid size-16 shrink-0 place-items-center rounded-[1.4rem] border border-cyan-300/15 bg-white/[0.045] text-cyan-200 shadow-2xl shadow-cyan-950/30 backdrop-blur-3xl">
                             <Bot size={30} />
-                            <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-slate-950 bg-emerald-400 shadow-lg shadow-emerald-400/40" />
+                            <span
+                                className={`absolute -right-1 -top-1 size-3 rounded-full border-2 border-slate-950 ${
+                                    settings.enabled
+                                        ? "bg-emerald-400 shadow-lg shadow-emerald-400/50"
+                                        : "bg-slate-600"
+                                }`}
+                            />
                         </div>
-                        <div>
-                            <div className="mb-2 flex flex-wrap items-center gap-2">
-                                <span className="text-[10px] font-black tracking-[0.28em] text-cyan-300/80">
+
+                        <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-[10px] font-black tracking-[0.3em] text-cyan-300/75">
                                     PLAYNEXUS BOT CONTROL
                                 </span>
                                 <Chip size="sm">
                                     {settings.enabled ? "ONLINE" : "OFFLINE"}
                                 </Chip>
                             </div>
-                            <h2 className="text-xl font-black text-white md:text-2xl">
-                                مرکز کنترل خصوصی Telegram
+                            <h2 className="mt-2 text-2xl font-black tracking-tight text-white md:text-3xl">
+                                Command Center
                             </h2>
-                            <p className="mt-2 max-w-2xl text-xs leading-6 text-slate-400 md:text-sm">
-                                مدیریت محتوا، انتشار، مدیا و Intelligence با دسترسی Owner-only و مسیر ارتباطی چندلایه.
+                            <p className="mt-3 max-w-2xl text-xs leading-6 text-slate-400 md:text-sm">
+                                یک نقطه کنترل برای هویت Bot، دسترسی‌ها،
+                                Telegram transport، webhook و وضعیت runtime.
+                                Secretها بعد از ذخیره دوباره به مرورگر برنمی‌گردند.
                             </p>
+
+                            <div className="mt-5 flex flex-wrap gap-2">
+                                <span className="rounded-full border border-emerald-300/10 bg-emerald-400/[0.06] px-3 py-1.5 text-[10px] font-bold text-emerald-200">
+                                    🔐 Owner only
+                                </span>
+                                <span className="rounded-full border border-violet-300/10 bg-violet-400/[0.06] px-3 py-1.5 text-[10px] font-bold text-violet-200">
+                                    ✦ Encrypted secrets
+                                </span>
+                                <span className="rounded-full border border-cyan-300/10 bg-cyan-400/[0.06] px-3 py-1.5 text-[10px] font-bold text-cyan-200">
+                                    ↔ Auto fallback
+                                </span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {[
-                            {
-                                label: "Transport",
-                                value: settings.transport_mode.toUpperCase(),
-                            },
-                            {
-                                label: "Relay",
-                                value: settings.relay_configured ? "READY" : "—",
-                            },
-                            {
-                                label: "Write",
-                                value: settings.write_enabled ? "ON" : "OFF",
-                            },
-                            {
-                                label: "Publish",
-                                value: settings.publish_enabled ? "ON" : "OFF",
-                            },
-                        ].map((metric) => (
-                            <div
-                                className="min-w-[108px] rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 shadow-lg shadow-black/10 backdrop-blur-2xl"
-                                key={metric.label}
-                            >
-                                <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">
-                                    {metric.label}
-                                </div>
-                                <div className="mt-1 text-xs font-black text-slate-200">
-                                    {metric.value}
+                    <div className={`${glassInset} p-4`}>
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">
+                                    Setup readiness
+                                </p>
+                                <div className="mt-1 flex items-baseline gap-2">
+                                    <span className="text-3xl font-black text-white">
+                                        {setupPercent}%
+                                    </span>
+                                    <span className="text-[10px] text-slate-500">
+                                        {setupReadyCount}/{setupChecks.length} آماده
+                                    </span>
                                 </div>
                             </div>
-                        ))}
+                            <div className="grid size-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.03] text-cyan-200">
+                                <Gauge size={25} />
+                            </div>
+                        </div>
+
+                        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                            <div
+                                className="h-full rounded-full bg-gradient-to-r from-indigo-400 via-cyan-300 to-emerald-300 transition-all duration-500"
+                                style={{ width: `${setupPercent}%` }}
+                            />
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                            {setupChecks.map((check) => (
+                                <div
+                                    className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                                    key={check.label}
+                                >
+                                    <span
+                                        className={`grid size-5 place-items-center rounded-full ${
+                                            check.ready
+                                                ? "bg-emerald-400/10 text-emerald-300"
+                                                : "bg-slate-800 text-slate-600"
+                                        }`}
+                                    >
+                                        {check.ready ? (
+                                            <Check size={12} />
+                                        ) : (
+                                            <span className="size-1.5 rounded-full bg-current" />
+                                        )}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-slate-400">
+                                        {check.label}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_390px]">
+            <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <StatusTile
+                    detail={
+                        settings.bot_username
+                            ? "هویت Bot از Telegram دریافت شده"
+                            : "بعد از getMe تکمیل می‌شود"
+                    }
+                    icon={Bot}
+                    label="BOT"
+                    tone="violet"
+                    value={
+                        settings.bot_username
+                            ? `@${settings.bot_username}`
+                            : "Not linked"
+                    }
+                />
+                <StatusTile
+                    detail="مسیر فعال ارتباط PlayNexus با Telegram"
+                    icon={ArrowLeftRight}
+                    label="TRANSPORT"
+                    tone="cyan"
+                    value={form.data.transport_mode.toUpperCase()}
+                />
+                <StatusTile
+                    detail={
+                        webhookHealthy
+                            ? "URL و Secret همگام هستند"
+                            : "نیاز به Sync یا بررسی دارد"
+                    }
+                    icon={Webhook}
+                    label="WEBHOOK"
+                    tone={webhookHealthy ? "emerald" : "amber"}
+                    value={webhookHealthy ? "HEALTHY" : "NEEDS SYNC"}
+                />
+                <StatusTile
+                    detail="Updateهای منتظر تحویل در Telegram"
+                    icon={Activity}
+                    label="PENDING"
+                    tone={
+                        (webhookInfo?.pending_update_count ?? 0) > 0
+                            ? "amber"
+                            : "emerald"
+                    }
+                    value={String(webhookInfo?.pending_update_count ?? 0)}
+                />
+            </section>
+
+            <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_400px]">
                 <div className="space-y-5">
-                    <Card className={glassCard} variant="secondary">
-                        <Card.Header className="flex flex-col gap-3 border-b border-slate-800 p-5 md:flex-row md:items-center md:justify-between">
-                            <div>
-                                <div className="flex items-center gap-3">
-                                    <span className="grid size-11 place-items-center rounded-2xl bg-indigo-500/10 text-indigo-300">
-                                        <Bot size={22} />
-                                    </span>
-                                    <div>
-                                        <h2 className="font-black text-white">
-                                            هویت و دسترسی
-                                        </h2>
-                                        <p className="mt-1 text-xs leading-6 text-slate-500">
-                                            Token هرگز دوباره به مرورگر برگردانده نمی‌شود و در دیتابیس با encrypted cast ذخیره می‌شود.
-                                        </p>
-                                    </div>
+                    <section className={glassPanel}>
+                        <div className="flex flex-col gap-4 border-b border-white/[0.06] p-5 md:flex-row md:items-center md:justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="grid size-11 place-items-center rounded-2xl border border-violet-300/10 bg-violet-400/[0.07] text-violet-200">
+                                    <ShieldCheck size={21} />
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-white">
+                                        Identity & Security
+                                    </h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        هویت Bot و تنها Telegram User ID مجاز.
+                                    </p>
                                 </div>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 <Chip size="sm">
                                     {settings.bot_token_configured
-                                        ? "Token configured"
+                                        ? "Token secured"
                                         : "Token missing"}
                                 </Chip>
                                 <Chip size="sm">
-                                    {settings.configured
-                                        ? "Owner configured"
-                                        : "Owner missing"}
+                                    {settings.webhook_secret_configured
+                                        ? "Webhook secret ready"
+                                        : "Secret pending"}
                                 </Chip>
                             </div>
-                        </Card.Header>
+                        </div>
 
-                        <Card.Content className="space-y-5 p-5">
+                        <div className="space-y-5 p-5">
                             <div className="grid gap-4 md:grid-cols-2">
                                 <label>
-                                    <span className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-400">
+                                    <span className={labelClass}>
                                         <KeyRound size={14} />
                                         Telegram Bot Token
                                     </span>
@@ -279,7 +572,7 @@ export default function TelegramBotIndex({
                                         dir="ltr"
                                         placeholder={
                                             settings.bot_token_configured
-                                                ? "•••••••• (برای تغییر، Token جدید وارد کن)"
+                                                ? "••••••••  فقط برای تغییر مقدار جدید وارد کن"
                                                 : "123456:ABC..."
                                         }
                                         type="password"
@@ -291,6 +584,11 @@ export default function TelegramBotIndex({
                                             )
                                         }
                                     />
+                                    <p className="mt-2 flex items-center gap-1.5 text-[10px] leading-5 text-slate-600">
+                                        <EyeOff size={12} />
+                                        Token ذخیره‌شده هرگز دوباره نمایش داده
+                                        نمی‌شود.
+                                    </p>
                                     {form.errors.bot_token && (
                                         <p className="mt-1 text-xs text-rose-400">
                                             {form.errors.bot_token}
@@ -299,13 +597,13 @@ export default function TelegramBotIndex({
                                 </label>
 
                                 <label>
-                                    <span className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-400">
+                                    <span className={labelClass}>
                                         <LockKeyhole size={14} />
                                         Telegram User ID مجاز
                                     </span>
                                     <Input
                                         dir="ltr"
-                                        placeholder="مثلاً 123456789"
+                                        placeholder="123456789"
                                         value={form.data.admin_user_id}
                                         onChange={(event) =>
                                             form.setData(
@@ -314,6 +612,10 @@ export default function TelegramBotIndex({
                                             )
                                         }
                                     />
+                                    <p className="mt-2 text-[10px] leading-5 text-slate-600">
+                                        فقط همین ID و فقط در Private Chat اجرا
+                                        می‌شود.
+                                    </p>
                                     {form.errors.admin_user_id && (
                                         <p className="mt-1 text-xs text-rose-400">
                                             {form.errors.admin_user_id}
@@ -322,282 +624,416 @@ export default function TelegramBotIndex({
                                 </label>
                             </div>
 
-                            <div className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4 shadow-inner shadow-black/10 backdrop-blur-xl md:grid-cols-2">
-                                {[
-                                    {
-                                        key: "enabled" as const,
-                                        title: "فعال بودن Bot",
-                                        text: "اگر خاموش باشد webhook فقط پاسخ بی‌اثر می‌دهد.",
-                                    },
-                                    {
-                                        key: "media_enabled" as const,
-                                        title: "Media upload",
-                                        text: "دریافت عکس/ویدیو/فایل و اتصال به Content Agent.",
-                                    },
-                                    {
-                                        key: "write_enabled" as const,
-                                        title: "Write operations",
-                                        text: "Create و Update. عملیات حساس هنوز confirmation می‌خواهند.",
-                                    },
-                                    {
-                                        key: "publish_enabled" as const,
-                                        title: "Publish operations",
-                                        text: "Publish و تغییر state عمومی/active.",
-                                    },
-                                    {
-                                        key: "destructive_enabled" as const,
-                                        title: "Destructive operations",
-                                        text: "Delete و حذف asset؛ فقط با confirmation.",
-                                    },
-                                ].map((item) => (
-                                    <div
-                                        className="flex items-start justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-lg shadow-black/10 backdrop-blur-xl"
-                                        key={item.key}
-                                    >
-                                        <div>
-                                            <strong className="text-sm text-slate-200">
-                                                {item.title}
-                                            </strong>
-                                            <p className="mt-1 text-xs leading-6 text-slate-500">
-                                                {item.text}
-                                            </p>
-                                        </div>
-                                        <Switch
-                                            isSelected={form.data[item.key]}
-                                            onValueChange={(value) =>
-                                                form.setData(item.key, value)
-                                            }
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        </Card.Content>
-                    </Card>
+                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                {permissions.map((item) => {
+                                    const Icon = item.icon;
+                                    const palette = toneMap[item.tone];
+                                    const active = Boolean(
+                                        form.data[item.key],
+                                    );
 
-                    <Card className={glassCard} variant="secondary">
-                        <Card.Header className="border-b border-slate-800 p-5">
+                                    return (
+                                        <div
+                                            className={`${glassInset} flex min-h-32 flex-col justify-between p-4 transition duration-200 ${
+                                                active
+                                                    ? "border-white/15 bg-white/[0.04]"
+                                                    : "opacity-70"
+                                            }`}
+                                            key={item.key}
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div
+                                                    className={`grid size-9 place-items-center rounded-xl border ${palette.icon}`}
+                                                >
+                                                    <Icon size={16} />
+                                                </div>
+                                                <Switch
+                                                    isSelected={active}
+                                                    onValueChange={(value) =>
+                                                        form.setData(
+                                                            item.key,
+                                                            value,
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="mt-4">
+                                                <strong className="text-sm text-slate-200">
+                                                    {item.title}
+                                                </strong>
+                                                <p className="mt-1 text-[10px] leading-5 text-slate-500">
+                                                    {item.text}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {form.data.destructive_enabled && (
+                                <div className="flex items-start gap-3 rounded-2xl border border-rose-400/15 bg-rose-400/[0.045] p-4 text-xs leading-6 text-rose-200">
+                                    <AlertTriangle
+                                        className="mt-0.5 shrink-0"
+                                        size={17}
+                                    />
+                                    عملیات destructive فعال است؛ Bot هنوز قبل
+                                    از Delete تأیید نهایی می‌گیرد.
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
+                    <section className={glassPanel}>
+                        <div className="border-b border-white/[0.06] p-5">
                             <div className="flex items-center gap-3">
-                                <span className="grid size-10 place-items-center rounded-xl bg-cyan-500/10 text-cyan-300">
-                                    <Network size={19} />
-                                </span>
+                                <div className="grid size-11 place-items-center rounded-2xl border border-cyan-300/10 bg-cyan-400/[0.07] text-cyan-200">
+                                    <Wifi size={21} />
+                                </div>
                                 <div>
-                                    <h2 className="font-black text-white">
-                                        مسیر اتصال Telegram
-                                    </h2>
-                                    <p className="mt-1 text-xs leading-6 text-slate-500">
-                                        پیشنهاد PlayNexus: حالت Auto + Cloudflare Relay خصوصی. در صورت خرابی Relay، SOCKS و سپس Direct به‌صورت fallback امتحان می‌شوند.
+                                    <h3 className="font-black text-white">
+                                        Telegram Transport
+                                    </h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        مسیر ارتباطی را انتخاب کن؛ Auto برای
+                                        PlayNexus پیشنهاد می‌شود.
                                     </p>
                                 </div>
                             </div>
-                        </Card.Header>
-                        <Card.Content className="space-y-5 p-5">
-                            <div className="grid gap-4 md:grid-cols-2">
-                                <label>
-                                    <span className="mb-2 block text-xs font-bold text-slate-400">
-                                        Transport Mode
-                                    </span>
-                                    <select
-                                        className="h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-200 outline-none focus:border-indigo-500"
-                                        dir="ltr"
-                                        value={form.data.transport_mode}
-                                        onChange={(event) => {
-                                            const value = event.target.value as "auto" | "relay" | "proxy" | "direct";
-                                            form.setData("transport_mode", value);
-                                            if (value === "proxy") form.setData("use_proxy", true);
-                                        }}
-                                    >
-                                        <option value="auto">Auto — Relay → Proxy → Direct</option>
-                                        <option value="relay">Cloudflare Relay only</option>
-                                        <option value="proxy">SOCKS / HTTP Proxy only</option>
-                                        <option value="direct">Direct only</option>
-                                    </select>
-                                </label>
+                        </div>
 
-                                <label>
-                                    <span className="mb-2 block text-xs font-bold text-slate-400">
-                                        Telegram API Base URL
+                        <div className="space-y-5 p-5">
+                            <div className="grid gap-3 md:grid-cols-2">
+                                {transportOptions.map((option) => {
+                                    const Icon = option.icon;
+                                    const active =
+                                        form.data.transport_mode === option.mode;
+
+                                    return (
+                                        <button
+                                            className={`group relative overflow-hidden rounded-2xl border p-4 text-right transition duration-200 ${
+                                                active
+                                                    ? "border-cyan-300/25 bg-cyan-400/[0.07] shadow-xl shadow-cyan-950/20"
+                                                    : "border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.04]"
+                                            }`}
+                                            key={option.mode}
+                                            onClick={() => {
+                                                form.setData(
+                                                    "transport_mode",
+                                                    option.mode,
+                                                );
+                                                if (option.mode === "proxy") {
+                                                    form.setData(
+                                                        "use_proxy",
+                                                        true,
+                                                    );
+                                                }
+                                            }}
+                                            type="button"
+                                        >
+                                            {active && (
+                                                <span className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/80 to-transparent" />
+                                            )}
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div
+                                                        className={`grid size-10 place-items-center rounded-xl border ${
+                                                            active
+                                                                ? "border-cyan-300/15 bg-cyan-300/10 text-cyan-200"
+                                                                : "border-white/10 bg-white/[0.03] text-slate-500"
+                                                        }`}
+                                                    >
+                                                        <Icon size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <strong className="text-sm text-slate-200">
+                                                            {option.title}
+                                                        </strong>
+                                                        <p className="mt-1 text-[10px] text-slate-500">
+                                                            {option.subtitle}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className="rounded-full border border-white/[0.07] bg-white/[0.025] px-2 py-1 text-[9px] font-bold text-slate-500">
+                                                    {option.badge}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className={`${glassInset} p-4`}>
+                                <div className="mb-4 flex items-center justify-between gap-4">
+                                    <div>
+                                        <strong className="text-sm text-slate-200">
+                                            مسیر فعلی
+                                        </strong>
+                                        <p className="mt-1 text-[10px] text-slate-600">
+                                            Auto در صورت خطا به مسیر بعدی
+                                            fallback می‌کند.
+                                        </p>
+                                    </div>
+                                    <Chip size="sm">
+                                        {form.data.transport_mode.toUpperCase()}
+                                    </Chip>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-500">
+                                    <span className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">
+                                        PlayNexus
                                     </span>
-                                    <Input
-                                        dir="ltr"
-                                        value={form.data.api_base_url}
-                                        onChange={(event) =>
-                                            form.setData("api_base_url", event.target.value)
-                                        }
-                                    />
-                                    <p className="mt-1 text-[10px] leading-5 text-slate-600">
-                                        برای اتصال مستقیم معمولاً همین https://api.telegram.org بماند. Workerهای transparent قدیمی هم با این فیلد سازگارند.
-                                    </p>
-                                </label>
+                                    <ArrowLeftRight size={13} />
+                                    {form.data.transport_mode === "auto" ? (
+                                        <>
+                                            <span className="rounded-xl border border-cyan-300/10 bg-cyan-400/[0.04] px-3 py-2 text-cyan-200">
+                                                Relay
+                                            </span>
+                                            <span>→</span>
+                                            <span className="rounded-xl border border-violet-300/10 bg-violet-400/[0.04] px-3 py-2 text-violet-200">
+                                                Proxy
+                                            </span>
+                                            <span>→</span>
+                                            <span className="rounded-xl border border-emerald-300/10 bg-emerald-400/[0.04] px-3 py-2 text-emerald-200">
+                                                Direct
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <span className="rounded-xl border border-cyan-300/10 bg-cyan-400/[0.04] px-3 py-2 text-cyan-200">
+                                            {form.data.transport_mode}
+                                        </span>
+                                    )}
+                                    <ArrowLeftRight size={13} />
+                                    <span className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">
+                                        Telegram
+                                    </span>
+                                </div>
                             </div>
 
                             {(form.data.transport_mode === "auto" ||
                                 form.data.transport_mode === "relay") && (
-                                <div className="space-y-4 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.045] p-4 shadow-xl shadow-cyan-950/10 backdrop-blur-2xl">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <strong className="text-sm text-cyan-200">
-                                                Cloudflare Relay خصوصی
-                                            </strong>
-                                            <p className="mt-1 text-xs leading-6 text-slate-500">
-                                                Token در URL عمومی Worker قرار نمی‌گیرد و Relay Key جداگانه نیز درخواست را محافظت می‌کند.
-                                            </p>
+                                <div className="rounded-2xl border border-cyan-300/15 bg-gradient-to-br from-cyan-400/[0.055] to-transparent p-4 shadow-xl shadow-cyan-950/10">
+                                    <div className="mb-4 flex items-start justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="grid size-9 place-items-center rounded-xl border border-cyan-300/10 bg-cyan-300/[0.07] text-cyan-200">
+                                                <Cloud size={17} />
+                                            </div>
+                                            <div>
+                                                <strong className="text-sm text-cyan-100">
+                                                    Cloudflare Relay
+                                                </strong>
+                                                <p className="mt-1 text-[10px] leading-5 text-slate-500">
+                                                    Token در URL عمومی Worker
+                                                    قرار نمی‌گیرد.
+                                                </p>
+                                            </div>
                                         </div>
                                         <Chip size="sm">
-                                            {settings.relay_configured ? "Configured" : "Optional"}
+                                            {settings.relay_configured
+                                                ? "READY"
+                                                : "OPTIONAL"}
                                         </Chip>
                                     </div>
 
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <label>
-                                            <span className="mb-2 block text-xs font-bold text-slate-400">
+                                            <span className={labelClass}>
+                                                <Globe2 size={13} />
                                                 Relay URL
                                             </span>
                                             <Input
                                                 dir="ltr"
-                                                placeholder="https://playnexus-telegram-relay.your-account.workers.dev"
-                                                value={form.data.relay_base_url}
+                                                placeholder="https://...workers.dev"
+                                                value={
+                                                    form.data.relay_base_url
+                                                }
                                                 onChange={(event) =>
-                                                    form.setData("relay_base_url", event.target.value)
+                                                    form.setData(
+                                                        "relay_base_url",
+                                                        event.target.value,
+                                                    )
                                                 }
                                             />
                                             {form.errors.relay_base_url && (
                                                 <p className="mt-1 text-xs text-rose-400">
-                                                    {form.errors.relay_base_url}
+                                                    {
+                                                        form.errors
+                                                            .relay_base_url
+                                                    }
                                                 </p>
                                             )}
                                         </label>
 
                                         <label>
-                                            <span className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-400">
-                                                <KeyRound size={13} />
+                                            <span className={labelClass}>
+                                                <FileKey2 size={13} />
                                                 Relay Key
                                             </span>
                                             <Input
                                                 dir="ltr"
-                                                type="password"
                                                 placeholder={
                                                     settings.relay_key_configured
-                                                        ? "•••••••• (برای تغییر مقدار جدید وارد کن)"
-                                                        : "همان RELAY_KEY داخل Worker"
+                                                        ? "••••••••  فقط برای تغییر"
+                                                        : "Worker RELAY_KEY"
                                                 }
+                                                type="password"
                                                 value={form.data.relay_key}
                                                 onChange={(event) =>
-                                                    form.setData("relay_key", event.target.value)
+                                                    form.setData(
+                                                        "relay_key",
+                                                        event.target.value,
+                                                    )
                                                 }
                                             />
                                         </label>
                                     </div>
-
-                                    <p className="text-[10px] leading-5 text-slate-600">
-                                        سورس Worker امن داخل deploy/cloudflare/telegram-relay قرار دارد؛ فقط همان Worker حساب Cloudflare خودت را استفاده کن.
-                                    </p>
                                 </div>
                             )}
 
                             {(form.data.transport_mode === "auto" ||
                                 form.data.transport_mode === "proxy") && (
-                                <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4 shadow-xl shadow-black/10 backdrop-blur-2xl">
+                                <div className={`${glassInset} p-4`}>
                                     <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <strong className="text-sm text-slate-200">
-                                                SOCKS / HTTP Proxy fallback
-                                            </strong>
-                                            <p className="mt-1 text-xs leading-6 text-slate-500">
-                                                در Auto فقط زمانی استفاده می‌شود که Relay جواب ندهد. SOCKS5H برای DNS سمت Proxy مناسب‌تر است.
-                                            </p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="grid size-9 place-items-center rounded-xl border border-violet-300/10 bg-violet-300/[0.07] text-violet-200">
+                                                <Network size={17} />
+                                            </div>
+                                            <div>
+                                                <strong className="text-sm text-slate-200">
+                                                    SOCKS / HTTP Proxy
+                                                </strong>
+                                                <p className="mt-1 text-[10px] leading-5 text-slate-500">
+                                                    SOCKS5H برای resolve شدن DNS
+                                                    سمت Proxy مناسب‌تر است.
+                                                </p>
+                                            </div>
                                         </div>
                                         <Switch
                                             isSelected={form.data.use_proxy}
                                             onValueChange={(value) =>
-                                                form.setData("use_proxy", value)
+                                                form.setData(
+                                                    "use_proxy",
+                                                    value,
+                                                )
                                             }
                                         />
                                     </div>
 
                                     {form.data.use_proxy && (
-                                        <div className="grid gap-4 md:grid-cols-2">
+                                        <div className="mt-5 grid gap-4 md:grid-cols-2">
                                             <label>
-                                                <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                <span className={labelClass}>
                                                     Proxy type
                                                 </span>
                                                 <select
-                                                    className="h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-200 outline-none focus:border-indigo-500"
+                                                    className="h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-200 outline-none transition focus:border-violet-400/40"
                                                     dir="ltr"
-                                                    value={form.data.proxy_type}
+                                                    value={
+                                                        form.data.proxy_type
+                                                    }
                                                     onChange={(event) =>
                                                         form.setData(
                                                             "proxy_type",
-                                                            event.target.value as
-                                                                | "socks5"
-                                                                | "socks5h"
-                                                                | "http"
-                                                                | "https",
+                                                            event.target
+                                                                .value as ProxyType,
                                                         )
                                                     }
                                                 >
-                                                    <option value="socks5h">SOCKS5H</option>
-                                                    <option value="socks5">SOCKS5</option>
-                                                    <option value="https">HTTPS</option>
-                                                    <option value="http">HTTP</option>
+                                                    <option value="socks5h">
+                                                        SOCKS5H
+                                                    </option>
+                                                    <option value="socks5">
+                                                        SOCKS5
+                                                    </option>
+                                                    <option value="https">
+                                                        HTTPS
+                                                    </option>
+                                                    <option value="http">
+                                                        HTTP
+                                                    </option>
                                                 </select>
                                             </label>
 
                                             <label>
-                                                <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                <span className={labelClass}>
                                                     Host
                                                 </span>
                                                 <Input
                                                     dir="ltr"
                                                     placeholder="proxy.example.com"
-                                                    value={form.data.proxy_host}
+                                                    value={
+                                                        form.data.proxy_host
+                                                    }
                                                     onChange={(event) =>
-                                                        form.setData("proxy_host", event.target.value)
+                                                        form.setData(
+                                                            "proxy_host",
+                                                            event.target.value,
+                                                        )
                                                     }
                                                 />
                                             </label>
 
                                             <label>
-                                                <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                <span className={labelClass}>
                                                     Port
                                                 </span>
                                                 <Input
                                                     dir="ltr"
                                                     type="number"
-                                                    value={String(form.data.proxy_port)}
+                                                    value={String(
+                                                        form.data.proxy_port,
+                                                    )}
                                                     onChange={(event) =>
-                                                        form.setData("proxy_port", Number(event.target.value))
+                                                        form.setData(
+                                                            "proxy_port",
+                                                            Number(
+                                                                event.target
+                                                                    .value,
+                                                            ),
+                                                        )
                                                     }
                                                 />
                                             </label>
 
                                             <label>
-                                                <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                <span className={labelClass}>
                                                     Username
                                                 </span>
                                                 <Input
                                                     dir="ltr"
-                                                    value={form.data.proxy_username}
+                                                    value={
+                                                        form.data
+                                                            .proxy_username
+                                                    }
                                                     onChange={(event) =>
-                                                        form.setData("proxy_username", event.target.value)
+                                                        form.setData(
+                                                            "proxy_username",
+                                                            event.target.value,
+                                                        )
                                                     }
                                                 />
                                             </label>
 
                                             <label className="md:col-span-2">
-                                                <span className="mb-2 block text-xs font-bold text-slate-400">
+                                                <span className={labelClass}>
                                                     Password
                                                 </span>
                                                 <Input
                                                     dir="ltr"
                                                     placeholder={
                                                         settings.proxy_password_configured
-                                                            ? "•••••••• (برای تغییر مقدار جدید وارد کن)"
+                                                            ? "••••••••  فقط برای تغییر"
                                                             : ""
                                                     }
                                                     type="password"
-                                                    value={form.data.proxy_password}
+                                                    value={
+                                                        form.data
+                                                            .proxy_password
+                                                    }
                                                     onChange={(event) =>
-                                                        form.setData("proxy_password", event.target.value)
+                                                        form.setData(
+                                                            "proxy_password",
+                                                            event.target.value,
+                                                        )
                                                     }
                                                 />
                                             </label>
@@ -606,75 +1042,90 @@ export default function TelegramBotIndex({
                                 </div>
                             )}
 
-                            {form.data.transport_mode === "direct" && (
-                                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs leading-6 text-amber-200">
-                                    Direct فقط برای سروری مناسب است که به api.telegram.org دسترسی مستقیم داشته باشد.
-                                </div>
-                            )}
-                        </Card.Content>
-                    </Card>
+                            <div className={`${glassInset} p-4`}>
+                                <label>
+                                    <span className={labelClass}>
+                                        <Globe2 size={13} />
+                                        Telegram API Base URL
+                                    </span>
+                                    <Input
+                                        dir="ltr"
+                                        value={form.data.api_base_url}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                "api_base_url",
+                                                event.target.value,
+                                            )
+                                        }
+                                    />
+                                    <p className="mt-2 text-[10px] leading-5 text-slate-600">
+                                        در حالت عادی همین
+                                        https://api.telegram.org بماند.
+                                    </p>
+                                </label>
+                            </div>
+                        </div>
+                    </section>
 
-                    <div className="flex flex-wrap justify-end gap-2">
-                        <Button
-                            className={glassButton}
-                            isDisabled={form.processing}
-                            onPress={save}
-                            variant="primary"
-                        >
-                            <ServerCog size={16} />
-                            ذخیره تنظیمات
-                        </Button>
-                    </div>
-
-                    <Card className={glassCard} variant="secondary">
-                        <Card.Header className="flex items-center justify-between border-b border-slate-800 p-5">
+                    <section className={glassPanel}>
+                        <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] p-5">
                             <div>
-                                <h2 className="font-black text-white">
-                                    Audit log
-                                </h2>
+                                <h3 className="font-black text-white">
+                                    Activity Stream
+                                </h3>
                                 <p className="mt-1 text-xs text-slate-500">
-                                    آخرین ۵۰ Update؛ payload در دیتابیس رمزنگاری می‌شود.
+                                    آخرین ۵۰ Update؛ payload حساس رمزنگاری
+                                    می‌شود.
                                 </p>
                             </div>
-                            <Activity className="text-indigo-300" size={19} />
-                        </Card.Header>
-                        <Card.Content className="overflow-x-auto p-0">
+                            <Activity className="text-cyan-200" size={19} />
+                        </div>
+
+                        <div className="overflow-x-auto">
                             <table className="min-w-full text-right text-xs">
-                                <thead className="border-b border-slate-800 bg-slate-950/50 text-slate-500">
+                                <thead className="border-b border-white/[0.06] bg-white/[0.018] text-[10px] uppercase tracking-wider text-slate-600">
                                     <tr>
-                                        <th className="px-4 py-3">زمان</th>
-                                        <th className="px-4 py-3">Action</th>
-                                        <th className="px-4 py-3">Resource</th>
-                                        <th className="px-4 py-3">Status</th>
-                                        <th className="px-4 py-3">خطا</th>
+                                        <th className="px-5 py-3">زمان</th>
+                                        <th className="px-5 py-3">Action</th>
+                                        <th className="px-5 py-3">Resource</th>
+                                        <th className="px-5 py-3">Status</th>
+                                        <th className="px-5 py-3">Detail</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {audits.map((row) => (
                                         <tr
-                                            className="border-b border-slate-900 text-slate-300"
+                                            className="border-b border-white/[0.045] text-slate-300 transition hover:bg-white/[0.018]"
                                             key={row.id}
                                         >
-                                            <td className="whitespace-nowrap px-4 py-3">
+                                            <td className="whitespace-nowrap px-5 py-3.5 text-slate-500">
                                                 {formatDate(row.created_at)}
                                             </td>
-                                            <td className="px-4 py-3 font-mono text-[11px]">
+                                            <td className="px-5 py-3.5 font-mono text-[10px] text-slate-400">
                                                 {row.action || "—"}
                                             </td>
-                                            <td className="px-4 py-3">
+                                            <td className="px-5 py-3.5">
                                                 {row.resource
-                                                    ? `${row.resource}${row.resource_id ? ` #${row.resource_id}` : ""}`
+                                                    ? `${row.resource}${
+                                                          row.resource_id
+                                                              ? ` #${row.resource_id}`
+                                                              : ""
+                                                      }`
                                                     : "—"}
                                             </td>
-                                            <td className="px-4 py-3">
+                                            <td className="px-5 py-3.5">
                                                 <Chip
+                                                    color={
+                                                        statusTone(
+                                                            row.status,
+                                                        ) as any
+                                                    }
                                                     size="sm"
-                                                    color={statusTone(row.status) as any}
                                                 >
                                                     {row.status}
                                                 </Chip>
                                             </td>
-                                            <td className="max-w-[360px] truncate px-4 py-3 text-rose-300">
+                                            <td className="max-w-[340px] truncate px-5 py-3.5 text-rose-300">
                                                 {row.error || "—"}
                                             </td>
                                         </tr>
@@ -682,67 +1133,88 @@ export default function TelegramBotIndex({
                                     {!audits.length && (
                                         <tr>
                                             <td
-                                                className="px-4 py-8 text-center text-slate-600"
+                                                className="px-5 py-12 text-center text-slate-600"
                                                 colSpan={5}
                                             >
+                                                <Activity
+                                                    className="mx-auto mb-3 opacity-40"
+                                                    size={24}
+                                                />
                                                 هنوز Update ثبت نشده است.
                                             </td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
-                        </Card.Content>
-                    </Card>
+                        </div>
+                    </section>
                 </div>
 
-                <div className="space-y-5">
-                    <Card className={glassCard} variant="secondary">
-                        <Card.Header className="border-b border-slate-800 p-5">
-                            <h2 className="font-black text-white">
-                                اتصال و Webhook
-                            </h2>
-                        </Card.Header>
-                        <Card.Content className="space-y-4 p-5">
-                            <div className="flex items-start gap-3">
-                                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-300">
-                                    <ShieldCheck size={19} />
-                                </span>
+                <aside className="space-y-5 2xl:sticky 2xl:top-5 2xl:self-start">
+                    <section className={glassPanel}>
+                        <div className="border-b border-white/[0.06] p-5">
+                            <div className="flex items-center gap-3">
+                                <div className="grid size-10 place-items-center rounded-xl border border-emerald-300/10 bg-emerald-400/[0.07] text-emerald-200">
+                                    <Radio size={18} />
+                                </div>
                                 <div>
-                                    <strong className="text-sm text-slate-200">
-                                        Owner-only
-                                    </strong>
-                                    <p className="mt-1 text-xs leading-6 text-slate-500">
-                                        فقط private chat و User ID ذخیره‌شده اجازه اجرا دارد. درخواست دیگران بدون پاسخ عملیاتی ignore می‌شود.
+                                    <h3 className="font-black text-white">
+                                        Live Connection
+                                    </h3>
+                                    <p className="mt-1 text-[10px] text-slate-500">
+                                        Health، webhook و تست عملی Telegram.
                                     </p>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs">
-                                <div className="mb-2 flex items-center justify-between">
-                                    <span className="text-slate-500">Webhook</span>
+                        <div className="space-y-4 p-5">
+                            <div className={`${glassInset} p-4`}>
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
+                                        Webhook
+                                    </span>
                                     <span
-                                        className={
+                                        className={`flex items-center gap-1.5 text-[10px] font-black ${
                                             webhookHealthy
-                                                ? "text-emerald-400"
-                                                : "text-amber-400"
-                                        }
+                                                ? "text-emerald-300"
+                                                : "text-amber-300"
+                                        }`}
                                     >
-                                        {webhookHealthy ? "Healthy" : "Needs sync"}
+                                        <span
+                                            className={`size-1.5 rounded-full ${
+                                                webhookHealthy
+                                                    ? "bg-emerald-300"
+                                                    : "bg-amber-300"
+                                            }`}
+                                        />
+                                        {webhookHealthy
+                                            ? "HEALTHY"
+                                            : "NEEDS SYNC"}
                                     </span>
                                 </div>
-                                <code className="block break-all text-[10px] leading-5 text-slate-400">
+                                <code className="mt-3 block break-all rounded-xl border border-white/[0.05] bg-black/20 p-3 text-[9px] leading-5 text-slate-500">
                                     {settings.webhook_url}
                                 </code>
                             </div>
 
                             {webhookError && (
-                                <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs leading-6 text-rose-300">
+                                <div className="flex items-start gap-2 rounded-2xl border border-rose-400/15 bg-rose-400/[0.045] p-3 text-[10px] leading-5 text-rose-200">
+                                    <AlertTriangle
+                                        className="mt-0.5 shrink-0"
+                                        size={14}
+                                    />
                                     {webhookError}
                                 </div>
                             )}
+
                             {webhookInfo?.last_error_message && (
-                                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-6 text-amber-300">
-                                    Telegram: {webhookInfo.last_error_message}
+                                <div className="flex items-start gap-2 rounded-2xl border border-amber-400/15 bg-amber-400/[0.045] p-3 text-[10px] leading-5 text-amber-200">
+                                    <AlertTriangle
+                                        className="mt-0.5 shrink-0"
+                                        size={14}
+                                    />
+                                    {webhookInfo.last_error_message}
                                 </div>
                             )}
 
@@ -758,8 +1230,9 @@ export default function TelegramBotIndex({
                                     variant="secondary"
                                 >
                                     <CheckCircle2 size={16} />
-                                    تست اتصال / getMe
+                                    Test Connection / getMe
                                 </Button>
+
                                 <Button
                                     className={glassButton}
                                     onPress={() =>
@@ -771,8 +1244,9 @@ export default function TelegramBotIndex({
                                     variant="primary"
                                 >
                                     <Webhook size={16} />
-                                    ثبت / Sync Webhook
+                                    Sync Webhook
                                 </Button>
+
                                 <Button
                                     className={glassButton}
                                     onPress={() =>
@@ -784,8 +1258,11 @@ export default function TelegramBotIndex({
                                     variant="secondary"
                                 >
                                     <Send size={16} />
-                                    ارسال پیام تست
+                                    Send Test Message
                                 </Button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-4">
                                 <Button
                                     className={glassButton}
                                     onPress={() =>
@@ -797,8 +1274,8 @@ export default function TelegramBotIndex({
                                     }
                                     variant="ghost"
                                 >
-                                    <RefreshCw size={16} />
-                                    Rotate webhook secret
+                                    <RefreshCw size={15} />
+                                    Rotate
                                 </Button>
                                 <Button
                                     className={glassButton}
@@ -811,57 +1288,119 @@ export default function TelegramBotIndex({
                                     }
                                     variant="ghost"
                                 >
-                                    <Trash2 size={16} />
-                                    حذف Webhook
+                                    <Trash2 size={15} />
+                                    Remove
                                 </Button>
                             </div>
-                        </Card.Content>
-                    </Card>
+                        </div>
+                    </section>
 
-                    <Card className={glassCard} variant="secondary">
-                        <Card.Content className="space-y-3 p-5 text-xs text-slate-500">
-                            <strong className="block text-sm text-white">
-                                وضعیت Runtime
-                            </strong>
-                            <div className="flex justify-between gap-4">
-                                <span>آخرین health</span>
-                                <span className="text-slate-300">
-                                    {formatDate(settings.last_health_at)}
-                                </span>
+                    <section className={glassPanel}>
+                        <div className="border-b border-white/[0.06] p-5">
+                            <div className="flex items-center gap-3">
+                                <div className="grid size-10 place-items-center rounded-xl border border-violet-300/10 bg-violet-400/[0.07] text-violet-200">
+                                    <Database size={18} />
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-white">
+                                        Runtime
+                                    </h3>
+                                    <p className="mt-1 text-[10px] text-slate-500">
+                                        آخرین سیگنال‌های Bot.
+                                    </p>
+                                </div>
                             </div>
-                            <div className="flex justify-between gap-4">
-                                <span>آخرین webhook</span>
-                                <span className="text-slate-300">
-                                    {formatDate(settings.last_webhook_at)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <span>Pending updates</span>
-                                <span className="text-slate-300">
-                                    {webhookInfo?.pending_update_count ?? "—"}
-                                </span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <span>Max media download</span>
-                                <span className="text-slate-300">
-                                    {(settings.max_download_bytes / 1048576).toFixed(0)} MB
-                                </span>
-                            </div>
-                        </Card.Content>
-                    </Card>
+                        </div>
+
+                        <div className="divide-y divide-white/[0.055] p-5 pt-1 text-xs">
+                            {[
+                                [
+                                    "آخرین Health",
+                                    formatDate(settings.last_health_at),
+                                ],
+                                [
+                                    "آخرین Webhook",
+                                    formatDate(settings.last_webhook_at),
+                                ],
+                                [
+                                    "Webhook registered",
+                                    formatDate(
+                                        settings.webhook_registered_at,
+                                    ),
+                                ],
+                                [
+                                    "Pending updates",
+                                    String(
+                                        webhookInfo?.pending_update_count ??
+                                            0,
+                                    ),
+                                ],
+                                [
+                                    "Max media",
+                                    `${(
+                                        settings.max_download_bytes / 1048576
+                                    ).toFixed(0)} MB`,
+                                ],
+                                [
+                                    "Config source",
+                                    settings.source,
+                                ],
+                            ].map(([label, value]) => (
+                                <div
+                                    className="flex items-center justify-between gap-4 py-3"
+                                    key={label}
+                                >
+                                    <span className="text-slate-600">
+                                        {label}
+                                    </span>
+                                    <span className="text-left font-bold text-slate-300">
+                                        {value}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
 
                     {settings.last_error && (
-                        <Card className={glassCard} variant="secondary">
-                            <Card.Content className="p-5">
-                                <strong className="text-sm text-rose-300">
+                        <section className="overflow-hidden rounded-[1.75rem] border border-rose-400/15 bg-rose-950/20 shadow-2xl shadow-black/20 backdrop-blur-3xl">
+                            <div className="flex items-center gap-3 border-b border-rose-400/10 p-5">
+                                <AlertTriangle
+                                    className="text-rose-300"
+                                    size={18}
+                                />
+                                <strong className="text-sm text-rose-200">
                                     آخرین خطای Bot
                                 </strong>
-                                <p className="mt-2 break-words text-xs leading-6 text-slate-500">
-                                    {settings.last_error}
-                                </p>
-                            </Card.Content>
-                        </Card>
+                            </div>
+                            <p className="break-words p-5 text-xs leading-6 text-slate-400">
+                                {settings.last_error}
+                            </p>
+                        </section>
                     )}
+                </aside>
+            </div>
+
+            <div className="sticky bottom-4 z-20 mt-5">
+                <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950/80 p-3 shadow-2xl shadow-black/40 backdrop-blur-3xl">
+                    <div className="min-w-0">
+                        <p className="text-xs font-black text-slate-200">
+                            {form.isDirty
+                                ? "تغییرات ذخیره‌نشده داری"
+                                : "تنظیمات با آخرین وضعیت همگام است"}
+                        </p>
+                        <p className="mt-1 truncate text-[9px] text-slate-600">
+                            Secretهای خالی مقدار فعلی را تغییر نمی‌دهند.
+                        </p>
+                    </div>
+                    <Button
+                        className={glassButton}
+                        isDisabled={form.processing || !form.isDirty}
+                        onPress={save}
+                        variant="primary"
+                    >
+                        <Save size={16} />
+                        {form.processing ? "در حال ذخیره..." : "ذخیره تنظیمات"}
+                    </Button>
                 </div>
             </div>
         </AdminLayout>
