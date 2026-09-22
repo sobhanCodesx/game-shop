@@ -1,5 +1,5 @@
 {
-  "job_id": "feed-engine-20260922-publish-feed-66",
+  "job_id": "feed-engine-20260922-publish-feed-66-strict-preflight-v2",
   "tool": "publish_feed",
   "arguments": {"id": 66}
 }
