@@ -130,6 +130,35 @@ final class TelegramUserLinkService
         return $user->fresh();
     }
 
+    public function prepareLinkedPhoneVerification(
+        User $user,
+        string $telegramUserId,
+        string $chatId,
+    ): bool {
+        if (
+            $user->status !== 'active'
+            || blank($user->phone)
+            || $user->phone_verified_at
+            || blank($user->telegram_user_id)
+            || ! hash_equals((string) $user->telegram_user_id, $telegramUserId)
+        ) {
+            return false;
+        }
+
+        $phone = PhoneNumber::normalize((string) $user->phone);
+        if ($phone === '') {
+            return false;
+        }
+
+        Cache::put(
+            $this->phonePendingKey($telegramUserId, $chatId),
+            ['user_id' => $user->id, 'phone' => $phone],
+            now()->addMinutes(self::TTL_MINUTES),
+        );
+
+        return true;
+    }
+
     public function hasRecentPhoneProof(User $user): bool
     {
         return (bool) Cache::get($this->phoneProofKey($user), false);
