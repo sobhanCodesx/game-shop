@@ -1,0 +1,10 @@
+{
+  "job_id": "2026-09-22-android-release-304ec25",
+  "tool": "publish_android_release",
+  "arguments": {
+    "source_url": "https://media.githubusercontent.com/media/sobhanCodesx/appNexus/6cb2e9094dbcf0a012199f0d063e55450284e300/releases/PlayNexus-Android-304ec25-test.apk",
+    "file_name": "PlayNexus-Android-304ec25.apk",
+    "sha256": "e0939dddaa129883e1fcd2195f6f0fe86fc0d07f9ae0641621c37f269b0628c5",
+    "release_notes": "نسخه جدید اپ اندروید PlayNexus\n\nبهبود پایداری و تجربه ویدیو\n• رفع باگ ادامه پخش ویدیو پس از خروج از صفحه\n• رفع باگ Explore که بعد از لمس «مشاهده کامل» ویدیوی Reel در پس‌زمینه ادامه پیدا می‌کرد\n• جلوگیری از ساخته‌شدن هم‌زمان چند VideoPlayer در Explore؛ فقط اسلاید فعال پلیر واقعی می‌سازد\n• آزادسازی صریح decoder و source ویدیو هنگام خروج از Reel برای کاهش مصرف حافظه و جلوگیری از crash روی Android\n• بستن کامل Explore Modal قبل از ساخت پلیر صفحه مقصد و جلوگیری از race هنگام navigation\n• کاهش window رندر Reelها برای فشار کمتر روی حافظه و decoder\n\nناوبری و رابط کاربری\n• اضافه شدن منوی پایین سراسری در صفحات داخلی تا کاربر در مسیرهای مختلف گم نشود\n• بهبود شمارنده اعلان‌ها و جلوگیری از بریده یا مخفی شدن Badge\n• بهبود صفحه اصلی با Nexus Command Deck، آمار سریع Feed، Video، Games و Radar و میانبرهای اصلی\n\nورود و ارتباط حساب\n• اضافه شدن Telegram OTP برای تأیید شماره بدون نیاز به دریافت مجدد SMS\n• اضافه شدن اتصال و قطع اتصال حساب Telegram از داخل Player Hub\n• اضافه شدن تنظیم دریافت اعلان‌ها از Telegram\n• اصلاح Google Login با OAuth امن سمت سرور، Deep Link و کد یک‌بارمصرف برای اپ موبایل\n\nکیفیت و تست\n• TypeScript بدون خطا\n• Lint بدون Error\n• Gradle assembleRelease موفق\n• سناریوی Explore → پخش ویدیو → مشاهده کامل روی نسخه تستی تأیید شد"
+  }
+}
