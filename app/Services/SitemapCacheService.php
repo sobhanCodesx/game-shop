@@ -5,6 +5,7 @@ namespace App\Services;
 use Closure;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 final class SitemapCacheService
 {
@@ -25,6 +26,17 @@ final class SitemapCacheService
     }
 
     public function invalidate(): void
+    {
+        if (DB::transactionLevel() > 0) {
+            DB::afterCommit(fn () => $this->invalidateNow());
+
+            return;
+        }
+
+        $this->invalidateNow();
+    }
+
+    private function invalidateNow(): void
     {
         $store = $this->store();
 
