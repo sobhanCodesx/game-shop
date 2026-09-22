@@ -17,7 +17,7 @@ class UpdateContentNotificationPreferencesRequest extends FormRequest
             'sms_enabled' => ['required', 'boolean'],
             'email_enabled' => ['required', 'boolean'],
             'feed_enabled' => ['required', 'boolean'],
-            'telegram_enabled' => ['required', 'boolean'],
+            'telegram_enabled' => ['sometimes', 'boolean'],
         ];
     }
 }
