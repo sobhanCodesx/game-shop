@@ -87,6 +87,7 @@ class TelegramUserNotificationsTest extends TestCase
 
         $user = User::factory()->create([
             'phone' => '09122222222',
+            'phone_verified_at' => now(),
             'status' => 'active',
             'role' => 'user',
             'is_admin' => false,
