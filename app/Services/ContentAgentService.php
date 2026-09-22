@@ -528,6 +528,7 @@ class ContentAgentService
 
         if (array_key_exists('playlist_ids', $data)) {
             $video->playlists()->sync($this->playlistSync($data['playlist_ids']));
+            app(VideoPageCache::class)->invalidate();
         }
 
         return $this->serializeVideo($video->fresh());
