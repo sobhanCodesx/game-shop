@@ -17,6 +17,7 @@ use App\Services\FollowedGameWatchService;
 use App\Services\GameEventService;
 use App\Services\GameRadarService;
 use App\Services\HomeExperienceService;
+use App\Services\HomePublicCacheService;
 use App\Services\MediaStorage;
 use App\Services\ProductPriceService;
 use App\Services\StorefrontDataService;
@@ -29,7 +30,7 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
-    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar, UserGamingRelevanceService $relevance, GameEventService $gameEvents, FollowedGameWatchService $watch, HomeExperienceService $homeExperience): Response
+    public function __invoke(Request $request, ProductPriceService $prices, StorefrontDataService $storefront, FeedService $feed, GameRadarService $radar, UserGamingRelevanceService $relevance, GameEventService $gameEvents, FollowedGameWatchService $watch, HomeExperienceService $homeExperience, HomePublicCacheService $homePublic): Response
     {
         $settings = [...HomeSettingsController::DEFAULTS, ...$homeExperience->settings()];
         $homeExperienceState = $homeExperience->resolve($settings, $request->user());
@@ -60,7 +61,6 @@ class HomeController extends Controller
         $freshCutoff = now()->subDays(14);
         $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
-        $latestStudios = collect();
         $radarItems = $isAdminTemplatePreview
             ? collect()
             : collect($radar->linkedSnapshot()['items'] ?? []);
@@ -68,32 +68,11 @@ class HomeController extends Controller
             ? null
             : $this->personalizedHome($request, $feed, $relevance, $gameEvents, $watch, $radarItems);
 
-        if (
-            ! $isAdminTemplatePreview
-            && Schema::hasTable('studios')
-            && Schema::hasTable('games')
-            && Schema::hasColumn('games', 'studio_id')
-        ) {
-            $latestStudios = Studio::query()->where('status', 'active')
-                ->withCount(['games' => fn ($query) => $query->whereIn('status', ['active', 'published'])])
-                ->latest()->latest('id')->limit(10)->get()
-                ->map(fn (Studio $studio) => [
-                    'id' => $studio->id,
-                    'name' => $studio->name,
-                    'url' => route('studios.show', $studio->slug, false),
-                    'logo_url' => MediaStorage::url($studio->logo),
-                    'background_url' => MediaStorage::url($studio->background),
-                    'channels_count' => $studio->games_count,
-                    'created_at' => $studio->created_at?->toISOString(),
-                ]);
-        }
+        $latestStudios = $isAdminTemplatePreview
+            ? collect()
+            : $homePublic->latestStudios();
 
-        $slides = HomeSlide::query()->visible()->orderBy('sort_order')->get()->map(fn (HomeSlide $slide) => [
-            ...$slide->only(['id', 'title', 'alt', 'link_type', 'product_id', 'button_url']),
-            'desktop_image_url' => MediaStorage::url($slide->desktop_image),
-            'mobile_image_url' => MediaStorage::url($slide->mobile_image),
-            'target_url' => $slide->button_url ?: '#',
-        ]);
+        $slides = $homePublic->slides();
 
         $siteName = (string) config('seo.site_name', 'PlayNexus');
         $locale = (string) config('seo.locale', 'fa-IR');
@@ -107,69 +86,9 @@ class HomeController extends Controller
             true,
         );
 
-        $previewProducts = Product::query()
-            ->with(['category:id,name', 'coverMedia'])
-            ->publiclyVisible()
-            ->latest()
-            ->limit(3)
-            ->get()
-            ->map(fn (Product $product) => [
-                'id' => $product->id,
-                'title' => $product->title,
-                'url' => route('products.show', $product->slug, false),
-                'category' => $product->category?->name,
-                'cover_url' => MediaStorage::url($product->coverMedia?->path),
-            ]);
-
-        $previewChannels = Game::query()
-            ->whereIn('status', ['active', 'published'])
-            ->withCount(['videos' => fn ($query) => $query->published()])
-            ->latest()
-            ->latest('id')
-            ->limit(3)
-            ->get(['id', 'name', 'slug', 'cover'])
-            ->map(fn (Game $game) => [
-                'id' => $game->id,
-                'name' => $game->name,
-                'slug' => $game->slug,
-                'url' => route('channels.show', $game->slug, false),
-                'image_url' => MediaStorage::url($game->cover),
-                'videos_count' => $game->videos_count,
-                'subscribers_count' => 0,
-            ]);
-
-        $previewVideos = SocialContent::query()
-            ->published()
-            ->where('type', 'video')
-            ->where('published_at', '>=', $freshCutoff)
-            ->with('media')
-            ->latest('published_at')
-            ->limit(3)
-            ->get(['id', 'title', 'slug', 'thumbnail', 'published_at', 'duration', 'views'])
-            ->map(function (SocialContent $video) {
-                $primaryVideoMedia = $video->media->first(
-                    fn ($media) => $media->type === 'video' && filled($media->path),
-                );
-                $primaryImageMedia = $video->media->first(
-                    fn ($media) => $media->type === 'image' && filled($media->path),
-                );
-
-                return [
-                    'key' => 'video-'.$video->id,
-                    'type' => 'video',
-                    'title' => $video->title,
-                    'url' => route('content.show', ['type' => 'videos', 'content' => $video->slug], false),
-                    'image_url' => MediaStorage::url(
-                        $video->thumbnail
-                            ?: $primaryVideoMedia?->thumbnail
-                            ?: $primaryImageMedia?->path,
-                    ),
-                    'eyebrow' => 'ویدیوی بلند',
-                    'published_at' => $video->published_at?->toISOString(),
-                    'duration' => $video->duration,
-                    'views' => $video->views,
-                ];
-            });
+        $previewProducts = $homePublic->previewProducts();
+        $previewChannels = $homePublic->previewChannels();
+        $previewVideos = $homePublic->previewVideos();
 
         $previewRadar = (function () use ($radarItems) {
             $ps5 = $radarItems
@@ -461,24 +380,7 @@ class HomeController extends Controller
                         ];
                     }))
                 ->sortByDesc('published_at')->take(10)->values()),
-            'channels' => Inertia::optional(fn () => Game::query()
-                ->whereIn('status', ['active', 'published'])
-                ->with(['playlists' => fn ($query) => $query->publiclyVisible()->whereNotNull('logo')->select(['id', 'game_id', 'logo', 'sort_order'])])
-                ->withCount([
-                    'videos' => fn ($query) => $query->published(),
-                    'subscribers',
-                ])
-                ->latest()
-                ->latest('id')
-                ->limit(16)
-                ->get(['id', 'name', 'slug', 'cover'])
-                ->map(fn (Game $game) => [
-                    ...$game->only(['id', 'name', 'slug']),
-                    'url' => route('channels.show', $game->slug, false),
-                    'image_url' => MediaStorage::url($game->cover ?: $game->playlists->first()?->logo),
-                    'videos_count' => $game->videos_count,
-                    'subscribers_count' => $game->subscribers_count,
-                ])),
+            'channels' => Inertia::optional(fn () => $homePublic->channels()),
         ]);
     }
 
