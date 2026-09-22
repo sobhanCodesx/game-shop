@@ -193,8 +193,15 @@ class MobileAuthController extends Controller
         }
 
         if (! $isEmail && ! $user->phone_verified_at) {
+            try {
+                $mobiles->send($identifier, 'verify_mobile');
+            } catch (ValidationException) {
+                // A recent verification code is still valid. Do not turn a
+                // correct password into a login error only because of cooldown.
+            }
+
             return response()->json([
-                'message' => 'ابتدا شماره موبایل حساب را تأیید کنید.',
+                'message' => 'شماره موبایل هنوز تأیید نشده؛ کد تأیید برای ادامه ارسال شد.',
                 'code' => 'verification_required',
                 'verification_required' => true,
                 'channel' => 'mobile',
