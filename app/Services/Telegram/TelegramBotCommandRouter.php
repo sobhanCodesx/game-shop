@@ -943,7 +943,7 @@ final class TelegramBotCommandRouter
                     ],
                 ],
             ],
-        }, $messageId);
+        ], $messageId);
 
         return ['action' => 'event_actions', 'resource_id' => $id];
     }
