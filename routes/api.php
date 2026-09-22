@@ -32,6 +32,10 @@ Route::post('/content-agent/upload/chunk', [ContentAgentMcpController::class, 'u
     ->middleware(['content.agent', 'throttle:1200,1'])
     ->name('content-agent.upload.chunk');
 
+Route::post('/content-agent/android-release/upload/chunk', [ContentAgentMcpController::class, 'uploadAndroidReleaseChunkFile'])
+    ->middleware(['content.agent', 'throttle:1200,1'])
+    ->name('content-agent.android-release.upload.chunk');
+
 Route::prefix('/deployment-agent')
     ->middleware(['throttle:300,1', 'deployment.agent'])
     ->name('deployment-agent.')

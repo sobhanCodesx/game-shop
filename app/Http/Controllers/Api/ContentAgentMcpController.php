@@ -82,6 +82,24 @@ class ContentAgentMcpController extends Controller
         );
     }
 
+    public function uploadAndroidReleaseChunkFile(Request $request, AndroidReleaseAgentService $androidReleases): Response
+    {
+        $data = $request->validate([
+            'upload_id' => ['required', 'uuid'],
+            'chunk_index' => ['required', 'integer', 'min:0', 'max:1999'],
+            'chunk' => ['required', 'file'],
+        ]);
+
+        $chunk = $request->file('chunk');
+        if ($chunk === null || ! $chunk->isValid()) {
+            return response()->json(['error' => 'Invalid Android release upload chunk.'], 422);
+        }
+
+        return response()->json(
+            $androidReleases->uploadChunkFile($data, $chunk)
+        );
+    }
+
     private function initializeResult(array $params): array
     {
         $requested = (string) ($params['protocolVersion'] ?? self::LEGACY_PROTOCOL);
@@ -154,6 +172,9 @@ class ContentAgentMcpController extends Controller
             'delete_content' => $contentAgent->deleteContent($arguments),
             'restore_content' => $contentAgent->restoreContent($arguments),
             'publish_android_release' => $androidReleases->publish($arguments),
+            'start_android_release_upload' => $androidReleases->startUpload($arguments),
+            'complete_android_release_upload' => $androidReleases->completeUpload($arguments),
+            'abort_android_release_upload' => $androidReleases->abortUpload($arguments),
             'start_asset_upload' => $contentMedia->startUpload($arguments),
             'upload_asset_chunk' => $contentMedia->uploadChunk($arguments),
             'complete_asset_upload' => $contentMedia->completeUpload($arguments),
@@ -613,21 +634,67 @@ class ContentAgentMcpController extends Controller
             ],
             [
                 'name' => 'publish_android_release',
-                'description' => 'Publish an Android APK as the active PlayNexus app release. The server fetches the APK only from allowlisted GitHub asset hosts, verifies size/ZIP signature and optional SHA-256, stores release metadata and notes, then returns the PlayNexus download URL. Requires upload and publish permissions.',
+                'description' => 'Compatibility path for publishing an Android APK from an allowlisted GitHub asset URL. Large APKs should use the dedicated chunked Android release upload tools to avoid web-server request timeouts.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
                         'source_url' => ['type' => 'string', 'format' => 'uri', 'maxLength' => 2048, 'description' => 'Direct HTTPS APK URL on an allowlisted GitHub asset host.'],
-                        'release_notes' => ['type' => ['string', 'null'], 'maxLength' => 5000, 'description' => 'Human-readable release notes/changelog shown with the Android release.'],
-                        'file_name' => ['type' => ['string', 'null'], 'maxLength' => 255, 'pattern' => '\\.apk$', 'description' => 'Display filename for the stored release.'],
-                        'version' => ['type' => ['string', 'null'], 'pattern' => '^\\d+\\.\\d+\\.\\d+$', 'description' => 'Optional semantic version. Omit to auto-increment.'],
-                        'version_code' => ['type' => ['integer', 'null'], 'minimum' => 1, 'description' => 'Optional Android version code. Omit to auto-increment.'],
-                        'sha256' => ['type' => ['string', 'null'], 'pattern' => '^[a-fA-F0-9]{64}$', 'description' => 'Optional expected SHA-256 for integrity verification.'],
+                        'release_notes' => ['type' => ['string', 'null'], 'maxLength' => 5000],
+                        'file_name' => ['type' => ['string', 'null'], 'maxLength' => 255, 'pattern' => '\\.apk$'],
+                        'version' => ['type' => ['string', 'null'], 'pattern' => '^\\d+\\.\\d+\\.\\d+$'],
+                        'version_code' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'sha256' => ['type' => ['string', 'null'], 'pattern' => '^[a-fA-F0-9]{64}$'],
                     ],
                     'required' => ['source_url'],
                     'additionalProperties' => false,
                 ],
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'start_android_release_upload',
+                'description' => 'Start a resumable chunked Android APK release upload. Stores release metadata and changelog with the upload session. Use the binary Android release chunk endpoint for file bytes, then complete_android_release_upload.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'file_name' => ['type' => 'string', 'maxLength' => 255, 'pattern' => '\\.apk$'],
+                        'release_notes' => ['type' => ['string', 'null'], 'maxLength' => 5000],
+                        'version' => ['type' => ['string', 'null'], 'pattern' => '^\\d+\\.\\d+\\.\\d+$'],
+                        'version_code' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'size' => ['type' => 'integer', 'minimum' => 4, 'maximum' => 1073741824],
+                        'chunk_size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxChunkSize],
+                        'total_chunks' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 2000],
+                        'sha256' => ['type' => 'string', 'pattern' => '^[a-fA-F0-9]{64}$'],
+                    ],
+                    'required' => ['file_name', 'size', 'chunk_size', 'total_chunks', 'sha256'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'complete_android_release_upload',
+                'description' => 'Assemble and verify a completed chunked APK upload, store it on the PlayNexus download disk, create the Android release record with notes/version metadata, and make it active.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'abort_android_release_upload',
+                'description' => 'Discard an incomplete Android APK release upload session.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
             ],
             [
                 'name' => 'sync_collection_videos',
@@ -731,7 +798,7 @@ class ContentAgentMcpController extends Controller
 
     private function instructions(): string
     {
-        return 'PlayNexus Content Admin MCP v2.3. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary content media uses dedicated chunked asset tools. Android releases use the dedicated publish_android_release tool, which may fetch only direct APKs from an explicit GitHub asset allowlist and can record release notes/version metadata. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+        return 'PlayNexus Content Admin MCP v2.4. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary content media uses dedicated chunked asset tools. Android APK releases should use start_android_release_upload + the authenticated binary chunk endpoint + complete_android_release_upload, which verifies SHA-256 and stores release notes/version metadata without long-running web requests. publish_android_release remains only as a compatibility path for smaller direct GitHub assets. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
     }
 
     private function serverInfo(): array

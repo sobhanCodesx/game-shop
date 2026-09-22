@@ -64,6 +64,9 @@ class ContentAgentMcpTest extends TestCase
             ->assertJsonFragment(['name' => 'list_content_assets'])
             ->assertJsonFragment(['name' => 'remove_content_asset'])
             ->assertJsonFragment(['name' => 'publish_android_release'])
+            ->assertJsonFragment(['name' => 'start_android_release_upload'])
+            ->assertJsonFragment(['name' => 'complete_android_release_upload'])
+            ->assertJsonFragment(['name' => 'abort_android_release_upload'])
             ->assertJsonFragment(['version' => '3.0.0']);
     }
 

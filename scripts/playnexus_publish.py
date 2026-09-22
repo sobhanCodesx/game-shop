@@ -54,6 +54,9 @@ MCP_TOOLS = {
     "list_content_assets",
     "remove_content_asset",
     "publish_android_release",
+    "start_android_release_upload",
+    "complete_android_release_upload",
+    "abort_android_release_upload",
 }
 
 # Synthetic GitHub-runner operation. source_url/file_path/source_base64 are
@@ -762,8 +765,9 @@ def upload_binary_chunk(
     upload_id: str,
     chunk_index: int,
     chunk: bytes,
+    endpoint_path: str = "content-agent/upload/chunk",
 ) -> dict[str, Any]:
-    endpoint = urllib.parse.urljoin(mcp_url, "content-agent/upload/chunk")
+    endpoint = urllib.parse.urljoin(mcp_url, endpoint_path)
     validate_public_https_url(endpoint)
 
     boundary = f"----PlayNexusBinary{hashlib.sha256(f'{upload_id}:{chunk_index}'.encode()).hexdigest()[:24]}"
@@ -816,6 +820,109 @@ def upload_binary_chunk(
         fail("PlayNexus binary chunk endpoint acknowledged the wrong byte count.")
 
     return payload
+
+
+def publish_android_release_chunked(
+    url: str,
+    token: str,
+    job: dict[str, Any],
+    request_id: str,
+) -> dict[str, Any]:
+    arguments = job.get("arguments", {})
+    if not isinstance(arguments, dict):
+        fail("publish_android_release arguments must be an object.")
+
+    source_url = arguments.get("source_url")
+    if not isinstance(source_url, str) or not source_url.strip():
+        fail("publish_android_release requires source_url.")
+
+    source_arguments = {
+        "source_url": source_url,
+        "name": arguments.get("file_name") or "PlayNexus-Android.apk",
+        "mime": "application/vnd.android.package-archive",
+    }
+
+    with tempfile.TemporaryDirectory(prefix="playnexus-android-release-") as temporary:
+        source, name, _ = materialize_source(source_arguments, Path(temporary))
+        size = source.stat().st_size
+        digest = sha256_file(source)
+
+        expected_digest = str(arguments.get("sha256") or "").strip().casefold()
+        if expected_digest and digest.casefold() != expected_digest:
+            fail("Android release SHA-256 does not match the queued checksum.")
+
+        with source.open("rb") as handle:
+            signature = handle.read(4)
+        if signature not in (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"):
+            fail("Android release source is not a valid APK/ZIP signature.")
+
+        chunk_size = positive_env_int(
+            "PLAYNEXUS_PUBLISHER_CHUNK_SIZE",
+            DEFAULT_CHUNK_SIZE,
+        )
+        chunk_size = min(chunk_size, size)
+        total_chunks = (size + chunk_size - 1) // chunk_size
+
+        start_arguments: dict[str, Any] = {
+            "file_name": str(arguments.get("file_name") or name),
+            "release_notes": arguments.get("release_notes"),
+            "size": size,
+            "chunk_size": chunk_size,
+            "total_chunks": total_chunks,
+            "sha256": digest,
+        }
+        for key in ("version", "version_code"):
+            if arguments.get(key) is not None:
+                start_arguments[key] = arguments[key]
+
+        start = rpc_request(
+            url,
+            token,
+            tool="start_android_release_upload",
+            arguments=start_arguments,
+            request_id=f"{request_id}:start",
+        )
+        upload_id = structured_result(start).get("upload_id")
+        if not isinstance(upload_id, str) or not upload_id:
+            fail("PlayNexus did not return an Android release upload_id.")
+
+        try:
+            with source.open("rb") as handle:
+                for index in range(total_chunks):
+                    chunk = handle.read(chunk_size)
+                    if not chunk:
+                        fail("Android release source ended before all chunks were read.")
+
+                    upload_binary_chunk(
+                        url,
+                        token,
+                        upload_id=upload_id,
+                        chunk_index=index,
+                        chunk=chunk,
+                        endpoint_path="content-agent/android-release/upload/chunk",
+                    )
+
+            return rpc_request(
+                url,
+                token,
+                tool="complete_android_release_upload",
+                arguments={"upload_id": upload_id},
+                request_id=f"{request_id}:complete",
+                timeout=110,
+            )
+        except BaseException:
+            try:
+                rpc_request(
+                    url,
+                    token,
+                    tool="abort_android_release_upload",
+                    arguments={"upload_id": upload_id},
+                    request_id=f"{request_id}:abort",
+                    timeout=20,
+                )
+            except BaseException:
+                pass
+            raise
 
 
 def upload_asset(
@@ -993,6 +1100,13 @@ def main() -> None:
             feed_id=feed_id,
             request_id=request_id,
         )
+    elif job["tool"] == "publish_android_release":
+        response = publish_android_release_chunked(
+            url,
+            token,
+            job,
+            request_id,
+        )
     elif job["tool"] == "publish_feed":
         arguments = job.get("arguments", {})
         feed_id = arguments.get("id") if isinstance(arguments, dict) else None
@@ -1016,7 +1130,6 @@ def main() -> None:
             tool=job["tool"],
             arguments=job.get("arguments", {}),
             request_id=request_id,
-            timeout=900 if job["tool"] == "publish_android_release" else 60,
         )
 
     append_summary(job_path, job, response)
