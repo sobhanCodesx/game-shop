@@ -1,0 +1,137 @@
+name: Storefront Cache Phases Check
+
+on:
+  push:
+    branches:
+      - feature/storefront-cache-phases
+    paths:
+      - 'app/**'
+      - 'resources/js/**'
+      - 'routes/**'
+      - 'tests/**'
+      - '.github/workflows/storefront-cache-phases-check.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'resources/js/**'
+      - 'routes/**'
+      - 'tests/**'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: inertia_testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          php -l app/Http/Controllers/ChannelController.php
+          php -l app/Http/Controllers/FeedController.php
+          php -l app/Http/Controllers/HomeController.php
+          php -l app/Http/Controllers/ProductController.php
+          php -l app/Http/Controllers/SitemapController.php
+          php -l app/Http/Controllers/SocialContentController.php
+          php -l app/Http/Controllers/StudioController.php
+          php -l app/Http/Controllers/VideoCommunityController.php
+          php -l app/Http/Controllers/Admin/CatalogController.php
+          php -l app/Http/Controllers/Admin/VideoController.php
+          php -l app/Observers/BrandObserver.php
+          php -l app/Observers/CategoryAttributeObserver.php
+          php -l app/Observers/CategoryObserver.php
+          php -l app/Observers/GameObserver.php
+          php -l app/Observers/HomeSlideObserver.php
+          php -l app/Observers/PlatformObserver.php
+          php -l app/Observers/ProductAttributeValueObserver.php
+          php -l app/Observers/ProductMediaObserver.php
+          php -l app/Observers/ProductObserver.php
+          php -l app/Observers/SocialContentMediaObserver.php
+          php -l app/Observers/SocialContentObserver.php
+          php -l app/Observers/StudioObserver.php
+          php -l app/Observers/VideoPlaylistObserver.php
+          php -l app/Providers/AppServiceProvider.php
+          php -l app/Services/ChannelPageDataService.php
+          php -l app/Services/ContentAgentService.php
+          php -l app/Services/FeedPageDataService.php
+          php -l app/Services/HomePublicCacheService.php
+          php -l app/Services/PlaylistPageDataService.php
+          php -l app/Services/ProductPageDataService.php
+          php -l app/Services/ShortPageDataService.php
+          php -l app/Services/SitemapCacheService.php
+          php -l app/Services/StorefrontPageCache.php
+          php -l app/Services/StudioPageDataService.php
+          php -l app/Services/VideoCommunityService.php
+          php -l app/Services/VideoPageDataService.php
+          php -l tests/Feature/StorefrontCachePhaseOneTest.php
+          php -l tests/Feature/StorefrontCachePhaseTwoTest.php
+          php -l tests/Feature/StorefrontCachePhaseThreeTest.php
+          php -l tests/Feature/StorefrontCachePhaseFourTest.php
+          php -l tests/Feature/StorefrontCachePhaseFiveTest.php
+          php -l tests/Feature/StorefrontCachePhaseSixTest.php
+          php -l tests/Feature/StorefrontCachePhaseSevenTest.php
+          php -l tests/Feature/StorefrontCachePreDeployIntegrationTest.php
+
+      - name: Validate Composer files
+        run: composer validate --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend and SSR bundles
+        run: |
+          npm run build
+          test -s public/build/manifest.json
+          test -s bootstrap/ssr/ssr.js
+
+      - name: Run cache regression suite
+        run: |
+          php artisan test \
+            tests/Feature/StorefrontCachePhaseOneTest.php \
+            tests/Feature/StorefrontCachePhaseTwoTest.php \
+            tests/Feature/StorefrontCachePhaseThreeTest.php \
+            tests/Feature/StorefrontCachePhaseFourTest.php \
+            tests/Feature/StorefrontCachePhaseFiveTest.php \
+            tests/Feature/StorefrontCachePhaseSixTest.php \
+            tests/Feature/StorefrontCachePhaseSevenTest.php \
+            tests/Feature/StorefrontCachePreDeployIntegrationTest.php
+
+      - name: Run critical storefront regressions
+        run: |
+          php artisan test \
+            tests/Feature/VideoCommunityTest.php \
+            tests/Feature/SearchPerformanceSeoTest.php \
+            tests/Feature/SitemapTest.php \
+            tests/Feature/HomeExperienceTest.php
+
+      - name: Run full backend test suite (baseline informational)
+        continue-on-error: true
+        run: php artisan test
+
+      - name: Baseline debt note
+        run: echo "Changed-area cache and storefront regression suites are gating; current main full-suite has pre-existing failures."

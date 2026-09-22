@@ -62,7 +62,7 @@ function StoryThumbnail({
         return () => observer.disconnect();
     }, [priority, story.id, story.thumbnail_url]);
 
-    if (story.thumbnail_url) {
+    if (story.media_type === "image" || story.thumbnail_url) {
         return (
             <img
                 alt=""
@@ -71,7 +71,7 @@ function StoryThumbnail({
                 decoding="async"
                 fetchPriority={priority ? "auto" : "low"}
                 loading={priority ? "eager" : "lazy"}
-                src={story.thumbnail_url}
+                src={story.thumbnail_url ?? story.media_url}
             />
         );
     }

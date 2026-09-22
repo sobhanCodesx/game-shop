@@ -160,6 +160,7 @@ class StorefrontDataService
             'thumbnail_url' => MediaStorage::url($thumbnail),
             'video_url' => MediaStorage::url($video),
             'duration' => $content->duration,
+            'media_type' => $content->media_type,
             'views' => (int) $content->views,
             'likes_count' => (int) ($content->likes_count ?? 0),
             'comments_count' => (int) ($content->comments_count ?? 0),

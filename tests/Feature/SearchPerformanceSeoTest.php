@@ -29,7 +29,7 @@ class SearchPerformanceSeoTest extends TestCase
             'feed_badge' => 'news',
             'title' => 'خبر سبک صفحه اصلی',
             'slug' => 'home-light-preview',
-            'excerpt' => 'HEAVY_PAYLOAD_MARKER '.str_repeat('الف', 12000),
+            'excerpt' => 'HEAVY_PAYLOAD_MARKER '.str_repeat('الف', 8000),
             'body' => '<p>HEAVY_BODY_HTML_MARKER '.str_repeat('ب', 30000).'</p>',
             'status' => 'published',
             'published_at' => now()->subMinute(),

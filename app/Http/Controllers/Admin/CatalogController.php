@@ -14,6 +14,7 @@ use App\Models\Studio;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
 use App\Services\ProductMediaService;
+use App\Services\StorefrontPageCache;
 use App\Services\ProductTypeRegistry;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
@@ -364,6 +365,12 @@ class CatalogController extends Controller
     {
         if (in_array($catalog, ['games', 'products'], true)) {
             $model->platforms()->sync($platformIds);
+
+            if ($catalog === 'games') {
+                app(StorefrontPageCache::class)->invalidate('channel');
+            } elseif ($catalog === 'products') {
+                app(StorefrontPageCache::class)->invalidate('product');
+            }
         }
     }
 
