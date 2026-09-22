@@ -58,24 +58,56 @@ class NexusAiContextController extends Controller
         $normalized = preg_replace('/[\x{200c}\s]+/u', ' ', trim($question)) ?: $question;
         $terms = [];
 
-        if (preg_match_all('/[A-Za-z0-9][A-Za-z0-9:+\'’.-]*(?:\s+[A-Za-z0-9][A-Za-z0-9:+\'’.-]*){0,3}/u', $normalized, $matches)) {
+        // Prefer compact Latin entity names (game/studio/product names) but do not
+        // let trailing conversational words become part of the Graph search term.
+        if (preg_match_all('/[A-Za-z0-9][A-Za-z0-9:+\'’.-]*/u', $normalized, $matches)) {
+            $latinStop = [
+                'a', 'an', 'and', 'are', 'for', 'from', 'game', 'games', 'in', 'is', 'of',
+                'on', 'or', 'the', 'to', 'vs', 'with', 'xbox', 'playstation', 'ps4', 'ps5',
+                'pc', 'dlc', 'fps', 'vrr', 'rt',
+            ];
+            $sequence = [];
+
             foreach ($matches[0] as $match) {
                 $value = trim($match);
-                if (mb_strlen($value) >= 3) {
-                    $terms[] = $value;
+                $lower = mb_strtolower($value);
+
+                if (mb_strlen($value) < 2 || in_array($lower, $latinStop, true)) {
+                    if ($sequence !== []) {
+                        $terms[] = implode(' ', array_slice($sequence, 0, 4));
+                        $sequence = [];
+                    }
+                    continue;
                 }
+
+                $sequence[] = $value;
+                if (count($sequence) === 4) {
+                    $terms[] = implode(' ', $sequence);
+                    $sequence = [];
+                }
+            }
+
+            if ($sequence !== []) {
+                $terms[] = implode(' ', $sequence);
             }
         }
 
         $stop = [
             'بازی', 'گیم', 'برای', 'درباره', 'راجع', 'راجب', 'چیه', 'چیست', 'چی',
             'کدوم', 'کدام', 'میشه', 'می‌شه', 'بگو', 'آخرین', 'جدید', 'ویدیو', 'فید',
-            'سایت', 'پلی', 'نکسوس', 'playnexus',
+            'سایت', 'پلی', 'نکسوس', 'playnexus', 'بهتره', 'بهتر', 'ارزش', 'خرید',
+            'جهان', 'باز', 'هست', 'هستش', 'است', 'روی', 'بدون', 'اسپویل', 'پیشنهاد',
+            'پیشنهادش', 'کن', 'کنم', 'کردن', 'نسخه', 'آپدیت', 'تغییر', 'تغییرات',
+            'چطور', 'چطوره', 'اجرا', 'مقایسه', 'بین', 'مثل', 'شبیه', 'ساعت', 'وقت',
         ];
 
         foreach (preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($normalized)) ?: [] as $token) {
             $token = trim($token);
-            if (mb_strlen($token) < 3 || in_array($token, $stop, true)) {
+            if (
+                mb_strlen($token) < 3
+                || preg_match('/^[a-z0-9]+$/i', $token)
+                || in_array($token, $stop, true)
+            ) {
                 continue;
             }
             $terms[] = $token;
