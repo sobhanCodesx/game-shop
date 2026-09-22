@@ -192,6 +192,16 @@ class MobileAuthController extends Controller
             ], 409);
         }
 
+        if (! $isEmail && ! $user->phone_verified_at) {
+            return response()->json([
+                'message' => 'ابتدا شماره موبایل حساب را تأیید کنید.',
+                'code' => 'verification_required',
+                'verification_required' => true,
+                'channel' => 'mobile',
+                'identifier' => $identifier,
+            ], 409);
+        }
+
         $user->forceFill(['last_login_at' => now()])->save();
 
         return $this->tokenResponse($user, $tokens, $data['device_name'] ?? null);
@@ -202,7 +212,11 @@ class MobileAuthController extends Controller
         $data = $request->validate(['phone' => ['required', 'string']]);
         $phone = PhoneNumber::normalize($data['phone']);
 
-        if (User::query()->where('phone', $phone)->where('status', 'active')->exists()) {
+        if (User::query()
+            ->where('phone', $phone)
+            ->where('status', 'active')
+            ->whereNotNull('phone_verified_at')
+            ->exists()) {
             $codes->send($phone, 'passwordless_login');
         }
 
@@ -240,13 +254,19 @@ class MobileAuthController extends Controller
             'device_name' => ['nullable', 'string', 'max:255'],
         ]);
         $phone = PhoneNumber::normalize($data['phone']);
-        $user = User::query()->where('phone', $phone)->where('status', 'active')->firstOrFail();
+        $user = User::query()
+            ->where('phone', $phone)
+            ->where('status', 'active')
+            ->whereNotNull('phone_verified_at')
+            ->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'code' => 'کد ورود نامعتبر یا حساب برای ورود با کد آماده نیست.',
+            ]);
+        }
 
         $codes->verify($phone, 'passwordless_login', $data['code']);
-
-        if (! $user->phone_verified_at) {
-            $user->forceFill(['phone_verified_at' => now()])->save();
-        }
         $user->forceFill(['last_login_at' => now()])->save();
 
         return $this->tokenResponse($user, $tokens, $data['device_name'] ?? null);
