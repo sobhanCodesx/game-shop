@@ -78,6 +78,74 @@ class TelegramMtProtoLargeFileTest extends TestCase
         $this->assertTrue($payload['mtproto_configured']);
     }
 
+    public function test_one_click_activation_saves_credentials_and_runs_health(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'super-admin',
+            'is_admin' => true,
+            'status' => 'active',
+        ]);
+
+        TelegramBotSetting::query()->create([
+            'bot_token' => '123456:test-token',
+            'admin_user_id' => '777777777',
+            'enabled' => true,
+            'write_enabled' => true,
+            'publish_enabled' => true,
+            'destructive_enabled' => false,
+            'media_enabled' => true,
+            'transport_mode' => 'direct',
+            'api_base_url' => 'https://api.telegram.org',
+            'use_proxy' => false,
+            'webhook_secret' => 'webhook-secret',
+        ]);
+
+        $mtproto = Mockery::mock(TelegramMtProtoService::class);
+        $mtproto->shouldReceive('health')
+            ->once()
+            ->andReturn([
+                'ok' => true,
+                'username' => 'playnexus_admin_bot',
+                'elapsed_ms' => 120,
+            ]);
+        $this->app->instance(TelegramMtProtoService::class, $mtproto);
+
+        $this->actingAs($admin)
+            ->post('/admin/telegram-bot/mtproto/test', [
+                'enabled' => true,
+                'bot_token' => '',
+                'admin_user_id' => '777777777',
+                'write_enabled' => true,
+                'publish_enabled' => true,
+                'destructive_enabled' => false,
+                'media_enabled' => true,
+                'mtproto_enabled' => false,
+                'mtproto_api_id' => 12345678,
+                'mtproto_api_hash' => '0123456789abcdef0123456789abcdef',
+                'transport_mode' => 'direct',
+                'api_base_url' => 'https://api.telegram.org',
+                'relay_base_url' => '',
+                'relay_key' => '',
+                'use_proxy' => false,
+                'proxy_type' => 'socks5h',
+                'proxy_host' => '',
+                'proxy_port' => 1080,
+                'proxy_username' => '',
+                'proxy_password' => '',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $resolved = app(TelegramBotSettings::class)->resolved();
+
+        $this->assertTrue($resolved['mtproto_enabled']);
+        $this->assertSame(12345678, $resolved['mtproto_api_id']);
+        $this->assertSame(
+            '0123456789abcdef0123456789abcdef',
+            $resolved['mtproto_api_hash'],
+        );
+    }
+
     public function test_large_file_bypasses_bot_api_and_uses_mtproto_downloader(): void
     {
         config([
