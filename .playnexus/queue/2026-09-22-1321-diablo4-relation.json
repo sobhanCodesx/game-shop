@@ -1,0 +1,1 @@
+{"job_id":"feed-relation-diablo4-20260922-1321","tool":"query_playnexus_graph","arguments":{"query":"query DiabloRelation($q: String!) { search(query: $q, first: 6) { games { id name status releaseDate } content { id type title status publishedAt } } }","variables":{"q":"Diablo IV"},"operation_name":"DiabloRelation"}}
