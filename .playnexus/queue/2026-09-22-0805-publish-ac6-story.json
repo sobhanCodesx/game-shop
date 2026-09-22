@@ -1,0 +1,9 @@
+{
+  "job_id": "2026-09-22-0805-publish-ac6-story",
+  "tool": "set_content_state",
+  "arguments": {
+    "resource": "video",
+    "id": 67,
+    "state": "published"
+  }
+}
