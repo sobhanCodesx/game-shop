@@ -27,7 +27,7 @@ class VideoPlaylistObserver
 
     private function invalidate(): void
     {
-        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio');
+        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio', 'video');
         app(SitemapCacheService::class)->invalidate();
     }
 }
