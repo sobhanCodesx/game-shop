@@ -1,8 +1,0 @@
-{
-  "job_id": "video-77-assets-verify-20260922",
-  "tool": "list_content_assets",
-  "arguments": {
-    "resource": "video",
-    "id": 77
-  }
-}
