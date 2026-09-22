@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Admin\DeploymentController;
 use App\Http\Controllers\Admin\FeedPostController as AdminFeedPostController;
 use App\Http\Controllers\Admin\HomeSettingsController;
+use App\Http\Controllers\Admin\NexusAiSettingsController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductTypeController;
@@ -38,6 +39,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaStreamController;
 use App\Http\Controllers\MobileDeviceController;
 use App\Http\Controllers\NewsletterSubscriptionController;
+use App\Http\Controllers\NexusAiController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SitemapController;
@@ -129,6 +131,7 @@ Route::get('exchange-products', [StorefrontController::class, 'exchangeProducts'
 Route::get('products', [StorefrontController::class, 'shop'])->name('products.index');
 Route::get('discover', [StorefrontController::class, 'discover'])->name('discover');
 Route::get('game-radar', [GameRadarController::class, 'index'])->name('game-radar.index');
+Route::get('nexus-ai', NexusAiController::class)->name('nexus-ai.index');
 Route::post('discover/content/{content:slug}/view', [StorefrontController::class, 'recordDiscoverView'])
     ->middleware('throttle:90,1')
     ->name('discover.views.store');
@@ -205,6 +208,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::resource('coupons', AdminCouponController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('settings', [CommerceSettingsController::class, 'edit'])->name('settings.edit');
     Route::put('settings', [CommerceSettingsController::class, 'update'])->name('settings.update');
+    Route::get('nexus-ai', [NexusAiSettingsController::class, 'edit'])->name('nexus-ai.edit');
+    Route::put('nexus-ai', [NexusAiSettingsController::class, 'update'])->name('nexus-ai.update');
     Route::get('sms-providers', [SmsProviderSettingsController::class, 'index'])->name('sms-providers.index');
     Route::put('sms-providers/{provider}', [SmsProviderSettingsController::class, 'update'])
         ->whereIn('provider', ['payamak_panel', 'sms_ir'])
