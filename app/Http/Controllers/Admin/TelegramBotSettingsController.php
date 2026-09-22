@@ -65,7 +65,10 @@ class TelegramBotSettingsController extends Controller
             'publish_enabled' => ['required', 'boolean'],
             'destructive_enabled' => ['required', 'boolean'],
             'media_enabled' => ['required', 'boolean'],
+            'transport_mode' => ['required', 'in:auto,relay,proxy,direct'],
             'api_base_url' => ['required', 'url', 'max:500'],
+            'relay_base_url' => ['nullable', 'url', 'max:500'],
+            'relay_key' => ['nullable', 'string', 'max:1000'],
             'use_proxy' => ['required', 'boolean'],
             'proxy_type' => ['required', 'in:socks5,socks5h,http,https'],
             'proxy_host' => ['nullable', 'string', 'max:255'],
@@ -74,11 +77,26 @@ class TelegramBotSettingsController extends Controller
             'proxy_password' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        if ($request->boolean('use_proxy') && blank($validated['proxy_host'] ?? null)) {
+        $current = $settings->resolved();
+        $transportMode = (string) ($validated['transport_mode'] ?? 'auto');
+
+        if (($transportMode === 'proxy' || $request->boolean('use_proxy')) && blank($validated['proxy_host'] ?? null)) {
             return back()->withErrors(['proxy_host' => 'برای Proxy باید Host وارد شود.']);
         }
 
-        $current = $settings->resolved();
+        $effectiveRelayUrl = trim((string) ($validated['relay_base_url'] ?? ''));
+        $effectiveRelayKey = trim((string) ($validated['relay_key'] ?? ''));
+        if ($effectiveRelayUrl === '') {
+            $effectiveRelayUrl = trim((string) ($current['relay_base_url'] ?? ''));
+        }
+        if ($effectiveRelayKey === '') {
+            $effectiveRelayKey = trim((string) ($current['relay_key'] ?? ''));
+        }
+
+        if ($transportMode === 'relay' && ($effectiveRelayUrl === '' || $effectiveRelayKey === '')) {
+            return back()->withErrors(['relay_base_url' => 'برای حالت Cloudflare Relay باید URL و Relay Key کامل باشند.']);
+        }
+
         $effectiveToken = trim((string) ($validated['bot_token'] ?? ''));
         if ($effectiveToken === '') {
             $effectiveToken = trim((string) ($current['bot_token'] ?? ''));
