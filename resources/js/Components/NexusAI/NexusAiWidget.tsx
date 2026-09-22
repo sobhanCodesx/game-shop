@@ -1,0 +1,432 @@
+import {
+    Bot,
+    ChevronDown,
+    MessageCircleMore,
+    RotateCcw,
+    Send,
+    Sparkles,
+    X,
+} from "lucide-react";
+import {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type KeyboardEvent,
+} from "react";
+
+type NexusAiConfig = {
+    enabled: boolean;
+    show_in_nav: boolean;
+    title: string;
+    description: string;
+    nav_label: string;
+    iframe_url: string;
+    min_height: number;
+    status_text: string;
+};
+
+type ChatMessage = {
+    role: "user" | "assistant";
+    content: string;
+};
+
+const STORAGE_KEY = "playnexus:nexus-ai:history";
+const WORKER_URL = "https://nexus-ai-relay.sobhankhorshidi1397.workers.dev";
+
+const QUICK_PROMPTS = [
+    "یه بازی جهان‌باز خفن برای PS5 پیشنهاد بده",
+    "فرق Soulslike با Action RPG چیه؟",
+    "برای یه باس سخت چه نکاتی رو رعایت کنم؟",
+];
+
+function loadHistory(): ChatMessage[] {
+    if (typeof window === "undefined") return [];
+
+    try {
+        const value = JSON.parse(
+            window.localStorage.getItem(STORAGE_KEY) || "[]",
+        );
+
+        return Array.isArray(value) ? value.slice(-12) : [];
+    } catch {
+        return [];
+    }
+}
+
+function friendlyError(code?: string): string {
+    if (code === "rate_limited") {
+        return "یکم سریع پیام دادی؛ چند ثانیه دیگه دوباره امتحان کن.";
+    }
+
+    if (code === "busy_try_again") {
+        return "الان دارم به یک سؤال دیگه جواب می‌دم؛ چند لحظه دیگه دوباره بپرس.";
+    }
+
+    if (code === "agent_offline") {
+        return "Nexus AI فعلاً به موتور اصلی وصل نیست. چند لحظه دیگه دوباره امتحان کن.";
+    }
+
+    if (code === "agent_timeout") {
+        return "پاسخ بیشتر از حد معمول طول کشید؛ دوباره امتحان کن.";
+    }
+
+    return "ارتباط با Nexus AI موقتاً مشکل خورد. دوباره امتحان کن.";
+}
+
+export default function NexusAiWidget({
+    config,
+}: {
+    config: NexusAiConfig;
+}) {
+    const [open, setOpen] = useState(false);
+    const [online, setOnline] = useState<boolean | null>(null);
+    const [busy, setBusy] = useState(false);
+    const [input, setInput] = useState("");
+    const [messages, setMessages] = useState<ChatMessage[]>(loadHistory);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    const history = useMemo(() => messages.slice(-8), [messages]);
+
+    useEffect(() => {
+        window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(messages.slice(-12)),
+        );
+    }, [messages]);
+
+    useEffect(() => {
+        if (!open) return;
+        window.setTimeout(() => inputRef.current?.focus(), 120);
+    }, [open]);
+
+    useEffect(() => {
+        scrollRef.current?.scrollTo({
+            top: scrollRef.current.scrollHeight,
+            behavior: "smooth",
+        });
+    }, [messages, busy, open]);
+
+    useEffect(() => {
+        let active = true;
+
+        const check = async () => {
+            try {
+                const response = await fetch(WORKER_URL + "/health", {
+                    cache: "no-store",
+                });
+                const data = await response.json();
+
+                if (active) {
+                    setOnline(response.ok && Boolean(data.agent_connected));
+                }
+            } catch {
+                if (active) setOnline(false);
+            }
+        };
+
+        void check();
+        const timer = window.setInterval(check, 15000);
+
+        return () => {
+            active = false;
+            window.clearInterval(timer);
+        };
+    }, []);
+
+    const send = async (value?: string) => {
+        const text = (value ?? input).trim();
+        if (!text || busy) return;
+
+        setInput("");
+        setBusy(true);
+        setMessages((current) => [
+            ...current,
+            { role: "user", content: text },
+        ]);
+
+        try {
+            const response = await fetch(WORKER_URL + "/api/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    message: text,
+                    history,
+                }),
+            });
+            const data = (await response.json().catch(() => ({}))) as {
+                answer?: string;
+                error?: string;
+            };
+
+            setMessages((current) => [
+                ...current,
+                {
+                    role: "assistant",
+                    content: response.ok
+                        ? data.answer?.trim() || "جوابی دریافت نشد."
+                        : friendlyError(data.error),
+                },
+            ]);
+        } catch {
+            setMessages((current) => [
+                ...current,
+                {
+                    role: "assistant",
+                    content: friendlyError(),
+                },
+            ]);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            void send();
+        }
+    };
+
+    const clear = () => {
+        setMessages([]);
+        window.localStorage.removeItem(STORAGE_KEY);
+    };
+
+    if (!config.enabled) return null;
+
+    return (
+        <>
+            {open && (
+                <div
+                    aria-hidden="true"
+                    className="fixed inset-0 z-[119] bg-slate-950/30 backdrop-blur-[2px] lg:hidden"
+                    onClick={() => setOpen(false)}
+                />
+            )}
+
+            <section
+                aria-hidden={!open}
+                className={`fixed z-[120] overflow-hidden border border-white/10 bg-[#080b16]/95 shadow-[0_30px_90px_rgba(2,6,23,.65)] backdrop-blur-2xl transition-all duration-300
+                inset-x-0 bottom-0 top-0 rounded-none
+                lg:inset-auto lg:bottom-24 lg:right-6 lg:h-[min(680px,calc(100vh-130px))] lg:w-[420px] lg:rounded-[28px]
+                ${
+                    open
+                        ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+                        : "pointer-events-none translate-y-5 scale-[.98] opacity-0 lg:translate-y-4"
+                }`}
+            >
+                <div className="grid h-full min-h-0 grid-rows-[auto_1fr_auto]">
+                    <header className="relative border-b border-white/[.07] px-4 pb-4 pt-[calc(14px+env(safe-area-inset-top))] sm:px-5 lg:pt-4">
+                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(124,58,237,.18),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(14,165,233,.10),transparent_40%)]" />
+
+                        <div className="relative flex items-center justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                                <div className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 text-white shadow-[0_12px_35px_rgba(99,102,241,.28)]">
+                                    <Bot size={22} strokeWidth={2.2} />
+                                    <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border-2 border-[#080b16] bg-[#080b16] text-cyan-300">
+                                        <Sparkles size={11} />
+                                    </span>
+                                </div>
+
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="truncate text-sm font-black text-white">
+                                            {config.title}
+                                        </h2>
+                                        <span
+                                            className={`size-2 rounded-full ${
+                                                online === false
+                                                    ? "bg-rose-400"
+                                                    : "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.8)]"
+                                            }`}
+                                        />
+                                    </div>
+                                    <p className="mt-1 truncate text-[10px] text-slate-400">
+                                        {online === false
+                                            ? "موقتاً آفلاین"
+                                            : "دستیار گیمینگ PlayNexus"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex shrink-0 items-center gap-1">
+                                {messages.length > 0 && (
+                                    <button
+                                        aria-label="پاک کردن گفتگو"
+                                        className="grid size-9 place-items-center rounded-xl text-slate-500 transition hover:bg-white/[.06] hover:text-white"
+                                        onClick={clear}
+                                        type="button"
+                                    >
+                                        <RotateCcw size={16} />
+                                    </button>
+                                )}
+                                <button
+                                    aria-label="بستن Nexus AI"
+                                    className="grid size-9 place-items-center rounded-xl bg-white/[.04] text-slate-400 transition hover:bg-white/[.08] hover:text-white"
+                                    onClick={() => setOpen(false)}
+                                    type="button"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div
+                        className="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 [scrollbar-color:rgba(148,163,184,.25)_transparent] [scrollbar-width:thin] sm:px-4"
+                        ref={scrollRef}
+                    >
+                        {messages.length === 0 ? (
+                            <div className="flex min-h-full flex-col justify-center py-5">
+                                <div className="mx-auto grid size-16 place-items-center rounded-[22px] border border-violet-400/15 bg-gradient-to-br from-violet-500/15 to-cyan-500/10 text-violet-200 shadow-[0_15px_50px_rgba(76,29,149,.18)]">
+                                    <MessageCircleMore size={28} />
+                                </div>
+
+                                <h3 className="mt-5 text-center text-xl font-black tracking-tight text-white">
+                                    چی تو ذهنت داری؟
+                                </h3>
+                                <p className="mx-auto mt-2 max-w-[310px] text-center text-[11px] leading-6 text-slate-400">
+                                    درباره بازی‌ها، لور، انتخاب بازی، Build، باس‌ها و اصطلاحات گیم ازم بپرس.
+                                </p>
+
+                                <div className="mt-5 grid gap-2">
+                                    {QUICK_PROMPTS.map((prompt, index) => (
+                                        <button
+                                            className="group flex items-center gap-3 rounded-2xl border border-white/[.07] bg-white/[.025] px-3.5 py-3 text-right transition hover:border-violet-400/20 hover:bg-violet-500/[.06]"
+                                            key={prompt}
+                                            onClick={() => void send(prompt)}
+                                            type="button"
+                                        >
+                                            <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-white/[.04] text-violet-300">
+                                                {index === 0 ? (
+                                                    <Sparkles size={15} />
+                                                ) : index === 1 ? (
+                                                    <Bot size={15} />
+                                                ) : (
+                                                    <MessageCircleMore size={15} />
+                                                )}
+                                            </span>
+                                            <span className="min-w-0 flex-1 text-[11px] font-bold leading-5 text-slate-300">
+                                                {prompt}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 pb-2">
+                                {messages.map((message, index) => (
+                                    <div
+                                        className={`flex ${
+                                            message.role === "user"
+                                                ? "justify-start"
+                                                : "justify-end"
+                                        }`}
+                                        key={index}
+                                    >
+                                        <div
+                                            className={`max-w-[86%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-[12px] leading-6 ${
+                                                message.role === "user"
+                                                    ? "rounded-br-md bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-[0_8px_25px_rgba(79,70,229,.18)]"
+                                                    : "rounded-bl-md border border-white/[.07] bg-white/[.045] text-slate-200"
+                                            }`}
+                                        >
+                                            {message.content}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {busy && (
+                                    <div className="flex justify-end">
+                                        <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-violet-400/10 bg-white/[.04] px-3.5 py-3">
+                                            {[0, 1, 2].map((item) => (
+                                                <span
+                                                    className="size-1.5 animate-pulse rounded-full bg-violet-300"
+                                                    key={item}
+                                                    style={{
+                                                        animationDelay:
+                                                            item * 140 + "ms",
+                                                    }}
+                                                />
+                                            ))}
+                                            <span className="mr-1 text-[9px] text-slate-500">
+                                                Nexus AI
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <footer className="border-t border-white/[.07] bg-[#080b16]/90 p-3 pb-[calc(12px+env(safe-area-inset-bottom))] sm:p-4 sm:pb-4">
+                        <div className="flex items-end gap-2 rounded-[18px] border border-white/[.08] bg-black/20 p-1.5 transition focus-within:border-violet-400/25 focus-within:ring-4 focus-within:ring-violet-500/[.05]">
+                            <textarea
+                                className="max-h-28 min-h-11 flex-1 resize-none bg-transparent px-2.5 py-2.5 text-xs leading-6 text-white outline-none placeholder:text-slate-600 disabled:opacity-60"
+                                disabled={busy}
+                                maxLength={1600}
+                                onChange={(event) =>
+                                    setInput(event.target.value)
+                                }
+                                onKeyDown={onKeyDown}
+                                placeholder="مثلاً: بعد از Elden Ring چی بازی کنم؟"
+                                ref={inputRef}
+                                rows={1}
+                                value={input}
+                            />
+                            <button
+                                aria-label="ارسال"
+                                className="grid size-11 shrink-0 place-items-center rounded-[14px] bg-gradient-to-br from-violet-600 to-cyan-500 text-white shadow-[0_8px_24px_rgba(99,102,241,.25)] transition hover:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+                                disabled={busy || !input.trim()}
+                                onClick={() => void send()}
+                                type="button"
+                            >
+                                <Send size={17} />
+                            </button>
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between px-1 text-[8px] text-slate-600">
+                            <span>{config.status_text || "Nexus AI"}</span>
+                            <span>PlayNexus Intelligence</span>
+                        </div>
+                    </footer>
+                </div>
+            </section>
+
+            <button
+                aria-label={open ? "بستن Nexus AI" : "باز کردن Nexus AI"}
+                className={`fixed z-[118] flex items-center gap-2.5 rounded-full border border-white/10 bg-[#0a0d18]/95 p-2 pl-3.5 text-white shadow-[0_18px_55px_rgba(2,6,23,.55)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-violet-400/25
+                bottom-[calc(84px+env(safe-area-inset-bottom))] right-4 lg:bottom-6 lg:right-6 ${
+                    open
+                        ? "pointer-events-none scale-90 opacity-0 lg:pointer-events-auto lg:opacity-100"
+                        : "scale-100 opacity-100"
+                }`}
+                onClick={() => setOpen((value) => !value)}
+                type="button"
+            >
+                <span className="relative grid size-11 place-items-center rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 shadow-[0_8px_25px_rgba(99,102,241,.35)]">
+                    {open ? (
+                        <ChevronDown size={21} />
+                    ) : (
+                        <Bot size={21} strokeWidth={2.2} />
+                    )}
+                    {!open && (
+                        <span className="absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-[#0a0d18] bg-emerald-400" />
+                    )}
+                </span>
+                <span className="hidden text-right sm:block">
+                    <strong className="block text-[11px] font-black">
+                        {config.title}
+                    </strong>
+                    <small className="mt-0.5 block text-[8px] text-slate-500">
+                        سؤال گیم داری؟
+                    </small>
+                </span>
+            </button>
+        </>
+    );
+}
