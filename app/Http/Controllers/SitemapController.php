@@ -164,11 +164,17 @@ class SitemapController extends Controller
             $primaryImageMedia = $content->media->first(
                 fn ($media) => $media->type === 'image' && filled($media->path),
             );
+            $isImageStory = $contentType === 'short' && $content->media_type === 'image';
             $thumbnailPath = $content->thumbnail
+                ?: ($isImageStory ? $content->video_path : null)
                 ?: $primaryVideoMedia?->thumbnail
                 ?: $primaryImageMedia?->path;
-            $videoPath = $content->video_path ?: $primaryVideoMedia?->path;
-            $duration = $content->duration ?: $primaryVideoMedia?->duration;
+            $videoPath = $isImageStory
+                ? null
+                : ($content->video_path ?: $primaryVideoMedia?->path);
+            $duration = $isImageStory
+                ? null
+                : ($content->duration ?: $primaryVideoMedia?->duration);
             $thumbnail = MediaStorage::url($thumbnailPath);
             $videoUrl = MediaStorage::url($videoPath);
 
