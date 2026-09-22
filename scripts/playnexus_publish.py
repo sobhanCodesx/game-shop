@@ -1016,6 +1016,7 @@ def main() -> None:
             tool=job["tool"],
             arguments=job.get("arguments", {}),
             request_id=request_id,
+            timeout=900 if job["tool"] == "publish_android_release" else 60,
         )
 
     append_summary(job_path, job, response)
