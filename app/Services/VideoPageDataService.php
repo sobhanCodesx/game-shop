@@ -157,10 +157,7 @@ final class VideoPageDataService
                 'videos' => fn ($query) => $query
                     ->published()
                     ->where('type', 'video')
-                    ->with(['game:id,name,slug,cover', 'game.playlists' => fn ($playlistQuery) => $playlistQuery
-                        ->publiclyVisible()
-                        ->whereNotNull('logo')
-                        ->select(['id', 'game_id', 'logo', 'sort_order'])]),
+                    ->with('game:id,name,slug,cover'),
             ])
             ->orderBy('sort_order')
             ->first();
