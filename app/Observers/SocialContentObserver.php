@@ -17,9 +17,9 @@ class SocialContentObserver
             app(SitemapCacheService::class)->invalidate();
         }
         if ($content->type === 'video') {
-            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'home', 'studio');
+            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'home', 'studio', 'video', 'feed');
         } elseif ($content->type === 'post') {
-            app(StorefrontPageCache::class)->invalidate('channel');
+            app(StorefrontPageCache::class)->invalidate('channel', 'feed');
         } elseif ($content->type === 'short') {
             app(StorefrontPageCache::class)->invalidate('short');
         }
@@ -42,10 +42,10 @@ class SocialContentObserver
                 'allow_comments', 'featured', 'status', 'published_at',
             ])) {
                 app(SitemapCacheService::class)->invalidate();
-                app(StorefrontPageCache::class)->invalidate('channel');
+                app(StorefrontPageCache::class)->invalidate('channel', 'feed');
 
                 if ($content->type === 'video' || $content->getRawOriginal('type') === 'video') {
-                    app(StorefrontPageCache::class)->invalidate('playlist', 'home', 'studio');
+                    app(StorefrontPageCache::class)->invalidate('playlist', 'home', 'studio', 'video', 'feed');
                 }
             }
         }
@@ -88,9 +88,9 @@ class SocialContentObserver
             app(SitemapCacheService::class)->invalidate();
         }
         if ($content->type === 'video') {
-            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'home', 'studio');
+            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'home', 'studio', 'video', 'feed');
         } elseif ($content->type === 'post') {
-            app(StorefrontPageCache::class)->invalidate('channel');
+            app(StorefrontPageCache::class)->invalidate('channel', 'feed');
         } elseif ($content->type === 'short') {
             app(StorefrontPageCache::class)->invalidate('short');
         }
