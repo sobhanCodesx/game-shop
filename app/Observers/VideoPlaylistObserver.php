@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\VideoPlaylist;
+use App\Services\SitemapCacheService;
 use App\Services\StorefrontPageCache;
 
 class VideoPlaylistObserver
@@ -27,5 +28,6 @@ class VideoPlaylistObserver
     private function invalidate(): void
     {
         app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio');
+        app(SitemapCacheService::class)->invalidate();
     }
 }
