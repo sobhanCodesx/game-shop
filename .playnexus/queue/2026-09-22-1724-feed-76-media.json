@@ -1,0 +1,12 @@
+{
+  "job_id": "2026-09-22-1724-feed-76-media",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 76,
+    "slot": "media",
+    "source_url": "https://blog.playstation.com/tachyon/2026/09/2ae780305b6c042b462bf069db5c42a36c819248.jpg?crop_strategy=smart&resize=1088%2C612",
+    "name": "helldivers-2-ironclad-democracy.jpg",
+    "alt": "Warbond Ironclad Democracy بازی Helldivers 2"
+  }
+}
