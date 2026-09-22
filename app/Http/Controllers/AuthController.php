@@ -345,24 +345,34 @@ class AuthController extends Controller
     ): RedirectResponse {
         $phone = (string) $request->session()->get('login_phone');
 
-        if ($phone !== '' && $codes->telegramAvailable($phone)) {
+        if ($phone === '') {
+            return to_route('login')->with('error', 'درخواست ورود منقضی شده؛ شماره موبایل را دوباره وارد کن.');
+        }
+
+        if ($codes->telegramAvailable($phone)) {
             $codes->sendViaTelegram($phone, 'passwordless_login');
         }
 
         return back()->with(
             'success',
-            'اگر این حساب قبلاً به تلگرام وصل شده باشد، کد ورود در همان چت ارسال شد.',
+            'درخواست Telegram بررسی شد. اگر این شماره به حساب تأییدشده و Bot متصل باشد، همان کد ورود در چت خصوصی ارسال می‌شود.',
         );
     }
 
     public function resendPasswordless(Request $request, MobileCodeService $codes): RedirectResponse
     {
         $phone = (string) $request->session()->get('login_phone');
-        if (User::where('phone', $phone)->where('status', 'active')->exists()) {
+        $eligible = $phone !== '' && User::query()
+            ->where('phone', $phone)
+            ->where('status', 'active')
+            ->whereNotNull('phone_verified_at')
+            ->exists();
+
+        if ($eligible) {
             $codes->send($phone, 'passwordless_login');
         }
 
-        return back()->with('success', 'در صورت وجود حساب، کد جدید ارسال شد.');
+        return back()->with('success', 'اگر حساب تأییدشده‌ای با این شماره وجود داشته باشد، کد جدید ارسال شد.');
     }
 
     public function sendResetCode(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse

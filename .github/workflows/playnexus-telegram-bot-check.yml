@@ -136,8 +136,15 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Run Telegram bot security and feature tests
-        run: php artisan test tests/Feature/TelegramAdminBotTest.php tests/Feature/TelegramUserNotificationsTest.php tests/Feature/TelegramMtProtoLargeFileTest.php
+      - name: Run Telegram and authentication security tests
+        run: >-
+          php artisan test
+          tests/Feature/TelegramAdminBotTest.php
+          tests/Feature/TelegramUserNotificationsTest.php
+          tests/Feature/TelegramMtProtoLargeFileTest.php
+          tests/Feature/AuthAndCheckoutSecurityTest.php
+          tests/Feature/CustomerAuthenticationTest.php
+          tests/Feature/MobileApiTest.php
 
       - name: Set up Node
         uses: actions/setup-node@v4

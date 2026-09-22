@@ -10,6 +10,7 @@ use App\Services\GoogleAccountService;
 use App\Services\GoogleIdentityTokenService;
 use App\Services\MediaStorage;
 use App\Services\MobileApiTokenService;
+use App\Services\MobileAuthPushService;
 use App\Services\MobileCodeService;
 use App\Services\Telegram\TelegramAdminNotificationService;
 use App\Support\PhoneNumber;
@@ -192,18 +193,53 @@ class MobileAuthController extends Controller
             ], 409);
         }
 
+        if (! $isEmail && ! $user->phone_verified_at) {
+            try {
+                $mobiles->send($identifier, 'verify_mobile');
+            } catch (ValidationException) {
+                // A recent verification code is still valid. Do not turn a
+                // correct password into a login error only because of cooldown.
+            }
+
+            return response()->json([
+                'message' => 'شماره موبایل هنوز تأیید نشده؛ کد تأیید برای ادامه ارسال شد.',
+                'code' => 'verification_required',
+                'verification_required' => true,
+                'channel' => 'mobile',
+                'identifier' => $identifier,
+            ], 409);
+        }
+
         $user->forceFill(['last_login_at' => now()])->save();
 
         return $this->tokenResponse($user, $tokens, $data['device_name'] ?? null);
     }
 
-    public function requestPasswordless(Request $request, MobileCodeService $codes): JsonResponse
-    {
-        $data = $request->validate(['phone' => ['required', 'string']]);
+    public function requestPasswordless(
+        Request $request,
+        MobileCodeService $codes,
+        MobileAuthPushService $push,
+    ): JsonResponse {
+        $data = $request->validate([
+            'phone' => ['required', 'string'],
+            'installation_id' => ['nullable', 'uuid'],
+        ]);
         $phone = PhoneNumber::normalize($data['phone']);
 
-        if (User::query()->where('phone', $phone)->where('status', 'active')->exists()) {
-            $codes->send($phone, 'passwordless_login');
+        $user = User::query()
+            ->where('phone', $phone)
+            ->where('status', 'active')
+            ->whereNotNull('phone_verified_at')
+            ->first();
+
+        if ($user) {
+            $code = $codes->send($phone, 'passwordless_login');
+            $push->sendPasswordlessOtp(
+                $user,
+                $phone,
+                $code,
+                $data['installation_id'] ?? null,
+            );
         }
 
         return response()->json([
@@ -240,13 +276,19 @@ class MobileAuthController extends Controller
             'device_name' => ['nullable', 'string', 'max:255'],
         ]);
         $phone = PhoneNumber::normalize($data['phone']);
-        $user = User::query()->where('phone', $phone)->where('status', 'active')->firstOrFail();
+        $user = User::query()
+            ->where('phone', $phone)
+            ->where('status', 'active')
+            ->whereNotNull('phone_verified_at')
+            ->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'code' => 'کد ورود نامعتبر یا حساب برای ورود با کد آماده نیست.',
+            ]);
+        }
 
         $codes->verify($phone, 'passwordless_login', $data['code']);
-
-        if (! $user->phone_verified_at) {
-            $user->forceFill(['phone_verified_at' => now()])->save();
-        }
         $user->forceFill(['last_login_at' => now()])->save();
 
         return $this->tokenResponse($user, $tokens, $data['device_name'] ?? null);

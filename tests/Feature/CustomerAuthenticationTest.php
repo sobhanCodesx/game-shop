@@ -181,27 +181,57 @@ class CustomerAuthenticationTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
-    public function test_unverified_mobile_customer_receives_passwordless_login_code_and_is_verified(): void
+    public function test_verified_mobile_customer_can_login_with_passwordless_code(): void
     {
         config()->set('services.payamak_panel', ['base_url' => 'https://rest.payamak-panel.com/api/SmartSMS', 'username' => 'user', 'api_key' => 'key', 'from' => '5000', 'timeout' => 5]);
         Http::fake(['*/Send' => Http::response(['Value' => '20', 'RetStatus' => 1, 'StrRetStatus' => 'Ok'])]);
-        $user = User::factory()->create(['phone' => '09121234567', 'phone_verified_at' => null]);
+
+        $user = User::factory()->create([
+            'phone' => '09121234567',
+            'phone_verified_at' => now(),
+            'status' => 'active',
+        ]);
 
         $this->post(route('login.otp.send'), ['phone' => '+989121234567'])
             ->assertRedirect(route('login.otp.notice'))
             ->assertSessionHas('login_phone', '09121234567');
 
-        Http::assertNothingSent();
-        $this->assertDatabaseHas('sms_outbox', ['mobile' => '09121234567', 'pattern' => 'otp_passwordless_login', 'status' => 'failed']);
+        $this->assertDatabaseHas('mobile_verification_codes', [
+            'phone' => $user->phone,
+            'purpose' => 'passwordless_login',
+        ]);
 
-        MobileVerificationCode::where(['phone' => $user->phone, 'purpose' => 'passwordless_login'])
-            ->update(['code_hash' => Hash::make('654321')]);
+        MobileVerificationCode::where([
+            'phone' => $user->phone,
+            'purpose' => 'passwordless_login',
+        ])->update(['code_hash' => Hash::make('654321')]);
 
         $this->withSession(['login_phone' => $user->phone])
             ->post(route('login.otp.verify'), ['code' => '654321'])
             ->assertRedirect(route('home'));
 
         $this->assertAuthenticatedAs($user);
-        $this->assertNotNull($user->fresh()->phone_verified_at);
     }
+
+    public function test_unverified_mobile_customer_cannot_use_passwordless_login_as_verification_shortcut(): void
+    {
+        $user = User::factory()->create([
+            'phone' => '09129876543',
+            'phone_verified_at' => null,
+            'status' => 'active',
+        ]);
+
+        $this->post(route('login.otp.send'), ['phone' => $user->phone])
+            ->assertRedirect(route('login.otp.notice'))
+            ->assertSessionHas('login_phone', $user->phone);
+
+        $this->assertDatabaseMissing('mobile_verification_codes', [
+            'phone' => $user->phone,
+            'purpose' => 'passwordless_login',
+        ]);
+
+        $this->assertGuest();
+        $this->assertNull($user->fresh()->phone_verified_at);
+    }
+
 }

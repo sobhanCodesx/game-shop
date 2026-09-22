@@ -209,7 +209,7 @@ class MobileApiTest extends TestCase
             ->assertJsonPath('data.0.id', $short->id);
     }
 
-    public function test_phone_password_login_does_not_require_an_otp_after_registration_flow(): void
+    public function test_phone_password_login_requires_verified_phone_on_mobile_api(): void
     {
         $user = User::factory()->create([
             'phone' => '09121234567',
@@ -222,10 +222,34 @@ class MobileApiTest extends TestCase
             'identifier' => '09121234567',
             'password' => 'player1234',
             'device_name' => 'Android Phone',
-        ])->assertOk()
-            ->assertJsonPath('token_type', 'Bearer')
-            ->assertJsonPath('user.id', $user->id)
-            ->assertJsonPath('user.phone', '09121234567');
+        ])->assertStatus(409)
+            ->assertJsonPath('code', 'verification_required')
+            ->assertJsonPath('channel', 'mobile')
+            ->assertJsonPath('identifier', '09121234567');
+
+        $this->assertDatabaseCount('mobile_access_tokens', 0);
+        $this->assertDatabaseHas('mobile_verification_codes', [
+            'phone' => '09121234567',
+            'purpose' => 'verify_mobile',
+        ]);
+    }
+
+    public function test_mobile_passwordless_request_does_not_issue_code_for_unverified_phone(): void
+    {
+        $user = User::factory()->create([
+            'phone' => '09122345678',
+            'phone_verified_at' => null,
+            'status' => 'active',
+        ]);
+
+        $this->postJson('/api/v1/auth/passwordless/request', [
+            'phone' => $user->phone,
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('mobile_verification_codes', [
+            'phone' => $user->phone,
+            'purpose' => 'passwordless_login',
+        ]);
     }
 
 }

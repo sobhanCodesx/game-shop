@@ -3,6 +3,10 @@ name: PlayNexus System Console Check
 on:
   push:
     paths:
+      - 'app/Http/Controllers/Api/V1/MobileAuthController.php'
+      - 'app/Services/MobileAuthPushService.php'
+      - 'app/Services/MobileCodeService.php'
+      - 'tests/Feature/MobilePushNotificationTest.php'
       - 'app/Http/Controllers/Admin/SystemMaintenanceController.php'
       - 'app/Jobs/SendExpoPushNotification.php'
       - 'app/Notifications/ContentPublishedNotification.php'
@@ -17,6 +21,10 @@ on:
       - '.github/workflows/playnexus-mobile-push-check.yml'
   pull_request:
     paths:
+      - 'app/Http/Controllers/Api/V1/MobileAuthController.php'
+      - 'app/Services/MobileAuthPushService.php'
+      - 'app/Services/MobileCodeService.php'
+      - 'tests/Feature/MobilePushNotificationTest.php'
       - 'app/Http/Controllers/Admin/SystemMaintenanceController.php'
       - 'app/Jobs/SendExpoPushNotification.php'
       - 'app/Notifications/ContentPublishedNotification.php'
@@ -36,6 +44,12 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
     steps:
       - uses: actions/checkout@v4
 
@@ -43,6 +57,10 @@ jobs:
         run: |
           php -l app/Http/Controllers/Admin/SystemMaintenanceController.php
           php -l app/Jobs/SendExpoPushNotification.php
+          php -l app/Http/Controllers/Api/V1/MobileAuthController.php
+          php -l app/Services/MobileAuthPushService.php
+          php -l app/Services/MobileCodeService.php
+          php -l tests/Feature/MobilePushNotificationTest.php
           php -l app/Notifications/ContentPublishedNotification.php
           php -l app/Notifications/Channels/ExpoPushChannel.php
           php -l app/Services/CronManagerService.php
@@ -55,8 +73,12 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Run notification unit test
-        run: php artisan test tests/Unit/ContentPublishedNotificationTest.php
+      - name: Run push and authentication tests
+        run: >-
+          php artisan test
+          tests/Unit/ContentPublishedNotificationTest.php
+          tests/Feature/MobilePushNotificationTest.php
+          tests/Feature/MobileApiTest.php
 
       - name: Verify system console routes
         run: php artisan route:list --path=admin/system-maintenance --except-vendor
