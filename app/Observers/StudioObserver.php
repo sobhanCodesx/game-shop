@@ -18,16 +18,19 @@ class StudioObserver
     {
         if ($studio->wasChanged(['name', 'slug', 'logo', 'background', 'description', 'website', 'status'])) {
             app(StorefrontPageCache::class)->invalidate('channel', 'home', 'studio');
+            app(SitemapCacheService::class)->invalidate();
         }
     }
 
     public function deleted(Studio $studio): void
     {
         app(StorefrontPageCache::class)->invalidate('channel', 'home', 'studio');
+        app(SitemapCacheService::class)->invalidate();
     }
 
     public function restored(Studio $studio): void
     {
         app(StorefrontPageCache::class)->invalidate('channel', 'home', 'studio');
+        app(SitemapCacheService::class)->invalidate();
     }
 }
