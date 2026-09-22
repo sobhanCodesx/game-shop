@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-22-1534-verify-assets-feed-75",
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "feed",
+    "id": 75
+  }
+}
