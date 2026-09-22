@@ -13,7 +13,7 @@ class ProductObserver
 {
     public function created(Product $product): void
     {
-        app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product');
+        app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product', 'feed');
         app(SitemapCacheService::class)->invalidate();
 
         if ($this->isPublished($product)) {
@@ -29,7 +29,7 @@ class ProductObserver
             'category_id', 'brand_id', 'title', 'slug', 'sku', 'short_description', 'description',
             'release_date', 'seo_title', 'seo_description', 'status', 'visibility', 'published_at',
         ])) {
-            app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product');
+            app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product', 'feed');
         }
 
         if (! $this->wasPublished($product) && $this->isPublished($product)) {
@@ -43,13 +43,13 @@ class ProductObserver
 
     public function deleted(Product $product): void
     {
-        app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product');
+        app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product', 'feed');
         app(SitemapCacheService::class)->invalidate();
     }
 
     public function restored(Product $product): void
     {
-        app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product');
+        app(StorefrontPageCache::class)->invalidate('channel', 'home', 'product', 'feed');
         app(SitemapCacheService::class)->invalidate();
     }
 
