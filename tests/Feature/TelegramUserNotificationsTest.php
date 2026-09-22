@@ -74,10 +74,12 @@ class TelegramUserNotificationsTest extends TestCase
 
         Http::assertSent(function ($request): bool {
             $text = (string) ($request->data()['text'] ?? '');
+            $replyMarkup = $request->data()['reply_markup'] ?? [];
 
             return str_ends_with($request->url(), '/sendMessage')
-                && str_contains($text, 'تلگرام با موفقیت وصل شد')
-                && str_contains($text, 'دسترسی ادمین');
+                && str_contains($text, 'تلگرام به حساب PlayNexus وصل است')
+                && str_contains($text, 'اشتراک شماره خودم')
+                && (($replyMarkup['keyboard'][0][0]['request_contact'] ?? false) === true);
         });
     }
 
