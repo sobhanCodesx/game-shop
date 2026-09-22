@@ -228,6 +228,10 @@ class MobileApiTest extends TestCase
             ->assertJsonPath('identifier', '09121234567');
 
         $this->assertDatabaseCount('mobile_access_tokens', 0);
+        $this->assertDatabaseHas('mobile_verification_codes', [
+            'phone' => '09121234567',
+            'purpose' => 'verify_mobile',
+        ]);
     }
 
     public function test_mobile_passwordless_request_does_not_issue_code_for_unverified_phone(): void
