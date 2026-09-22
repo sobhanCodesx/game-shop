@@ -18,6 +18,7 @@ class VideoPageCacheTest extends TestCase
     {
         parent::setUp();
 
+        $this->withoutVite();
         Cache::store('file')->flush();
     }
 
