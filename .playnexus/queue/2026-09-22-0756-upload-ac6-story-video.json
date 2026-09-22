@@ -1,0 +1,15 @@
+{
+  "job_id": "2026-09-22-0756-upload-ac6-story-video",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "video",
+    "id": 67,
+    "slot": "video",
+    "source_url": "https://video.akamai.steamstatic.com/store_trailers/1888160/601222/3676f0a33eab9d520ebd3e4d61ba0c7bf62a8062/1750739939/hls_264_master.m3u8?t=1693376574",
+    "require_audio": true,
+    "max_duration_seconds": 900,
+    "transcode_max_height": 720,
+    "max_height": 720,
+    "max_size_bytes": 314572800
+  }
+}
