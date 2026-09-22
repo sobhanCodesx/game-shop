@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Game;
 use App\Models\SocialContent;
 use App\Models\VideoPlaylist;
+use App\Services\ChannelPageDataService;
 use App\Services\FeedService;
 use App\Services\FollowedGameWatchService;
 use App\Services\GameRadarService;
@@ -20,24 +21,23 @@ use Inertia\Response;
 
 class ChannelController extends Controller
 {
-    public function show(Request $request, Game $game, StorefrontDataService $data, FeedService $feed, GameRadarService $radar, FollowedGameWatchService $watch): Response
-    {
+    public function show(
+        Request $request,
+        Game $game,
+        ChannelPageDataService $page,
+        GameRadarService $radar,
+        FollowedGameWatchService $watch,
+    ): Response {
         $this->ensureVisible($game);
 
-        $videos = SocialContent::query()->published()->where('type', 'video')->whereBelongsTo($game)
-            ->with(['game:id,name,slug,cover', 'user:id,name,avatar'])
-            ->latest('published_at')->paginate(18)->withQueryString()
-            ->through(fn (SocialContent $video) => $data->content($video));
-        $playlists = VideoPlaylist::query()->publiclyVisible()->whereBelongsTo($game)
-            ->with(['videos' => fn ($query) => $query->published()->where('type', 'video')->limit(4)])
-            ->withCount(['videos' => fn ($query) => $query->published()->where('type', 'video')])
-            ->orderBy('sort_order')->get()->map(fn (VideoPlaylist $playlist) => $this->playlistData($game, $playlist));
-        $channel = $this->channelData($request, $game);
-        $channel['watch'] = $watch->status($game, $channel['is_subscribed']);
+        $payload = $page->get($game, $request);
+        $channel = $payload['channel'];
+        $channel['watch'] = $watch->status($game, (bool) $channel['is_subscribed']);
+
         $storeInfo = $radar->storeDataForGame($game);
         $canonical = route('channels.show', $game->slug);
         $description = Str::limit(
-            RichText::plainText($game->description) ?: "ویدیوها، کالکشن‌ها و تازه‌ترین محتوای {$game->name} در PlayNexus.",
+            $channel['description'] ?: "ویدیوها، کالکشن‌ها و تازه‌ترین محتوای {$game->name} در PlayNexus.",
             160,
             '…',
         );
@@ -92,9 +92,9 @@ class ChannelController extends Controller
                 ],
             ]),
             'channel' => $channel,
-            'videos' => $videos,
-            'playlists' => $playlists,
-            'feed' => $feed->channel($request, $game),
+            'videos' => $payload['videos'],
+            'playlists' => $payload['playlists'],
+            'feed' => $payload['feed'],
             'storeInfo' => $storeInfo,
         ]);
     }
