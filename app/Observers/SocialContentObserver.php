@@ -26,13 +26,20 @@ class SocialContentObserver
     public function updated(SocialContent $content): void
     {
         if (
-            ($content->type === 'video' || $content->getRawOriginal('type') === 'video')
-            && $content->wasChanged([
-                'game_id', 'type', 'title', 'slug', 'excerpt', 'thumbnail', 'video_path',
-                'duration', 'status', 'published_at',
-            ])
+            in_array($content->type, ['post', 'video'], true)
+            || in_array($content->getRawOriginal('type'), ['post', 'video'], true)
         ) {
-            app(StorefrontPageCache::class)->invalidate('playlist');
+            if ($content->wasChanged([
+                'game_id', 'related_product_id', 'related_content_id', 'type', 'feed_type', 'feed_badge',
+                'title', 'slug', 'excerpt', 'body', 'thumbnail', 'video_path', 'duration',
+                'allow_comments', 'featured', 'status', 'published_at',
+            ])) {
+                app(StorefrontPageCache::class)->invalidate('channel');
+
+                if ($content->type === 'video' || $content->getRawOriginal('type') === 'video') {
+                    app(StorefrontPageCache::class)->invalidate('playlist');
+                }
+            }
         }
 
         $wasPublished = $this->wasPublished($content);
@@ -58,7 +65,9 @@ class SocialContentObserver
     public function deleted(SocialContent $content): void
     {
         if ($content->type === 'video') {
-            app(StorefrontPageCache::class)->invalidate('playlist');
+            app(StorefrontPageCache::class)->invalidate('playlist', 'channel');
+        } elseif ($content->type === 'post') {
+            app(StorefrontPageCache::class)->invalidate('channel');
         }
     }
 
