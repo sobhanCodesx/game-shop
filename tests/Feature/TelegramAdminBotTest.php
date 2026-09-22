@@ -301,6 +301,90 @@ class TelegramAdminBotTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    public function test_menu_renders_professional_dashboard_hubs(): void
+    {
+        $this->configureBot();
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => [],
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson(
+            '/api/telegram/webhook',
+            $this->telegramUpdate(2001, '777777777', '/menu'),
+        )->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            if (! str_ends_with($request->url(), '/sendMessage')) {
+                return false;
+            }
+
+            $callbacks = $this->callbackDataFromRequest($request->data());
+
+            return in_array('menu:content', $callbacks, true)
+                && in_array('menu:library', $callbacks, true)
+                && in_array('menu:commerce', $callbacks, true)
+                && in_array('menu:intelligence', $callbacks, true)
+                && in_array('menu:system', $callbacks, true);
+        });
+    }
+
+    public function test_resource_hub_exposes_list_search_create_and_restore_actions(): void
+    {
+        $this->configureBot();
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => [],
+            ]),
+        ]);
+
+        $payload = [
+            'update_id' => 2002,
+            'callback_query' => [
+                'id' => 'callback-2002',
+                'from' => [
+                    'id' => 777777777,
+                    'is_bot' => false,
+                    'first_name' => 'Admin',
+                ],
+                'message' => [
+                    'message_id' => 88,
+                    'date' => now()->timestamp,
+                    'chat' => [
+                        'id' => 777777777,
+                        'type' => 'private',
+                    ],
+                ],
+                'data' => 'menu:game',
+            ],
+        ];
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson('/api/telegram/webhook', $payload)
+            ->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            if (! str_ends_with($request->url(), '/sendMessage')) {
+                return false;
+            }
+
+            $callbacks = $this->callbackDataFromRequest($request->data());
+
+            return in_array('list:game:0', $callbacks, true)
+                && in_array('search:game', $callbacks, true)
+                && in_array('template:game:create', $callbacks, true)
+                && in_array('restore-prompt:game', $callbacks, true);
+        });
+    }
+
     public function test_tool_registry_covers_the_existing_content_agent_read_write_and_media_surface(): void
     {
         $names = app(TelegramBotToolRegistry::class)->names();
@@ -341,6 +425,22 @@ class TelegramAdminBotTest extends TestCase
         ] as $tool) {
             $this->assertContains($tool, $names, "Telegram registry is missing {$tool}");
         }
+    }
+
+    private function callbackDataFromRequest(array $payload): array
+    {
+        $rows = $payload['reply_markup']['inline_keyboard'] ?? [];
+        $callbacks = [];
+
+        foreach ($rows as $row) {
+            foreach ((array) $row as $button) {
+                if (is_array($button) && isset($button['callback_data'])) {
+                    $callbacks[] = (string) $button['callback_data'];
+                }
+            }
+        }
+
+        return $callbacks;
     }
 
     private function configureBot(): TelegramBotSetting
