@@ -5,6 +5,8 @@ namespace App\Notifications;
 use App\Models\SocialContent;
 use App\Models\User;
 use App\Notifications\Channels\ExpoPushChannel;
+use App\Notifications\Channels\TelegramChannel;
+use App\Services\MediaStorage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -21,7 +23,7 @@ class SocialActivityNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database', ExpoPushChannel::class];
+        return ['database', ExpoPushChannel::class, TelegramChannel::class];
     }
 
     public function toArray(object $notifiable): array
@@ -53,6 +55,20 @@ class SocialActivityNotification extends Notification
             'content_id' => $this->content->id,
             'comment_id' => $this->commentId,
             'actor_id' => $this->actor->id,
+            'image_url' => $this->imageUrl(),
         ];
     }
+    private function imageUrl(): ?string
+    {
+        if (filled($this->content->thumbnail)) {
+            return MediaStorage::url((string) $this->content->thumbnail);
+        }
+
+        $path = $this->content->media()
+            ->where('type', 'image')
+            ->value('path');
+
+        return filled($path) ? MediaStorage::url((string) $path) : null;
+    }
+
 }
