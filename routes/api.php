@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ContentAgentGraphqlController;
 use App\Http\Controllers\Api\ContentAgentMcpController;
 use App\Http\Controllers\Api\DeploymentAgentController;
+use App\Http\Controllers\Api\NexusAiContextController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\V1\MobileAccountController;
 use App\Http\Controllers\Api\V1\MobileAuthController;
@@ -27,6 +28,10 @@ Route::post('/mcp', ContentAgentMcpController::class)
 Route::post('/graphql', ContentAgentGraphqlController::class)
     ->middleware(['content.agent', 'throttle:30,1'])
     ->name('content-agent.graphql');
+
+Route::post('/nexus-ai/context', NexusAiContextController::class)
+    ->middleware('throttle:60,1')
+    ->name('nexus-ai.context');
 
 Route::post('/content-agent/upload/chunk', [ContentAgentMcpController::class, 'uploadChunkFile'])
     ->middleware(['content.agent', 'throttle:1200,1'])
