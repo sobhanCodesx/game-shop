@@ -201,6 +201,9 @@ final class TelegramBotCommandRouter
             if ($target === 'advanced') {
                 return $this->sendAndReturn($chatId, $this->formatter->advancedHelp(), 'advanced_help');
             }
+            if ($target === 'graph-schema') {
+                return $this->executeReadTool($chatId, 'describe_playnexus_graph', []);
+            }
             if (in_array($target, ['content', 'library', 'commerce', 'intelligence', 'system'], true)) {
                 return $this->showHub($chatId, $target);
             }
