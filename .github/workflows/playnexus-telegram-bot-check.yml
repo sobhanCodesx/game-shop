@@ -1,0 +1,91 @@
+name: PlayNexus Telegram Bot Check
+
+on:
+  push:
+    paths:
+      - '.env.example'
+      - '.github/workflows/playnexus-telegram-bot-check.yml'
+      - 'app/Http/Controllers/Admin/TelegramBotSettingsController.php'
+      - 'app/Http/Controllers/Api/TelegramWebhookController.php'
+      - 'app/Models/TelegramBotAudit.php'
+      - 'app/Models/TelegramBotSession.php'
+      - 'app/Models/TelegramBotSetting.php'
+      - 'app/Services/Telegram/**'
+      - 'config/telegram_bot.php'
+      - 'database/migrations/2026_09_22_130000_create_telegram_bot_tables.php'
+      - 'resources/js/Pages/Admin/TelegramBot/**'
+      - 'resources/js/config/admin-navigation.ts'
+      - 'routes/api.php'
+      - 'routes/web.php'
+      - 'tests/Feature/TelegramAdminBotTest.php'
+  pull_request:
+    paths:
+      - '.env.example'
+      - '.github/workflows/playnexus-telegram-bot-check.yml'
+      - 'app/Http/Controllers/Admin/TelegramBotSettingsController.php'
+      - 'app/Http/Controllers/Api/TelegramWebhookController.php'
+      - 'app/Models/TelegramBotAudit.php'
+      - 'app/Models/TelegramBotSession.php'
+      - 'app/Models/TelegramBotSetting.php'
+      - 'app/Services/Telegram/**'
+      - 'config/telegram_bot.php'
+      - 'database/migrations/2026_09_22_130000_create_telegram_bot_tables.php'
+      - 'resources/js/Pages/Admin/TelegramBot/**'
+      - 'resources/js/config/admin-navigation.ts'
+      - 'routes/api.php'
+      - 'routes/web.php'
+      - 'tests/Feature/TelegramAdminBotTest.php'
+
+permissions:
+  contents: read
+
+jobs:
+  telegram-bot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:dGVzdC10ZWxlZ3JhbS1ib3Qta2V5LTMyaGFzaA==
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          php -l app/Http/Controllers/Admin/TelegramBotSettingsController.php
+          php -l app/Http/Controllers/Api/TelegramWebhookController.php
+          php -l app/Models/TelegramBotAudit.php
+          php -l app/Models/TelegramBotSession.php
+          php -l app/Models/TelegramBotSetting.php
+          for file in app/Services/Telegram/*.php; do php -l "$file"; done
+          php -l config/telegram_bot.php
+          php -l database/migrations/2026_09_22_130000_create_telegram_bot_tables.php
+          php -l tests/Feature/TelegramAdminBotTest.php
+
+      - name: Validate Composer files
+        run: composer validate --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run Telegram bot security and feature tests
+        run: php artisan test tests/Feature/TelegramAdminBotTest.php
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build client and SSR bundles
+        run: npm run build
