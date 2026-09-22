@@ -89,9 +89,9 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                 <Button
                     isDisabled={processing}
                     onPress={save}
-                    startContent={<Save size={16} />}
                     variant="primary"
                 >
+                    <Save size={16} />
                     ذخیره تنظیمات
                 </Button>
             }
@@ -145,13 +145,17 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                 </h2>
                             </div>
 
-                            <Input
-                                label="عنوان"
-                                onChange={(event) =>
-                                    setData("nexus_ai_title", event.target.value)
-                                }
-                                value={data.nexus_ai_title}
-                            />
+                            <label className="block">
+                                <span className="mb-2 block text-xs font-bold text-slate-300">
+                                    عنوان
+                                </span>
+                                <Input
+                                    onChange={(event) =>
+                                        setData("nexus_ai_title", event.target.value)
+                                    }
+                                    value={data.nexus_ai_title}
+                                />
+                            </label>
                             {errors.nexus_ai_title && (
                                 <p className="text-xs font-bold text-rose-400">
                                     {errors.nexus_ai_title}
@@ -180,26 +184,34 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <Input
-                                    label="عنوان منو"
-                                    onChange={(event) =>
-                                        setData(
-                                            "nexus_ai_nav_label",
-                                            event.target.value,
-                                        )
-                                    }
-                                    value={data.nexus_ai_nav_label}
-                                />
-                                <Input
-                                    label="برچسب وضعیت"
-                                    onChange={(event) =>
-                                        setData(
-                                            "nexus_ai_status_text",
-                                            event.target.value,
-                                        )
-                                    }
-                                    value={data.nexus_ai_status_text}
-                                />
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-bold text-slate-300">
+                                        عنوان منو
+                                    </span>
+                                    <Input
+                                        onChange={(event) =>
+                                            setData(
+                                                "nexus_ai_nav_label",
+                                                event.target.value,
+                                            )
+                                        }
+                                        value={data.nexus_ai_nav_label}
+                                    />
+                                </label>
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-bold text-slate-300">
+                                        برچسب وضعیت
+                                    </span>
+                                    <Input
+                                        onChange={(event) =>
+                                            setData(
+                                                "nexus_ai_status_text",
+                                                event.target.value,
+                                            )
+                                        }
+                                        value={data.nexus_ai_status_text}
+                                    />
+                                </label>
                             </div>
                         </Card.Content>
                     </Card>
@@ -213,36 +225,44 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                 </h2>
                             </div>
 
-                            <Input
-                                dir="ltr"
-                                label="آدرس iframe"
-                                onChange={(event) =>
-                                    setData(
-                                        "nexus_ai_iframe_url",
-                                        event.target.value,
-                                    )
-                                }
-                                value={data.nexus_ai_iframe_url}
-                            />
+                            <label className="block">
+                                <span className="mb-2 block text-xs font-bold text-slate-300">
+                                    آدرس iframe
+                                </span>
+                                <Input
+                                    dir="ltr"
+                                    onChange={(event) =>
+                                        setData(
+                                            "nexus_ai_iframe_url",
+                                            event.target.value,
+                                        )
+                                    }
+                                    value={data.nexus_ai_iframe_url}
+                                />
+                            </label>
                             {errors.nexus_ai_iframe_url && (
                                 <p className="text-xs font-bold text-rose-400">
                                     {errors.nexus_ai_iframe_url}
                                 </p>
                             )}
 
-                            <Input
-                                label="حداقل ارتفاع iframe (px)"
-                                max="1200"
-                                min="520"
-                                onChange={(event) =>
-                                    setData(
-                                        "nexus_ai_min_height",
-                                        Number(event.target.value),
-                                    )
-                                }
-                                type="number"
-                                value={String(data.nexus_ai_min_height)}
-                            />
+                            <label className="block">
+                                <span className="mb-2 block text-xs font-bold text-slate-300">
+                                    حداقل ارتفاع iframe (px)
+                                </span>
+                                <Input
+                                    max="1200"
+                                    min="520"
+                                    onChange={(event) =>
+                                        setData(
+                                            "nexus_ai_min_height",
+                                            Number(event.target.value),
+                                        )
+                                    }
+                                    type="number"
+                                    value={String(data.nexus_ai_min_height)}
+                                />
+                            </label>
 
                             <div className="rounded-2xl border border-cyan-500/10 bg-cyan-500/[.04] p-4 text-xs leading-7 text-slate-400">
                                 <div className="mb-2 flex items-center gap-2 font-black text-cyan-300">
