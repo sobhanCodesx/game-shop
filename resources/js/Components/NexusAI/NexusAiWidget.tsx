@@ -1,6 +1,5 @@
 import {
     Bot,
-    ChevronDown,
     MessageCircleMore,
     RotateCcw,
     Send,
@@ -110,6 +109,20 @@ export default function NexusAiWidget({
     useEffect(() => {
         if (!open) return;
         window.setTimeout(() => inputRef.current?.focus(), 120);
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+
+        const previousOverflow = document.body.style.overflow;
+        const previousOverscroll = document.body.style.overscrollBehavior;
+        document.body.style.overflow = "hidden";
+        document.body.style.overscrollBehavior = "none";
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.body.style.overscrollBehavior = previousOverscroll;
+        };
     }, [open]);
 
     useEffect(() => {
@@ -232,15 +245,16 @@ export default function NexusAiWidget({
                 }`}
             >
                 <div className="grid h-full min-h-0 grid-rows-[auto_1fr_auto]">
-                    <header className="relative border-b border-white/[.07] px-4 pb-4 pt-[calc(14px+env(safe-area-inset-top))] sm:px-5 lg:pt-4">
+                    <header className="relative border-b border-white/[.07] px-4 pb-4 pt-[calc(17px+env(safe-area-inset-top))] sm:px-5 lg:pt-4">
+                        <span className="absolute left-1/2 top-[calc(7px+env(safe-area-inset-top))] h-1 w-10 -translate-x-1/2 rounded-full bg-white/10 lg:hidden" />
                         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(124,58,237,.18),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(14,165,233,.10),transparent_40%)]" />
 
                         <div className="relative flex items-center justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-3">
                                 <div className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 text-white shadow-[0_12px_35px_rgba(99,102,241,.28)]">
                                     <Bot size={22} strokeWidth={2.2} />
-                                    <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border-2 border-[#080b16] bg-[#080b16] text-cyan-300">
-                                        <Sparkles size={11} />
+                                    <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-white/20 bg-gradient-to-br from-violet-500 to-cyan-400 text-white shadow-[0_4px_14px_rgba(34,211,238,.25)]">
+                                        <Sparkles size={10} />
                                     </span>
                                 </div>
 
@@ -376,7 +390,7 @@ export default function NexusAiWidget({
                     </div>
 
                     <footer className="border-t border-white/[.07] bg-[#080b16]/90 p-3 pb-[calc(12px+env(safe-area-inset-bottom))] sm:p-4 sm:pb-4">
-                        <div className="flex items-end gap-2 rounded-[18px] border border-white/[.08] bg-black/20 p-1.5 transition focus-within:border-violet-400/25 focus-within:ring-4 focus-within:ring-violet-500/[.05]">
+                        <div className="flex items-end gap-2 rounded-[20px] border border-white/[.09] bg-white/[.035] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.035)] transition focus-within:border-violet-400/30 focus-within:bg-white/[.05] focus-within:ring-4 focus-within:ring-violet-500/[.06]">
                             <textarea
                                 className="max-h-28 min-h-11 flex-1 resize-none bg-transparent px-2.5 py-2.5 text-xs leading-6 text-white outline-none placeholder:text-slate-600 disabled:opacity-60"
                                 disabled={busy}
