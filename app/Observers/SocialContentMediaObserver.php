@@ -14,7 +14,7 @@ class SocialContentMediaObserver
 
     public function updated(SocialContentMedia $media): void
     {
-        if ($media->wasChanged(['type', 'path', 'thumbnail', 'mime', 'width', 'height', 'duration', 'alt', 'sort_order'])) {
+        if ($media->wasChanged(['social_content_id', 'type', 'path', 'thumbnail', 'mime', 'width', 'height', 'duration', 'alt', 'sort_order'])) {
             $this->invalidateIfVideo($media);
         }
     }
