@@ -27,18 +27,57 @@ final class StorefrontPageCache
             sha1((string) $identity),
         );
 
-        return $store->remember(
+        $value = $store->remember(
             $key,
             now()->addSeconds(max(60, $ttlSeconds)),
             $resolver,
         );
+
+        $this->registerKey($scope, $key);
+
+        return $value;
     }
 
     public function invalidate(string ...$scopes): void
     {
+        $store = $this->store();
+
         foreach (array_unique(array_filter($scopes)) as $scope) {
-            $this->store()->forever($this->versionKey($scope), (string) Str::uuid());
+            $registryKey = $this->registryKey($scope);
+            $registeredKeys = $store->get($registryKey, []);
+
+            if (is_array($registeredKeys)) {
+                foreach ($registeredKeys as $key) {
+                    if (is_string($key) && $key !== '') {
+                        $store->forget($key);
+                    }
+                }
+            }
+
+            $store->forget($registryKey);
+            $store->forever($this->versionKey($scope), (string) Str::uuid());
         }
+    }
+
+    private function registerKey(string $scope, string $key): void
+    {
+        $store = $this->store();
+        $registryKey = $this->registryKey($scope);
+        $registeredKeys = $store->get($registryKey, []);
+
+        if (! is_array($registeredKeys)) {
+            $registeredKeys = [];
+        }
+
+        if (! in_array($key, $registeredKeys, true)) {
+            $registeredKeys[] = $key;
+            $store->forever($registryKey, array_slice($registeredKeys, -5000));
+        }
+    }
+
+    private function registryKey(string $scope): string
+    {
+        return "storefront-page:{$scope}:registry:v1";
     }
 
     private function versionKey(string $scope): string
