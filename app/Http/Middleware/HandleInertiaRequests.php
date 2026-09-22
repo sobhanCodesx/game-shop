@@ -9,6 +9,7 @@ use App\Models\SocialContent;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\MediaStorage;
+use App\Services\NexusAiSettings;
 use App\Services\StorefrontDataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -175,6 +176,7 @@ class HandleInertiaRequests extends Middleware
                 'admin_name' => User::query()->whereKey($request->session()->get('impersonator_id'))->value('name'),
             ] : null,
             'storefront' => fn () => [
+                'nexus_ai' => app(NexusAiSettings::class)->publicConfig(),
                 'categories' => Cache::remember(
                     'storefront.navigation.v1',
                     now()->addMinutes(5),
