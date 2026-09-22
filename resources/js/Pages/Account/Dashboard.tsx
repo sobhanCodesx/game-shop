@@ -14,6 +14,9 @@ import {
     PackageOpen,
     ReceiptText,
     Rss,
+    Send,
+    Copy,
+    Link2Off,
     ShoppingBag,
     Truck,
     Pencil,
@@ -74,6 +77,13 @@ type ContentNotificationPreferences = {
     sms_enabled: boolean;
     email_enabled: boolean;
     feed_enabled: boolean;
+    telegram_enabled: boolean;
+};
+type TelegramIntegration = {
+    available: boolean;
+    connected: boolean;
+    bot_username: string | null;
+    linked_at: string | null;
 };
 type CurrentOrder = {
     id: number;
@@ -113,6 +123,7 @@ export default function Dashboard({
     accountNotifications,
     currentOrder,
     contentNotificationPreferences,
+    telegramIntegration,
 }: {
     profile: Profile;
     addresses: Address[];
@@ -129,6 +140,7 @@ export default function Dashboard({
     }[];
     currentOrder: CurrentOrder | null;
     contentNotificationPreferences: ContentNotificationPreferences;
+    telegramIntegration: TelegramIntegration;
 }) {
     const { flash } = usePage<SharedPageProps>().props;
     const requestedTab = filters.tab as Tab;
@@ -382,6 +394,7 @@ export default function Dashboard({
                             <ContentNotificationsPanel
                                 preferences={contentNotificationPreferences}
                                 profile={profile}
+                                telegram={telegramIntegration}
                             />
                         )}{" "}
                         {tab === "addresses" && (
@@ -843,15 +856,26 @@ function Card({
 function ContentNotificationsPanel({
     preferences,
     profile,
+    telegram,
 }: {
     preferences: ContentNotificationPreferences;
     profile: Profile;
+    telegram: TelegramIntegration;
 }) {
     const { data, setData, put, processing, recentlySuccessful } =
         useForm<ContentNotificationPreferences>(preferences);
+    const [copied, setCopied] = useState(false);
+
     const submit = (event: FormEvent) => {
         event.preventDefault();
         put("/account/content-notifications", { preserveScroll: true });
+    };
+
+    const copyBot = async () => {
+        if (!telegram.bot_username) return;
+        await navigator.clipboard.writeText(telegram.bot_username);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1800);
     };
 
     return (
@@ -864,26 +888,103 @@ function ContentNotificationsPanel({
                     </span>
                     <div>
                         <p className="text-xs font-bold text-indigo-100">
-                            فقط تازه‌های PlayNexus
+                            اعلان‌ها، سفارش‌ها و محتوای مهم
                         </p>
                         <h2 className="mt-1 text-xl font-black sm:text-2xl">
-                            اطلاع‌رسانی محتوای کانال‌ها
+                            روش‌های اطلاع‌رسانی PlayNexus
                         </h2>
                         <p className="mt-2 max-w-2xl text-xs leading-6 text-indigo-100 sm:text-sm">
-                            وقتی کانالی که عضو آن هستید محصول، ویدیو یا مطلب
-                            تازه‌ای منتشر کند، از روش‌های دلخواهتان باخبر شوید.
+                            تلگرام را یک‌بار وصل کن؛ بعد اعلان سفارش، پشتیبانی،
+                            محتوای دنبال‌شده و کد ورود درخواستی می‌تواند در همان چت برسد.
                         </p>
                     </div>
                 </div>
             </div>
 
+            <div className="mt-5 overflow-hidden rounded-3xl border border-sky-500/20 bg-gradient-to-l from-sky-500/[0.09] via-indigo-500/[0.05] to-transparent p-4 sm:p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-500/20">
+                        <Send size={23} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-black">تلگرام</h3>
+                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${telegram.connected ? "bg-emerald-500/10 text-emerald-600" : "bg-slate-500/10 text-[var(--store-muted)]"}`}>
+                                {telegram.connected ? "متصل ✓" : "متصل نیست"}
+                            </span>
+                        </div>
+                        <p className="mt-1 text-xs leading-6 text-[var(--store-muted)]">
+                            {telegram.connected
+                                ? "اتصال تأیید شده است؛ کد ورود و اعلان‌های فعال می‌توانند در همین Bot ارسال شوند."
+                                : "اتصال فقط یک‌بار انجام می‌شود. بعد از آن برای دریافت اعلان‌ها یا کد ورود هیچ تنظیم دوباره‌ای لازم نیست."}
+                        </p>
+                        {telegram.bot_username && (
+                            <button
+                                className="mt-2 inline-flex items-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/[0.06] px-3 py-2 font-mono text-xs font-bold text-sky-600"
+                                onClick={copyBot}
+                                type="button"
+                            >
+                                <Copy size={14} />
+                                {telegram.bot_username}
+                                <span className="font-sans text-[10px]">
+                                    {copied ? "کپی شد" : "کپی"}
+                                </span>
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                        {telegram.connected ? (
+                            <button
+                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-500/20 px-4 text-xs font-black text-rose-600"
+                                onClick={() =>
+                                    confirm("اتصال تلگرام از حساب قطع شود؟") &&
+                                    router.delete("/account/telegram", {
+                                        preserveScroll: true,
+                                    })
+                                }
+                                type="button"
+                            >
+                                <Link2Off size={16} />
+                                قطع اتصال
+                            </button>
+                        ) : (
+                            <button
+                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 text-xs font-black text-white shadow-lg shadow-sky-500/20 disabled:opacity-50"
+                                disabled={!telegram.available}
+                                onClick={() =>
+                                    router.post("/account/telegram/connect", {})
+                                }
+                                type="button"
+                            >
+                                <Send size={16} />
+                                اتصال تلگرام
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             <div className="mt-5 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs leading-6 text-amber-700 dark:text-amber-300">
-                این تنظیمات فقط برای محتوای سایت است و هیچ تغییری در اعلان‌های
-                سفارش، پرداخت یا پیام‌های پشتیبانی ایجاد نمی‌کند. اعلان داخل
-                حساب نیز فقط با فعال بودن «فید شخصی» نمایش داده می‌شود.
+                پیامک، ایمیل و فید شخصی برای انتشار محتوای دنبال‌شده‌اند.
+                تلگرام علاوه بر محتوا، اعلان‌های حساب مثل سفارش و پشتیبانی را هم پوشش می‌دهد.
             </div>
 
             <div className="mt-5 grid gap-3">
+                <NotificationMethod
+                    active={data.telegram_enabled}
+                    description={
+                        telegram.connected
+                            ? "ارسال اعلان‌های PlayNexus در Bot متصل‌شده"
+                            : "برای فعال‌کردن این روش، ابتدا تلگرام را از کارت بالا متصل کن."
+                    }
+                    icon={Send}
+                    label="تلگرام"
+                    onChange={(active) =>
+                        telegram.connected &&
+                        setData("telegram_enabled", active)
+                    }
+                    recommended={telegram.connected}
+                />
                 <NotificationMethod
                     active={data.sms_enabled}
                     description={
@@ -894,7 +995,6 @@ function ContentNotificationsPanel({
                     icon={Smartphone}
                     label="پیامک"
                     onChange={(active) => setData("sms_enabled", active)}
-                    recommended
                 />
                 <NotificationMethod
                     active={data.email_enabled}
