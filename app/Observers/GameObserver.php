@@ -12,7 +12,7 @@ class GameObserver
     public function updated(Game $game): void
     {
         if ($game->wasChanged(['studio_id', 'name', 'slug', 'description', 'cover', 'background', 'release_date', 'developer', 'publisher', 'age_rating', 'status'])) {
-            app(StorefrontPageCache::class)->invalidate('playlist', 'channel');
+            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short');
         }
 
         if (! $game->wasChanged('release_date')) {
