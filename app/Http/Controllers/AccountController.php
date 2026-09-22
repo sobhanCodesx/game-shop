@@ -94,10 +94,10 @@ class AccountController extends Controller
             && ! hash_equals((string) $user->phone, (string) $data['phone']);
 
         if ($phoneChanged) {
-            // A Telegram link belongs to the previously verified identity.
-            // Force a fresh link/proof before Telegram can be trusted for the new number.
+            // A Telegram link and the old verification proof belong to the previous number.
+            // Clear both explicitly; phone_verified_at is intentionally not mass assignable.
             $telegramLinks->disconnect($user);
-            $data['phone_verified_at'] = null;
+            $user->forceFill(['phone_verified_at' => null])->save();
         }
 
         if ($request->boolean('remove_avatar') && $user->avatar) {
