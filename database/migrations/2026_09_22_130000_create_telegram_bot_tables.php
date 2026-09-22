@@ -17,7 +17,10 @@ return new class extends Migration
             $table->boolean('publish_enabled')->default(false);
             $table->boolean('destructive_enabled')->default(false);
             $table->boolean('media_enabled')->default(true);
+            $table->string('transport_mode', 20)->default('auto');
             $table->string('api_base_url', 500)->default('https://api.telegram.org');
+            $table->string('relay_base_url', 500)->nullable();
+            $table->text('relay_key')->nullable();
             $table->boolean('use_proxy')->default(false);
             $table->string('proxy_type', 20)->default('socks5h');
             $table->string('proxy_host', 255)->nullable();
