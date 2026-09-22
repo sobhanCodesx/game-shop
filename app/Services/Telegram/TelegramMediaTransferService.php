@@ -14,6 +14,7 @@ final class TelegramMediaTransferService
         private readonly TelegramApiClient $telegram,
         private readonly TelegramBotSettings $settings,
         private readonly ContentAgentMediaService $media,
+        private readonly TelegramMtProtoService $mtproto,
     ) {}
 
     public function attach(
@@ -28,12 +29,47 @@ final class TelegramMediaTransferService
             throw new RuntimeException('Telegram media writes are disabled.');
         }
 
-        $download = $this->telegram->downloadFile(
-            (string) $telegramFile['file_id'],
-            $telegramFile['file_name'] ?? null,
-            $telegramFile['mime'] ?? null,
-            isset($telegramFile['file_size']) ? (int) $telegramFile['file_size'] : null,
-        );
+        $fileId = (string) ($telegramFile['file_id'] ?? '');
+        if ($fileId === '') {
+            throw new RuntimeException('Telegram file_id is missing.');
+        }
+
+        $fileSize = isset($telegramFile['file_size']) ? (int) $telegramFile['file_size'] : null;
+        $maxBotApiBytes = (int) config('telegram_bot.max_download_bytes', 20 * 1024 * 1024);
+
+        if ($fileSize !== null && $fileSize > $maxBotApiBytes) {
+            $download = $this->mtproto->download(
+                $fileId,
+                $telegramFile['file_name'] ?? null,
+                $telegramFile['mime'] ?? null,
+                $fileSize,
+            );
+        } else {
+            try {
+                $download = $this->telegram->downloadFile(
+                    $fileId,
+                    $telegramFile['file_name'] ?? null,
+                    $telegramFile['mime'] ?? null,
+                    $fileSize,
+                );
+            } catch (Throwable $exception) {
+                $message = mb_strtolower($exception->getMessage());
+                $tooBig = str_contains($message, 'file is too big')
+                    || str_contains($message, 'file too big')
+                    || str_contains($message, 'too large');
+
+                if (! $tooBig) {
+                    throw $exception;
+                }
+
+                $download = $this->mtproto->download(
+                    $fileId,
+                    $telegramFile['file_name'] ?? null,
+                    $telegramFile['mime'] ?? null,
+                    $fileSize,
+                );
+            }
+        }
 
         $uploadId = null;
         try {
