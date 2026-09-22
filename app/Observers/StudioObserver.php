@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Studio;
+use App\Services\SitemapCacheService;
 use App\Services\StorefrontPageCache;
 
 class StudioObserver
@@ -10,6 +11,7 @@ class StudioObserver
     public function created(Studio $studio): void
     {
         app(StorefrontPageCache::class)->invalidate('channel', 'home', 'studio');
+        app(SitemapCacheService::class)->invalidate();
     }
 
     public function updated(Studio $studio): void
