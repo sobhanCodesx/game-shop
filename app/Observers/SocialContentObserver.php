@@ -5,12 +5,17 @@ namespace App\Observers;
 use App\Jobs\BroadcastContentPublished;
 use App\Models\SocialContent;
 use App\Services\GameEventService;
+use App\Services\VideoPageCache;
 use Illuminate\Support\Carbon;
 
 class SocialContentObserver
 {
     public function created(SocialContent $content): void
     {
+        if ($content->type === 'video') {
+            app(VideoPageCache::class)->invalidate();
+        }
+
         if ($this->isPublished($content)) {
             $this->dispatch($content);
         }
@@ -18,6 +23,18 @@ class SocialContentObserver
 
     public function updated(SocialContent $content): void
     {
+        if (
+            ($content->type === 'video' || $content->getOriginal('type') === 'video')
+            && $content->wasChanged([
+                'user_id', 'game_id', 'related_product_id', 'related_content_id', 'type', 'media_type',
+                'title', 'slug', 'excerpt', 'body', 'seo_title', 'seo_description', 'link_url', 'link_label',
+                'thumbnail', 'video_path', 'video_mime', 'duration', 'allow_comments', 'featured',
+                'sort_order', 'status', 'published_at',
+            ])
+        ) {
+            app(VideoPageCache::class)->invalidate();
+        }
+
         $wasPublished = $this->wasPublished($content);
         $isPublished = $this->isPublished($content);
 
@@ -35,6 +52,13 @@ class SocialContentObserver
             && $content->wasChanged(['title', 'excerpt', 'body', 'feed_type', 'feed_badge', 'game_id'])
         ) {
             app(GameEventService::class)->refreshFromContent($content);
+        }
+    }
+
+    public function deleted(SocialContent $content): void
+    {
+        if ($content->type === 'video') {
+            app(VideoPageCache::class)->invalidate();
         }
     }
 
