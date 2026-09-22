@@ -170,6 +170,20 @@ class TelegramAdminBotTest extends TestCase
         Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/getMe'));
         Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/setWebhook'));
         Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/setMyCommands'));
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/setChatMenuButton'));
+        Http::assertSent(function ($request): bool {
+            if (! str_ends_with($request->url(), '/setMyCommands')) {
+                return false;
+            }
+
+            $commands = $request->data()['commands'] ?? [];
+
+            return collect($commands)->contains(
+                fn (array $command): bool =>
+                    ($command['command'] ?? null) === 'new'
+                    && str_contains((string) ($command['description'] ?? ''), 'ساخت محتوای جدید')
+            );
+        });
     }
 
     public function test_stop_bot_disables_runtime_and_removes_webhook(): void
@@ -523,6 +537,114 @@ class TelegramAdminBotTest extends TestCase
         });
     }
 
+    public function test_video_creation_uses_guided_persian_wizard_without_json(): void
+    {
+        $setting = $this->configureBot();
+        $setting->forceFill(['write_enabled' => true])->save();
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => [],
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson('/api/telegram/webhook', $this->telegramCallback(
+            2100,
+            '777777777',
+            'template:video:create',
+        ))->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            $text = (string) ($request->data()['text'] ?? '');
+
+            return str_contains($text, 'عنوان ویدیو')
+                && ! str_contains($text, 'JSON')
+                && ! str_contains($text, '<pre>');
+        });
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson(
+            '/api/telegram/webhook',
+            $this->telegramUpdate(2101, '777777777', 'ویدیوی تست PlayNexus'),
+        )->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            $text = (string) ($request->data()['text'] ?? '');
+            $callbacks = $this->callbackDataFromRequest($request->data());
+
+            return str_contains($text, 'بازی مرتبط')
+                && in_array('wiz:relation-search', $callbacks, true)
+                && ! str_contains($text, 'JSON');
+        });
+    }
+
+    public function test_collection_video_sync_uses_picker_instead_of_comma_separated_ids(): void
+    {
+        $setting = $this->configureBot();
+        $setting->forceFill(['write_enabled' => true])->save();
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => [],
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson('/api/telegram/webhook', $this->telegramCallback(
+            2102,
+            '777777777',
+            'sync-prompt:42',
+        ))->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            $text = (string) ($request->data()['text'] ?? '');
+            $callbacks = $this->callbackDataFromRequest($request->data());
+
+            return str_contains($text, 'ویدیوهای کالکشن')
+                && in_array('wiz:sync-search', $callbacks, true)
+                && in_array('wiz:sync-done', $callbacks, true)
+                && ! str_contains($text, 'IDها را با کاما');
+        });
+    }
+
+    public function test_sensitive_action_confirmation_is_human_readable_not_json(): void
+    {
+        $setting = $this->configureBot();
+        $setting->forceFill([
+            'write_enabled' => true,
+            'publish_enabled' => true,
+        ])->save();
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => [],
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson('/api/telegram/webhook', $this->telegramCallback(
+            2103,
+            '777777777',
+            'publish-feed:12',
+        ))->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            $text = (string) ($request->data()['text'] ?? '');
+
+            return str_contains($text, 'انتشار فید #12')
+                && ! str_contains($text, 'publish_feed')
+                && ! str_contains($text, '{');
+        });
+    }
+
     public function test_tool_registry_covers_the_existing_content_agent_read_write_and_media_surface(): void
     {
         $names = app(TelegramBotToolRegistry::class)->names();
@@ -597,6 +719,33 @@ class TelegramAdminBotTest extends TestCase
             'use_proxy' => false,
             'webhook_secret' => 'webhook-secret',
         ]);
+    }
+
+    private function telegramCallback(
+        int $updateId,
+        string $userId,
+        string $data,
+    ): array {
+        return [
+            'update_id' => $updateId,
+            'callback_query' => [
+                'id' => 'callback-'.$updateId,
+                'from' => [
+                    'id' => (int) $userId,
+                    'is_bot' => false,
+                    'first_name' => 'Admin',
+                ],
+                'message' => [
+                    'message_id' => $updateId,
+                    'date' => now()->timestamp,
+                    'chat' => [
+                        'id' => (int) $userId,
+                        'type' => 'private',
+                    ],
+                ],
+                'data' => $data,
+            ],
+        ];
     }
 
     private function telegramUpdate(
