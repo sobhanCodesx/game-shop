@@ -239,6 +239,47 @@ class TelegramAdminBotTest extends TestCase
         app(TelegramBotExecutor::class)->authorize('delete_content');
     }
 
+    public function test_relay_mode_registers_telegram_webhook_on_cloudflare_worker(): void
+    {
+        TelegramBotSetting::query()->create([
+            'bot_token' => '123456:abcdefghijklmnopqrstuvwxyz',
+            'admin_user_id' => '777777777',
+            'enabled' => true,
+            'transport_mode' => 'relay',
+            'api_base_url' => 'https://api.telegram.org',
+            'relay_base_url' => 'https://relay.example.workers.dev',
+            'relay_key' => 'relay-secret',
+            'use_proxy' => false,
+            'webhook_secret' => 'webhook-secret',
+        ]);
+
+        Http::fake([
+            'https://relay.example.workers.dev/api/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        app(TelegramApiClient::class)->registerWebhook();
+
+        Http::assertSent(function ($request): bool {
+            if (! str_ends_with($request->url(), '/api/setWebhook')) {
+                return false;
+            }
+
+            return ($request->data()['url'] ?? null)
+                    === 'https://relay.example.workers.dev/webhook'
+                && ($request->data()['secret_token'] ?? null)
+                    === 'webhook-secret';
+        });
+
+        $payload = app(TelegramBotSettings::class)->adminPayload();
+        $this->assertSame(
+            'https://relay.example.workers.dev/webhook',
+            $payload['webhook_url'],
+        );
+    }
+
     public function test_secure_relay_keeps_bot_token_out_of_the_worker_url(): void
     {
         TelegramBotSetting::query()->create([
