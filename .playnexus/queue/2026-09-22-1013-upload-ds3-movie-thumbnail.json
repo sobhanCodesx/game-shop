@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-09-22-1013-upload-ds3-movie-thumbnail",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "video",
+    "id": 70,
+    "slot": "thumbnail",
+    "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/256662354/movie_full.jpg",
+    "name": "dark-souls-iii-the-movie.jpg",
+    "mime": "image/jpeg",
+    "alt": "تریلر رسمی The Movie برای Dark Souls III"
+  }
+}
