@@ -62,7 +62,7 @@ class StorefrontCachePhaseThreeTest extends TestCase
                 ->where('content.views', 5)
                 ->where('seo.type', 'article')
                 ->where('seo.structuredData.@graph.1.@type', 'Article')
-                ->where('seo.video', null));
+                ->missing('seo.video'));
     }
 
     public function test_video_story_keeps_video_media_type_and_video_seo(): void
