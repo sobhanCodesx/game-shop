@@ -616,11 +616,44 @@ class ContentAgentService
         ]);
 
         $feed = $this->findFeed((int) $data['id']);
+        $this->assertFeedReadyForPublish($feed);
+
         $feed->status = 'published';
         $feed->published_at ??= now();
         $feed->save();
 
         return $this->serializeFeed($feed->fresh());
+    }
+
+    private function assertFeedReadyForPublish(SocialContent $feed): void
+    {
+        if (trim((string) $feed->title) === '') {
+            throw new RuntimeException('Feed cannot be published without a title.');
+        }
+
+        if (trim((string) RichText::plainText($feed->body)) === '') {
+            throw new RuntimeException('Feed cannot be published without body content.');
+        }
+
+        if (trim((string) $feed->feed_type) === '') {
+            throw new RuntimeException('Feed cannot be published without feed_type metadata.');
+        }
+
+        $feed->loadMissing('media');
+        if ($feed->media->isEmpty()) {
+            throw new RuntimeException('Feed cannot be published without internal media.');
+        }
+
+        foreach ($feed->media as $media) {
+            $path = trim((string) $media->path);
+            if ($path === '') {
+                throw new RuntimeException('Feed media is missing its storage path.');
+            }
+
+            if (! MediaStorage::disk()->exists($path)) {
+                throw new RuntimeException("Feed media is missing from storage: {$path}");
+            }
+        }
     }
 
     public function unpublishFeed(array $arguments): array
