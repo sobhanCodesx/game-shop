@@ -1,0 +1,9 @@
+{
+  "job_id": "20260922-studio-full-dedupe-01",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query StudioDedupePage { studios(first: 100, offset: 0) { nodes { id name slug status website gameCount logoUrl backgroundUrl } pageInfo { total first offset hasMore nextOffset } } }",
+    "variables": {},
+    "operation_name": "StudioDedupePage"
+  }
+}
