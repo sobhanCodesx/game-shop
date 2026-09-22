@@ -1,12 +1,11 @@
-import { Button, Card, Chip, Input } from "@heroui/react";
+import { Button, Card, Input } from "@heroui/react";
 import { Head, useForm } from "@inertiajs/react";
 import {
     Bot,
-    ExternalLink,
     Eye,
     EyeOff,
-    Navigation,
-    PanelTop,
+    Link2,
+    MessageCircleMore,
     Save,
     ShieldCheck,
     Sparkles,
@@ -20,8 +19,10 @@ type Settings = {
     nexus_ai_title: string;
     nexus_ai_description: string;
     nexus_ai_nav_label: string;
-    nexus_ai_iframe_url: string;
-    nexus_ai_min_height: number;
+    nexus_ai_worker_url: string;
+    nexus_ai_launcher_label: string;
+    nexus_ai_welcome_title: string;
+    nexus_ai_welcome_text: string;
     nexus_ai_status_text: string;
 };
 
@@ -57,12 +58,14 @@ function Toggle({
                     }`}
                 />
             </span>
+
             <span className="min-w-0 flex-1">
                 <strong className="block text-sm text-slate-100">{label}</strong>
                 <small className="mt-1 block text-xs leading-6 text-slate-500">
                     {description}
                 </small>
             </span>
+
             {checked ? (
                 <Eye className="text-emerald-400" size={18} />
             ) : (
@@ -84,7 +87,7 @@ export default function NexusAI({ settings }: { settings: Settings }) {
     return (
         <AdminLayout
             title="Nexus AI"
-            description="کنترل نمایش، هویت و iframe دستیار هوش مصنوعی PlayNexus"
+            description="مدیریت ویجت شناور هوش مصنوعی PlayNexus"
             actions={
                 <Button
                     isDisabled={processing}
@@ -98,28 +101,28 @@ export default function NexusAI({ settings }: { settings: Settings }) {
         >
             <Head title="تنظیمات Nexus AI" />
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,.9fr)]">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_430px]">
                 <div className="space-y-6">
                     <Card variant="secondary">
                         <Card.Content className="space-y-4 p-6">
                             <div className="flex items-start gap-3">
-                                <span className="grid size-11 place-items-center rounded-2xl bg-violet-500/10 text-violet-300">
+                                <span className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-violet-500/15 to-cyan-500/10 text-violet-300">
                                     <Bot size={22} />
                                 </span>
                                 <div>
                                     <h2 className="font-black text-white">
-                                        وضعیت نمایش هوش مصنوعی
+                                        نمایش ویجت
                                     </h2>
                                     <p className="mt-1 text-xs leading-6 text-slate-500">
-                                        این کلید مسیر عمومی Nexus AI و لینک‌های سایت را کنترل می‌کند.
+                                        ویجت Native روی خود PlayNexus اجرا می‌شود؛ بدون iframe.
                                     </p>
                                 </div>
                             </div>
 
                             <Toggle
                                 checked={data.nexus_ai_enabled}
-                                description="در حالت خاموش، صفحه /nexus-ai با 404 بسته می‌شود و کاربران آن را نمی‌بینند."
-                                label="نمایش Nexus AI در سایت"
+                                description="با خاموش شدن این گزینه، دکمه شناور و صفحه Nexus AI برای کاربران نمایش داده نمی‌شود."
+                                label="نمایش هوش مصنوعی در سایت"
                                 onChange={(value) =>
                                     setData("nexus_ai_enabled", value)
                                 }
@@ -127,7 +130,7 @@ export default function NexusAI({ settings }: { settings: Settings }) {
 
                             <Toggle
                                 checked={data.nexus_ai_show_in_nav}
-                                description="لینک Nexus AI در ناوبری دسکتاپ و منوی موبایل نمایش داده شود."
+                                description="در صورت نیاز، یک لینک جدا برای Nexus AI در منوی سایت هم نشان داده شود."
                                 label="نمایش در منوی اصلی"
                                 onChange={(value) =>
                                     setData("nexus_ai_show_in_nav", value)
@@ -139,51 +142,43 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                     <Card variant="secondary">
                         <Card.Content className="space-y-5 p-6">
                             <div className="flex items-center gap-3">
-                                <Sparkles className="text-indigo-400" size={20} />
+                                <Sparkles className="text-violet-400" size={20} />
                                 <h2 className="font-black text-white">
-                                    هویت و متن
+                                    هویت و متن ویجت
                                 </h2>
                             </div>
 
-                            <label className="block">
-                                <span className="mb-2 block text-xs font-bold text-slate-300">
-                                    عنوان
-                                </span>
-                                <Input
-                                    onChange={(event) =>
-                                        setData("nexus_ai_title", event.target.value)
-                                    }
-                                    value={data.nexus_ai_title}
-                                />
-                            </label>
-                            {errors.nexus_ai_title && (
-                                <p className="text-xs font-bold text-rose-400">
-                                    {errors.nexus_ai_title}
-                                </p>
-                            )}
-
-                            <div>
-                                <label className="mb-2 block text-xs font-bold text-slate-300">
-                                    توضیح کوتاه
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-bold text-slate-300">
+                                        عنوان دستیار
+                                    </span>
+                                    <Input
+                                        onChange={(event) =>
+                                            setData(
+                                                "nexus_ai_title",
+                                                event.target.value,
+                                            )
+                                        }
+                                        value={data.nexus_ai_title}
+                                    />
                                 </label>
-                                <textarea
-                                    className="min-h-28 w-full rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-7 text-slate-200 outline-none transition focus:border-indigo-500/50"
-                                    onChange={(event) =>
-                                        setData(
-                                            "nexus_ai_description",
-                                            event.target.value,
-                                        )
-                                    }
-                                    value={data.nexus_ai_description}
-                                />
-                                {errors.nexus_ai_description && (
-                                    <p className="mt-1 text-xs font-bold text-rose-400">
-                                        {errors.nexus_ai_description}
-                                    </p>
-                                )}
-                            </div>
 
-                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-bold text-slate-300">
+                                        متن کنار دکمه شناور
+                                    </span>
+                                    <Input
+                                        onChange={(event) =>
+                                            setData(
+                                                "nexus_ai_launcher_label",
+                                                event.target.value,
+                                            )
+                                        }
+                                        value={data.nexus_ai_launcher_label}
+                                    />
+                                </label>
+
                                 <label className="block">
                                     <span className="mb-2 block text-xs font-bold text-slate-300">
                                         عنوان منو
@@ -198,6 +193,7 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                         value={data.nexus_ai_nav_label}
                                     />
                                 </label>
+
                                 <label className="block">
                                     <span className="mb-2 block text-xs font-bold text-slate-300">
                                         برچسب وضعیت
@@ -213,63 +209,95 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                     />
                                 </label>
                             </div>
+
+                            <label className="block">
+                                <span className="mb-2 block text-xs font-bold text-slate-300">
+                                    توضیح کوتاه
+                                </span>
+                                <textarea
+                                    className="min-h-24 w-full rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-7 text-slate-200 outline-none transition focus:border-violet-500/40"
+                                    onChange={(event) =>
+                                        setData(
+                                            "nexus_ai_description",
+                                            event.target.value,
+                                        )
+                                    }
+                                    value={data.nexus_ai_description}
+                                />
+                            </label>
+
+                            <label className="block">
+                                <span className="mb-2 block text-xs font-bold text-slate-300">
+                                    عنوان صفحه خوش‌آمد چت
+                                </span>
+                                <Input
+                                    onChange={(event) =>
+                                        setData(
+                                            "nexus_ai_welcome_title",
+                                            event.target.value,
+                                        )
+                                    }
+                                    value={data.nexus_ai_welcome_title}
+                                />
+                            </label>
+
+                            <label className="block">
+                                <span className="mb-2 block text-xs font-bold text-slate-300">
+                                    متن خوش‌آمد
+                                </span>
+                                <textarea
+                                    className="min-h-24 w-full rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-7 text-slate-200 outline-none transition focus:border-violet-500/40"
+                                    onChange={(event) =>
+                                        setData(
+                                            "nexus_ai_welcome_text",
+                                            event.target.value,
+                                        )
+                                    }
+                                    value={data.nexus_ai_welcome_text}
+                                />
+                            </label>
+
+                            {Object.values(errors).length > 0 && (
+                                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[.06] p-4 text-xs leading-6 text-rose-300">
+                                    {Object.values(errors)[0]}
+                                </div>
+                            )}
                         </Card.Content>
                     </Card>
 
                     <Card variant="secondary">
                         <Card.Content className="space-y-5 p-6">
                             <div className="flex items-center gap-3">
-                                <PanelTop className="text-cyan-400" size={20} />
+                                <Link2 className="text-cyan-400" size={20} />
                                 <h2 className="font-black text-white">
-                                    iframe و اندازه
+                                    اتصال Worker
                                 </h2>
                             </div>
 
                             <label className="block">
                                 <span className="mb-2 block text-xs font-bold text-slate-300">
-                                    آدرس iframe
+                                    آدرس Worker
                                 </span>
                                 <Input
                                     dir="ltr"
                                     onChange={(event) =>
                                         setData(
-                                            "nexus_ai_iframe_url",
+                                            "nexus_ai_worker_url",
                                             event.target.value,
                                         )
                                     }
-                                    value={data.nexus_ai_iframe_url}
-                                />
-                            </label>
-                            {errors.nexus_ai_iframe_url && (
-                                <p className="text-xs font-bold text-rose-400">
-                                    {errors.nexus_ai_iframe_url}
-                                </p>
-                            )}
-
-                            <label className="block">
-                                <span className="mb-2 block text-xs font-bold text-slate-300">
-                                    حداقل ارتفاع iframe (px)
-                                </span>
-                                <Input
-                                    max="1200"
-                                    min="520"
-                                    onChange={(event) =>
-                                        setData(
-                                            "nexus_ai_min_height",
-                                            Number(event.target.value),
-                                        )
-                                    }
-                                    type="number"
-                                    value={String(data.nexus_ai_min_height)}
+                                    value={data.nexus_ai_worker_url}
                                 />
                             </label>
 
                             <div className="rounded-2xl border border-cyan-500/10 bg-cyan-500/[.04] p-4 text-xs leading-7 text-slate-400">
                                 <div className="mb-2 flex items-center gap-2 font-black text-cyan-300">
                                     <ShieldCheck size={16} />
-                                    جداسازی امن
+                                    معماری Native
                                 </div>
-                                iframe فقط UI عمومی Worker را نمایش می‌دهد؛ کلیدهای خصوصی Agent یا API داخل HTML سایت قرار نمی‌گیرند.
+                                UI داخل React خود PlayNexus اجرا می‌شود. Worker فقط
+                                Relay/API است و هیچ iframe یا پنل خارجی داخل سایت
+                                لود نمی‌شود.
                             </div>
                         </Card.Content>
                     </Card>
@@ -281,53 +309,81 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                     )}
                 </div>
 
-                <div className="space-y-4 xl:sticky xl:top-28 xl:self-start">
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
-                            <p className="text-xs font-black text-slate-200">
-                                پیش‌نمایش زنده
-                            </p>
-                            <p className="mt-1 text-[11px] text-slate-500">
-                                همان iframe که کاربر داخل PlayNexus می‌بیند
-                            </p>
-                        </div>
-                        <a
-                            className="inline-flex items-center gap-2 rounded-xl border border-slate-800 px-3 py-2 text-xs font-bold text-slate-300 transition hover:border-indigo-500/30 hover:text-white"
-                            href={data.nexus_ai_iframe_url}
-                            rel="noreferrer"
-                            target="_blank"
-                        >
-                            باز کردن
-                            <ExternalLink size={14} />
-                        </a>
+                <aside className="xl:sticky xl:top-28 xl:self-start">
+                    <div className="mb-3">
+                        <p className="text-xs font-black text-slate-200">
+                            پیش‌نمایش ویجت
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                            ظاهر تقریبی همان پنلی که کاربر در PlayNexus می‌بیند
+                        </p>
                     </div>
 
-                    <div className="overflow-hidden rounded-[28px] border border-slate-800 bg-[#050711] shadow-2xl shadow-black/30">
-                        <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
-                            <div className="flex items-center gap-2">
-                                <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.7)]" />
-                                <span className="text-[10px] font-bold text-slate-400">
-                                    {data.nexus_ai_status_text || "Nexus AI"}
+                    <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[#080b16] shadow-2xl shadow-black/40">
+                        <div className="relative border-b border-white/[.07] p-4">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(124,58,237,.18),transparent_50%),radial-gradient(circle_at_0%_100%,rgba(14,165,233,.10),transparent_45%)]" />
+
+                            <div className="relative flex items-center gap-3">
+                                <div className="relative grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 text-white">
+                                    <Bot size={22} />
+                                    <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border-2 border-[#080b16] bg-[#080b16] text-cyan-300">
+                                        <Sparkles size={11} />
+                                    </span>
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <strong className="text-sm text-white">
+                                            {data.nexus_ai_title}
+                                        </strong>
+                                        <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.8)]" />
+                                    </div>
+                                    <span className="mt-1 block text-[10px] text-slate-500">
+                                        دستیار گیمینگ PlayNexus
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="min-h-[420px] p-5">
+                            <div className="flex h-full min-h-[380px] flex-col items-center justify-center text-center">
+                                <div className="grid size-16 place-items-center rounded-[22px] border border-violet-400/15 bg-gradient-to-br from-violet-500/15 to-cyan-500/10 text-violet-200">
+                                    <MessageCircleMore size={28} />
+                                </div>
+                                <h3 className="mt-5 text-xl font-black text-white">
+                                    {data.nexus_ai_welcome_title}
+                                </h3>
+                                <p className="mt-2 max-w-xs text-[11px] leading-6 text-slate-500">
+                                    {data.nexus_ai_welcome_text}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-white/[.07] p-4">
+                            <div className="flex items-center gap-2 rounded-[18px] border border-white/[.08] bg-black/20 p-1.5">
+                                <div className="flex-1 px-3 text-[11px] text-slate-600">
+                                    مثلاً: بعد از Elden Ring چی بازی کنم؟
+                                </div>
+                                <span className="grid size-10 place-items-center rounded-[14px] bg-gradient-to-br from-violet-600 to-cyan-500 text-white">
+                                    <Sparkles size={16} />
                                 </span>
                             </div>
-                            <Chip size="sm" variant="soft">
-                                iframe
-                            </Chip>
                         </div>
-                        <iframe
-                            className="block w-full border-0"
-                            loading="lazy"
-                            src={data.nexus_ai_iframe_url}
-                            style={{ height: "680px" }}
-                            title="پیش‌نمایش Nexus AI"
-                        />
                     </div>
 
-                    <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/40 p-3 text-[11px] text-slate-500">
-                        <Navigation size={15} />
-                        صفحه عمومی: <span dir="ltr">/nexus-ai</span>
+                    <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/[.08] bg-[#0a0d18] p-2 pl-4">
+                        <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 text-white">
+                            <Bot size={21} />
+                        </span>
+                        <div>
+                            <strong className="block text-[11px] text-white">
+                                {data.nexus_ai_title}
+                            </strong>
+                            <small className="text-[9px] text-slate-500">
+                                {data.nexus_ai_launcher_label}
+                            </small>
+                        </div>
                     </div>
-                </div>
+                </aside>
             </div>
         </AdminLayout>
     );
