@@ -488,6 +488,11 @@ export default function Show({
     const [commentsOpen, setCommentsOpen] = useState(false);
     const commentInputRef = useRef<HTMLTextAreaElement>(null);
     const commentForm = useForm({ body: "", parent_id: null as number | null });
+    const isImageStory =
+        content.type === "short" && content.media_type === "image";
+    const storyImageUrl = isImageStory
+        ? (content.video_url ?? content.thumbnail_url)
+        : null;
     useEffect(() => {
         setReaction(content.user_reaction);
         setLikes(content.likes_count);
@@ -536,7 +541,9 @@ export default function Show({
         else if (previous === "like")
             setLikes((count) => Math.max(0, count - 1));
         router.post(
-            `/videos/${content.slug}/reaction`,
+            content.type === "short"
+                ? `/shorts/${content.slug}/reaction`
+                : `/videos/${content.slug}/reaction`,
             { type },
             {
                 preserveScroll: true,
@@ -712,12 +719,13 @@ export default function Show({
     return (
         <StorefrontLayout>
             <Seo seo={seo} />
-            {content.type === "video" && content.thumbnail_url && (
+            {((content.type === "video" && content.thumbnail_url) ||
+                storyImageUrl) && (
                 <Head>
                     <link
                         as="image"
                         fetchPriority="high"
-                        href={content.thumbnail_url}
+                        href={(storyImageUrl ?? content.thumbnail_url) as string}
                         rel="preload"
                     />
                 </Head>
@@ -751,9 +759,17 @@ export default function Show({
                 <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,840px)_330px] xl:justify-center">
                     <div className="flex min-w-0 flex-col">
                         <div
-                            className={`playnexus-video-stage relative bg-black ${content.video_url ? "overflow-visible" : "overflow-hidden"} ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-[28px] sm:rounded-[32px]" : "aspect-video w-full rounded-[28px] sm:rounded-[32px] lg:rounded-[36px]"}`}
+                            className={`playnexus-video-stage relative bg-black ${content.video_url && !isImageStory ? "overflow-visible" : "overflow-hidden"} ${content.type === "short" ? "mx-auto aspect-[9/16] max-h-[78dvh] max-w-md rounded-[28px] sm:rounded-[32px]" : "aspect-video w-full rounded-[28px] sm:rounded-[32px] lg:rounded-[36px]"}`}
                         >
-                            {content.video_url ? (
+                            {storyImageUrl ? (
+                                <img
+                                    alt={content.title}
+                                    className="size-full object-contain"
+                                    decoding="async"
+                                    fetchPriority="high"
+                                    src={storyImageUrl}
+                                />
+                            ) : content.video_url ? (
                                 <VideoPlayer content={content} />
                             ) : content.thumbnail_url ? (
                                 <img
