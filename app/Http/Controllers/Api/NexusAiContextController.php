@@ -139,7 +139,11 @@ query NexusAiContext($q: String!) {
     nodes { title description videoCount url game { name } studio { name } }
   }
   radar(search: $q, first: 4) {
-    nodes { title status releaseDate store platform url }
+    nodes {
+      title status releaseDate developer publisher gameUrl
+      xbox { available platforms }
+      playstation { available platforms }
+    }
   }
 }
 GRAPHQL;
