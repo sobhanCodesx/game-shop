@@ -5,31 +5,17 @@ on:
     branches:
       - feature/storefront-cache-phases
     paths:
-      - 'app/Http/Controllers/ChannelController.php'
-      - 'app/Http/Controllers/SocialContentController.php'
-      - 'app/Http/Controllers/HomeController.php'
-      - 'app/Http/Controllers/StudioController.php'
-      - 'app/Http/Controllers/ProductController.php'
-      - 'app/Http/Controllers/SitemapController.php'
-      - 'app/Http/Controllers/Admin/VideoController.php'
-      - 'app/Observers/**'
-      - 'app/Providers/AppServiceProvider.php'
-      - 'app/Services/StorefrontPageCache.php'
-      - 'app/Services/PlaylistPageDataService.php'
-      - 'app/Services/ChannelPageDataService.php'
-      - 'app/Services/ShortPageDataService.php'
-      - 'app/Services/HomePublicCacheService.php'
-      - 'app/Services/StudioPageDataService.php'
-      - 'app/Services/ProductPageDataService.php'
-      - 'app/Services/ContentAgentService.php'
+      - 'app/**'
       - 'resources/js/**'
-      - 'tests/Feature/StorefrontCachePhase*.php'
+      - 'routes/**'
+      - 'tests/Feature/StorefrontCache*.php'
       - '.github/workflows/storefront-cache-phases-check.yml'
   pull_request:
     paths:
       - 'app/**'
       - 'resources/js/**'
-      - 'tests/Feature/StorefrontCachePhase*.php'
+      - 'routes/**'
+      - 'tests/Feature/StorefrontCache*.php'
 
 permissions:
   contents: read
@@ -44,37 +30,49 @@ jobs:
       - name: PHP syntax
         run: |
           php -l app/Http/Controllers/ChannelController.php
-          php -l app/Observers/GameObserver.php
-          php -l app/Observers/SocialContentObserver.php
-          php -l app/Observers/VideoPlaylistObserver.php
-          php -l app/Providers/AppServiceProvider.php
-          php -l app/Services/StorefrontPageCache.php
-          php -l app/Services/PlaylistPageDataService.php
-          php -l app/Services/ChannelPageDataService.php
-          php -l app/Observers/SocialContentMediaObserver.php
-          php -l app/Observers/StudioObserver.php
+          php -l app/Http/Controllers/FeedController.php
+          php -l app/Http/Controllers/HomeController.php
+          php -l app/Http/Controllers/ProductController.php
+          php -l app/Http/Controllers/SitemapController.php
           php -l app/Http/Controllers/SocialContentController.php
+          php -l app/Http/Controllers/StudioController.php
           php -l app/Http/Controllers/VideoCommunityController.php
-          php -l app/Services/ShortPageDataService.php
-          php -l tests/Feature/StorefrontCachePhaseOneTest.php
-          php -l tests/Feature/StorefrontCachePhaseTwoTest.php
-          php -l tests/Feature/StorefrontCachePhaseThreeTest.php tests/Feature/StorefrontCachePhaseFourTest.php tests/Feature/StorefrontCachePhaseFiveTest.php tests/Feature/StorefrontCachePhaseSixTest.php tests/Feature/StorefrontCachePhaseSevenTest.php
-          php -l app/Services/HomePublicCacheService.php
-          php -l app/Observers/HomeSlideObserver.php
-          php -l app/Observers/CategoryObserver.php
-          php -l app/Observers/ProductMediaObserver.php
-          php -l tests/Feature/StorefrontCachePhaseFourTest.php
-          php -l app/Services/StudioPageDataService.php
-          php -l tests/Feature/StorefrontCachePhaseFiveTest.php
-          php -l app/Services/ProductPageDataService.php
+          php -l app/Http/Controllers/Admin/CatalogController.php
+          php -l app/Http/Controllers/Admin/VideoController.php
           php -l app/Observers/BrandObserver.php
+          php -l app/Observers/CategoryAttributeObserver.php
+          php -l app/Observers/CategoryObserver.php
+          php -l app/Observers/GameObserver.php
+          php -l app/Observers/HomeSlideObserver.php
           php -l app/Observers/PlatformObserver.php
           php -l app/Observers/ProductAttributeValueObserver.php
-          php -l app/Observers/CategoryAttributeObserver.php
-          php -l tests/Feature/StorefrontCachePhaseSixTest.php
+          php -l app/Observers/ProductMediaObserver.php
+          php -l app/Observers/ProductObserver.php
+          php -l app/Observers/SocialContentMediaObserver.php
+          php -l app/Observers/SocialContentObserver.php
+          php -l app/Observers/StudioObserver.php
+          php -l app/Observers/VideoPlaylistObserver.php
+          php -l app/Providers/AppServiceProvider.php
+          php -l app/Services/ChannelPageDataService.php
+          php -l app/Services/ContentAgentService.php
+          php -l app/Services/FeedPageDataService.php
+          php -l app/Services/HomePublicCacheService.php
+          php -l app/Services/PlaylistPageDataService.php
+          php -l app/Services/ProductPageDataService.php
+          php -l app/Services/ShortPageDataService.php
           php -l app/Services/SitemapCacheService.php
-          php -l app/Http/Controllers/SitemapController.php
+          php -l app/Services/StorefrontPageCache.php
+          php -l app/Services/StudioPageDataService.php
+          php -l app/Services/VideoCommunityService.php
+          php -l app/Services/VideoPageDataService.php
+          php -l tests/Feature/StorefrontCachePhaseOneTest.php
+          php -l tests/Feature/StorefrontCachePhaseTwoTest.php
+          php -l tests/Feature/StorefrontCachePhaseThreeTest.php
+          php -l tests/Feature/StorefrontCachePhaseFourTest.php
+          php -l tests/Feature/StorefrontCachePhaseFiveTest.php
+          php -l tests/Feature/StorefrontCachePhaseSixTest.php
           php -l tests/Feature/StorefrontCachePhaseSevenTest.php
+          php -l tests/Feature/StorefrontCachePreDeployIntegrationTest.php
 
       - name: Validate Composer files
         run: composer validate --no-check-publish
@@ -82,14 +80,32 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Run phase regression tests
+      - name: Run cache regression suite
         env:
           DB_CONNECTION: sqlite
           DB_DATABASE: ':memory:'
           CACHE_STORE: array
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
-        run: php artisan test tests/Feature/StorefrontCachePhaseOneTest.php tests/Feature/StorefrontCachePhaseTwoTest.php tests/Feature/StorefrontCachePhaseThreeTest.php
+        run: |
+          php artisan test \
+            tests/Feature/StorefrontCachePhaseOneTest.php \
+            tests/Feature/StorefrontCachePhaseTwoTest.php \
+            tests/Feature/StorefrontCachePhaseThreeTest.php \
+            tests/Feature/StorefrontCachePhaseFourTest.php \
+            tests/Feature/StorefrontCachePhaseFiveTest.php \
+            tests/Feature/StorefrontCachePhaseSixTest.php \
+            tests/Feature/StorefrontCachePhaseSevenTest.php \
+            tests/Feature/StorefrontCachePreDeployIntegrationTest.php
+
+      - name: Run full backend test suite
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+        run: php artisan test
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -98,7 +114,7 @@ jobs:
           cache: npm
 
       - name: Install frontend dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Build frontend bundles
         run: npm run build
