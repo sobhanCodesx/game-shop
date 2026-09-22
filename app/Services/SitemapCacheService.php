@@ -5,26 +5,20 @@ namespace App\Services;
 use Closure;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 
 final class SitemapCacheService
 {
-    private const VERSION_KEY = 'sitemap-xml:version:v1';
+    private const KEY_PREFIX = 'sitemap-xml:v2';
 
-    private const KEY_PREFIX = 'sitemap-xml:v1';
+    private const KEYS = [
+        'index', 'static', 'products', 'categories', 'feed',
+        'videos', 'content', 'channels', 'studios', 'playlists',
+    ];
 
     public function remember(string $type, Closure $resolver, int $ttlSeconds = 3600): string
     {
-        $store = $this->store();
-        $version = $store->get(self::VERSION_KEY);
-
-        if (! is_string($version) || $version === '') {
-            $version = (string) Str::uuid();
-            $store->forever(self::VERSION_KEY, $version);
-        }
-
-        return (string) $store->remember(
-            self::KEY_PREFIX.":{$version}:{$type}",
+        return (string) $this->store()->remember(
+            self::KEY_PREFIX.":{$type}",
             now()->addSeconds(max(60, $ttlSeconds)),
             $resolver,
         );
@@ -32,7 +26,11 @@ final class SitemapCacheService
 
     public function invalidate(): void
     {
-        $this->store()->forever(self::VERSION_KEY, (string) Str::uuid());
+        $store = $this->store();
+
+        foreach (self::KEYS as $type) {
+            $store->forget(self::KEY_PREFIX.":{$type}");
+        }
     }
 
     private function store(): Repository
