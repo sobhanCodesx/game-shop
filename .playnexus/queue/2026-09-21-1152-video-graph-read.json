@@ -1,7 +1,0 @@
-{
-  "tool": "query_playnexus_graph",
-  "query": "{ games(first: 40, orderBy: \"updated_at\", orderDir: \"desc\") { nodes { id name slug collections { id title slug } } } videos(first: 40, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title slug status publishedAt duration sourceUrl videoUrl thumbnailUrl game { id name slug } collections { id title slug } } } }",
-  "variables": {},
-  "purpose": "scheduled_video_candidate_dedupe",
-  "requested_at": "2026-09-21T11:52:12+03:30"
-}
