@@ -1,0 +1,1 @@
+{"job_id":"final-graph-dark-souls-remastered-20260922-1422","tool":"query_playnexus_graph","arguments":{"query":"query FinalGameSet { games(first: 100, offset: 0) { nodes { id name slug status releaseDate developer publisher studio { id name slug } platforms { id name slug } } pageInfo { total first offset hasMore nextOffset } } }","variables":{},"operation_name":"FinalGameSet"}}
