@@ -107,6 +107,103 @@ class TelegramAdminBotTest extends TestCase
         ]);
     }
 
+    public function test_run_bot_saves_current_form_and_completes_setup_in_one_click(): void
+    {
+        $superAdmin = User::factory()->create([
+            'is_admin' => true,
+            'status' => 'active',
+            'role' => 'super-admin',
+        ]);
+
+        Http::fake(function ($request) {
+            if (str_ends_with($request->url(), '/getMe')) {
+                return Http::response([
+                    'ok' => true,
+                    'result' => [
+                        'id' => 123456,
+                        'is_bot' => true,
+                        'first_name' => 'PlayNexus',
+                        'username' => 'playnexus_admin_bot',
+                    ],
+                ]);
+            }
+
+            return Http::response([
+                'ok' => true,
+                'result' => true,
+            ]);
+        });
+
+        $this->actingAs($superAdmin)
+            ->post('/admin/telegram-bot/run', [
+                'enabled' => false,
+                'bot_token' => '123456:abcdefghijklmnopqrstuvwxyz',
+                'admin_user_id' => '777777777',
+                'write_enabled' => true,
+                'publish_enabled' => true,
+                'destructive_enabled' => true,
+                'media_enabled' => true,
+                'transport_mode' => 'direct',
+                'api_base_url' => 'https://api.telegram.org',
+                'relay_base_url' => '',
+                'relay_key' => '',
+                'use_proxy' => false,
+                'proxy_type' => 'socks5h',
+                'proxy_host' => '',
+                'proxy_port' => 1080,
+                'proxy_username' => '',
+                'proxy_password' => '',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $setting = TelegramBotSetting::query()->firstOrFail();
+
+        $this->assertTrue($setting->enabled);
+        $this->assertTrue($setting->write_enabled);
+        $this->assertTrue($setting->publish_enabled);
+        $this->assertTrue($setting->destructive_enabled);
+        $this->assertSame('777777777', $setting->admin_user_id);
+        $this->assertSame('playnexus_admin_bot', $setting->bot_username);
+        $this->assertNotNull($setting->webhook_registered_at);
+
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/getMe'));
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/setWebhook'));
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/setMyCommands'));
+    }
+
+    public function test_stop_bot_disables_runtime_and_removes_webhook(): void
+    {
+        $superAdmin = User::factory()->create([
+            'is_admin' => true,
+            'status' => 'active',
+            'role' => 'super-admin',
+        ]);
+
+        $setting = $this->configureBot();
+        $setting->forceFill([
+            'webhook_registered_at' => now(),
+        ])->save();
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        $this->actingAs($superAdmin)
+            ->post('/admin/telegram-bot/stop')
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $setting->refresh();
+
+        $this->assertFalse($setting->enabled);
+        $this->assertNull($setting->webhook_registered_at);
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/deleteWebhook'));
+    }
+
     public function test_write_publish_destructive_and_media_permissions_are_independently_enforced(): void
     {
         $this->configureBot();
