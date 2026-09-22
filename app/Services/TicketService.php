@@ -9,6 +9,7 @@ use App\Models\TicketAttachment;
 use App\Models\TicketReply;
 use App\Models\User;
 use App\Notifications\TicketActivityNotification;
+use App\Services\Telegram\TelegramAdminNotificationService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -16,6 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class TicketService
 {
+    public function __construct(
+        private readonly TelegramAdminNotificationService $telegramAdmin,
+    ) {}
+
     public function create(User $customer, User $creator, ?OrderItem $item, ?string $subject, string $message, ?Product $product = null, string $type = 'support', array $attachments = [], ?string $tradeItemTitle = null): Ticket
     {
         $ticket = DB::transaction(function () use ($customer, $creator, $item, $subject, $message, $product, $type, $attachments, $tradeItemTitle) {
@@ -39,6 +44,7 @@ class TicketService
             $customer->notify(new TicketActivityNotification($ticket, 'تیکت جدید برای شما ثبت شد', 'پشتیبانی تیکت '.$ticket->number.' را ایجاد کرد.'));
         } else {
             User::query()->where('is_admin', true)->each(fn (User $admin) => $admin->notify(new TicketActivityNotification($ticket, 'تیکت پشتیبانی جدید', $customer->name.' تیکت '.$ticket->number.' را ثبت کرد.', true)));
+            $this->telegramAdmin->newTicket($ticket, $message);
         }
 
         return $ticket;
@@ -55,6 +61,7 @@ class TicketService
             $ticket->user->notify(new TicketActivityNotification($ticket, 'پاسخ جدید پشتیبانی', 'به تیکت '.$ticket->number.' پاسخ داده شد.'));
         } else {
             User::query()->where('is_admin', true)->each(fn (User $admin) => $admin->notify(new TicketActivityNotification($ticket, 'پاسخ جدید مشتری', 'مشتری به تیکت '.$ticket->number.' پاسخ داد.', true)));
+            $this->telegramAdmin->ticketReply($ticket, $message);
         }
     }
 
