@@ -1,0 +1,9 @@
+{
+  "job_id": "video-fresh-context-20260922-01",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "operation_name": "VideoFreshContext",
+    "variables": {},
+    "query": "query VideoFreshContext { games(first: 40, offset: 0) { nodes { id name slug status } pageInfo { total first offset hasMore nextOffset } } videos(first: 100, offset: 0) { nodes { id title slug status duration publishedAt game { id name slug } playlists { id title slug } } pageInfo { total first offset hasMore nextOffset } } collections(first: 100, offset: 0) { nodes { id title slug status game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }"
+  }
+}
