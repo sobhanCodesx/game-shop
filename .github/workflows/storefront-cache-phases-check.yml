@@ -50,7 +50,11 @@ jobs:
           php -l app/Providers/AppServiceProvider.php
           php -l app/Services/StorefrontPageCache.php
           php -l app/Services/PlaylistPageDataService.php
+          php -l app/Services/ChannelPageDataService.php
+          php -l app/Observers/SocialContentMediaObserver.php
+          php -l app/Observers/StudioObserver.php
           php -l tests/Feature/StorefrontCachePhaseOneTest.php
+          php -l tests/Feature/StorefrontCachePhaseTwoTest.php
 
       - name: Validate Composer files
         run: composer validate --no-check-publish
@@ -65,4 +69,4 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
-        run: php artisan test tests/Feature/StorefrontCachePhaseOneTest.php
+        run: php artisan test tests/Feature/StorefrontCachePhaseOneTest.php tests/Feature/StorefrontCachePhaseTwoTest.php
