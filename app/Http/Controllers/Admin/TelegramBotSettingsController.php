@@ -280,7 +280,7 @@ class TelegramBotSettingsController extends Controller
             'media_enabled' => ['required', 'boolean'],
             'mtproto_enabled' => ['sometimes', 'boolean'],
             'mtproto_api_id' => ['nullable', 'integer', 'min:1', 'max:4294967295'],
-            'mtproto_api_hash' => ['nullable', 'string', 'max:128'],
+            'mtproto_api_hash' => ['nullable', 'string', 'size:32', 'regex:/^[a-f0-9]{32}$/i'],
             'transport_mode' => ['required', 'in:auto,relay,proxy,direct'],
             'api_base_url' => ['required', 'url', 'max:500'],
             'relay_base_url' => ['nullable', 'url', 'max:500'],
