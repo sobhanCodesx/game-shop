@@ -1,5 +1,5 @@
 {
-  "job_id": "2026-09-22-1024-final-graph-ds3-video",
+  "job_id": "2026-09-22-1025-final-graph-ds3-video-retry",
   "tool": "query_playnexus_graph",
   "arguments": {
     "operation_name": "VerifyPublishedVideo70",
@@ -7,6 +7,6 @@
       "id": "70",
       "type": "video"
     },
-    "query": "query VerifyPublishedVideo70($id: ID!, $type: String!) { content(id: $id, type: $type) { id type title slug status duration publishedAt videoUrl thumbnailUrl game { id name slug } playlists { id title slug visibility } } }"
+    "query": "query VerifyPublishedVideo70($id: ID!, $type: String!) { content(id: $id, type: $type) { id type title slug status duration publishedAt game { id name slug } playlists { id title slug visibility } } }"
   }
 }
