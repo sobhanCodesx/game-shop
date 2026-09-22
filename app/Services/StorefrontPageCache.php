@@ -5,6 +5,7 @@ namespace App\Services;
 use Closure;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class StorefrontPageCache
@@ -40,9 +41,26 @@ final class StorefrontPageCache
 
     public function invalidate(string ...$scopes): void
     {
+        $scopes = array_values(array_unique(array_filter($scopes)));
+
+        if ($scopes === []) {
+            return;
+        }
+
+        if (DB::transactionLevel() > 0) {
+            DB::afterCommit(fn () => $this->invalidateNow($scopes));
+
+            return;
+        }
+
+        $this->invalidateNow($scopes);
+    }
+
+    private function invalidateNow(array $scopes): void
+    {
         $store = $this->store();
 
-        foreach (array_unique(array_filter($scopes)) as $scope) {
+        foreach ($scopes as $scope) {
             $registryKey = $this->registryKey($scope);
             $registeredKeys = $store->get($registryKey, []);
 
@@ -71,7 +89,7 @@ final class StorefrontPageCache
 
         if (! in_array($key, $registeredKeys, true)) {
             $registeredKeys[] = $key;
-            $store->forever($registryKey, array_slice($registeredKeys, -5000));
+            $store->forever($registryKey, $registeredKeys);
         }
     }
 
