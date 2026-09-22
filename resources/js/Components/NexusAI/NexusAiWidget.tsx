@@ -1,12 +1,12 @@
 import {
     Bot,
-    ChevronDown,
     MessageCircleMore,
     RotateCcw,
     Send,
     Sparkles,
     X,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 import {
     useEffect,
     useMemo,
@@ -80,6 +80,7 @@ export default function NexusAiWidget({
 }: {
     config: NexusAiConfig;
 }) {
+    const [mounted, setMounted] = useState(false);
     const [open, setOpen] = useState(
         () =>
             typeof window !== "undefined" &&
@@ -95,6 +96,10 @@ export default function NexusAiWidget({
     const history = useMemo(() => messages.slice(-8), [messages]);
 
     useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
         window.localStorage.setItem(
             STORAGE_KEY,
             JSON.stringify(messages.slice(-12)),
@@ -104,6 +109,20 @@ export default function NexusAiWidget({
     useEffect(() => {
         if (!open) return;
         window.setTimeout(() => inputRef.current?.focus(), 120);
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+
+        const previousOverflow = document.body.style.overflow;
+        const previousOverscroll = document.body.style.overscrollBehavior;
+        document.body.style.overflow = "hidden";
+        document.body.style.overscrollBehavior = "none";
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.body.style.overscrollBehavior = previousOverscroll;
+        };
     }, [open]);
 
     useEffect(() => {
@@ -201,23 +220,24 @@ export default function NexusAiWidget({
         window.localStorage.removeItem(STORAGE_KEY);
     };
 
-    if (!config.enabled) return null;
+    if (!config.enabled || !mounted) return null;
 
-    return (
+    return createPortal(
         <>
             {open && (
                 <div
                     aria-hidden="true"
-                    className="fixed inset-0 z-[119] bg-slate-950/30 backdrop-blur-[2px] lg:hidden"
+                    className="fixed inset-0 z-[139] bg-slate-950/55 backdrop-blur-[3px] lg:bg-slate-950/20 lg:backdrop-blur-[1px]"
                     onClick={() => setOpen(false)}
                 />
             )}
 
             <section
                 aria-hidden={!open}
-                className={`fixed z-[120] overflow-hidden border border-white/10 bg-[#080b16]/95 shadow-[0_30px_90px_rgba(2,6,23,.65)] backdrop-blur-2xl transition-all duration-300
-                inset-x-0 bottom-0 top-0 rounded-none
-                lg:inset-auto lg:bottom-24 lg:right-6 lg:h-[min(680px,calc(100vh-130px))] lg:w-[420px] lg:rounded-[28px]
+                className={`fixed z-[140] overflow-hidden border border-white/[.10] bg-[linear-gradient(180deg,rgba(10,14,29,.98),rgba(5,8,18,.985))] shadow-[0_32px_100px_rgba(2,6,23,.72)] backdrop-blur-2xl transition-all duration-300
+                inset-x-2 bottom-0 top-[max(8px,env(safe-area-inset-top))] rounded-t-[30px]
+                sm:inset-x-3
+                lg:inset-auto lg:bottom-24 lg:right-6 lg:top-auto lg:h-[min(690px,calc(100vh-130px))] lg:w-[430px] lg:rounded-[30px]
                 ${
                     open
                         ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
@@ -225,15 +245,16 @@ export default function NexusAiWidget({
                 }`}
             >
                 <div className="grid h-full min-h-0 grid-rows-[auto_1fr_auto]">
-                    <header className="relative border-b border-white/[.07] px-4 pb-4 pt-[calc(14px+env(safe-area-inset-top))] sm:px-5 lg:pt-4">
+                    <header className="relative border-b border-white/[.07] px-4 pb-4 pt-[calc(17px+env(safe-area-inset-top))] sm:px-5 lg:pt-4">
+                        <span className="absolute left-1/2 top-[calc(7px+env(safe-area-inset-top))] h-1 w-10 -translate-x-1/2 rounded-full bg-white/10 lg:hidden" />
                         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(124,58,237,.18),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(14,165,233,.10),transparent_40%)]" />
 
                         <div className="relative flex items-center justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-3">
                                 <div className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 text-white shadow-[0_12px_35px_rgba(99,102,241,.28)]">
                                     <Bot size={22} strokeWidth={2.2} />
-                                    <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border-2 border-[#080b16] bg-[#080b16] text-cyan-300">
-                                        <Sparkles size={11} />
+                                    <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-white/20 bg-gradient-to-br from-violet-500 to-cyan-400 text-white shadow-[0_4px_14px_rgba(34,211,238,.25)]">
+                                        <Sparkles size={10} />
                                     </span>
                                 </div>
 
@@ -369,7 +390,7 @@ export default function NexusAiWidget({
                     </div>
 
                     <footer className="border-t border-white/[.07] bg-[#080b16]/90 p-3 pb-[calc(12px+env(safe-area-inset-bottom))] sm:p-4 sm:pb-4">
-                        <div className="flex items-end gap-2 rounded-[18px] border border-white/[.08] bg-black/20 p-1.5 transition focus-within:border-violet-400/25 focus-within:ring-4 focus-within:ring-violet-500/[.05]">
+                        <div className="flex items-end gap-2 rounded-[20px] border border-white/[.09] bg-white/[.035] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.035)] transition focus-within:border-violet-400/30 focus-within:bg-white/[.05] focus-within:ring-4 focus-within:ring-violet-500/[.06]">
                             <textarea
                                 className="max-h-28 min-h-11 flex-1 resize-none bg-transparent px-2.5 py-2.5 text-xs leading-6 text-white outline-none placeholder:text-slate-600 disabled:opacity-60"
                                 disabled={busy}
@@ -404,34 +425,33 @@ export default function NexusAiWidget({
 
             <button
                 aria-label={open ? "بستن Nexus AI" : "باز کردن Nexus AI"}
-                className={`fixed z-[118] flex items-center gap-2.5 rounded-full border border-white/10 bg-[#0a0d18]/95 p-2 pl-3.5 text-white shadow-[0_18px_55px_rgba(2,6,23,.55)] backdrop-blur-xl transition-all hover:-translate-y-1 hover:border-violet-400/25
-                bottom-[calc(84px+env(safe-area-inset-bottom))] right-4 lg:bottom-6 lg:right-6 ${
+                className={`group fixed z-[138] bottom-[calc(86px+env(safe-area-inset-bottom))] right-4 flex items-center gap-2.5 rounded-[20px] border border-white/20 bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 p-1.5 text-white shadow-[0_14px_38px_rgba(79,70,229,.32),0_0_26px_rgba(34,211,238,.10)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_48px_rgba(79,70,229,.42),0_0_34px_rgba(34,211,238,.14)] active:scale-[.97] lg:bottom-6 lg:right-6 lg:rounded-[22px] sm:pl-3.5 ${
                     open
-                        ? "pointer-events-none scale-90 opacity-0 lg:pointer-events-auto lg:opacity-100"
-                        : "scale-100 opacity-100"
+                        ? "pointer-events-none translate-y-2 scale-90 opacity-0"
+                        : "translate-y-0 scale-100 opacity-100"
                 }`}
-                onClick={() => setOpen((value) => !value)}
+                onClick={() => setOpen(true)}
                 type="button"
             >
-                <span className="relative grid size-11 place-items-center rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 shadow-[0_8px_25px_rgba(99,102,241,.35)]">
-                    {open ? (
-                        <ChevronDown size={21} />
-                    ) : (
-                        <Bot size={21} strokeWidth={2.2} />
-                    )}
+                <span className="relative grid size-11 shrink-0 place-items-center rounded-[15px] bg-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,.16)] backdrop-blur-sm">
+                    <Bot size={22} strokeWidth={2.25} />
+                    <span className="absolute -right-1 -top-1 grid size-[18px] place-items-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm backdrop-blur">
+                        <Sparkles size={10} />
+                    </span>
                     {!open && (
-                        <span className="absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-[#0a0d18] bg-emerald-400" />
+                        <span className="absolute -bottom-0.5 -left-0.5 size-2.5 rounded-full border border-white/70 bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.9)]" />
                     )}
                 </span>
-                <span className="hidden text-right sm:block">
-                    <strong className="block text-[11px] font-black">
+                <span className="hidden min-w-0 pr-0.5 text-right sm:block">
+                    <strong className="block whitespace-nowrap text-[11px] font-black leading-4">
                         {config.title}
                     </strong>
-                    <small className="mt-0.5 block text-[8px] text-slate-500">
-                        سؤال گیم داری؟
+                    <small className="mt-0.5 block whitespace-nowrap text-[8px] font-medium text-white/70">
+                        {config.launcher_label}
                     </small>
                 </span>
             </button>
-        </>
+        </>,
+        document.body,
     );
 }
