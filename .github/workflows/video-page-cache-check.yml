@@ -1,0 +1,65 @@
+name: Video Page Cache Check
+
+on:
+  push:
+    paths:
+      - 'app/Http/Controllers/SocialContentController.php'
+      - 'app/Http/Controllers/Admin/VideoController.php'
+      - 'app/Observers/GameObserver.php'
+      - 'app/Observers/SocialContentMediaObserver.php'
+      - 'app/Observers/SocialContentObserver.php'
+      - 'app/Observers/StudioObserver.php'
+      - 'app/Observers/VideoPlaylistObserver.php'
+      - 'app/Providers/AppServiceProvider.php'
+      - 'app/Services/ContentAgentService.php'
+      - 'app/Services/VideoPageCache.php'
+      - 'app/Services/VideoPageDataService.php'
+      - 'tests/Feature/VideoPageCacheTest.php'
+      - '.github/workflows/video-page-cache-check.yml'
+  pull_request:
+    paths:
+      - 'app/Http/Controllers/SocialContentController.php'
+      - 'app/Http/Controllers/Admin/VideoController.php'
+      - 'app/Observers/GameObserver.php'
+      - 'app/Observers/SocialContentMediaObserver.php'
+      - 'app/Observers/SocialContentObserver.php'
+      - 'app/Observers/StudioObserver.php'
+      - 'app/Observers/VideoPlaylistObserver.php'
+      - 'app/Providers/AppServiceProvider.php'
+      - 'app/Services/ContentAgentService.php'
+      - 'app/Services/VideoPageCache.php'
+      - 'app/Services/VideoPageDataService.php'
+      - 'tests/Feature/VideoPageCacheTest.php'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          php -l app/Http/Controllers/SocialContentController.php
+          php -l app/Http/Controllers/Admin/VideoController.php
+          php -l app/Observers/GameObserver.php
+          php -l app/Observers/SocialContentMediaObserver.php
+          php -l app/Observers/SocialContentObserver.php
+          php -l app/Observers/StudioObserver.php
+          php -l app/Observers/VideoPlaylistObserver.php
+          php -l app/Providers/AppServiceProvider.php
+          php -l app/Services/ContentAgentService.php
+          php -l app/Services/VideoPageCache.php
+          php -l app/Services/VideoPageDataService.php
+          php -l tests/Feature/VideoPageCacheTest.php
+
+      - name: Validate Composer files
+        run: composer validate --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run video page cache tests
+        run: php artisan test tests/Feature/VideoPageCacheTest.php
