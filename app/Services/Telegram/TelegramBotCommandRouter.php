@@ -568,12 +568,14 @@ final class TelegramBotCommandRouter
 
     private function commandEvents(string $chatId, string $rest): array
     {
-        $arguments = ['limit' => 15];
-        if (trim($rest) !== '') {
-            $arguments['game_id'] = $this->positiveInt(trim($rest));
+        if (trim($rest) === '') {
+            return $this->showEvents($chatId);
         }
 
-        return $this->executeReadTool($chatId, 'list_game_events', $arguments);
+        return $this->executeReadTool($chatId, 'list_game_events', [
+            'limit' => 15,
+            'game_id' => $this->positiveInt(trim($rest)),
+        ]);
     }
 
     private function commandTool(string $userId, string $chatId, string $rest): array
@@ -762,7 +764,11 @@ final class TelegramBotCommandRouter
             filled($message['caption'] ?? null) ? (string) $message['caption'] : null,
         );
         $this->sessions->clear($userId, $chatId);
-        $this->send($chatId, "✅ مدیا به PlayNexus منتقل شد.\n\n".$this->formatter->result('نتیجه آپلود', $result), $this->menuKeyboard());
+        $this->send(
+            $chatId,
+            "✅ <b>مدیا منتقل شد</b>\n\n".$this->formatter->result('نتیجه آپلود', $result),
+            $this->resourceBackKeyboard($resource, $id),
+        );
 
         return ['action' => 'media_uploaded', 'resource' => $resource, 'resource_id' => $id];
     }
@@ -1005,9 +1011,29 @@ final class TelegramBotCommandRouter
         return [
             'inline_keyboard' => [
                 [
-                    ['text' => '🎮 بازی‌ها', 'callback_data' => 'menu:game'],
-                    ['text' => '🏭 استودیوها', 'callback_data' => 'menu:studio'],
+                    ['text' => '✨ Content Studio', 'callback_data' => 'menu:content'],
+                    ['text' => '🎮 Game Library', 'callback_data' => 'menu:library'],
                 ],
+                [
+                    ['text' => '🛍 Commerce', 'callback_data' => 'menu:commerce'],
+                    ['text' => '🧠 Intelligence', 'callback_data' => 'menu:intelligence'],
+                ],
+                [
+                    ['text' => '📡 Status', 'callback_data' => 'menu:status'],
+                    ['text' => '⚙️ System', 'callback_data' => 'menu:system'],
+                ],
+                [[
+                    'text' => '🪟 PlayNexus Admin Panel',
+                    'url' => route('admin.telegram-bot.index'),
+                ]],
+            ],
+        ];
+    }
+
+    private function hubKeyboard(string $hub): array
+    {
+        $rows = match ($hub) {
+            'content' => [
                 [
                     ['text' => '📰 فید', 'callback_data' => 'menu:feed'],
                     ['text' => '🎬 ویدیو', 'callback_data' => 'menu:video'],
@@ -1016,47 +1042,153 @@ final class TelegramBotCommandRouter
                     ['text' => '📱 استوری', 'callback_data' => 'menu:story'],
                     ['text' => '📚 کالکشن', 'callback_data' => 'menu:collection'],
                 ],
+            ],
+            'library' => [
                 [
-                    ['text' => '🛍 محصولات', 'callback_data' => 'menu:product'],
-                    ['text' => '🎛 پلتفرم‌ها', 'callback_data' => 'menu:platform'],
+                    ['text' => '🎮 بازی‌ها', 'callback_data' => 'menu:game'],
+                    ['text' => '🏭 استودیوها', 'callback_data' => 'menu:studio'],
                 ],
                 [
-                    ['text' => '📊 وضعیت', 'callback_data' => 'menu:status'],
+                    ['text' => '🎛 پلتفرم‌ها', 'callback_data' => 'menu:platform'],
+                    ['text' => '📚 کالکشن‌ها', 'callback_data' => 'menu:collection'],
+                ],
+            ],
+            'commerce' => [
+                [[
+                    'text' => '🛍 محصولات',
+                    'callback_data' => 'menu:product',
+                ]],
+            ],
+            'intelligence' => [
+                [
+                    ['text' => '🧩 Game Events', 'callback_data' => 'events:0'],
+                    ['text' => '🧬 Graph Schema', 'callback_data' => 'menu:graph-schema'],
+                ],
+                [[
+                    'text' => '🧠 اجرای GraphQL Query',
+                    'callback_data' => 'graph-prompt',
+                ]],
+            ],
+            'system' => [
+                [
+                    ['text' => '📡 وضعیت اتصال', 'callback_data' => 'menu:status'],
                     ['text' => '❓ راهنما', 'callback_data' => 'menu:help'],
                 ],
                 [[
-                    'text' => '⚙️ پنل تنظیمات بات',
+                    'text' => '🧰 ابزارهای پیشرفته',
+                    'callback_data' => 'menu:advanced',
+                ]],
+                [[
+                    'text' => '⚙️ تنظیمات Bot',
                     'url' => route('admin.telegram-bot.index'),
                 ]],
             ],
-        ];
+            default => [],
+        };
+
+        $rows[] = [[
+            'text' => '🏠 Home',
+            'callback_data' => 'menu:home',
+        ]];
+
+        return ['inline_keyboard' => $rows];
     }
 
-    private function resourceListKeyboard(string $resource, array $result): array
+    private function resourceHubKeyboard(string $resource): array
     {
-        $rows = [];
-        foreach (array_slice((array) ($result['items'] ?? []), 0, 8) as $item) {
-            if (! is_array($item) || empty($item['id'])) {
-                continue;
-            }
-            $label = Str::limit((string) ($item['title'] ?? $item['name'] ?? $item['slug'] ?? '#'.$item['id']), 30);
-            $rows[] = [[
-                'text' => '#'.$item['id'].' '.$label,
-                'callback_data' => "view:{$resource}:{$item['id']}",
-            ]];
-        }
+        $rows = [
+            [
+                ['text' => '📋 آخرین‌ها', 'callback_data' => "list:{$resource}:0"],
+                ['text' => '🔎 جستجو', 'callback_data' => "search:{$resource}"],
+            ],
+        ];
 
-        if (in_array($resource, ['game', 'studio', 'collection', 'feed', 'story', 'video'], true)) {
+        if (in_array($resource, self::MUTABLE_RESOURCES, true)) {
             $rows[] = [[
                 'text' => '➕ ساخت جدید',
                 'callback_data' => "template:{$resource}:create",
             ]];
         }
 
-        $rows[] = [[
-            'text' => '🏠 منوی اصلی',
-            'callback_data' => 'menu:home',
-        ]];
+        if (in_array($resource, ['game', 'studio'], true)) {
+            $rows[] = [[
+                'text' => '♻️ Restore با ID',
+                'callback_data' => "restore-prompt:{$resource}",
+            ]];
+        }
+
+        $hub = $this->resourceMeta($resource)['hub'];
+        $rows[] = [
+            ['text' => '↩️ بخش قبلی', 'callback_data' => "menu:{$hub}"],
+            ['text' => '🏠 Home', 'callback_data' => 'menu:home'],
+        ];
+
+        return ['inline_keyboard' => $rows];
+    }
+
+    private function resourceListKeyboard(string $resource, array $result, bool $paginate = true): array
+    {
+        $rows = [];
+        foreach (array_slice((array) ($result['items'] ?? []), 0, 8) as $item) {
+            if (! is_array($item) || empty($item['id'])) {
+                continue;
+            }
+
+            $label = Str::limit((string) ($item['title'] ?? $item['name'] ?? $item['slug'] ?? '#'.$item['id']), 31);
+            $state = trim((string) ($item['status'] ?? $item['visibility'] ?? ''));
+            $rows[] = [[
+                'text' => '#'.$item['id'].' · '.$label.($state !== '' ? ' · '.$state : ''),
+                'callback_data' => "view:{$resource}:{$item['id']}",
+            ]];
+        }
+
+        if ($paginate) {
+            $pagination = is_array($result['pagination'] ?? null) ? $result['pagination'] : [];
+            $offset = max(0, (int) ($pagination['offset'] ?? 0));
+            $limit = max(1, (int) ($pagination['limit'] ?? 8));
+            $total = max(0, (int) ($pagination['total'] ?? 0));
+            $nav = [];
+
+            if ($offset > 0) {
+                $previous = max(0, $offset - $limit);
+                $nav[] = ['text' => '‹ قبلی', 'callback_data' => "list:{$resource}:{$previous}"];
+            }
+
+            if (($pagination['has_more'] ?? false) === true) {
+                $next = min(10000, $offset + $limit);
+                $nav[] = ['text' => 'بعدی ›', 'callback_data' => "list:{$resource}:{$next}"];
+            }
+
+            if ($nav !== []) {
+                $rows[] = $nav;
+            }
+
+            if ($total > 0) {
+                $page = (int) floor($offset / $limit) + 1;
+                $pages = (int) ceil($total / $limit);
+                $rows[] = [[
+                    'text' => "صفحه {$page} / {$pages}",
+                    'callback_data' => "list:{$resource}:{$offset}",
+                ]];
+            }
+        }
+
+        if (in_array($resource, self::MUTABLE_RESOURCES, true)) {
+            $rows[] = [
+                ['text' => '➕ جدید', 'callback_data' => "template:{$resource}:create"],
+                ['text' => '🔎 جستجو', 'callback_data' => "search:{$resource}"],
+            ];
+        } else {
+            $rows[] = [[
+                'text' => '🔎 جستجو',
+                'callback_data' => "search:{$resource}",
+            ]];
+        }
+
+        $rows[] = [
+            ['text' => '↩️ '.$this->resourceMeta($resource)['label'], 'callback_data' => "menu:{$resource}"],
+            ['text' => '🏠 Home', 'callback_data' => 'menu:home'],
+        ];
 
         return ['inline_keyboard' => $rows];
     }
@@ -1065,57 +1197,144 @@ final class TelegramBotCommandRouter
     {
         $rows = [
             [
-                ['text' => '📎 مدیا', 'callback_data' => "media-slots:{$resource}:{$id}"],
-                ['text' => '🗂 Assets', 'callback_data' => "assets:{$resource}:{$id}"],
+                ['text' => '🖼 Media', 'callback_data' => "media-slots:{$resource}:{$id}"],
+                ['text' => '📦 Assets', 'callback_data' => "assets:{$resource}:{$id}"],
             ],
         ];
 
-        if (in_array($resource, ['game', 'studio', 'collection', 'feed', 'story', 'video'], true)) {
-            $rows[] = [[
-                'text' => '✏️ ویرایش JSON',
+        $publicUrl = $this->publicUrl($item);
+        if (in_array($resource, self::MUTABLE_RESOURCES, true)) {
+            $editRow = [[
+                'text' => '✏️ ویرایش',
                 'callback_data' => "template:{$resource}:update:{$id}",
+            ]];
+            if ($publicUrl !== null) {
+                $editRow[] = ['text' => '↗️ سایت', 'url' => $publicUrl];
+            }
+            $rows[] = $editRow;
+        } elseif ($publicUrl !== null) {
+            $rows[] = [[
+                'text' => '↗️ باز کردن در سایت',
+                'url' => $publicUrl,
+            ]];
+        }
+
+        if ($resource === 'collection') {
+            $rows[] = [[
+                'text' => '🔗 Sync Videos',
+                'callback_data' => "sync-prompt:{$id}",
             ]];
         }
 
         $state = (string) ($item['status'] ?? $item['visibility'] ?? '');
         if ($resource === 'feed') {
             $rows[] = [[
-                'text' => $state === 'published' ? '📥 Draft' : '🚀 Publish',
+                'text' => $state === 'published' ? '📥 انتقال به Draft' : '🚀 انتشار',
                 'callback_data' => ($state === 'published' ? 'unpublish-feed:' : 'publish-feed:').$id,
             ]];
         } elseif (in_array($resource, ['game', 'studio'], true)) {
             $target = $state === 'active' ? 'inactive' : 'active';
             $rows[] = [[
-                'text' => $target === 'active' ? '✅ فعال‌سازی' : '⏸ غیرفعال',
+                'text' => $target === 'active' ? '✅ فعال‌سازی' : '⏸ غیرفعال‌سازی',
                 'callback_data' => "state:{$resource}:{$id}:{$target}",
             ]];
         } elseif ($resource === 'collection') {
             $target = $state === 'public' ? 'private' : 'public';
             $rows[] = [[
-                'text' => $target === 'public' ? '🌐 عمومی' : '🔒 خصوصی',
+                'text' => $target === 'public' ? '🌐 عمومی کردن' : '🔒 خصوصی کردن',
                 'callback_data' => "state:{$resource}:{$id}:{$target}",
             ]];
         } elseif (in_array($resource, ['story', 'video'], true)) {
             $target = $state === 'published' ? 'draft' : 'published';
             $rows[] = [[
-                'text' => $target === 'published' ? '🚀 انتشار' : '📥 Draft',
+                'text' => $target === 'published' ? '🚀 انتشار' : '📥 انتقال به Draft',
                 'callback_data' => "state:{$resource}:{$id}:{$target}",
             ]];
         }
 
-        if (in_array($resource, ['game', 'studio', 'collection', 'feed', 'story', 'video'], true)) {
+        if (in_array($resource, self::MUTABLE_RESOURCES, true)) {
             $rows[] = [[
                 'text' => '🗑 حذف',
                 'callback_data' => "delete:{$resource}:{$id}",
             ]];
         }
 
-        $rows[] = [[
-            'text' => '↩️ فهرست',
-            'callback_data' => "menu:{$resource}",
-        ]];
+        $rows[] = [
+            ['text' => '↩️ فهرست', 'callback_data' => "list:{$resource}:0"],
+            ['text' => '🏠 Home', 'callback_data' => 'menu:home'],
+        ];
 
         return ['inline_keyboard' => $rows];
+    }
+
+    private function eventListKeyboard(array $result): array
+    {
+        $rows = [];
+        foreach (array_slice((array) ($result['items'] ?? []), 0, 8) as $event) {
+            if (! is_array($event) || empty($event['id'])) {
+                continue;
+            }
+
+            $label = Str::limit((string) ($event['title'] ?? 'Game Event'), 31);
+            $status = (string) ($event['status'] ?? '');
+            $rows[] = [[
+                'text' => '🧩 #'.$event['id'].' · '.$label.($status !== '' ? ' · '.$status : ''),
+                'callback_data' => 'event-actions:'.$event['id'],
+            ]];
+        }
+
+        $pagination = is_array($result['pagination'] ?? null) ? $result['pagination'] : [];
+        $offset = max(0, (int) ($pagination['offset'] ?? 0));
+        $limit = max(1, (int) ($pagination['limit'] ?? 8));
+        $nav = [];
+        if ($offset > 0) {
+            $nav[] = ['text' => '‹ قبلی', 'callback_data' => 'events:'.max(0, $offset - $limit)];
+        }
+        if (($pagination['has_more'] ?? false) === true) {
+            $nav[] = ['text' => 'بعدی ›', 'callback_data' => 'events:'.min(10000, $offset + $limit)];
+        }
+        if ($nav !== []) {
+            $rows[] = $nav;
+        }
+
+        $rows[] = [[
+            'text' => '➕ ثبت Game Event',
+            'callback_data' => 'event-new',
+        ]];
+        $rows[] = [
+            ['text' => '↩️ Intelligence', 'callback_data' => 'menu:intelligence'],
+            ['text' => '🏠 Home', 'callback_data' => 'menu:home'],
+        ];
+
+        return ['inline_keyboard' => $rows];
+    }
+
+    private function resourceBackKeyboard(string $resource, int $id): array
+    {
+        return [
+            'inline_keyboard' => [
+                [
+                    ['text' => '↩️ رکورد', 'callback_data' => "view:{$resource}:{$id}"],
+                    ['text' => '📋 فهرست', 'callback_data' => "list:{$resource}:0"],
+                ],
+                [[
+                    'text' => '🏠 Home',
+                    'callback_data' => 'menu:home',
+                ]],
+            ],
+        ];
+    }
+
+    private function cancelKeyboard(string $back = 'menu:home'): array
+    {
+        return [
+            'inline_keyboard' => [
+                [
+                    ['text' => '✕ لغو', 'callback_data' => 'cancel'],
+                    ['text' => '↩️ بازگشت', 'callback_data' => $back],
+                ],
+            ],
+        ];
     }
 
     private function extractTelegramFile(array $message): ?array
@@ -1180,6 +1399,32 @@ final class TelegramBotCommandRouter
         }
 
         return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}';
+    }
+
+    private function resourceMeta(string $resource): array
+    {
+        return self::RESOURCE_LABELS[$resource]
+            ?? ['label' => $resource, 'icon' => '•', 'hub' => 'system'];
+    }
+
+    private function publicUrl(array $item): ?string
+    {
+        foreach (['url', 'public_url', 'link_url'] as $key) {
+            $value = trim((string) ($item[$key] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+
+            if (str_starts_with($value, '/')) {
+                return url($value);
+            }
+
+            if (filter_var($value, FILTER_VALIDATE_URL)) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     private function resource(string $value): string
