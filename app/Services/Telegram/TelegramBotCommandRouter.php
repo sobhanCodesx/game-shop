@@ -628,7 +628,10 @@ final class TelegramBotCommandRouter
 
     private function showUser(string $chatId, int $id, ?int $messageId = null): array
     {
-        $user = User::query()->findOrFail($id);
+        $user = User::query()->find($id);
+        if (! $user) {
+            throw new RuntimeException('کاربر پیدا نشد یا دیگر در PlayNexus وجود ندارد.');
+        }
         $telegramConnected = filled($user->telegram_chat_id) && $user->telegram_linked_at !== null;
         $name = trim((string) ($user->name ?: 'بدون نام'));
         $email = trim((string) ($user->email ?: '—'));
