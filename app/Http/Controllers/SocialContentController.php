@@ -7,6 +7,7 @@ use App\Models\SocialContent;
 use App\Models\VideoPlaylist;
 use App\Services\ContentViewService;
 use App\Services\MediaStorage;
+use App\Services\ShortPageDataService;
 use App\Services\StorefrontDataService;
 use App\Services\VideoCommunityService;
 use App\Support\RichText;
@@ -19,7 +20,7 @@ use Inertia\Response;
 
 class SocialContentController extends Controller
 {
-    public function show(Request $request, string $type, SocialContent $content, StorefrontDataService $data, VideoCommunityService $community, ContentViewService $views): Response
+    public function show(Request $request, string $type, SocialContent $content, StorefrontDataService $data, VideoCommunityService $community, ContentViewService $views, ShortPageDataService $shortPage): Response
     {
         $expectedType = match ($type) {
             'posts' => 'post', 'videos' => 'video', 'shorts' => 'short', default => abort(404),
@@ -29,6 +30,10 @@ class SocialContentController extends Controller
 
         if (in_array($content->type, ['video', 'short'], true)) {
             $views->record($request, $content);
+        }
+
+        if ($content->type === 'short') {
+            return Inertia::render('Content/ShortShow', $shortPage->get($content, $request->user()));
         }
 
         $content->load([
