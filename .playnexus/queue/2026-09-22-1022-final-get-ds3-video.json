@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-22-1022-final-get-ds3-video",
+  "tool": "get_content",
+  "arguments": {
+    "resource": "video",
+    "id": 70
+  }
+}
