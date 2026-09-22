@@ -1,0 +1,9 @@
+{
+  "job_id": "2026-09-22-0957-video-context-v2",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "operation_name": "VideoContextV2",
+    "variables": {},
+    "query": "query VideoContextV2 { games(first: 50, offset: 0) { nodes { id name slug status releaseDate videoCount collections(first: 20, offset: 0) { nodes { id title slug visibility videoCount } pageInfo { total first offset hasMore nextOffset } } } pageInfo { total first offset hasMore nextOffset } } videos(first: 100, offset: 0) { nodes { id title slug status duration publishedAt game { id name slug } playlists { id title slug visibility } } pageInfo { total first offset hasMore nextOffset } } collections(first: 100, offset: 0) { nodes { id title slug visibility videoCount game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }"
+  }
+}
