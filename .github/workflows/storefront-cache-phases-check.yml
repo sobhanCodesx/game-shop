@@ -1,0 +1,68 @@
+name: Storefront Cache Phases Check
+
+on:
+  push:
+    branches:
+      - feature/storefront-cache-phases
+    paths:
+      - 'app/Http/Controllers/ChannelController.php'
+      - 'app/Http/Controllers/SocialContentController.php'
+      - 'app/Http/Controllers/HomeController.php'
+      - 'app/Http/Controllers/StudioController.php'
+      - 'app/Http/Controllers/ProductController.php'
+      - 'app/Http/Controllers/SitemapController.php'
+      - 'app/Http/Controllers/Admin/VideoController.php'
+      - 'app/Observers/**'
+      - 'app/Providers/AppServiceProvider.php'
+      - 'app/Services/StorefrontPageCache.php'
+      - 'app/Services/PlaylistPageDataService.php'
+      - 'app/Services/ChannelPageDataService.php'
+      - 'app/Services/ShortPageDataService.php'
+      - 'app/Services/HomePublicCacheService.php'
+      - 'app/Services/StudioPageDataService.php'
+      - 'app/Services/ProductPageDataService.php'
+      - 'app/Services/ContentAgentService.php'
+      - 'resources/js/**'
+      - 'tests/Feature/StorefrontCachePhase*.php'
+      - '.github/workflows/storefront-cache-phases-check.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'resources/js/**'
+      - 'tests/Feature/StorefrontCachePhase*.php'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          php -l app/Http/Controllers/ChannelController.php
+          php -l app/Observers/GameObserver.php
+          php -l app/Observers/SocialContentObserver.php
+          php -l app/Observers/VideoPlaylistObserver.php
+          php -l app/Providers/AppServiceProvider.php
+          php -l app/Services/StorefrontPageCache.php
+          php -l app/Services/PlaylistPageDataService.php
+          php -l tests/Feature/StorefrontCachePhaseOneTest.php
+
+      - name: Validate Composer files
+        run: composer validate --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run phase regression tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+        run: php artisan test tests/Feature/StorefrontCachePhaseOneTest.php
