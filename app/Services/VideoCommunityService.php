@@ -155,6 +155,8 @@ class VideoCommunityService
             $this->watch->prime($game);
         }
 
+        app(StorefrontPageCache::class)->invalidate('studio');
+
         return $subscribed;
     }
 }
