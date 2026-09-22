@@ -1,1 +1,0 @@
-{"job_id":"feed-engine-20260922-1131-feed71-final-verify","tool":"query_playnexus_graph","arguments":{"query":"query Feed71FinalVerify { content(id: 71, type: \"post\") { id title status publishedAt } }","variables":{},"operation_name":"Feed71FinalVerify"}}
