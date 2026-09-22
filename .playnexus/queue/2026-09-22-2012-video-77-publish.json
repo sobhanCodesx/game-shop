@@ -1,9 +1,0 @@
-{
-  "job_id": "video-77-publish-20260922",
-  "tool": "set_content_state",
-  "arguments": {
-    "resource": "video",
-    "id": 77,
-    "state": "published"
-  }
-}
