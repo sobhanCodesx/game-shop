@@ -18,6 +18,13 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    'posthog' => [
+        // The browser project token is intentionally public. Keep it
+        // overridable so the analytics project can be rotated without code.
+        'token' => env('POSTHOG_PROJECT_TOKEN', 'phc_xNKKPkHpEdjcBdEtiv69CCY6UiakyQfwU7cPWEb6T7Bg'),
+        'host' => env('POSTHOG_HOST', 'https://us.i.posthog.com'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],
