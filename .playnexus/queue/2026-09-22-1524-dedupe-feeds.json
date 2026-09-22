@@ -2,7 +2,7 @@
   "job_id": "2026-09-22-1524-dedupe-feeds",
   "tool": "query_playnexus_graph",
   "arguments": {
-    "query": "{ feeds(first: 50, offset: 0, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title slug status feedType feedBadge publishedAt game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }",
+    "query": "query RecentFeedsDedupe { feeds(first: 50, offset: 0, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title slug status feedType feedBadge publishedAt game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }",
     "variables": {},
     "operation_name": "RecentFeedsDedupe"
   }
