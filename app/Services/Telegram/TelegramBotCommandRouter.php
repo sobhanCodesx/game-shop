@@ -309,13 +309,13 @@ final class TelegramBotCommandRouter
         if ($action === 'restore-prompt') {
             $resource = $this->resource($parts[1] ?? '');
             if (! in_array($resource, ['game', 'studio'], true)) {
-                throw new InvalidArgumentException('Restore فقط برای game و studio فعال است.');
+                throw new InvalidArgumentException('بازیابی فقط برای بازی و استودیو فعال است.');
             }
             $this->executor->authorize('restore_content');
             $this->sessions->put($userId, $chatId, 'awaiting_restore_id', compact('resource'));
             $this->send(
                 $chatId,
-                "♻️ <b>Restore {$this->formatter->escape($this->resourceMeta($resource)['label'])}</b>\nID رکورد حذف‌شده را بفرست.",
+                "♻️ <b>بازیابی {$this->formatter->escape($this->resourceMeta($resource)['label'])}</b>\nID رکورد حذف‌شده را بفرست.",
                 $this->cancelKeyboard("menu:{$resource}"),
             );
 
@@ -422,7 +422,11 @@ final class TelegramBotCommandRouter
                 ? $this->resourceBackKeyboard($resource, (int) $resourceId)
                 : $this->menuKeyboard();
 
-            $this->send($chatId, "✅ <b>عملیات انجام شد</b>\n\n".$this->formatter->result($tool, $result), $keyboard);
+            $this->send(
+                $chatId,
+                "✅ <b>عملیات انجام شد</b>\n\n".$this->formatter->result($this->toolLabel($tool), $result),
+                $keyboard,
+            );
 
             return [
                 'action' => 'tool_confirmed:'.$tool,
@@ -521,37 +525,37 @@ final class TelegramBotCommandRouter
         $transport = $this->telegram->lastTransport()
             ?: (string) ($settings['transport_mode'] ?? 'auto');
 
-        $text = "📡 <b>PlayNexus Bot Status</b>\n"
+        $text = "📡 <b>وضعیت ربات PlayNexus</b>\n"
             ."━━━━━━━━━━━━━━━━━━\n"
-            ."Bot: <b>@".$this->formatter->escape((string) ($settings['bot_username'] ?? 'نامشخص'))."</b>\n"
-            ."Runtime: <b>".(($settings['enabled'] ?? false) ? 'ONLINE ✅' : 'OFFLINE ⛔')."</b>\n"
-            ."Transport: <b>".$this->formatter->escape($transport)."</b>\n"
-            ."Relay: <b>".((filled($settings['relay_base_url'] ?? null)) ? 'configured' : '—')."</b>\n"
-            ."SOCKS/Proxy: <b>".(($settings['use_proxy'] ?? false) ? 'configured' : '—')."</b>\n\n"
-            ."✍️ Write: <b>".(($settings['write_enabled'] ?? false) ? 'ON' : 'OFF')."</b>\n"
-            ."🚀 Publish: <b>".(($settings['publish_enabled'] ?? false) ? 'ON' : 'OFF')."</b>\n"
-            ."🗑 Destructive: <b>".(($settings['destructive_enabled'] ?? false) ? 'ON' : 'OFF')."</b>\n"
-            ."🖼 مدیا: <b>".(($settings['media_enabled'] ?? false) ? 'ON' : 'OFF')."</b>";
+            ."ربات: <b>@".$this->formatter->escape((string) ($settings['bot_username'] ?? 'نامشخص'))."</b>\n"
+            ."اجرا: <b>".(($settings['enabled'] ?? false) ? 'روشن ✅' : 'خاموش ⛔')."</b>\n"
+            ."مسیر اتصال: <b>".$this->formatter->escape($transport)."</b>\n"
+            ."رله ابری: <b>".((filled($settings['relay_base_url'] ?? null)) ? 'تنظیم‌شده' : '—')."</b>\n"
+            ."پروکسی: <b>".(($settings['use_proxy'] ?? false) ? 'تنظیم‌شده' : '—')."</b>\n\n"
+            ."✍️ نوشتن: <b>".(($settings['write_enabled'] ?? false) ? 'روشن' : 'خاموش')."</b>\n"
+            ."🚀 انتشار: <b>".(($settings['publish_enabled'] ?? false) ? 'روشن' : 'خاموش')."</b>\n"
+            ."🗑 عملیات حساس: <b>".(($settings['destructive_enabled'] ?? false) ? 'روشن' : 'خاموش')."</b>\n"
+            ."🖼 مدیا: <b>".(($settings['media_enabled'] ?? false) ? 'روشن' : 'خاموش')."</b>";
 
         if ($webhookError) {
-            $text .= "\n\nWebhook: ❌ ".$this->formatter->escape($webhookError);
+            $text .= "\n\nوب‌هوک: ❌ ".$this->formatter->escape($webhookError);
         } else {
-            $text .= "\n\nWebhook pending: <b>".(int) ($webhook['pending_update_count'] ?? 0)."</b>";
+            $text .= "\n\nآپدیت‌های منتظر: <b>".(int) ($webhook['pending_update_count'] ?? 0)."</b>";
             if (filled($webhook['last_error_message'] ?? null)) {
                 $text .= "\nآخرین خطا: ".$this->formatter->escape((string) $webhook['last_error_message']);
             } else {
-                $text .= "\nWebhook: <b>Healthy ✅</b>";
+                $text .= "\nوب‌هوک: <b>سالم ✅</b>";
             }
         }
 
         $this->render($chatId, $text, [
             'inline_keyboard' => [
                 [
-                    ['text' => '🔄 Refresh', 'callback_data' => 'menu:status'],
+                    ['text' => '🔄 تازه‌سازی', 'callback_data' => 'menu:status'],
                     ['text' => '🏠 خانه', 'callback_data' => 'menu:home'],
                 ],
                 [[
-                    'text' => '⚙️ Bot Settings',
+                    'text' => '⚙️ تنظیمات ربات',
                     'url' => route('admin.telegram-bot.index'),
                 ]],
             ],
@@ -642,40 +646,21 @@ final class TelegramBotCommandRouter
 
     private function commandCreate(string $userId, string $chatId, string $rest): array
     {
-        if (! preg_match('/^(\S+)(?:\s+(.+))?$/s', trim($rest), $match)) {
-            throw new InvalidArgumentException('نمونه: /create feed {"title":"...","body":"..."}');
+        $resource = $this->resource(trim((string) preg_split('/\\s+/', trim($rest), 2)[0] ?? ''));
+        if (! in_array($resource, self::MUTABLE_RESOURCES, true)) {
+            throw new InvalidArgumentException('این بخش امکان ساخت از ربات را ندارد.');
         }
 
-        $resource = $this->resource($match[1]);
-        $tool = $this->createTool($resource);
-        $json = trim((string) ($match[2] ?? ''));
-
-        if ($json === '') {
-            return $this->promptJson($userId, $chatId, $resource, 'create');
-        }
-
-        return $this->handleTool($userId, $chatId, $tool, $this->decodeJson($json));
+        return $this->wizard->start($userId, $chatId, $resource, 'create');
     }
 
     private function commandUpdate(string $userId, string $chatId, string $rest): array
     {
-        if (! preg_match('/^(\S+)\s+(\d+)(?:\s+(.+))?$/s', trim($rest), $match)) {
-            throw new InvalidArgumentException('نمونه: /update video 12 {"title":"عنوان جدید"}');
-        }
+        $parts = preg_split('/\\s+/', trim($rest), 3) ?: [];
+        $resource = $this->resource($parts[0] ?? '');
+        $id = $this->positiveInt($parts[1] ?? null);
 
-        $resource = $this->resource($match[1]);
-        $id = $this->positiveInt($match[2]);
-        $json = trim((string) ($match[3] ?? ''));
-
-        if ($json === '') {
-            return $this->promptJson($userId, $chatId, $resource, 'update', $id);
-        }
-
-        return $this->handleTool($userId, $chatId, 'update_content', [
-            'resource' => $resource,
-            'id' => $id,
-            'data' => $this->decodeJson($json),
-        ]);
+        return $this->wizard->start($userId, $chatId, $resource, 'update', $id);
     }
 
     private function commandState(string $userId, string $chatId, string $rest): array
@@ -735,20 +720,9 @@ final class TelegramBotCommandRouter
 
     private function commandSyncCollection(string $userId, string $chatId, string $rest): array
     {
-        [$collectionRaw, $idsRaw] = array_pad(preg_split('/\s+/', trim($rest), 2) ?: [], 2, '');
-        $collectionId = $this->positiveInt($collectionRaw);
-        $videoIds = array_values(array_filter(array_map(
-            fn ($value) => filter_var(trim($value), FILTER_VALIDATE_INT) ?: null,
-            explode(',', $idsRaw),
-        )));
-        if ($videoIds === []) {
-            throw new InvalidArgumentException('حداقل یک video id بده. نمونه: /sync_collection 4 10,11,12');
-        }
+        $collectionId = $this->positiveInt(trim($rest));
 
-        return $this->queueTool($userId, $chatId, 'sync_collection_videos', [
-            'collection_id' => $collectionId,
-            'video_ids' => $videoIds,
-        ]);
+        return $this->wizard->startCollectionSync($userId, $chatId, $collectionId);
     }
 
     private function commandMedia(string $userId, string $chatId, string $rest): array
@@ -852,25 +826,23 @@ final class TelegramBotCommandRouter
     private function queueTool(string $userId, string $chatId, string $tool, array $arguments): array
     {
         $this->executor->authorize($tool);
-        $json = json_encode($arguments, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}';
-        $summary = $tool."\n".Str::limit($json, 1800, "\n…");
+        $summary = $this->humanActionSummary($tool, $arguments);
         $token = $this->sessions->queueConfirmation($userId, $chatId, $tool, $arguments, $summary);
 
         $this->send(
             $chatId,
             "⚠️ <b>تأیید نهایی</b>\n"
-            ."این عملیات داده را تغییر می‌دهد. جزئیات را بررسی کن:\n"
-            ."<code>".$this->formatter->escape($tool)."</code>\n"
-            ."<pre>".$this->formatter->escape(Str::limit($json, 2400, "\n…"))."</pre>",
+            .$this->formatter->escape($summary)."\n\n"
+            ."اگر مطمئنی، اجرا را تأیید کن.",
             [
                 'inline_keyboard' => [
-                    [
-                        ['text' => '✅ تأیید و اجرا', 'callback_data' => 'confirm:'.$token],
-                        ['text' => '✕ لغو', 'callback_data' => 'cancel'],
-                    ],
                     [[
-                        'text' => '🏠 خانه',
-                        'callback_data' => 'menu:home',
+                        'text' => '✅ تأیید و اجرا',
+                        'callback_data' => 'confirm:'.$token,
+                    ]],
+                    [[
+                        'text' => '✕ لغو',
+                        'callback_data' => 'cancel',
                     ]],
                 ],
             ],
@@ -952,7 +924,7 @@ final class TelegramBotCommandRouter
     {
         $this->render(
             $chatId,
-            "🧩 <b>Game Event #{$id}</b>\nوضعیت جدید را انتخاب کن. این تغییر قبل از اجرا تأیید نهایی می‌خواهد.",
+            "🧩 <b>رویداد بازی #{$id}</b>\nوضعیت جدید را انتخاب کن. این تغییر قبل از اجرا تأیید نهایی می‌خواهد.",
             [
                 'inline_keyboard' => [
                     [
@@ -1325,7 +1297,7 @@ final class TelegramBotCommandRouter
                 continue;
             }
 
-            $label = Str::limit((string) ($event['title'] ?? 'Game Event'), 31);
+            $label = Str::limit((string) ($event['title'] ?? 'رویداد بازی'), 31);
             $status = (string) ($event['status'] ?? '');
             $rows[] = [[
                 'text' => '🧩 #'.$event['id'].' · '.$label.($status !== '' ? ' · '.$status : ''),
@@ -1348,11 +1320,11 @@ final class TelegramBotCommandRouter
         }
 
         $rows[] = [[
-            'text' => '➕ ثبت Game Event',
+            'text' => '➕ ثبت رویداد بازی',
             'callback_data' => 'event-new',
         ]];
         $rows[] = [
-            ['text' => '↩️ Intelligence', 'callback_data' => 'menu:intelligence'],
+            ['text' => '↩️ هوشمندی', 'callback_data' => 'menu:intelligence'],
             ['text' => '🏠 خانه', 'callback_data' => 'menu:home'],
         ];
 
@@ -1451,6 +1423,50 @@ final class TelegramBotCommandRouter
         return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}';
     }
 
+    private function humanActionSummary(string $tool, array $arguments): string
+    {
+        $resource = isset($arguments['resource'])
+            ? $this->resourceMeta((string) $arguments['resource'])['label']
+            : null;
+        $id = $arguments['id'] ?? $arguments['collection_id'] ?? null;
+
+        return match ($tool) {
+            'publish_feed' => 'انتشار فید #'.(int) $id,
+            'unpublish_feed' => 'انتقال فید #'.(int) $id.' به پیش‌نویس',
+            'delete_content' => 'حذف '.$resource.' #'.(int) $id,
+            'restore_content' => 'بازیابی '.$resource.' #'.(int) $id,
+            'set_content_state' => 'تغییر وضعیت '.$resource.' #'.(int) $id.' به «'
+                .$this->formatter->translateState((string) ($arguments['state'] ?? '')).'»',
+            'set_game_event_state' => 'تغییر وضعیت رویداد بازی #'.(int) $id.' به «'
+                .$this->formatter->translateState((string) ($arguments['state'] ?? '')).'»',
+            'sync_collection_videos' => 'ثبت چینش جدید ویدیوهای کالکشن #'.(int) ($arguments['collection_id'] ?? 0),
+            default => $this->toolLabel($tool),
+        };
+    }
+
+    private function toolLabel(string $tool): string
+    {
+        return match ($tool) {
+            'create_game' => 'ساخت بازی',
+            'create_studio' => 'ساخت استودیو',
+            'create_collection' => 'ساخت کالکشن',
+            'create_story' => 'ساخت استوری',
+            'create_video' => 'ساخت ویدیو',
+            'create_feed' => 'ساخت فید',
+            'update_content', 'update_feed' => 'ویرایش محتوا',
+            'publish_feed' => 'انتشار فید',
+            'unpublish_feed' => 'بازگرداندن فید به پیش‌نویس',
+            'delete_content' => 'حذف محتوا',
+            'restore_content' => 'بازیابی محتوا',
+            'set_content_state' => 'تغییر وضعیت محتوا',
+            'upsert_game_event' => 'ثبت رویداد بازی',
+            'set_game_event_state' => 'تغییر وضعیت رویداد بازی',
+            'sync_collection_videos' => 'چینش ویدیوهای کالکشن',
+            'list_content_assets' => 'فایل‌های محتوا',
+            default => 'عملیات PlayNexus',
+        };
+    }
+
     private function resourceMeta(string $resource): array
     {
         return self::RESOURCE_LABELS[$resource]
@@ -1481,7 +1497,7 @@ final class TelegramBotCommandRouter
     {
         $resource = self::RESOURCE_ALIASES[strtolower(trim($value))] ?? null;
         if (! $resource) {
-            throw new InvalidArgumentException('Resource نامعتبر است. game/studio/platform/collection/feed/story/video/product');
+            throw new InvalidArgumentException('بخش انتخاب‌شده معتبر نیست.');
         }
 
         return $resource;
@@ -1537,11 +1553,11 @@ final class TelegramBotCommandRouter
     private function friendlyError(string $message): string
     {
         return match (true) {
-            str_contains($message, 'Write operations are disabled') => '✍️ عملیات نوشتن از تنظیمات Bot خاموش است.',
-            str_contains($message, 'Publishing operations are disabled') => '🚀 انتشار از تنظیمات Bot خاموش است.',
-            str_contains($message, 'Destructive operations are disabled') => '🗑 عملیات حذف/Restore از تنظیمات Bot خاموش است.',
-            str_contains($message, 'Media operations are disabled') => '🖼 عملیات مدیا از تنظیمات Bot خاموش است.',
-            str_contains($message, 'Telegram bot is disabled') => 'Bot در پنل ادمین غیرفعال است.',
+            str_contains($message, 'Write operations are disabled') => '✍️ اجازه ساخت و ویرایش از تنظیمات ربات خاموش است.',
+            str_contains($message, 'Publishing operations are disabled') => '🚀 اجازه انتشار از تنظیمات ربات خاموش است.',
+            str_contains($message, 'Destructive operations are disabled') => '🗑 اجازه حذف و بازیابی از تنظیمات ربات خاموش است.',
+            str_contains($message, 'Media operations are disabled') => '🖼 اجازه مدیریت مدیا از تنظیمات ربات خاموش است.',
+            str_contains($message, 'Telegram bot is disabled') => 'ربات در پنل ادمین خاموش است.',
             default => $message,
         };
     }
