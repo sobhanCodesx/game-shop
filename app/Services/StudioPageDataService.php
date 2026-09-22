@@ -22,12 +22,14 @@ final class StudioPageDataService
         $channelsPage = max(1, $request->integer('channels_page', 1));
         $collectionsPage = max(1, $request->integer('collections_page', 1));
 
-        $payload = $this->cache->remember(
-            'studio',
-            "studio:{$studio->id}:channels:{$channelsPage}:collections:{$collectionsPage}",
-            fn () => $this->build($studio, $channelsPage, $collectionsPage),
-            21600,
-        );
+        $payload = ($channelsPage <= 50 && $collectionsPage <= 50)
+            ? $this->cache->remember(
+                'studio',
+                "studio:{$studio->id}:channels:{$channelsPage}:collections:{$collectionsPage}",
+                fn () => $this->build($studio, $channelsPage, $collectionsPage),
+                21600,
+            )
+            : $this->build($studio, $channelsPage, $collectionsPage);
 
         return $this->withLiveFollowers($payload);
     }
@@ -44,7 +46,7 @@ final class StudioPageDataService
             ->orderByDesc('subscribers_count')
             ->latest('id')
             ->paginate(18, ['*'], 'channels_page', $channelsPage)
-            ->withQueryString()
+            ->appends($collectionsPage > 1 ? ['collections_page' => $collectionsPage] : [])
             ->through(fn (Game $game) => [
                 'id' => $game->id,
                 'name' => $game->name,
@@ -67,7 +69,7 @@ final class StudioPageDataService
             ->orderBy('sort_order')
             ->latest('id')
             ->paginate(12, ['*'], 'collections_page', $collectionsPage)
-            ->withQueryString()
+            ->appends($channelsPage > 1 ? ['channels_page' => $channelsPage] : [])
             ->through(fn (VideoPlaylist $playlist) => [
                 'id' => $playlist->id,
                 'title' => $playlist->title,
