@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Jobs\BroadcastContentPublished;
 use App\Models\SocialContent;
+use App\Services\FeedPageCache;
 use App\Services\GameEventService;
 use Illuminate\Support\Carbon;
 
@@ -11,6 +12,10 @@ class SocialContentObserver
 {
     public function created(SocialContent $content): void
     {
+        if (in_array($content->type, ['post', 'video'], true)) {
+            app(FeedPageCache::class)->invalidate();
+        }
+
         if ($this->isPublished($content)) {
             $this->dispatch($content);
         }
@@ -18,6 +23,18 @@ class SocialContentObserver
 
     public function updated(SocialContent $content): void
     {
+        if (
+            in_array($content->type, ['post', 'video'], true)
+            && $content->wasChanged([
+                'game_id', 'related_product_id', 'related_content_id', 'type', 'feed_type', 'feed_badge',
+                'title', 'slug', 'excerpt', 'body', 'seo_title', 'seo_description', 'thumbnail',
+                'video_path', 'video_mime', 'duration', 'allow_comments', 'featured',
+                'sort_order', 'status', 'published_at',
+            ])
+        ) {
+            app(FeedPageCache::class)->invalidate();
+        }
+
         $wasPublished = $this->wasPublished($content);
         $isPublished = $this->isPublished($content);
 
@@ -35,6 +52,13 @@ class SocialContentObserver
             && $content->wasChanged(['title', 'excerpt', 'body', 'feed_type', 'feed_badge', 'game_id'])
         ) {
             app(GameEventService::class)->refreshFromContent($content);
+        }
+    }
+
+    public function deleted(SocialContent $content): void
+    {
+        if (in_array($content->type, ['post', 'video'], true)) {
+            app(FeedPageCache::class)->invalidate();
         }
     }
 
