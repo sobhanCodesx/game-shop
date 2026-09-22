@@ -359,7 +359,7 @@ class ContentAgentService
 
         if (array_key_exists('playlist_ids', $data)) {
             $video->playlists()->sync($this->playlistSync($data['playlist_ids']));
-            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'studio');
+            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'studio', 'video');
         }
 
         return $this->serializeVideo($video->fresh());
@@ -576,7 +576,7 @@ class ContentAgentService
 
         $collection = VideoPlaylist::query()->findOrFail((int) $data['collection_id']);
         $collection->videos()->sync($this->playlistSync($data['video_ids']));
-        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'studio');
+        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'studio', 'video');
 
         return $this->serializeCollection($collection->fresh());
     }
