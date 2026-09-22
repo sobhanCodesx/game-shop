@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-09-22-0806-final-verify-ac6-story",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "operation_name": "VerifyPublishedVideo",
-    "variables": {},
-    "query": "query VerifyPublishedVideo { content(id: 67, type: \"video\") { id type title status duration publishedAt game { id name slug } playlists { id title slug } } }"
-  }
-}
