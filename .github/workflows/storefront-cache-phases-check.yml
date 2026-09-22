@@ -53,8 +53,12 @@ jobs:
           php -l app/Services/ChannelPageDataService.php
           php -l app/Observers/SocialContentMediaObserver.php
           php -l app/Observers/StudioObserver.php
+          php -l app/Http/Controllers/SocialContentController.php
+          php -l app/Http/Controllers/VideoCommunityController.php
+          php -l app/Services/ShortPageDataService.php
           php -l tests/Feature/StorefrontCachePhaseOneTest.php
           php -l tests/Feature/StorefrontCachePhaseTwoTest.php
+          php -l tests/Feature/StorefrontCachePhaseThreeTest.php
 
       - name: Validate Composer files
         run: composer validate --no-check-publish
@@ -69,4 +73,16 @@ jobs:
           CACHE_STORE: array
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
-        run: php artisan test tests/Feature/StorefrontCachePhaseOneTest.php tests/Feature/StorefrontCachePhaseTwoTest.php
+        run: php artisan test tests/Feature/StorefrontCachePhaseOneTest.php tests/Feature/StorefrontCachePhaseTwoTest.php tests/Feature/StorefrontCachePhaseThreeTest.php
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build frontend bundles
+        run: npm run build
