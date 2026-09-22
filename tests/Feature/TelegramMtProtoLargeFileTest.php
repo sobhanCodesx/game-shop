@@ -11,7 +11,6 @@ use App\Services\Telegram\TelegramMediaTransferService;
 use App\Services\Telegram\TelegramMtProtoCompatibilityService;
 use App\Services\Telegram\TelegramMtProtoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -111,6 +110,9 @@ class TelegramMtProtoLargeFileTest extends TestCase
         File::put($downloadPath, str_repeat('A', 2048));
 
         $mtproto = Mockery::mock(TelegramMtProtoService::class);
+        $mtproto->shouldReceive('isConfigured')
+            ->once()
+            ->andReturn(true);
         $mtproto->shouldReceive('download')
             ->once()
             ->with('large-file-id', 'video.mp4', 'video/mp4', 2048)
@@ -123,33 +125,26 @@ class TelegramMtProtoLargeFileTest extends TestCase
             ]);
 
         $media = Mockery::mock(ContentAgentMediaService::class);
-        $media->shouldReceive('startUpload')
-            ->once()
-            ->with(Mockery::on(
-                fn (array $data): bool =>
-                    $data['resource'] === 'video'
-                    && $data['id'] === 12
-                    && $data['slot'] === 'video'
-                    && $data['size'] === 2048
-                    && $data['mime'] === 'video/mp4',
-            ))
-            ->andReturn([
-                'upload_id' => '11111111-1111-4111-8111-111111111111',
-            ]);
-        $media->shouldReceive('uploadChunkFile')
+        $media->shouldReceive('attachLocalFile')
             ->once()
             ->with(
-                [
-                    'upload_id' => '11111111-1111-4111-8111-111111111111',
-                    'chunk_index' => 0,
-                ],
-                Mockery::type(UploadedFile::class),
+                Mockery::on(
+                    fn (array $data): bool =>
+                        $data['resource'] === 'video'
+                        && $data['id'] === 12
+                        && $data['slot'] === 'video'
+                        && $data['name'] === 'video.mp4'
+                        && $data['mime'] === 'video/mp4'
+                        && $data['duration'] === 30,
+                ),
+                $downloadPath,
             )
-            ->andReturn(['received_bytes' => 2048]);
-        $media->shouldReceive('completeUpload')
-            ->once()
-            ->with(['upload_id' => '11111111-1111-4111-8111-111111111111'])
-            ->andReturn(['attached' => true]);
+            ->andReturn([
+                'resource' => 'video',
+                'id' => 12,
+                'slot' => 'video',
+                'asset' => ['id' => 99],
+            ]);
 
         $service = new TelegramMediaTransferService(
             app(TelegramApiClient::class),
@@ -166,7 +161,9 @@ class TelegramMtProtoLargeFileTest extends TestCase
             'duration' => 30,
         ], 'video', 12, 'video');
 
-        $this->assertTrue($result['attached']);
+        $this->assertSame(12, $result['id']);
+        $this->assertSame('video', $result['resource']);
+        $this->assertSame(99, $result['asset']['id']);
         $this->assertFalse(File::exists($downloadPath));
         Http::assertNothingSent();
     }
