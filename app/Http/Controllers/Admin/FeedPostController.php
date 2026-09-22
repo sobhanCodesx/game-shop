@@ -8,6 +8,7 @@ use App\Models\Game;
 use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\SocialContentMedia;
+use App\Services\FeedPageCache;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
 use App\Services\TemporaryUploadService;
@@ -92,6 +93,8 @@ class FeedPostController extends Controller
             $post->save();
             $this->syncMedia($post, $request->validated('media', []), $request->user()->id, $optimizer, $uploads);
         });
+
+        app(FeedPageCache::class)->invalidate();
 
         return to_route('admin.feed.index')->with('success', 'پست فید ویرایش شد.');
     }
