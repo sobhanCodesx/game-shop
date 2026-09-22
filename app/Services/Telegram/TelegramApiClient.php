@@ -38,7 +38,7 @@ final class TelegramApiClient
         }
 
         $result = $this->request('setWebhook', [
-            'url' => route('telegram.webhook'),
+            'url' => $this->webhookUrl($settings),
             'secret_token' => $secret,
             'allowed_updates' => ['message', 'callback_query'],
             'drop_pending_updates' => false,
@@ -248,6 +248,28 @@ final class TelegramApiClient
             'size' => $actualSize,
             'telegram_file' => $file,
         ];
+    }
+
+    public function configuredWebhookUrl(): string
+    {
+        return $this->webhookUrl($this->settings->resolved());
+    }
+
+    private function webhookUrl(array $settings): string
+    {
+        $mode = (string) ($settings['transport_mode'] ?? 'auto');
+        $relayBaseUrl = rtrim(trim((string) ($settings['relay_base_url'] ?? '')), '/');
+        $relayKey = trim((string) ($settings['relay_key'] ?? ''));
+
+        if (
+            in_array($mode, ['auto', 'relay'], true)
+            && $relayBaseUrl !== ''
+            && $relayKey !== ''
+        ) {
+            return $relayBaseUrl.'/webhook';
+        }
+
+        return route('telegram.webhook');
     }
 
     public function lastTransport(): ?string
