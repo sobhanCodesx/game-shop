@@ -55,6 +55,24 @@ final class TelegramBotCommandRouter
 
     public function handle(array $update): array
     {
+        try {
+            return $this->dispatch($update);
+        } catch (InvalidArgumentException|RuntimeException $exception) {
+            $chatId = $this->chatIdFromUpdate($update);
+            if ($chatId !== null) {
+                $this->send(
+                    $chatId,
+                    "⚠️ <b>این عملیات اجرا نشد</b>\n".$this->formatter->escape($this->friendlyError($exception->getMessage())),
+                    $this->menuKeyboard(),
+                );
+            }
+
+            return ['action' => 'user_error'];
+        }
+    }
+
+    private function dispatch(array $update): array
+    {
         if (is_array($update['callback_query'] ?? null)) {
             return $this->handleCallback($update['callback_query']);
         }
@@ -1472,6 +1490,31 @@ final class TelegramBotCommandRouter
         $command = preg_replace('/@[^\s]+$/', '', $command) ?: $command;
 
         return [$command, trim((string) ($parts[1] ?? ''))];
+    }
+
+    private function chatIdFromUpdate(array $update): ?string
+    {
+        if (is_array($update['callback_query'] ?? null)) {
+            $value = $update['callback_query']['message']['chat']['id'] ?? null;
+
+            return $value !== null ? (string) $value : null;
+        }
+
+        $value = $update['message']['chat']['id'] ?? null;
+
+        return $value !== null ? (string) $value : null;
+    }
+
+    private function friendlyError(string $message): string
+    {
+        return match (true) {
+            str_contains($message, 'Write operations are disabled') => '✍️ عملیات نوشتن از تنظیمات Bot خاموش است.',
+            str_contains($message, 'Publishing operations are disabled') => '🚀 انتشار از تنظیمات Bot خاموش است.',
+            str_contains($message, 'Destructive operations are disabled') => '🗑 عملیات حذف/Restore از تنظیمات Bot خاموش است.',
+            str_contains($message, 'Media operations are disabled') => '🖼 عملیات مدیا از تنظیمات Bot خاموش است.',
+            str_contains($message, 'Telegram bot is disabled') => 'Bot در پنل ادمین غیرفعال است.',
+            default => $message,
+        };
     }
 
     private function send(string $chatId, string $text, ?array $keyboard = null): void
