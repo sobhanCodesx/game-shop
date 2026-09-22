@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ContentAgentGraphqlController;
 use App\Http\Controllers\Api\ContentAgentMcpController;
 use App\Http\Controllers\Api\DeploymentAgentController;
+use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\V1\MobileAccountController;
 use App\Http\Controllers\Api\V1\MobileAuthController;
 use App\Http\Controllers\Api\V1\MobileCatalogController;
@@ -14,6 +15,10 @@ use App\Http\Controllers\Api\V1\MobileDeviceApiController;
 use App\Http\Controllers\Api\V1\MobileTicketController;
 use App\Http\Controllers\Api\V1\MobileWatchProgressController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/telegram/webhook', TelegramWebhookController::class)
+    ->middleware('throttle:90,1')
+    ->name('telegram.webhook');
 
 Route::post('/mcp', ContentAgentMcpController::class)
     ->middleware(['content.agent', 'throttle:60,1'])

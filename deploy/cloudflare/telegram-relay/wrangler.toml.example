@@ -1,0 +1,6 @@
+name = "playnexus-telegram-relay"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Add the shared secret with:
+# npx wrangler secret put RELAY_KEY
