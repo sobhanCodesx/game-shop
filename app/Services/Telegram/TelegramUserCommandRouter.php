@@ -1,0 +1,110 @@
+<?php
+
+namespace App\Services\Telegram;
+
+use Illuminate\Support\Str;
+use RuntimeException;
+
+final class TelegramUserCommandRouter
+{
+    public function __construct(
+        private readonly TelegramApiClient $telegram,
+        private readonly TelegramUserLinkService $links,
+    ) {}
+
+    public function handle(array $update): array
+    {
+        $message = is_array($update['message'] ?? null) ? $update['message'] : [];
+        $chat = is_array($message['chat'] ?? null) ? $message['chat'] : [];
+        $from = is_array($message['from'] ?? null) ? $message['from'] : [];
+
+        $chatId = isset($chat['id']) ? (string) $chat['id'] : '';
+        $userId = isset($from['id']) ? (string) $from['id'] : '';
+        $chatType = isset($chat['type']) ? (string) $chat['type'] : '';
+
+        if ($chatId === '' || $userId === '' || $chatType !== 'private') {
+            return ['action' => 'user_ignored'];
+        }
+
+        $text = trim((string) ($message['text'] ?? ''));
+        [$command, $payload] = $this->split($text);
+
+        try {
+            if ($command === '/start' && str_starts_with($payload, 'connect_')) {
+                $user = $this->links->consume(substr($payload, 8), $userId, $chatId);
+
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "✅ <b>تلگرام با موفقیت وصل شد</b>\n"
+                    ."حساب <b>".$this->escape((string) $user->name)."</b> از این به بعد می‌تواند اعلان‌های PlayNexus و کد ورود درخواستی را در همین چت دریافت کند.\n\n"
+                    ."🔐 منو و دسترسی ادمین برای کاربران عادی کاملاً جداست.",
+                );
+
+                return ['action' => 'user_linked', 'resource' => 'user', 'resource_id' => $user->id];
+            }
+
+            $user = $this->links->byTelegramUserId($userId);
+
+            if ($command === '/unlink' && $user) {
+                $this->links->disconnect($user);
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "🔌 اتصال تلگرام از حساب PlayNexus قطع شد.\nبرای اتصال دوباره از داشبورد حساب کاربری اقدام کن.",
+                );
+
+                return ['action' => 'user_unlinked', 'resource' => 'user', 'resource_id' => $user->id];
+            }
+
+            if ($user) {
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "🎮 <b>PlayNexus</b>\n"
+                    ."این چت برای اعلان‌های شخصی حساب <b>".$this->escape((string) $user->name)."</b> آماده است.\n\n"
+                    ."• وضعیت سفارش و پرداخت\n"
+                    ."• پیام‌های پشتیبانی\n"
+                    ."• محتوای دنبال‌شده\n"
+                    ."• کد ورود، فقط وقتی خودت درخواست بدهی\n\n"
+                    ."برای قطع اتصال: <code>/unlink</code>",
+                );
+
+                return ['action' => 'user_home', 'resource' => 'user', 'resource_id' => $user->id];
+            }
+
+            $this->telegram->sendMessage(
+                $chatId,
+                "👋 <b>به PlayNexus خوش اومدی</b>\n"
+                ."برای دریافت اعلان‌های شخصی، اول از داخل داشبورد حساب PlayNexus گزینه «اتصال تلگرام» را بزن.\n\n"
+                ."این بخش هیچ دسترسی مدیریتی ندارد.",
+            );
+
+            return ['action' => 'user_unlinked_help'];
+        } catch (RuntimeException $exception) {
+            $this->telegram->sendMessage(
+                $chatId,
+                "⚠️ ".$this->escape(Str::limit($exception->getMessage(), 300)),
+            );
+
+            return ['action' => 'user_error'];
+        }
+    }
+
+    private function split(string $text): array
+    {
+        if ($text === '') {
+            return ['', ''];
+        }
+
+        [$command, $rest] = array_pad(preg_split('/\s+/', $text, 2) ?: [], 2, '');
+
+        if (str_contains($command, '@')) {
+            $command = Str::before($command, '@');
+        }
+
+        return [mb_strtolower($command), trim($rest)];
+    }
+
+    private function escape(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+}
