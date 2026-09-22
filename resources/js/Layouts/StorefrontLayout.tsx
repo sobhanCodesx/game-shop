@@ -5,6 +5,7 @@ const StorefrontAuthOverlay = lazy(
     () => import("../Components/Auth/StorefrontAuthOverlay"),
 );
 import StorefrontFooter from "../Components/Storefront/StorefrontFooter";
+import NexusAiWidget from "../Components/NexusAI/NexusAiWidget";
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
 import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
 import type { SharedPageProps } from "../types";
@@ -73,6 +74,7 @@ export default function StorefrontLayout({ children, announcement }: Props) {
             />
             {children}
             <StorefrontFooter androidApp={storefront.android_app} />
+            <NexusAiWidget config={storefront.nexus_ai} />
             <StorefrontAuthOverlay />
         </div>
     );
