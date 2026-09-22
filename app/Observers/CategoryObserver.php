@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Category;
+use App\Services\SitemapCacheService;
 use App\Services\StorefrontPageCache;
 
 class CategoryObserver
@@ -15,5 +16,6 @@ class CategoryObserver
     private function invalidate(): void
     {
         app(StorefrontPageCache::class)->invalidate('home', 'product');
+        app(SitemapCacheService::class)->invalidate();
     }
 }
