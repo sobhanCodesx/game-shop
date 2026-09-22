@@ -15,7 +15,10 @@ class TelegramBotSetting extends Model
         'publish_enabled',
         'destructive_enabled',
         'media_enabled',
+        'transport_mode',
         'api_base_url',
+        'relay_base_url',
+        'relay_key',
         'use_proxy',
         'proxy_type',
         'proxy_host',
@@ -36,6 +39,7 @@ class TelegramBotSetting extends Model
     {
         return [
             'bot_token' => 'encrypted',
+            'relay_key' => 'encrypted',
             'proxy_password' => 'encrypted',
             'webhook_secret' => 'encrypted',
             'enabled' => 'boolean',
