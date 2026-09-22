@@ -41,12 +41,14 @@ class GameObserver
     public function deleted(Game $game): void
     {
         app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio', 'video', 'feed');
+        Cache::forget('storefront.stories.v1');
         app(SitemapCacheService::class)->invalidate();
     }
 
     public function restored(Game $game): void
     {
         app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio', 'video', 'feed');
+        Cache::forget('storefront.stories.v1');
         app(SitemapCacheService::class)->invalidate();
     }
 }
