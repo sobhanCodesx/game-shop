@@ -71,6 +71,9 @@ class AuthAndCheckoutSecurityTest extends TestCase
             'name' => 'Verified User',
             'phone' => '09124444444',
             'phone_verified_at' => now(),
+            'telegram_user_id' => '9005001',
+            'telegram_chat_id' => '9005001',
+            'telegram_linked_at' => now(),
             'status' => 'active',
         ]);
 
@@ -86,5 +89,8 @@ class AuthAndCheckoutSecurityTest extends TestCase
         $user->refresh();
         $this->assertSame('09125555555', $user->phone);
         $this->assertNull($user->phone_verified_at);
+        $this->assertNull($user->telegram_user_id);
+        $this->assertNull($user->telegram_chat_id);
+        $this->assertNull($user->telegram_linked_at);
     }
 }

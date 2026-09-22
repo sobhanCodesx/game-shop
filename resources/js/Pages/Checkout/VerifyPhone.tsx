@@ -1,15 +1,20 @@
 import { Button, Card, InputOTP, REGEXP_ONLY_DIGITS } from "@heroui/react";
 import { Head, router, useForm } from "@inertiajs/react";
-import { BadgeCheck, Clock3, RefreshCw, ShieldCheck, Smartphone } from "lucide-react";
+import { BadgeCheck, Clock3, RefreshCw, Send, ShieldCheck, Smartphone } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 
 type Props = {
     phone: string;
     codeSent: boolean;
+    telegram?: {
+        supported: boolean;
+        connect_url: string | null;
+        bot_username: string | null;
+    };
 };
 
-export default function VerifyPhone({ phone, codeSent }: Props) {
+export default function VerifyPhone({ phone, codeSent, telegram }: Props) {
     const phoneForm = useForm({ phone });
     const codeForm = useForm({ code: "" });
     const [editingPhone, setEditingPhone] = useState(!codeSent);
@@ -20,6 +25,30 @@ export default function VerifyPhone({ phone, codeSent }: Props) {
         const timer = window.setInterval(() => setSeconds((value) => value - 1), 1000);
         return () => window.clearInterval(timer);
     }, [seconds]);
+
+    useEffect(() => {
+        if (!telegram?.supported) return;
+
+        let lastRefresh = 0;
+        const refresh = () => {
+            if (
+                document.visibilityState !== "visible" ||
+                Date.now() - lastRefresh < 1200
+            ) {
+                return;
+            }
+
+            lastRefresh = Date.now();
+            router.reload({ preserveScroll: true });
+        };
+
+        window.addEventListener("focus", refresh);
+        document.addEventListener("visibilitychange", refresh);
+        return () => {
+            window.removeEventListener("focus", refresh);
+            document.removeEventListener("visibilitychange", refresh);
+        };
+    }, [telegram?.supported]);
 
     const sendCode = (event: FormEvent) => {
         event.preventDefault();
@@ -36,6 +65,14 @@ export default function VerifyPhone({ phone, codeSent }: Props) {
     const verifyCode = (event: FormEvent) => {
         event.preventDefault();
         codeForm.post("/checkout/verify-phone/confirm");
+    };
+
+    const verifyWithTelegram = () => {
+        router.post(
+            "/checkout/verify-phone/telegram",
+            { phone: phoneForm.data.phone || phone },
+            { preserveScroll: true },
+        );
     };
 
     const resend = () => {
@@ -67,8 +104,9 @@ export default function VerifyPhone({ phone, codeSent }: Props) {
                                     تأیید شماره موبایل
                                 </h1>
                                 <p className="mt-2 text-sm leading-7 text-[var(--store-muted)]">
-                                    برای ثبت سفارش با حساب Google، شماره موبایل
-                                    باید یک‌بار با کد پیامکی تأیید شود.
+                                    برای ثبت هر سفارش، شماره موبایل حساب باید
+                                    یک‌بار تأیید شود؛ با SMS یا تأیید مستقیم امن
+                                    از طریق Telegram.
                                 </p>
                             </div>
                         </div>
@@ -99,15 +137,34 @@ export default function VerifyPhone({ phone, codeSent }: Props) {
                                         {phoneForm.errors.phone}
                                     </p>
                                 )}
-                                <Button
-                                    isDisabled={phoneForm.processing}
-                                    type="submit"
-                                    variant="primary"
-                                >
-                                    {phoneForm.processing
-                                        ? "در حال ارسال…"
-                                        : "ارسال کد تأیید"}
-                                </Button>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    <Button
+                                        isDisabled={phoneForm.processing}
+                                        type="submit"
+                                        variant="primary"
+                                    >
+                                        {phoneForm.processing
+                                            ? "در حال ارسال…"
+                                            : "ارسال کد با SMS"}
+                                    </Button>
+                                    {telegram?.supported && (
+                                        <Button
+                                            onPress={verifyWithTelegram}
+                                            type="button"
+                                            variant="secondary"
+                                        >
+                                            <Send size={16} />
+                                            تأیید مستقیم با Telegram
+                                        </Button>
+                                    )}
+                                </div>
+                                {telegram?.supported && (
+                                    <p className="rounded-2xl border border-sky-500/15 bg-sky-500/10 p-3 text-xs leading-6 text-sky-700 dark:text-sky-200">
+                                        در Telegram فقط دکمه رسمی اشتراک شماره
+                                        خودت را می‌زنی؛ اگر شماره Telegram و
+                                        PlayNexus یکی باشد، بدون OTP تأیید می‌شود.
+                                    </p>
+                                )}
                             </form>
                         ) : (
                             <form className="space-y-5" onSubmit={verifyCode}>
@@ -166,6 +223,18 @@ export default function VerifyPhone({ phone, codeSent }: Props) {
                                     />
                                     کد ۶ رقمی پیامک‌شده را وارد کنید.
                                 </p>
+
+                                {telegram?.supported && telegram.connect_url && (
+                                    <a
+                                        className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 text-xs font-black text-sky-600 transition hover:bg-sky-500/15"
+                                        href={telegram.connect_url}
+                                        rel="noreferrer"
+                                        target="_blank"
+                                    >
+                                        <Send size={16} />
+                                        SMS نرسید؟ تأیید مستقیم با Telegram
+                                    </a>
+                                )}
 
                                 <div className="flex flex-wrap gap-2">
                                     <Button

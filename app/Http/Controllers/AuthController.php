@@ -62,6 +62,16 @@ class AuthController extends Controller
                 ->where('status', 'active')
                 ->first();
 
+            if ($user?->phone_verified_at) {
+                $request->session()->forget('verification_phone');
+                Auth::login($user);
+
+                return $this->completeLogin($request, $user)->with(
+                    'success',
+                    'شماره موبایل با Telegram تأیید شد؛ حساب شما فعال است.',
+                );
+            }
+
             $supported = ($settings['enabled'] ?? false)
                 && filled($settings['bot_username'] ?? null);
             // For registration fallback, a normal Telegram account link
@@ -288,7 +298,6 @@ class AuthController extends Controller
 
     public function sendVerificationTelegram(
         Request $request,
-        MobileCodeService $codes,
         TelegramUserLinkService $telegramLinks,
     ): RedirectResponse {
         $phone = (string) $request->session()->get('verification_phone');
@@ -296,24 +305,25 @@ class AuthController extends Controller
             ? User::query()->where('phone', $phone)->where('status', 'active')->first()
             : null;
 
-        if (! $user || $user->phone_verified_at) {
+        if ($user?->phone_verified_at) {
+            $request->session()->forget('verification_phone');
+            Auth::login($user);
+
+            return $this->completeLogin($request, $user)->with(
+                'success',
+                'شماره موبایل با Telegram تأیید شد؛ نیازی به کد جداگانه نیست.',
+            );
+        }
+
+        if (! $user || ! $telegramLinks->hasRecentPhoneProof($user)) {
             throw ValidationException::withMessages([
-                'telegram' => 'درخواست تأیید موبایل معتبر نیست.',
+                'telegram' => 'ابتدا داخل Bot با دکمه رسمی Telegram شماره خودت را به اشتراک بگذار.',
             ]);
         }
 
-        if (! $telegramLinks->hasRecentPhoneProof($user)) {
-            throw ValidationException::withMessages([
-                'telegram' => 'برای جلوگیری از دور زدن تأیید شماره، ابتدا داخل Bot شماره خودت را با دکمه رسمی Telegram به اشتراک بگذار.',
-            ]);
-        }
-
-        $codes->sendViaTelegram($phone, 'verify_mobile', true);
-
-        return back()->with(
-            'success',
-            'کد تأیید همین شماره در چت خصوصی Bot ارسال شد.',
-        );
+        throw ValidationException::withMessages([
+            'telegram' => 'تأیید Telegram بدون کد انجام می‌شود؛ به صفحه برگرد تا وضعیت حساب تازه شود.',
+        ]);
     }
 
     public function resendVerification(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse

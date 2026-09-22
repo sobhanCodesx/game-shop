@@ -70,10 +70,22 @@ final class TelegramUserCommandRouter
 
                 $this->telegram->sendMessage(
                     $chatId,
-                    "✅ <b>شماره Telegram با PlayNexus تطبیق داشت</b>\n"
-                    ."حالا به صفحه تأیید ثبت‌نام برگرد و «ارسال کد در تلگرام» را بزن.\n\n"
-                    ."تا وقتی کد ۶ رقمی را وارد نکنی، شماره در PlayNexus تأیید نهایی نمی‌شود.",
-                    ['remove_keyboard' => true],
+                    "✅ <b>شماره موبایل با موفقیت تأیید شد</b>\n"
+                    ."شماره‌ای که Telegram به‌صورت رسمی از حساب خودت فرستاد دقیقاً با شماره PlayNexus یکی بود.\n\n"
+                    ."برای این مسیر <b>دیگر هیچ کد ۶ رقمی لازم نیست</b>. به صفحه PlayNexus برگرد؛ ثبت‌نام یا ادامه خرید به‌صورت خودکار ادامه پیدا می‌کند.",
+                    [
+                        'remove_keyboard' => true,
+                        'inline_keyboard' => [
+                            [[
+                                'text' => '✅ بازگشت و تکمیل ثبت‌نام',
+                                'url' => route('verification.notice'),
+                            ]],
+                            [[
+                                'text' => '👤 بازگشت به حساب PlayNexus',
+                                'url' => route('account.dashboard', ['tab' => 'profile']),
+                            ]],
+                        ],
+                    ],
                 );
 
                 return [

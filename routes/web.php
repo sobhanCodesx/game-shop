@@ -93,6 +93,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::put('password', [AccountController::class, 'updatePassword'])->name('password.update');
     Route::put('content-notifications', [AccountController::class, 'updateContentNotificationPreferences'])->name('content-notifications.update');
     Route::post('telegram/connect', [AccountController::class, 'connectTelegram'])->middleware('throttle:5,1')->name('telegram.connect');
+    Route::post('phone/verify-telegram', [AccountController::class, 'verifyPhoneWithTelegram'])->middleware('throttle:4,1')->name('phone.telegram');
     Route::delete('telegram', [AccountController::class, 'disconnectTelegram'])->middleware('throttle:5,1')->name('telegram.disconnect');
     Route::put('home-experience', [AccountController::class, 'updateHomeExperiencePreference'])->name('home-experience.update');
     Route::post('addresses', [AccountController::class, 'storeAddress'])->name('addresses.store');
@@ -154,6 +155,7 @@ Route::middleware('auth')->group(function () {
     Route::post('cart/restore', [CartController::class, 'restore'])->name('cart.restore');
     Route::get('checkout/verify-phone', [CheckoutController::class, 'phoneVerification'])->name('checkout.phone.show');
     Route::post('checkout/verify-phone/send', [CheckoutController::class, 'sendPhoneVerification'])->middleware('throttle:3,1')->name('checkout.phone.send');
+    Route::post('checkout/verify-phone/telegram', [CheckoutController::class, 'verifyPhoneWithTelegram'])->middleware('throttle:4,1')->name('checkout.phone.telegram');
     Route::post('checkout/verify-phone/confirm', [CheckoutController::class, 'confirmPhoneVerification'])->middleware('throttle:8,1')->name('checkout.phone.confirm');
     Route::post('checkout/verify-phone/resend', [CheckoutController::class, 'resendPhoneVerification'])->middleware('throttle:2,1')->name('checkout.phone.resend');
     Route::get('checkout', [CheckoutController::class, 'show'])->name('checkout.show');

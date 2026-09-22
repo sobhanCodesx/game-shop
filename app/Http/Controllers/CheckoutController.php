@@ -6,6 +6,8 @@ use App\Http\Requests\CheckoutRequest;
 use App\Services\CommerceSettings;
 use App\Services\MobileCodeService;
 use App\Services\OrderService;
+use App\Services\Telegram\TelegramBotSettings;
+use App\Services\Telegram\TelegramUserLinkService;
 use App\Support\PhoneNumber;
 use App\Models\Ticket;
 use Illuminate\Http\RedirectResponse;
@@ -73,8 +75,11 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function phoneVerification(Request $request): Response|RedirectResponse
-    {
+    public function phoneVerification(
+        Request $request,
+        TelegramBotSettings $telegramSettings,
+        TelegramUserLinkService $telegramLinks,
+    ): Response|RedirectResponse {
         if (empty($request->session()->get('cart', []))) {
             return to_route('cart.index')->with('error', 'سبد خرید خالی است.');
         }
@@ -86,9 +91,28 @@ class CheckoutController extends Controller
         $sessionPhone = (string) $request->session()->get('checkout_phone_verification_phone', '');
         $codeSent = $sessionUserId === $request->user()->id && $sessionPhone !== '';
 
+        $settings = $telegramSettings->resolved();
+        $telegramSupported = ($settings['enabled'] ?? false)
+            && filled($settings['bot_username'] ?? null);
+        $telegramUrl = null;
+        if ($telegramSupported && filled($request->user()->phone) && ! $request->user()->phone_verified_at) {
+            try {
+                $telegramUrl = $telegramLinks->beginPhoneVerification($request->user());
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
+
         return Inertia::render('Checkout/VerifyPhone', [
             'phone' => $codeSent ? $sessionPhone : (string) ($request->user()->phone ?? ''),
             'codeSent' => $codeSent,
+            'telegram' => [
+                'supported' => $telegramSupported,
+                'connect_url' => $telegramUrl,
+                'bot_username' => filled($settings['bot_username'] ?? null)
+                    ? '@'.ltrim((string) $settings['bot_username'], '@')
+                    : null,
+            ],
         ]);
     }
 
@@ -119,6 +143,37 @@ class CheckoutController extends Controller
         ]);
 
         return to_route('checkout.phone.show')->with('success', 'کد تأیید پیامکی ارسال شد.');
+    }
+
+    public function verifyPhoneWithTelegram(
+        Request $request,
+        TelegramUserLinkService $links,
+    ) {
+        if (! $this->requiresPhoneVerification($request)) {
+            return to_route('checkout.show');
+        }
+
+        $data = $request->validate(['phone' => ['required', 'string']]);
+        $phone = PhoneNumber::normalize($data['phone']);
+        validator(
+            ['phone' => $phone],
+            ['phone' => [Rule::unique('users', 'phone')->ignore($request->user()->id)]],
+            ['phone.unique' => 'این شماره موبایل قبلاً برای حساب دیگری ثبت شده است.'],
+        )->validate();
+
+        if (! hash_equals((string) $request->user()->phone, $phone)) {
+            $request->user()->forceFill([
+                'phone' => $phone,
+                'phone_verified_at' => null,
+            ])->save();
+        }
+
+        $request->session()->put([
+            'checkout_phone_verification_user_id' => $request->user()->id,
+            'checkout_phone_verification_phone' => $phone,
+        ]);
+
+        return Inertia::location($links->beginPhoneVerification($request->user()->fresh()));
     }
 
     public function confirmPhoneVerification(Request $request, MobileCodeService $codes): RedirectResponse

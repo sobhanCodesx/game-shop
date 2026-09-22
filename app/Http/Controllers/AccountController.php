@@ -11,8 +11,10 @@ use App\Models\UserAddress;
 use App\Services\MediaStorage;
 use App\Services\Telegram\TelegramBotSettings;
 use App\Services\Telegram\TelegramUserLinkService;
+use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -35,6 +37,7 @@ class AccountController extends Controller
                 'birth_date' => $user->birth_date?->format('Y-m-d'),
                 'avatar_url' => MediaStorage::url($user->avatar),
                 'has_password' => filled($user->getAuthPassword()),
+                'phone_verified' => (bool) $user->phone_verified_at,
             ],
             'addresses' => $user->addresses()->latest('is_default')->latest()->get(),
             'walletBalance' => (int) $user->wallet_balance,
@@ -66,21 +69,34 @@ class AccountController extends Controller
                     ? '@'.ltrim((string) $telegramBot['bot_username'], '@')
                     : null,
                 'linked_at' => $user->telegram_linked_at?->toISOString(),
+                'phone_verification_available' => ($telegramBot['enabled'] ?? false)
+                    && filled($telegramBot['bot_username'] ?? null)
+                    && filled($user->phone)
+                    && ! $user->phone_verified_at,
             ],
             'homeExperiencePreference' => $user->home_focus_preference ?? 'system',
             'profileCompletion' => collect([$user->name, $user->email, $user->phone, $user->avatar, $user->addresses()->exists()])->filter()->count() * 20,
         ]);
     }
 
-    public function updateProfile(UpdateProfileRequest $request): RedirectResponse
-    {
+    public function updateProfile(
+        UpdateProfileRequest $request,
+        TelegramUserLinkService $telegramLinks,
+    ): RedirectResponse {
         $user = $request->user();
         $data = $request->safe()->except(['avatar', 'remove_avatar']);
 
-        if (
-            array_key_exists('phone', $data)
-            && (string) $data['phone'] !== (string) $user->phone
-        ) {
+        if (array_key_exists('phone', $data)) {
+            $data['phone'] = PhoneNumber::normalize((string) $data['phone']);
+        }
+
+        $phoneChanged = array_key_exists('phone', $data)
+            && ! hash_equals((string) $user->phone, (string) $data['phone']);
+
+        if ($phoneChanged) {
+            // A Telegram link belongs to the previously verified identity.
+            // Force a fresh link/proof before Telegram can be trusted for the new number.
+            $telegramLinks->disconnect($user);
             $data['phone_verified_at'] = null;
         }
 
@@ -154,6 +170,25 @@ class AccountController extends Controller
     public function connectTelegram(Request $request, TelegramUserLinkService $links)
     {
         return Inertia::location($links->begin($request->user()));
+    }
+
+    public function verifyPhoneWithTelegram(
+        Request $request,
+        TelegramUserLinkService $links,
+    ) {
+        $user = $request->user();
+
+        if (! filled($user->phone)) {
+            throw ValidationException::withMessages([
+                'phone' => 'ابتدا شماره موبایل را در اطلاعات حساب ذخیره کن.',
+            ]);
+        }
+
+        if ($user->phone_verified_at) {
+            return back()->with('success', 'شماره موبایل شما قبلاً تأیید شده است.');
+        }
+
+        return Inertia::location($links->beginPhoneVerification($user));
     }
 
     public function disconnectTelegram(

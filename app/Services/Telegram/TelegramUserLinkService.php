@@ -2,6 +2,7 @@
 
 namespace App\Services\Telegram;
 
+use App\Models\MobileVerificationCode;
 use App\Models\User;
 use App\Support\PhoneNumber;
 use Illuminate\Support\Facades\Cache;
@@ -109,6 +110,16 @@ final class TelegramUserLinkService
         }
 
         $user = $this->linkUser($user, $telegramUserId, $chatId);
+        $user->forceFill(['phone_verified_at' => now()])->save();
+
+        // A matching Telegram request_contact is itself the verification proof.
+        // Any previously issued SMS verification codes for this phone must stop
+        // being usable once Telegram has verified the number.
+        MobileVerificationCode::query()
+            ->where('phone', $expectedPhone)
+            ->whereIn('purpose', ['verify_mobile', 'checkout_verify_mobile'])
+            ->delete();
+
         Cache::forget($this->phonePendingKey($telegramUserId, $chatId));
         Cache::put(
             $this->phoneProofKey($user),
@@ -116,7 +127,7 @@ final class TelegramUserLinkService
             now()->addMinutes(self::TTL_MINUTES),
         );
 
-        return $user;
+        return $user->fresh();
     }
 
     public function hasRecentPhoneProof(User $user): bool

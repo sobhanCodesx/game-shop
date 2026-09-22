@@ -593,7 +593,7 @@ class TelegramAdminBotTest extends TestCase
         $user->refresh();
         $this->assertSame('888888888', $user->telegram_user_id);
         $this->assertSame('888888888', $user->telegram_chat_id);
-        $this->assertNull($user->phone_verified_at);
+        $this->assertNotNull($user->phone_verified_at);
         $this->assertTrue(
             app(TelegramUserLinkService::class)->hasRecentPhoneProof($user),
         );

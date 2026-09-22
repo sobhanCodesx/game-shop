@@ -51,6 +51,7 @@ type Profile = {
     birth_date: string | null;
     avatar_url: string | null;
     has_password: boolean;
+    phone_verified: boolean;
 };
 type Address = {
     id: number;
@@ -84,6 +85,7 @@ type TelegramIntegration = {
     connected: boolean;
     bot_username: string | null;
     linked_at: string | null;
+    phone_verification_available: boolean;
 };
 type CurrentOrder = {
     id: number;
@@ -351,7 +353,12 @@ export default function Dashboard({
                                 selectedStatus={filters.status}
                             />
                         )}{" "}
-                        {tab === "profile" && <ProfileForm profile={profile} />}{" "}
+                        {tab === "profile" && (
+                            <ProfileForm
+                                profile={profile}
+                                telegram={telegramIntegration}
+                            />
+                        )}{" "}
                         {tab === "tracking" && (
                             <OrderTracking order={currentOrder} />
                         )}{" "}
@@ -1096,8 +1103,15 @@ function NotificationMethod({
         </button>
     );
 }
-function ProfileForm({ profile }: { profile: Profile }) {
+function ProfileForm({
+    profile,
+    telegram,
+}: {
+    profile: Profile;
+    telegram: TelegramIntegration;
+}) {
     const file = useRef<HTMLInputElement>(null);
+    const [telegramVerifying, setTelegramVerifying] = useState(false);
     const { data, setData, post, processing, errors } = useForm<{
         name: string;
         phone: string;
@@ -1203,6 +1217,69 @@ function ProfileForm({ profile }: { profile: Profile }) {
                         }
                     />
                 </Field>
+                <div className="sm:col-span-2">
+                    <div
+                        className={`rounded-2xl border p-4 ${profile.phone_verified ? "border-emerald-500/20 bg-emerald-500/10" : "border-amber-500/20 bg-amber-500/10"}`}
+                    >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-start gap-3">
+                                <span
+                                    className={`grid size-10 shrink-0 place-items-center rounded-xl ${profile.phone_verified ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"}`}
+                                >
+                                    <ShieldCheck size={18} />
+                                </span>
+                                <div>
+                                    <strong className="text-sm">
+                                        {profile.phone_verified
+                                            ? "شماره موبایل تأیید شده"
+                                            : "شماره موبایل هنوز تأیید نشده"}
+                                    </strong>
+                                    <p className="mt-1 text-xs leading-6 text-[var(--store-muted)]">
+                                        {profile.phone_verified
+                                            ? "این شماره برای ورود و ثبت سفارش معتبر است."
+                                            : "بدون تأیید شماره امکان ثبت سفارش نداری. می‌توانی SMS بگیری یا با شماره رسمی Telegram خودت مستقیم تأیید کنی."}
+                                    </p>
+                                </div>
+                            </div>
+                            {!profile.phone_verified &&
+                                telegram.phone_verification_available && (
+                                    <button
+                                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 text-xs font-black text-white shadow-lg shadow-sky-500/20 disabled:opacity-50"
+                                        disabled={
+                                            telegramVerifying ||
+                                            data.phone !== (profile.phone ?? "")
+                                        }
+                                        onClick={() => {
+                                            setTelegramVerifying(true);
+                                            router.post(
+                                                "/account/phone/verify-telegram",
+                                                {},
+                                                {
+                                                    onFinish: () =>
+                                                        setTelegramVerifying(
+                                                            false,
+                                                        ),
+                                                },
+                                            );
+                                        }}
+                                        type="button"
+                                    >
+                                        <Send size={16} />
+                                        {telegramVerifying
+                                            ? "در حال انتقال…"
+                                            : "تأیید امن با Telegram"}
+                                    </button>
+                                )}
+                        </div>
+                        {!profile.phone_verified &&
+                            data.phone !== (profile.phone ?? "") && (
+                                <p className="mt-3 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                                    ابتدا شماره جدید را ذخیره کن؛ سپس تأیید
+                                    Telegram برای همان شماره فعال می‌شود.
+                                </p>
+                            )}
+                    </div>
+                </div>
                 <Suspense
                     fallback={
                         <div className="h-[76px] rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)]" />

@@ -91,6 +91,7 @@ export default function VerifyCode({
     }, [channel, purpose, telegram?.connected, telegram?.supported]);
 
     const sendToTelegram = () => {
+        if (purpose !== "login") return;
         setTelegramSending(true);
         setTelegramError(null);
         router.post(
@@ -206,24 +207,33 @@ export default function VerifyCode({
                                 <p className="mt-1 text-[11px] leading-5 text-slate-400">
                                     {purpose === "verify"
                                         ? telegram?.connected
-                                            ? "شماره Telegram با شماره ثبت‌نام تطبیق داده شده؛ حالا می‌توانی همین کد را در چت خصوصی Bot بگیری."
-                                            : "برای ثبت‌نام، اتصال ساده کافی نیست. Bot فقط وقتی اجازه ارسال کد می‌دهد که شماره خودت را با دکمه رسمی Telegram به اشتراک بگذاری و دقیقاً با شماره ثبت‌نام یکی باشد."
-                                        : "اگر قبلاً Telegram را به همین حساب تأییدشده وصل کرده باشی، می‌توانی کد ورود را در چت خصوصی Bot بگیری."}
+                                            ? "شماره Telegram با شماره ثبت‌نام تطبیق داده شد. برای این مسیر دیگر کد جداگانه لازم نیست؛ صفحه را تازه کن تا ثبت‌نام تکمیل شود."
+                                            : "اگر SMS نرسید، Telegram می‌تواند خود شماره را مستقیم تأیید کند: داخل Bot فقط دکمه رسمی «اشتراک شماره خودم» را بزن. شماره Telegram و PlayNexus بعد از نرمال‌سازی باید دقیقاً یکی باشند."
+                                        : "اگر قبلاً Telegram را به همین حساب تأییدشده وصل کرده باشی، می‌توانی کد ورود ۶ رقمی را در چت خصوصی Bot بگیری."}
                                 </p>
 
                                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                                    {purpose === "verify" &&
-                                    !telegram?.connected &&
-                                    telegram?.connect_url ? (
-                                        <a
-                                            className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-500 px-3 text-xs font-black text-white"
-                                            href={telegram.connect_url}
-                                            rel="noreferrer"
-                                            target="_blank"
-                                        >
-                                            <Send size={15} />
-                                            اتصال امن و تأیید شماره در Bot
-                                        </a>
+                                    {purpose === "verify" ? (
+                                        telegram?.connected ? (
+                                            <button
+                                                className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 text-xs font-black text-white"
+                                                onClick={() => router.reload()}
+                                                type="button"
+                                            >
+                                                <Check size={15} />
+                                                تأیید شد؛ ادامه ثبت‌نام
+                                            </button>
+                                        ) : telegram?.connect_url ? (
+                                            <a
+                                                className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-500 px-3 text-xs font-black text-white shadow-lg shadow-sky-500/20"
+                                                href={telegram.connect_url}
+                                                rel="noreferrer"
+                                                target="_blank"
+                                            >
+                                                <Send size={15} />
+                                                تأیید مستقیم شماره با Telegram
+                                            </a>
+                                        ) : null
                                     ) : (
                                         <button
                                             className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-500 px-3 text-xs font-black text-white disabled:opacity-60"
@@ -239,8 +249,8 @@ export default function VerifyCode({
                                             {telegramSending
                                                 ? "در حال ارسال…"
                                                 : telegramSent
-                                                  ? "کد در تلگرام درخواست شد"
-                                                  : "ارسال کد در تلگرام"}
+                                                  ? "کد ورود در تلگرام ارسال شد"
+                                                  : "دریافت کد ورود از Telegram"}
                                         </button>
                                     )}
 
