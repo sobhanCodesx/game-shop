@@ -6,8 +6,10 @@ use App\Models\Game;
 use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use App\Services\MediaStorage;
+use App\Services\StudioPageDataService;
 use App\Support\RichText;
 use App\Support\Seo;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -50,93 +52,11 @@ class StudioController extends Controller
         ]);
     }
 
-    public function show(Studio $studio): Response
+    public function show(Studio $studio, Request $request, StudioPageDataService $page): Response
     {
         abort_unless($studio->status === 'active', 404);
-        $channels = Game::query()->whereBelongsTo($studio)->whereIn('status', ['active', 'published'])
-            ->withCount([
-                'videos' => fn ($query) => $query->published(),
-                'subscribers',
-            ])
-            ->orderByDesc('subscribers_count')->latest('id')->paginate(18, ['*'], 'channels_page')->withQueryString()
-            ->through(fn (Game $game) => [
-                'id' => $game->id,
-                'name' => $game->name,
-                'slug' => $game->slug,
-                'url' => route('channels.show', $game->slug, false),
-                'logo_url' => MediaStorage::url($game->cover),
-                'background_url' => MediaStorage::url($game->background),
-                'videos_count' => $game->videos_count,
-                'followers_count' => $game->subscribers_count,
-            ]);
-        $collections = VideoPlaylist::query()
-            ->where(fn ($query) => $query
-                ->where('studio_id', $studio->id)
-                ->orWhereHas('game', fn ($gameQuery) => $gameQuery->where('studio_id', $studio->id)))
-            ->publiclyVisible()
-            ->with('game:id,name,slug,cover')->withCount('videos')
-            ->orderBy('sort_order')->latest('id')->paginate(12, ['*'], 'collections_page')->withQueryString()
-            ->through(fn (VideoPlaylist $playlist) => [
-                'id' => $playlist->id,
-                'title' => $playlist->title,
-                'description' => RichText::plainText($playlist->description),
-                'url' => route('collections.show', $playlist->slug, false),
-                'logo_url' => MediaStorage::url($playlist->logo ?: $playlist->game?->cover),
-                'channel_name' => $playlist->game?->name ?? $studio->name,
-                'videos_count' => $playlist->videos_count,
-            ]);
-        $canonical = route('studios.show', $studio->slug);
-        $plainDescription = RichText::plainText($studio->description);
-        $description = Str::limit(
-            $plainDescription ?: "معرفی استودیو {$studio->name}، بازی‌های شاخص، تاریخچه و تازه‌ترین محتوای مرتبط در PlayNexus.",
-            148,
-            '…',
-        );
-        $seoTitle = "استودیو {$studio->name} | بازی‌ها، تاریخچه و اخبار";
-        $image = url(MediaStorage::url($studio->background ?: $studio->logo) ?: (string) config('seo.default_image', '/logo.png'));
 
-        return Inertia::render('Studios/Show', [
-            ...Seo::page([
-                'title' => $seoTitle,
-                'description' => $description,
-                'canonical' => $canonical,
-                'robots' => 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
-                'image' => $image,
-                'imageAlt' => "استودیو {$studio->name}",
-                'type' => 'profile',
-                'structuredData' => [
-                    '@context' => 'https://schema.org',
-                    '@graph' => [
-                        [
-                            '@type' => 'Organization',
-                            '@id' => $canonical.'#studio',
-                            'name' => $studio->name,
-                            'url' => $canonical,
-                            'description' => $description,
-                            'image' => $image,
-                            ...($studio->website ? ['sameAs' => [$studio->website]] : []),
-                            ...($studio->logo ? ['logo' => url(MediaStorage::url($studio->logo))] : []),
-                        ],
-                        [
-                            '@type' => 'BreadcrumbList',
-                            '@id' => $canonical.'#breadcrumb',
-                            'itemListElement' => [
-                                ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => route('home')],
-                                ['@type' => 'ListItem', 'position' => 2, 'name' => 'استودیوهای بازی‌سازی', 'item' => route('studios.index')],
-                                ['@type' => 'ListItem', 'position' => 3, 'name' => $studio->name, 'item' => $canonical],
-                            ],
-                        ],
-                    ],
-                ],
-            ]),
-            'studio' => [
-                ...$this->studioData($studio),
-                'description_html' => RichText::sanitize($studio->description),
-                'website' => $studio->website,
-            ],
-            'channels' => $channels,
-            'collections' => $collections,
-        ]);
+        return Inertia::render('Studios/Show', $page->get($studio, $request));
     }
 
     private function studioData(Studio $studio): array
