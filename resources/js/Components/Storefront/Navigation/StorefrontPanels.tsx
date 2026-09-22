@@ -2,6 +2,7 @@ import { Avatar, Button, Chip } from "@heroui/react";
 import { Link, router, usePage } from "@inertiajs/react";
 import {
     ArrowRight,
+    Bot,
     ChevronLeft,
     CircleUserRound,
     Compass,
@@ -19,6 +20,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import SmartSearch from "../Search/SmartSearch";
+import type { SharedPageProps } from "../../../types";
 import type { NavigationCategory, StorefrontNavigationProps } from "./types";
 
 export type StorefrontPanel =
@@ -100,7 +102,23 @@ export default function StorefrontPanels({
         ? (categoryPath.at(-1)?.children ?? [])
         : categories;
     const currentCategory = categoryPath.at(-1);
-    const pathname = usePage().url.split("?")[0];
+    const page = usePage<SharedPageProps>();
+    const pathname = page.url.split("?")[0];
+    const nexusAi = page.props.storefront.nexus_ai;
+    const visibleMobileMenuLinks = [
+        ...mobileMenuLinks,
+        ...(nexusAi?.enabled && nexusAi.show_in_nav
+            ? [
+                  {
+                      href: "/nexus-ai",
+                      matches: ["/nexus-ai"],
+                      label: nexusAi.nav_label,
+                      hint: "دستیار هوش مصنوعی گیمینگ",
+                      icon: Bot,
+                  },
+              ]
+            : []),
+    ];
 
     useEffect(() => {
         if (!panel) setCategoryPath([]);
@@ -193,7 +211,7 @@ export default function StorefrontPanels({
                                 aria-label="بخش‌های اصلی سایت"
                                 className="grid grid-cols-2 gap-2"
                             >
-                                {mobileMenuLinks.map(
+                                {visibleMobileMenuLinks.map(
                                     ({
                                         href,
                                         matches,
