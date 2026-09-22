@@ -11,6 +11,7 @@ use App\Services\GoogleIdentityTokenService;
 use App\Services\MediaStorage;
 use App\Services\MobileApiTokenService;
 use App\Services\MobileCodeService;
+use App\Services\Telegram\TelegramAdminNotificationService;
 use App\Support\PhoneNumber;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -22,7 +23,12 @@ use Illuminate\Validation\ValidationException;
 
 class MobileAuthController extends Controller
 {
-    public function register(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): JsonResponse
+    public function register(
+        Request $request,
+        EmailCodeService $emails,
+        MobileCodeService $mobiles,
+        TelegramAdminNotificationService $telegramNotifications,
+    ): JsonResponse
     {
         $channel = (string) $request->input('channel', $request->filled('phone') ? 'mobile' : 'email');
         validator(['channel' => $channel], ['channel' => ['required', Rule::in(['email', 'mobile'])]])->validate();
@@ -45,6 +51,7 @@ class MobileAuthController extends Controller
                 'role' => 'user',
             ]);
             $emails->send($user, 'verify_email');
+            $telegramNotifications->newUser($user, 'mobile-email');
 
             return response()->json([
                 'verification_required' => true,
@@ -78,6 +85,8 @@ class MobileAuthController extends Controller
             $user->forceDelete();
             throw $exception;
         }
+
+        $telegramNotifications->newUser($user, 'mobile-phone');
 
         return response()->json([
             'verification_required' => true,
