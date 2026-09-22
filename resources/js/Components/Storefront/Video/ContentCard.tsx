@@ -15,6 +15,10 @@ export default function ContentCard({
 }: {
     content: StorefrontContent;
 }) {
+    const isPlayable =
+        content.type === "video" ||
+        (content.type === "short" && content.media_type !== "image");
+
     return (
         <Link className="group block" href={content.url}>
             <article>
@@ -37,7 +41,7 @@ export default function ContentCard({
                             <Gamepad2 className="text-indigo-400" size={44} />
                         </div>
                     )}
-                    {content.type !== "post" && (
+                    {isPlayable && (
                         <span className="absolute inset-0 z-[1] grid place-items-center">
                             <span className="grid size-11 place-items-center rounded-full bg-white/95 text-slate-950 opacity-0 shadow-xl transition duration-300 group-hover:scale-110 group-hover:opacity-100">
                                 <Play fill="currentColor" size={19} />
@@ -52,7 +56,7 @@ export default function ContentCard({
                             {duration(content.duration)}
                         </span>
                     )}
-                    {content.type !== "post" && (
+                    {isPlayable && (
                         <VideoProgressBar
                             contentId={content.id}
                             duration={content.duration}
