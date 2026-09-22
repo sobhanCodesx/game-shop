@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\File;
 use RuntimeException;
 use Throwable;
 
-final class TelegramMtProtoService
+class TelegramMtProtoService
 {
     public function __construct(
         private readonly TelegramBotSettings $settings,
