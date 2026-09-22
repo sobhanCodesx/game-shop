@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\TelegramBotAudit;
 use App\Models\TelegramBotSetting;
 use App\Models\User;
+use App\Services\Telegram\TelegramBotExecutor;
 use App\Services\Telegram\TelegramBotSettings;
 use App\Services\Telegram\TelegramBotToolRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,6 +62,75 @@ class TelegramAdminBotTest extends TestCase
         $this->assertTrue($payload['bot_token_configured']);
         $this->assertTrue($payload['proxy_password_configured']);
         $this->assertTrue($payload['webhook_secret_configured']);
+    }
+
+    public function test_incomplete_activation_is_rejected_before_it_is_persisted(): void
+    {
+        $superAdmin = User::factory()->create([
+            'is_admin' => true,
+            'status' => 'active',
+            'role' => 'super-admin',
+        ]);
+
+        $this->actingAs($superAdmin)
+            ->from('/admin/telegram-bot')
+            ->put('/admin/telegram-bot', [
+                'enabled' => true,
+                'bot_token' => '',
+                'admin_user_id' => '777777777',
+                'write_enabled' => false,
+                'publish_enabled' => false,
+                'destructive_enabled' => false,
+                'media_enabled' => true,
+                'api_base_url' => 'https://api.telegram.org',
+                'use_proxy' => false,
+                'proxy_type' => 'socks5h',
+                'proxy_host' => '',
+                'proxy_port' => 1080,
+                'proxy_username' => '',
+                'proxy_password' => '',
+            ])
+            ->assertRedirect('/admin/telegram-bot')
+            ->assertSessionHasErrors('bot_token');
+
+        $this->assertDatabaseMissing('telegram_bot_settings', [
+            'enabled' => true,
+        ]);
+    }
+
+    public function test_write_publish_destructive_and_media_permissions_are_independently_enforced(): void
+    {
+        $this->configureBot();
+
+        $executor = app(TelegramBotExecutor::class);
+
+        $this->expectException(\RuntimeException::class);
+        $executor->authorize('create_game');
+    }
+
+    public function test_publish_requires_write_and_publish_flags(): void
+    {
+        $setting = $this->configureBot();
+        $setting->forceFill([
+            'write_enabled' => true,
+            'publish_enabled' => false,
+        ])->save();
+        app(TelegramBotSettings::class)->resolved();
+
+        $this->expectException(\RuntimeException::class);
+        app(TelegramBotExecutor::class)->authorize('publish_feed');
+    }
+
+    public function test_destructive_requires_explicit_destructive_flag(): void
+    {
+        $setting = $this->configureBot();
+        $setting->forceFill([
+            'write_enabled' => true,
+            'destructive_enabled' => false,
+        ])->save();
+
+        $this->expectException(\RuntimeException::class);
+        app(TelegramBotExecutor::class)->authorize('delete_content');
     }
 
     public function test_webhook_rejects_missing_or_invalid_secret_header(): void
