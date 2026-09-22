@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Game;
 use App\Models\HomeSetting;
 use App\Models\SocialContent;
@@ -155,6 +156,30 @@ class SearchPerformanceSeoTest extends TestCase
                     'seo.structuredData.@graph.0.logo.url',
                     url((string) config('seo.default_image', '/logo.png')),
                 ));
+    }
+
+    public function test_category_base_url_is_indexable_while_query_variants_are_noindex(): void
+    {
+        $category = Category::factory()->create([
+            'name' => 'بازی‌های PS5',
+            'slug' => 'ps5-games-seo-test',
+            'description' => 'بازی‌ها و محصولات پلی‌استیشن ۵',
+            'status' => 'active',
+        ]);
+        $canonical = route('categories.show', $category->slug);
+
+        $this->get($canonical)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('seo.canonical', $canonical)
+                ->where('seo.robots', 'index, follow, max-image-preview:large, max-snippet:-1')
+                ->where('seo.title', 'بازی‌های PS5؛ محصولات و بازی‌ها - پلی نکسوس'));
+
+        $this->get($canonical.'?sort=latest')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('seo.canonical', $canonical)
+                ->where('seo.robots', 'noindex, follow'));
     }
 
     public function test_studio_metadata_targets_brand_information_intent_without_overlong_description(): void
