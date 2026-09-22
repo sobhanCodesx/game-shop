@@ -372,7 +372,7 @@ class TelegramAdminBotTest extends TestCase
             ->assertOk();
 
         Http::assertSent(function ($request): bool {
-            if (! str_ends_with($request->url(), '/sendMessage')) {
+            if (! str_ends_with($request->url(), '/editMessageText')) {
                 return false;
             }
 
