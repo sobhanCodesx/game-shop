@@ -217,6 +217,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         Route::delete('telegram-bot/webhook', [TelegramBotSettingsController::class, 'deleteWebhook'])->middleware('throttle:6,1')->name('telegram-bot.webhook.destroy');
         Route::post('telegram-bot/webhook/rotate', [TelegramBotSettingsController::class, 'rotateWebhook'])->middleware('throttle:4,1')->name('telegram-bot.webhook.rotate');
         Route::post('telegram-bot/send-test', [TelegramBotSettingsController::class, 'sendTest'])->middleware('throttle:4,1')->name('telegram-bot.send-test');
+        Route::post('telegram-bot/mtproto/test', [TelegramBotSettingsController::class, 'testMtProto'])->middleware('throttle:3,1')->name('telegram-bot.mtproto.test');
         Route::get('system-maintenance', [SystemMaintenanceController::class, 'index'])->name('system-maintenance.index');
         Route::post('system-maintenance/run', [SystemMaintenanceController::class, 'run'])->middleware('throttle:6,1')->name('system-maintenance.run');
         Route::post('system-maintenance/cron', [SystemMaintenanceController::class, 'manageCron'])->middleware('throttle:4,1')->name('system-maintenance.cron');
