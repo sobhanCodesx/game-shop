@@ -11,6 +11,7 @@ use App\Models\VideoPlaylist;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
 use App\Services\TemporaryUploadService;
+use App\Services\VideoPageCache;
 use App\Support\RichText;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -139,6 +140,7 @@ class VideoController extends Controller
             $this->storeFile($video, $file, $optimizer, $request->file('thumbnail'), $request->integer('client_duration') ?: null);
             $video->save();
             $video->playlists()->sync($this->playlistSync($request->validated('playlist_ids', [])));
+            app(VideoPageCache::class)->invalidate();
         } catch (\Throwable $exception) {
             if ($video->video_path || $video->thumbnail) {
                 $this->deleteFiles($video);
@@ -197,6 +199,7 @@ class VideoController extends Controller
             MediaStorage::disk()->delete($oldThumbnail);
         }
         $video->playlists()->sync($this->playlistSync($request->validated('playlist_ids', [])));
+        app(VideoPageCache::class)->invalidate();
 
         return to_route('admin.videos.index')->with('success', 'ویدیو با موفقیت ویرایش شد.');
     }
