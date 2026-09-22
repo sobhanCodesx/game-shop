@@ -26,6 +26,16 @@ return [
         max(1024, (int) env('TELEGRAM_BOT_MAX_DOWNLOAD_BYTES', 20 * 1024 * 1024)),
     ),
 
+    'mtproto' => [
+        'enabled' => filter_var(env('TELEGRAM_MTPROTO_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'api_id' => (int) env('TELEGRAM_MTPROTO_API_ID', 0),
+        'api_hash' => trim((string) env('TELEGRAM_MTPROTO_API_HASH', '')),
+        'max_download_bytes' => max(
+            20 * 1024 * 1024,
+            (int) env('TELEGRAM_MTPROTO_MAX_DOWNLOAD_BYTES', 2 * 1024 * 1024 * 1024),
+        ),
+    ],
+
     'proxy' => [
         'enabled' => filter_var(env('TELEGRAM_BOT_PROXY_ENABLED', false), FILTER_VALIDATE_BOOL),
         'type' => (string) env('TELEGRAM_BOT_PROXY_TYPE', 'socks5h'),
