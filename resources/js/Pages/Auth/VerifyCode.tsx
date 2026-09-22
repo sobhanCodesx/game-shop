@@ -249,7 +249,7 @@ export default function VerifyCode({
                                             {telegramSending
                                                 ? "در حال ارسال…"
                                                 : telegramSent
-                                                  ? "کد ورود در تلگرام ارسال شد"
+                                                  ? "درخواست Telegram بررسی شد"
                                                   : "دریافت کد ورود از Telegram"}
                                         </button>
                                     )}
