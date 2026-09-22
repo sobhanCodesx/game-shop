@@ -8,28 +8,38 @@ final class TelegramMtProtoCompatibilityService
 {
     public function report(): array
     {
-        $checks = [
+        $required = [
             'php_version' => PHP_VERSION_ID >= 80200,
             'php_64bit' => PHP_INT_SIZE >= 8,
-            'mbstring' => extension_loaded('mbstring'),
-            'openssl' => extension_loaded('openssl'),
-            'sockets' => extension_loaded('sockets'),
+            'json' => extension_loaded('json'),
+            'xml' => extension_loaded('xml'),
+            'dom' => extension_loaded('dom'),
+            'filter' => extension_loaded('filter'),
+            'hash' => extension_loaded('hash'),
+            'zlib' => extension_loaded('zlib'),
             'fileinfo' => extension_loaded('fileinfo'),
             'stream_socket_client' => function_exists('stream_socket_client'),
             'storage_writable' => $this->storageWritable(),
         ];
 
         $network = $this->telegramDcReachable();
-        $checks['telegram_dc_tcp'] = $network['ok'];
+        $required['telegram_dc_tcp'] = $network['ok'];
 
         return [
-            'compatible' => collect($checks)->every(fn (bool $ok): bool => $ok),
-            'checks' => $checks,
+            'compatible' => collect($required)->every(fn (bool $ok): bool => $ok),
+            'required' => $required,
+            'recommended' => [
+                'mbstring' => extension_loaded('mbstring'),
+                'openssl' => extension_loaded('openssl'),
+                'gmp' => extension_loaded('gmp'),
+                'ffi' => extension_loaded('ffi'),
+            ],
             'network' => $network['detail'],
             'php' => PHP_VERSION,
             'sapi' => PHP_SAPI,
             'memory_limit' => (string) ini_get('memory_limit'),
             'max_execution_time' => (string) ini_get('max_execution_time'),
+            'open_basedir' => (string) ini_get('open_basedir'),
             'disabled_functions' => array_values(array_filter(array_map(
                 'trim',
                 explode(',', (string) ini_get('disable_functions')),
