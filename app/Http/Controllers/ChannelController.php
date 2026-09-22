@@ -9,6 +9,7 @@ use App\Services\FeedService;
 use App\Services\FollowedGameWatchService;
 use App\Services\GameRadarService;
 use App\Services\MediaStorage;
+use App\Services\PlaylistPageDataService;
 use App\Services\StorefrontDataService;
 use App\Support\RichText;
 use App\Support\Seo;
@@ -98,44 +99,19 @@ class ChannelController extends Controller
         ]);
     }
 
-    public function playlist(Request $request, Game $game, VideoPlaylist $playlist, StorefrontDataService $data): Response
+    public function playlist(Request $request, Game $game, VideoPlaylist $playlist, PlaylistPageDataService $page): Response
     {
         $this->ensureVisible($game);
         abort_unless($playlist->game_id === $game->id && in_array($playlist->visibility, ['public', 'unlisted'], true), 404);
-        $playlist->load(['videos' => fn ($query) => $query->published()->where('type', 'video')->with(['game:id,name,slug,cover', 'user:id,name,avatar'])]);
 
-        return Inertia::render('Channels/Playlist', [
-            ...$this->playlistSeo($playlist, $game),
-            'channel' => $this->channelData($request, $game),
-            'playlist' => [
-                ...$this->playlistData($game, $playlist),
-                'description' => RichText::plainText($playlist->description),
-                'description_html' => RichText::sanitize($playlist->description),
-                'videos' => $playlist->videos->map(fn (SocialContent $video) => $data->content($video))->values(),
-            ],
-        ]);
+        return Inertia::render('Channels/Playlist', $page->playlist($game, $playlist, $request));
     }
 
-    public function collection(VideoPlaylist $playlist, StorefrontDataService $data): Response
+    public function collection(VideoPlaylist $playlist, PlaylistPageDataService $page): Response
     {
         abort_unless(in_array($playlist->visibility, ['public', 'unlisted'], true), 404);
-        $playlist->load([
-            'game:id,name,slug,cover,status',
-            'videos' => fn ($query) => $query->published()->where('type', 'video')->with(['game:id,name,slug,cover', 'user:id,name,avatar']),
-        ]);
 
-        return Inertia::render('Channels/Playlist', [
-            ...$this->playlistSeo($playlist, $playlist->game),
-            'channel' => null,
-            'playlist' => [
-                ...$playlist->only(['id', 'title', 'slug']),
-                'cover_url' => MediaStorage::url($playlist->logo),
-                'description' => RichText::plainText($playlist->description),
-                'description_html' => RichText::sanitize($playlist->description),
-                'videos_count' => $playlist->videos->count(),
-                'videos' => $playlist->videos->map(fn (SocialContent $video) => $data->content($video))->values(),
-            ],
-        ]);
+        return Inertia::render('Channels/Playlist', $page->collection($playlist));
     }
 
     private function ensureVisible(Game $game): void
