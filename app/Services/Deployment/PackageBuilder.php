@@ -181,7 +181,22 @@ final class PackageBuilder
     {
         $zip = new ZipArchive; if ($zip->open($archive, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) throw new RuntimeException('ساخت ZIP ممکن نیست.');
         $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($stage, \FilesystemIterator::SKIP_DOTS));
-        foreach ($it as $file) if ($file->isFile()) { $path=str_replace('\\', '/', substr($file->getPathname(), strlen($stage) + 1)); if (!$this->excluded($path)) $zip->addFile($file->getPathname(), $path); }
+        foreach ($it as $file) if ($file->isFile()) {
+            $path = str_replace('\\', '/', substr($file->getPathname(), strlen($stage) + 1));
+            if ($this->excluded($path)) continue;
+
+            $zip->addFile($file->getPathname(), $path);
+
+            /*
+             * Tiny WAV fixtures (MadelineProto ships an ~11 KB empty.wav)
+             * can compress beyond the verifier's 100x zip-bomb guard even
+             * though they are harmless. Store WAV entries verbatim so the
+             * security threshold stays strict for every other file.
+             */
+            if (strtolower((string) pathinfo($path, PATHINFO_EXTENSION)) === 'wav') {
+                $zip->setCompressionName($path, ZipArchive::CM_STORE);
+            }
+        }
         $zip->close();
     }
     private function excluded(string $path): bool { return str_starts_with($path, 'bootstrap/cache/') || $path === 'public/hot' || str_starts_with($path, 'public/apk/') || str_starts_with($path, 'node_modules/'); }
