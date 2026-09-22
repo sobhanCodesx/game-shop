@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\TelegramBotAudit;
 use App\Models\TelegramBotSetting;
 use App\Models\User;
+use App\Services\Telegram\TelegramApiClient;
 use App\Services\Telegram\TelegramBotExecutor;
 use App\Services\Telegram\TelegramBotSettings;
 use App\Services\Telegram\TelegramBotToolRegistry;
@@ -50,6 +51,8 @@ class TelegramAdminBotTest extends TestCase
             'bot_token' => '123456:very-secret-token',
             'admin_user_id' => '777777777',
             'enabled' => true,
+            'relay_base_url' => 'https://relay.example.workers.dev',
+            'relay_key' => 'relay-secret',
             'proxy_password' => 'proxy-secret',
             'webhook_secret' => 'webhook-secret',
         ]);
@@ -57,9 +60,12 @@ class TelegramAdminBotTest extends TestCase
         $payload = app(TelegramBotSettings::class)->adminPayload();
 
         $this->assertSame('', $payload['bot_token']);
+        $this->assertSame('', $payload['relay_key']);
         $this->assertSame('', $payload['proxy_password']);
         $this->assertSame('', $payload['webhook_secret']);
         $this->assertTrue($payload['bot_token_configured']);
+        $this->assertTrue($payload['relay_key_configured']);
+        $this->assertTrue($payload['relay_configured']);
         $this->assertTrue($payload['proxy_password_configured']);
         $this->assertTrue($payload['webhook_secret_configured']);
     }
@@ -82,7 +88,10 @@ class TelegramAdminBotTest extends TestCase
                 'publish_enabled' => false,
                 'destructive_enabled' => false,
                 'media_enabled' => true,
+                'transport_mode' => 'auto',
                 'api_base_url' => 'https://api.telegram.org',
+                'relay_base_url' => '',
+                'relay_key' => '',
                 'use_proxy' => false,
                 'proxy_type' => 'socks5h',
                 'proxy_host' => '',
@@ -131,6 +140,73 @@ class TelegramAdminBotTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         app(TelegramBotExecutor::class)->authorize('delete_content');
+    }
+
+    public function test_secure_relay_keeps_bot_token_out_of_the_worker_url(): void
+    {
+        TelegramBotSetting::query()->create([
+            'bot_token' => '123456:abcdefghijklmnopqrstuvwxyz',
+            'admin_user_id' => '777777777',
+            'enabled' => true,
+            'transport_mode' => 'relay',
+            'api_base_url' => 'https://api.telegram.org',
+            'relay_base_url' => 'https://relay.example.workers.dev',
+            'relay_key' => 'relay-secret',
+            'use_proxy' => false,
+            'webhook_secret' => 'webhook-secret',
+        ]);
+
+        Http::fake([
+            'https://relay.example.workers.dev/api/getMe' => Http::response([
+                'ok' => true,
+                'result' => ['id' => 1, 'username' => 'playnexus_test_bot'],
+            ]),
+        ]);
+
+        $result = app(TelegramApiClient::class)->getMe();
+
+        $this->assertSame('playnexus_test_bot', $result['username']);
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://relay.example.workers.dev/api/getMe'
+                && $request->hasHeader('Authorization', 'Bearer 123456:abcdefghijklmnopqrstuvwxyz')
+                && $request->hasHeader('X-PlayNexus-Relay-Key', 'relay-secret')
+                && ! str_contains($request->url(), '123456:abcdefghijklmnopqrstuvwxyz');
+        });
+    }
+
+    public function test_auto_transport_falls_back_from_relay_to_direct_without_user_intervention(): void
+    {
+        TelegramBotSetting::query()->create([
+            'bot_token' => '123456:abcdefghijklmnopqrstuvwxyz',
+            'admin_user_id' => '777777777',
+            'enabled' => true,
+            'transport_mode' => 'auto',
+            'api_base_url' => 'https://api.telegram.org',
+            'relay_base_url' => 'https://relay.example.workers.dev',
+            'relay_key' => 'relay-secret',
+            'use_proxy' => false,
+            'webhook_secret' => 'webhook-secret',
+        ]);
+
+        Http::fake(function ($request) {
+            if ($request->url() === 'https://relay.example.workers.dev/api/getMe') {
+                return Http::response(['ok' => false, 'error' => 'upstream unavailable'], 502);
+            }
+
+            if ($request->url() === 'https://api.telegram.org/bot123456:abcdefghijklmnopqrstuvwxyz/getMe') {
+                return Http::response([
+                    'ok' => true,
+                    'result' => ['id' => 1, 'username' => 'fallback_bot'],
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $result = app(TelegramApiClient::class)->getMe();
+
+        $this->assertSame('fallback_bot', $result['username']);
+        Http::assertSentCount(2);
     }
 
     public function test_webhook_rejects_missing_or_invalid_secret_header(): void
@@ -277,7 +353,9 @@ class TelegramAdminBotTest extends TestCase
             'publish_enabled' => false,
             'destructive_enabled' => false,
             'media_enabled' => true,
+            'transport_mode' => 'direct',
             'api_base_url' => 'https://api.telegram.org',
+            'relay_base_url' => null,
             'use_proxy' => false,
             'webhook_secret' => 'webhook-secret',
         ]);
