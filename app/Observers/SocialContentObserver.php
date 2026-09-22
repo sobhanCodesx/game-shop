@@ -13,7 +13,9 @@ class SocialContentObserver
     public function created(SocialContent $content): void
     {
         if ($content->type === 'video') {
-            app(StorefrontPageCache::class)->invalidate('playlist');
+            app(StorefrontPageCache::class)->invalidate('playlist', 'channel');
+        } elseif ($content->type === 'post') {
+            app(StorefrontPageCache::class)->invalidate('channel');
         }
 
         if ($this->isPublished($content)) {
