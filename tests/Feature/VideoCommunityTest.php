@@ -163,7 +163,7 @@ class VideoCommunityTest extends TestCase
     public function test_admin_can_create_a_playlist_and_assign_a_video_to_it(): void
     {
         [$game, $video] = $this->channelWithVideo();
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->create(['is_admin' => true, 'status' => 'active', 'role' => 'super-admin']);
 
         $this->actingAs($admin)->post(route('admin.video-playlists.store'), [
             'game_id' => $game->id,
