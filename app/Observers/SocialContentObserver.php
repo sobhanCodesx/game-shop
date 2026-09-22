@@ -95,7 +95,8 @@ class SocialContentObserver
         } elseif ($content->type === 'post') {
             app(StorefrontPageCache::class)->invalidate('channel', 'feed');
         } elseif ($content->type === 'short') {
-            app(StorefrontPageCache::class)->invalidate('short');
+            app(StorefrontPageCache::class)->invalidate('short', 'feed');
+            Cache::forget('storefront.stories.v1');
         }
     }
 
