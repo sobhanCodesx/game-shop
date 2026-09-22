@@ -58,7 +58,7 @@ jobs:
           php -l app/Services/ShortPageDataService.php
           php -l tests/Feature/StorefrontCachePhaseOneTest.php
           php -l tests/Feature/StorefrontCachePhaseTwoTest.php
-          php -l tests/Feature/StorefrontCachePhaseThreeTest.php tests/Feature/StorefrontCachePhaseFourTest.php tests/Feature/StorefrontCachePhaseFiveTest.php tests/Feature/StorefrontCachePhaseSixTest.php
+          php -l tests/Feature/StorefrontCachePhaseThreeTest.php tests/Feature/StorefrontCachePhaseFourTest.php tests/Feature/StorefrontCachePhaseFiveTest.php tests/Feature/StorefrontCachePhaseSixTest.php tests/Feature/StorefrontCachePhaseSevenTest.php
           php -l app/Services/HomePublicCacheService.php
           php -l app/Observers/HomeSlideObserver.php
           php -l app/Observers/CategoryObserver.php
@@ -72,6 +72,9 @@ jobs:
           php -l app/Observers/ProductAttributeValueObserver.php
           php -l app/Observers/CategoryAttributeObserver.php
           php -l tests/Feature/StorefrontCachePhaseSixTest.php
+          php -l app/Services/SitemapCacheService.php
+          php -l app/Http/Controllers/SitemapController.php
+          php -l tests/Feature/StorefrontCachePhaseSevenTest.php
 
       - name: Validate Composer files
         run: composer validate --no-check-publish
