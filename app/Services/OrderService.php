@@ -11,12 +11,18 @@ use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Notifications\OrderActivityNotification;
 use App\Notifications\OrderCashbackNotification;
+use App\Services\Telegram\TelegramAdminNotificationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class OrderService
 {
-    public function __construct(private readonly CartService $carts, private readonly CouponService $coupons, private readonly CommerceSettings $settings) {}
+    public function __construct(
+        private readonly CartService $carts,
+        private readonly CouponService $coupons,
+        private readonly CommerceSettings $settings,
+        private readonly TelegramAdminNotificationService $telegramAdmin,
+    ) {}
 
     public function preview(array $cart, User $user, ?string $couponCode = null, bool $useWallet = false, ?int $exchangeRequestId = null, string $deliveryMethod = 'courier'): array
     {
@@ -121,6 +127,7 @@ class OrderService
         }, 3);
         $order->user->notify(new OrderActivityNotification($order, 'سفارش شما ثبت شد', 'سفارش '.$order->number.' ثبت شد و در انتظار تأیید است.'));
         User::query()->where('is_admin', true)->each(fn (User $admin) => $admin->notify(new OrderActivityNotification($order, 'سفارش جدید', $order->user->name.' سفارش '.$order->number.' را ثبت کرد.', true)));
+        $this->telegramAdmin->newOrder($order);
 
         return $order;
     }
@@ -197,6 +204,7 @@ class OrderService
             $updated->user->notify(new OrderActivityNotification($updated, 'وضعیت سفارش تغییر کرد', 'سفارش '.$updated->number.' '.($statusLabels[$status] ?? 'به‌روزرسانی شد').'.'));
         } elseif ($status === 'cancelled') {
             User::query()->where('is_admin', true)->each(fn (User $admin) => $admin->notify(new OrderActivityNotification($updated, 'لغو سفارش توسط مشتری', 'سفارش '.$updated->number.' توسط مشتری لغو شد.', true)));
+            $this->telegramAdmin->orderCancelled($updated);
         }
 
         return $updated;

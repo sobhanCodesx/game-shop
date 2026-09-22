@@ -6,13 +6,17 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\Telegram\TelegramAdminNotificationService;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ExchangeService
 {
-    public function __construct(private readonly ProductPriceService $prices) {}
+    public function __construct(
+        private readonly ProductPriceService $prices,
+        private readonly TelegramAdminNotificationService $telegramAdmin,
+    ) {}
     public function offer(Ticket $ticket, Product $targetProduct, int $amount, ?CarbonInterface $expiresAt = null): Ticket
     {
         return DB::transaction(function () use ($ticket, $targetProduct, $amount, $expiresAt) {
@@ -49,7 +53,7 @@ class ExchangeService
 
     public function respond(Ticket $ticket, User $user, string $decision): Ticket
     {
-        return DB::transaction(function () use ($ticket, $user, $decision) {
+        $updated = DB::transaction(function () use ($ticket, $user, $decision) {
             $locked = Ticket::query()->lockForUpdate()->findOrFail($ticket->id);
             $this->ensureExchange($locked);
             if ($locked->user_id !== $user->id || $locked->exchange_status !== 'offered') {
@@ -69,8 +73,12 @@ class ExchangeService
             }
             $locked->update(['exchange_status' => $decision, 'exchange_offer_responded_at' => now()]);
 
-            return $locked->fresh();
+            return $locked->fresh(['user']);
         }, 3);
+
+        $this->telegramAdmin->exchangeDecision($updated, $decision);
+
+        return $updated;
     }
 
     public function markReceived(Ticket $ticket): Ticket

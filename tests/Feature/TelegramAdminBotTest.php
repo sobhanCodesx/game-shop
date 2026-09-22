@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Order;
 use App\Models\TelegramBotAudit;
 use App\Services\Telegram\TelegramBotSessionStore;
 use App\Services\Telegram\TelegramAdminNotificationService;
 use App\Models\SocialContent;
 use App\Models\TelegramBotSetting;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Services\Telegram\TelegramApiClient;
 use App\Services\Telegram\TelegramBotExecutor;
@@ -915,6 +917,108 @@ class TelegramAdminBotTest extends TestCase
         Http::assertSent(function ($request): bool {
             return str_ends_with($request->url(), '/sendMessage')
                 && str_contains((string) ($request->data()['text'] ?? ''), 'فایل ویدیو');
+        });
+    }
+
+    public function test_admin_action_alerts_cover_orders_tickets_replies_cancellations_and_exchange_decisions(): void
+    {
+        $this->configureBot();
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        $user = User::factory()->create([
+            'name' => 'مشتری تست',
+            'email' => 'customer@example.test',
+            'status' => 'active',
+            'is_admin' => false,
+        ]);
+
+        $order = new Order([
+            'number' => 'NP-TEST-1001',
+            'status' => 'pending',
+            'grand_total' => 980000,
+            'wallet_used' => 80000,
+            'payable_amount' => 900000,
+            'delivery_method' => 'courier',
+        ]);
+        $order->forceFill(['id' => 91, 'user_id' => $user->id]);
+        $order->setRelation('user', $user);
+        $order->setRelation('items', collect([
+            (object) ['title' => 'بازی تست', 'quantity' => 1],
+        ]));
+
+        $ticket = new Ticket([
+            'number' => 'TK-TEST-1001',
+            'subject' => 'مشکل سفارش',
+            'type' => 'support',
+            'status' => 'pending',
+            'exchange_status' => null,
+            'exchange_offer_amount' => 0,
+        ]);
+        $ticket->forceFill(['id' => 81, 'user_id' => $user->id]);
+        $ticket->setRelation('user', $user);
+
+        $exchange = new Ticket([
+            'number' => 'TK-EX-1001',
+            'subject' => 'درخواست معاوضه',
+            'type' => 'exchange',
+            'status' => 'open',
+            'exchange_status' => 'accepted',
+            'exchange_offer_amount' => 450000,
+        ]);
+        $exchange->forceFill(['id' => 82, 'user_id' => $user->id]);
+        $exchange->setRelation('user', $user);
+
+        $alerts = app(TelegramAdminNotificationService::class);
+        $alerts->newOrder($order);
+        $alerts->orderCancelled($order->forceFill(['status' => 'cancelled']));
+        $alerts->newTicket($ticket, 'سلام، سفارش من نیاز به بررسی دارد.');
+        $alerts->ticketReply($ticket, 'هنوز مشکل من حل نشده است.');
+        $alerts->exchangeDecision($exchange, 'accepted');
+
+        Http::assertSentCount(5);
+
+        foreach ([
+            'سفارش جدید نیازمند بررسی',
+            'لغو سفارش توسط مشتری',
+            'تیکت جدید نیازمند پاسخ',
+            'پاسخ جدید مشتری به تیکت',
+            'پاسخ مشتری به پیشنهاد معاوضه',
+        ] as $needle) {
+            Http::assertSent(fn ($request): bool =>
+                str_ends_with($request->url(), '/sendMessage')
+                && ($request->data()['chat_id'] ?? null) === '777777777'
+                && str_contains((string) ($request->data()['text'] ?? ''), $needle)
+            );
+        }
+
+        Http::assertSent(function ($request): bool {
+            $text = (string) ($request->data()['text'] ?? '');
+            $buttons = collect($request->data()['reply_markup']['inline_keyboard'] ?? [])
+                ->flatten(1);
+
+            return str_contains($text, 'سفارش جدید نیازمند بررسی')
+                && $buttons->contains(
+                    fn ($button): bool => is_array($button)
+                        && str_contains((string) ($button['url'] ?? ''), '/admin/orders/91'),
+                );
+        });
+
+        Http::assertSent(function ($request): bool {
+            $text = (string) ($request->data()['text'] ?? '');
+            $buttons = collect($request->data()['reply_markup']['inline_keyboard'] ?? [])
+                ->flatten(1);
+
+            return str_contains($text, 'تیکت جدید نیازمند پاسخ')
+                && $buttons->contains(
+                    fn ($button): bool => is_array($button)
+                        && str_contains((string) ($button['url'] ?? ''), '/admin/tickets/81'),
+                );
         });
     }
 
