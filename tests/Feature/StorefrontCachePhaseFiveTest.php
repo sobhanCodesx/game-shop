@@ -115,4 +115,56 @@ class StorefrontCachePhaseFiveTest extends TestCase
                 ->has('collections.data', 1)
                 ->where('collections.data.0.title', 'Studio Collection'));
     }
+
+    public function test_studio_channel_order_stays_follower_ranked_after_subscription_changes(): void
+    {
+        $studio = Studio::query()->create([
+            'name' => 'Ranking Studio',
+            'slug' => 'ranking-studio',
+            'status' => 'active',
+        ]);
+
+        $first = Game::factory()->create([
+            'studio_id' => $studio->id,
+            'name' => 'First Ranked Game',
+            'slug' => 'first-ranked-game',
+            'status' => 'published',
+        ]);
+
+        $second = Game::factory()->create([
+            'studio_id' => $studio->id,
+            'name' => 'Second Ranked Game',
+            'slug' => 'second-ranked-game',
+            'status' => 'published',
+        ]);
+
+        $firstFollower = User::factory()->create();
+        $first->subscribers()->attach($firstFollower->id);
+
+        $url = route('studios.show', $studio->slug);
+
+        $this->get($url)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('channels.data.0.name', 'First Ranked Game')
+                ->where('channels.data.0.followers_count', 1));
+
+        $secondFollowerA = User::factory()->create();
+        $secondFollowerB = User::factory()->create();
+
+        $this->actingAs($secondFollowerA)
+            ->post(route('channels.subscription', $second->slug))
+            ->assertRedirect();
+
+        $this->actingAs($secondFollowerB)
+            ->post(route('channels.subscription', $second->slug))
+            ->assertRedirect();
+
+        $this->get($url)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('channels.data.0.name', 'Second Ranked Game')
+                ->where('channels.data.0.followers_count', 2));
+    }
+
 }
