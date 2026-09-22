@@ -8,6 +8,7 @@ use App\Services\GameEventService;
 use App\Services\SitemapCacheService;
 use App\Services\StorefrontPageCache;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class SocialContentObserver
 {
@@ -22,6 +23,7 @@ class SocialContentObserver
             app(StorefrontPageCache::class)->invalidate('channel', 'feed');
         } elseif ($content->type === 'short') {
             app(StorefrontPageCache::class)->invalidate('short', 'feed');
+            Cache::forget('storefront.stories.v1');
         }
 
         if ($this->isPublished($content)) {
@@ -59,6 +61,7 @@ class SocialContentObserver
             ])
         ) {
             app(StorefrontPageCache::class)->invalidate('short', 'feed');
+            Cache::forget('storefront.stories.v1');
             app(SitemapCacheService::class)->invalidate();
         }
 
