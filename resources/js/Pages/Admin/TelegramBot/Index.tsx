@@ -92,6 +92,11 @@ const statusTone = (status: string) => {
     return "default";
 };
 
+const glassCard =
+    "overflow-hidden border border-white/10 bg-slate-950/60 backdrop-blur-2xl shadow-2xl shadow-black/20 ring-1 ring-inset ring-cyan-400/5";
+const glassButton =
+    "border border-white/10 backdrop-blur-xl shadow-lg shadow-black/10 transition-transform duration-200 hover:-translate-y-0.5";
+
 export default function TelegramBotIndex({
     settings,
     webhookInfo,
@@ -167,9 +172,72 @@ export default function TelegramBotIndex({
         >
             <Head title="ربات تلگرام" />
 
+            <div className="relative mb-5 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/65 p-5 shadow-2xl shadow-black/30 backdrop-blur-3xl ring-1 ring-inset ring-indigo-400/10 md:p-7">
+                <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-indigo-500/10 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-28 left-10 size-64 rounded-full bg-cyan-400/10 blur-3xl" />
+
+                <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+                    <div className="flex items-start gap-4">
+                        <div className="relative grid size-16 shrink-0 place-items-center rounded-3xl border border-cyan-300/15 bg-white/[0.04] text-cyan-200 shadow-xl shadow-cyan-950/20 backdrop-blur-2xl">
+                            <Bot size={30} />
+                            <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-slate-950 bg-emerald-400 shadow-lg shadow-emerald-400/40" />
+                        </div>
+                        <div>
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <span className="text-[10px] font-black tracking-[0.28em] text-cyan-300/80">
+                                    PLAYNEXUS BOT CONTROL
+                                </span>
+                                <Chip size="sm">
+                                    {settings.enabled ? "ONLINE" : "OFFLINE"}
+                                </Chip>
+                            </div>
+                            <h2 className="text-xl font-black text-white md:text-2xl">
+                                مرکز کنترل خصوصی Telegram
+                            </h2>
+                            <p className="mt-2 max-w-2xl text-xs leading-6 text-slate-400 md:text-sm">
+                                مدیریت محتوا، انتشار، مدیا و Intelligence با دسترسی Owner-only و مسیر ارتباطی چندلایه.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {[
+                            {
+                                label: "Transport",
+                                value: settings.transport_mode.toUpperCase(),
+                            },
+                            {
+                                label: "Relay",
+                                value: settings.relay_configured ? "READY" : "—",
+                            },
+                            {
+                                label: "Write",
+                                value: settings.write_enabled ? "ON" : "OFF",
+                            },
+                            {
+                                label: "Publish",
+                                value: settings.publish_enabled ? "ON" : "OFF",
+                            },
+                        ].map((metric) => (
+                            <div
+                                className="min-w-[108px] rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 shadow-lg shadow-black/10 backdrop-blur-2xl"
+                                key={metric.label}
+                            >
+                                <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">
+                                    {metric.label}
+                                </div>
+                                <div className="mt-1 text-xs font-black text-slate-200">
+                                    {metric.value}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
             <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_390px]">
                 <div className="space-y-5">
-                    <Card variant="secondary">
+                    <Card className={glassCard} variant="secondary">
                         <Card.Header className="flex flex-col gap-3 border-b border-slate-800 p-5 md:flex-row md:items-center md:justify-between">
                             <div>
                                 <div className="flex items-center gap-3">
@@ -254,7 +322,7 @@ export default function TelegramBotIndex({
                                 </label>
                             </div>
 
-                            <div className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-950/35 p-4 md:grid-cols-2">
+                            <div className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4 shadow-inner shadow-black/10 backdrop-blur-xl md:grid-cols-2">
                                 {[
                                     {
                                         key: "enabled" as const,
@@ -283,7 +351,7 @@ export default function TelegramBotIndex({
                                     },
                                 ].map((item) => (
                                     <div
-                                        className="flex items-start justify-between gap-4 rounded-xl border border-slate-800/70 bg-slate-900/40 p-4"
+                                        className="flex items-start justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-lg shadow-black/10 backdrop-blur-xl"
                                         key={item.key}
                                     >
                                         <div>
@@ -306,7 +374,7 @@ export default function TelegramBotIndex({
                         </Card.Content>
                     </Card>
 
-                    <Card variant="secondary">
+                    <Card className={glassCard} variant="secondary">
                         <Card.Header className="border-b border-slate-800 p-5">
                             <div className="flex items-center gap-3">
                                 <span className="grid size-10 place-items-center rounded-xl bg-cyan-500/10 text-cyan-300">
@@ -364,7 +432,7 @@ export default function TelegramBotIndex({
 
                             {(form.data.transport_mode === "auto" ||
                                 form.data.transport_mode === "relay") && (
-                                <div className="space-y-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                                <div className="space-y-4 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.045] p-4 shadow-xl shadow-cyan-950/10 backdrop-blur-2xl">
                                     <div className="flex items-start justify-between gap-4">
                                         <div>
                                             <strong className="text-sm text-cyan-200">
@@ -428,7 +496,7 @@ export default function TelegramBotIndex({
 
                             {(form.data.transport_mode === "auto" ||
                                 form.data.transport_mode === "proxy") && (
-                                <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                                <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4 shadow-xl shadow-black/10 backdrop-blur-2xl">
                                     <div className="flex items-start justify-between gap-4">
                                         <div>
                                             <strong className="text-sm text-slate-200">
@@ -548,6 +616,7 @@ export default function TelegramBotIndex({
 
                     <div className="flex flex-wrap justify-end gap-2">
                         <Button
+                            className={glassButton}
                             isDisabled={form.processing}
                             onPress={save}
                             variant="primary"
@@ -557,7 +626,7 @@ export default function TelegramBotIndex({
                         </Button>
                     </div>
 
-                    <Card variant="secondary">
+                    <Card className={glassCard} variant="secondary">
                         <Card.Header className="flex items-center justify-between border-b border-slate-800 p-5">
                             <div>
                                 <h2 className="font-black text-white">
@@ -627,7 +696,7 @@ export default function TelegramBotIndex({
                 </div>
 
                 <div className="space-y-5">
-                    <Card variant="secondary">
+                    <Card className={glassCard} variant="secondary">
                         <Card.Header className="border-b border-slate-800 p-5">
                             <h2 className="font-black text-white">
                                 اتصال و Webhook
@@ -679,6 +748,7 @@ export default function TelegramBotIndex({
 
                             <div className="grid gap-2">
                                 <Button
+                                    className={glassButton}
                                     onPress={() =>
                                         action(
                                             "post",
@@ -691,6 +761,7 @@ export default function TelegramBotIndex({
                                     تست اتصال / getMe
                                 </Button>
                                 <Button
+                                    className={glassButton}
                                     onPress={() =>
                                         action(
                                             "post",
@@ -703,6 +774,7 @@ export default function TelegramBotIndex({
                                     ثبت / Sync Webhook
                                 </Button>
                                 <Button
+                                    className={glassButton}
                                     onPress={() =>
                                         action(
                                             "post",
@@ -715,6 +787,7 @@ export default function TelegramBotIndex({
                                     ارسال پیام تست
                                 </Button>
                                 <Button
+                                    className={glassButton}
                                     onPress={() =>
                                         action(
                                             "post",
@@ -728,6 +801,7 @@ export default function TelegramBotIndex({
                                     Rotate webhook secret
                                 </Button>
                                 <Button
+                                    className={glassButton}
                                     onPress={() =>
                                         action(
                                             "delete",
@@ -744,7 +818,7 @@ export default function TelegramBotIndex({
                         </Card.Content>
                     </Card>
 
-                    <Card variant="secondary">
+                    <Card className={glassCard} variant="secondary">
                         <Card.Content className="space-y-3 p-5 text-xs text-slate-500">
                             <strong className="block text-sm text-white">
                                 وضعیت Runtime
@@ -777,7 +851,7 @@ export default function TelegramBotIndex({
                     </Card>
 
                     {settings.last_error && (
-                        <Card variant="secondary">
+                        <Card className={glassCard} variant="secondary">
                             <Card.Content className="p-5">
                                 <strong className="text-sm text-rose-300">
                                     آخرین خطای Bot
