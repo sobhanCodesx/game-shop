@@ -12,7 +12,7 @@ class GameObserver
 {
     public function created(Game $game): void
     {
-        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio');
+        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio', 'video', 'feed');
         app(SitemapCacheService::class)->invalidate();
     }
 
@@ -20,7 +20,7 @@ class GameObserver
     {
         app(SitemapCacheService::class)->invalidate();
         if ($game->wasChanged(['studio_id', 'name', 'slug', 'description', 'cover', 'background', 'release_date', 'developer', 'publisher', 'age_rating', 'status'])) {
-            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio');
+            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio', 'video', 'feed');
         }
 
         if (! $game->wasChanged('release_date')) {
@@ -35,13 +35,13 @@ class GameObserver
 
     public function deleted(Game $game): void
     {
-        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio');
+        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio', 'video', 'feed');
         app(SitemapCacheService::class)->invalidate();
     }
 
     public function restored(Game $game): void
     {
-        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio');
+        app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'short', 'home', 'studio', 'video', 'feed');
         app(SitemapCacheService::class)->invalidate();
     }
 }
