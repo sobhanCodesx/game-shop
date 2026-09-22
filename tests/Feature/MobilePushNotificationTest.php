@@ -141,9 +141,14 @@ class MobilePushNotificationTest extends TestCase
             'last_seen_at' => now(),
         ]);
 
-        (new SendExpoPushNotification([$device->id], [
-            'title' => 'نظر جدید', 'message' => 'یک نظر جدید دارید.', 'url' => '/videos/example',
-        ]))->handle();
+        app()->call([
+            new SendExpoPushNotification([$device->id], [
+                'title' => 'نظر جدید',
+                'message' => 'یک نظر جدید دارید.',
+                'url' => '/videos/example',
+            ]),
+            'handle',
+        ]);
 
         $this->assertFalse($device->refresh()->push_enabled);
         Http::assertSent(fn ($request) => $request[0]['data']['url'] === '/videos/example');
