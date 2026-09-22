@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\SocialContentMedia;
+use App\Services\SitemapCacheService;
 use App\Services\StorefrontPageCache;
 
 class SocialContentMediaObserver
@@ -30,10 +31,12 @@ class SocialContentMediaObserver
 
         if ($type === 'video') {
             app(StorefrontPageCache::class)->invalidate('playlist', 'channel');
+            app(SitemapCacheService::class)->invalidate();
         } elseif ($type === 'post') {
             app(StorefrontPageCache::class)->invalidate('channel');
         } elseif ($type === 'short') {
             app(StorefrontPageCache::class)->invalidate('short');
+            app(SitemapCacheService::class)->invalidate();
         }
     }
 }
