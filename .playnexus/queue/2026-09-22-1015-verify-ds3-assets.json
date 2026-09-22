@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-22-1015-verify-ds3-assets",
-  "tool": "list_content_assets",
-  "arguments": {
-    "resource": "video",
-    "id": 70
-  }
-}
