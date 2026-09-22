@@ -220,7 +220,10 @@ class MobileAuthController extends Controller
         MobileCodeService $codes,
         MobileAuthPushService $push,
     ): JsonResponse {
-        $data = $request->validate(['phone' => ['required', 'string']]);
+        $data = $request->validate([
+            'phone' => ['required', 'string'],
+            'installation_id' => ['nullable', 'uuid'],
+        ]);
         $phone = PhoneNumber::normalize($data['phone']);
 
         $user = User::query()
@@ -231,7 +234,12 @@ class MobileAuthController extends Controller
 
         if ($user) {
             $code = $codes->send($phone, 'passwordless_login');
-            $push->sendPasswordlessOtp($user, $phone, $code);
+            $push->sendPasswordlessOtp(
+                $user,
+                $phone,
+                $code,
+                $data['installation_id'] ?? null,
+            );
         }
 
         return response()->json([
