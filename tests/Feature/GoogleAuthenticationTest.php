@@ -8,6 +8,7 @@ use GuzzleHttp\Psr7\Request as PsrRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -134,6 +135,57 @@ class GoogleAuthenticationTest extends TestCase
         $response->assertSessionHas('auth.redirect', '/explore?type=game&page=3');
         $response->assertSessionHas('google_oauth_state');
         $response->assertSessionHas('google_oauth_remember', true);
+    }
+
+    public function test_mobile_google_redirect_is_available_even_with_an_existing_web_session(): void
+    {
+        $user = User::factory()->create([
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->get('/auth/google/mobile?device_name=Galaxy%20S24');
+
+        $response->assertRedirectContains('https://accounts.google.com/o/oauth2/v2/auth')
+            ->assertSessionHas('google_mobile_oauth.device_name', 'Galaxy S24')
+            ->assertSessionHas('google_oauth_state');
+    }
+
+    public function test_mobile_google_callback_returns_single_use_exchange_code_without_web_login_side_effect(): void
+    {
+        Cache::flush();
+        $this->fakeGoogleUser([
+            'sub' => 'mobile-google',
+            'email' => 'mobile-google@gmail.com',
+            'email_verified' => true,
+            'name' => 'Mobile Google',
+        ]);
+
+        $response = $this->withSession([
+            'google_oauth_state' => 'mobile-state',
+            'google_mobile_oauth' => ['device_name' => 'Android PlayNexus'],
+        ])->get(route('auth.google.callback', [
+            'state' => 'mobile-state',
+            'code' => 'valid-code',
+        ]));
+
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringStartsWith('playnexus://auth/google?code=', $location);
+        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+        $code = (string) ($query['code'] ?? '');
+        $this->assertSame(64, strlen($code));
+        $this->assertTrue(Cache::has('mobile-google-oauth:'.hash('sha256', $code)));
+        $this->assertGuest();
+
+        $this->postJson('/api/v1/auth/google/exchange', [
+            'code' => $code,
+        ])->assertOk()
+            ->assertJsonPath('user.email', 'mobile-google@gmail.com');
+
+        $this->postJson('/api/v1/auth/google/exchange', [
+            'code' => $code,
+        ])->assertUnprocessable();
     }
 
     public function test_new_verified_google_user_is_created_without_password_and_returns_to_destination(): void

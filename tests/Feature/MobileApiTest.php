@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Product;
 use App\Models\SocialContent;
+use App\Models\TelegramBotSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class MobileApiTest extends TestCase
@@ -250,6 +252,118 @@ class MobileApiTest extends TestCase
             'phone' => $user->phone,
             'purpose' => 'passwordless_login',
         ]);
+    }
+
+    public function test_mobile_google_exchange_issues_one_time_bearer_token(): void
+    {
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'status' => 'active',
+        ]);
+        $code = str_repeat('g', 64);
+
+        Cache::put(
+            'mobile-google-oauth:'.hash('sha256', $code),
+            ['user_id' => $user->id, 'device_name' => 'OAuth Android'],
+            now()->addMinutes(2),
+        );
+
+        $response = $this->postJson('/api/v1/auth/google/exchange', [
+            'code' => $code,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('token_type', 'Bearer');
+
+        $this->assertDatabaseHas('mobile_access_tokens', [
+            'user_id' => $user->id,
+            'device_name' => 'OAuth Android',
+        ]);
+
+        $this->postJson('/api/v1/auth/google/exchange', [
+            'code' => $code,
+        ])->assertUnprocessable();
+    }
+
+    public function test_mobile_registration_can_finish_with_telegram_phone_proof(): void
+    {
+        Cache::flush();
+        TelegramBotSetting::query()->create([
+            'enabled' => true,
+            'bot_username' => 'play_nexus_game_bot',
+        ]);
+
+        $user = User::factory()->create([
+            'phone' => '09123456789',
+            'phone_verified_at' => null,
+            'status' => 'active',
+        ]);
+
+        $begin = $this->postJson('/api/v1/auth/verification/telegram', [
+            'phone' => $user->phone,
+        ]);
+
+        $begin->assertOk()
+            ->assertJsonPath('identifier', $user->phone);
+
+        $claim = (string) $begin->json('claim_token');
+        $this->assertSame(64, strlen($claim));
+        $this->assertStringContainsString(
+            'https://t.me/play_nexus_game_bot?start=verifyphone_',
+            (string) $begin->json('url'),
+        );
+
+        $this->postJson('/api/v1/auth/verification/telegram/complete', [
+            'claim_token' => $claim,
+            'device_name' => 'Telegram Android',
+        ])->assertStatus(409)
+            ->assertJsonPath('code', 'telegram_verification_pending');
+
+        $user->forceFill(['phone_verified_at' => now()])->save();
+
+        $this->postJson('/api/v1/auth/verification/telegram/complete', [
+            'claim_token' => $claim,
+            'device_name' => 'Telegram Android',
+        ])->assertOk()
+            ->assertJsonPath('user.id', $user->id);
+
+        $this->assertDatabaseHas('mobile_access_tokens', [
+            'user_id' => $user->id,
+            'device_name' => 'Telegram Android',
+        ]);
+    }
+
+    public function test_mobile_account_can_request_and_disconnect_telegram_link(): void
+    {
+        Cache::flush();
+        TelegramBotSetting::query()->create([
+            'enabled' => true,
+            'bot_username' => 'play_nexus_game_bot',
+        ]);
+
+        $user = User::factory()->create([
+            'status' => 'active',
+            'telegram_user_id' => '123',
+            'telegram_chat_id' => '123',
+            'telegram_linked_at' => now(),
+        ]);
+        $token = app(\App\Services\MobileApiTokenService::class)
+            ->issue($user, 'Telegram test')['plain_text_token'];
+
+        $this->withToken($token)
+            ->postJson('/api/v1/me/telegram/connect')
+            ->assertOk()
+            ->assertJsonPath('message', 'Telegram باز می‌شود؛ اتصال را داخل Bot کامل کن.');
+
+        $this->withToken($token)
+            ->deleteJson('/api/v1/me/telegram')
+            ->assertOk()
+            ->assertJsonPath('disconnected', true);
+
+        $user->refresh();
+        $this->assertNull($user->telegram_user_id);
+        $this->assertNull($user->telegram_chat_id);
     }
 
 }

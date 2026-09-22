@@ -59,6 +59,12 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
         Route::post('verification/resend', [MobileAuthController::class, 'resendVerification'])
             ->middleware('throttle:3,1')
             ->name('verification.resend');
+        Route::post('verification/telegram', [MobileAuthController::class, 'requestVerificationTelegram'])
+            ->middleware('throttle:3,1')
+            ->name('verification.telegram');
+        Route::post('verification/telegram/complete', [MobileAuthController::class, 'completeVerificationTelegram'])
+            ->middleware('throttle:10,1')
+            ->name('verification.telegram.complete');
         Route::post('login', [MobileAuthController::class, 'login'])
             ->middleware('throttle:8,1')
             ->name('login');
@@ -80,6 +86,9 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
         Route::post('google', [MobileAuthController::class, 'google'])
             ->middleware('throttle:10,1')
             ->name('google');
+        Route::post('google/exchange', [MobileAuthController::class, 'googleExchange'])
+            ->middleware('throttle:10,1')
+            ->name('google.exchange');
     });
 
     Route::middleware(['mobile.api:optional', 'throttle:180,1'])->group(function (): void {
@@ -143,6 +152,15 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
             ->name('notification-preferences.show');
         Route::put('notification-preferences', [MobileAccountController::class, 'updateNotificationPreferences'])
             ->name('notification-preferences.update');
+        Route::post('me/telegram/connect', [MobileAccountController::class, 'connectTelegram'])
+            ->middleware('throttle:5,1')
+            ->name('account.telegram.connect');
+        Route::post('me/phone/verify-telegram', [MobileAccountController::class, 'verifyPhoneWithTelegram'])
+            ->middleware('throttle:4,1')
+            ->name('account.phone.telegram');
+        Route::delete('me/telegram', [MobileAccountController::class, 'disconnectTelegram'])
+            ->middleware('throttle:5,1')
+            ->name('account.telegram.disconnect');
         Route::get('saved', [MobileAccountController::class, 'saved'])->name('saved.index');
 
         Route::post('contents/{content:slug}/reaction', [MobileCommunityController::class, 'react'])

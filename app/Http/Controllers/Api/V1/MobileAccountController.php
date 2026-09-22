@@ -11,8 +11,11 @@ use App\Models\SocialContent;
 use App\Models\UserAddress;
 use App\Services\MediaStorage;
 use App\Services\StorefrontDataService;
+use App\Services\Telegram\TelegramUserLinkService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class MobileAccountController extends Controller
 {
@@ -236,6 +239,70 @@ class MobileAccountController extends Controller
                 'feed_enabled' => (bool) $preference->feed_enabled,
                 'telegram_enabled' => (bool) $preference->telegram_enabled,
             ],
+        ]);
+    }
+
+    public function connectTelegram(
+        Request $request,
+        TelegramUserLinkService $links,
+    ): JsonResponse {
+        try {
+            $url = $links->begin($request->user());
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages([
+                'telegram' => $exception->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'url' => $url,
+            'message' => 'Telegram باز می‌شود؛ اتصال را داخل Bot کامل کن.',
+        ]);
+    }
+
+    public function verifyPhoneWithTelegram(
+        Request $request,
+        TelegramUserLinkService $links,
+    ): JsonResponse {
+        $user = $request->user();
+
+        if (! filled($user->phone)) {
+            throw ValidationException::withMessages([
+                'phone' => 'ابتدا شماره موبایل را در پروفایل ذخیره کن.',
+            ]);
+        }
+
+        if ($user->phone_verified_at) {
+            return response()->json([
+                'verified' => true,
+                'message' => 'شماره موبایل قبلاً تأیید شده است.',
+            ]);
+        }
+
+        try {
+            $url = $links->beginPhoneVerification($user);
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages([
+                'telegram' => $exception->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'verified' => false,
+            'url' => $url,
+            'message' => 'داخل Telegram شماره خودت را با دکمه رسمی Bot تأیید کن.',
+        ]);
+    }
+
+    public function disconnectTelegram(
+        Request $request,
+        TelegramUserLinkService $links,
+    ): JsonResponse {
+        $links->disconnect($request->user());
+
+        return response()->json([
+            'disconnected' => true,
+            'message' => 'اتصال Telegram از PlayNexus قطع شد.',
         ]);
     }
 

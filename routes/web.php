@@ -64,11 +64,17 @@ Route::get('sitemaps/{type}.xml', [SitemapController::class, 'show'])
     ->name('sitemap.show');
 Route::get('media/{path}', MediaStreamController::class)->where('path', '.*')->name('media.stream');
 
+Route::get('auth/google/mobile', [GoogleAuthController::class, 'mobileRedirect'])
+    ->middleware('throttle:20,1')
+    ->name('auth.google.mobile');
+Route::get('auth/google/callback', [GoogleAuthController::class, 'callback'])
+    ->middleware('throttle:20,1')
+    ->name('auth.google.callback');
+
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'login'])->name('login');
     Route::post('login', [AuthController::class, 'authenticate'])->middleware('throttle:5,1')->name('login.store');
     Route::get('auth/google', [GoogleAuthController::class, 'redirect'])->middleware('throttle:20,1')->name('auth.google.redirect');
-    Route::get('auth/google/callback', [GoogleAuthController::class, 'callback'])->middleware('throttle:20,1')->name('auth.google.callback');
     Route::post('login/otp', [AuthController::class, 'sendPasswordlessCode'])->middleware('throttle:3,1')->name('login.otp.send');
     Route::get('login/otp', [AuthController::class, 'passwordlessNotice'])->name('login.otp.notice');
     Route::post('login/otp/verify', [AuthController::class, 'confirmPasswordlessLogin'])->middleware('throttle:8,1')->name('login.otp.verify');

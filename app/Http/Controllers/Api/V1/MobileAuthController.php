@@ -13,11 +13,14 @@ use App\Services\MobileApiTokenService;
 use App\Services\MobileAuthPushService;
 use App\Services\MobileCodeService;
 use App\Services\Telegram\TelegramAdminNotificationService;
+use App\Services\Telegram\TelegramUserLinkService;
 use App\Support\PhoneNumber;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -121,6 +124,91 @@ class MobileAuthController extends Controller
             $mobiles->verify($identifier, 'verify_mobile', $data['code']);
             $user->forceFill(['phone_verified_at' => now()])->save();
         }
+
+        return $this->tokenResponse($user, $tokens, $data['device_name'] ?? null);
+    }
+
+    public function requestVerificationTelegram(
+        Request $request,
+        TelegramUserLinkService $links,
+    ): JsonResponse {
+        $data = $request->validate([
+            'phone' => ['required', 'string'],
+        ]);
+        $phone = PhoneNumber::normalize($data['phone']);
+        $user = User::query()
+            ->where('phone', $phone)
+            ->where('status', 'active')
+            ->whereNull('phone_verified_at')
+            ->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'telegram' => 'این شماره برای تأیید Telegram آماده نیست.',
+            ]);
+        }
+
+        try {
+            $url = $links->beginPhoneVerification($user);
+        } catch (\RuntimeException $exception) {
+            throw ValidationException::withMessages([
+                'telegram' => $exception->getMessage(),
+            ]);
+        }
+
+        $claim = Str::random(64);
+        Cache::put(
+            'mobile-telegram-verification:'.hash('sha256', $claim),
+            ['user_id' => $user->id, 'phone' => $phone],
+            now()->addMinutes(10),
+        );
+
+        return response()->json([
+            'identifier' => $phone,
+            'claim_token' => $claim,
+            'url' => $url,
+            'message' => 'Telegram را باز کن و شماره متعلق به همین حساب را با دکمه رسمی Bot بفرست.',
+        ]);
+    }
+
+    public function completeVerificationTelegram(
+        Request $request,
+        MobileApiTokenService $tokens,
+    ): JsonResponse {
+        $data = $request->validate([
+            'claim_token' => ['required', 'string', 'size:64'],
+            'device_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $key = 'mobile-telegram-verification:'.hash('sha256', $data['claim_token']);
+        $payload = Cache::get($key);
+        if (! is_array($payload) || empty($payload['user_id']) || empty($payload['phone'])) {
+            throw ValidationException::withMessages([
+                'telegram' => 'درخواست تأیید Telegram منقضی شده؛ دوباره از همین صفحه شروع کن.',
+            ]);
+        }
+
+        $user = User::query()->whereKey((int) $payload['user_id'])->first();
+        if (
+            ! $user
+            || $user->status !== 'active'
+            || PhoneNumber::normalize((string) $user->phone) !== (string) $payload['phone']
+        ) {
+            Cache::forget($key);
+            throw ValidationException::withMessages([
+                'telegram' => 'درخواست تأیید Telegram دیگر معتبر نیست.',
+            ]);
+        }
+
+        if (! $user->phone_verified_at) {
+            return response()->json([
+                'code' => 'telegram_verification_pending',
+                'message' => 'هنوز تأیید شماره داخل Bot کامل نشده است.',
+            ], 409);
+        }
+
+        Cache::forget($key);
+        $user->forceFill(['last_login_at' => now()])->save();
 
         return $this->tokenResponse($user, $tokens, $data['device_name'] ?? null);
     }
@@ -373,6 +461,35 @@ class MobileAuthController extends Controller
         $user->forceFill(['last_login_at' => now()])->save();
 
         return $this->tokenResponse($user, $tokens, $data['device_name'] ?? null);
+    }
+
+    public function googleExchange(
+        Request $request,
+        MobileApiTokenService $tokens,
+    ): JsonResponse {
+        $data = $request->validate([
+            'code' => ['required', 'string', 'size:64'],
+            'device_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $payload = Cache::pull('mobile-google-oauth:'.hash('sha256', $data['code']));
+        if (! is_array($payload) || empty($payload['user_id'])) {
+            throw ValidationException::withMessages([
+                'code' => 'درخواست ورود Google منقضی یا قبلاً استفاده شده است. دوباره تلاش کن.',
+            ]);
+        }
+
+        $user = User::query()->whereKey((int) $payload['user_id'])->first();
+        if (! $user || $user->status !== 'active') {
+            throw ValidationException::withMessages([
+                'code' => 'حساب Google برای ورود به PlayNexus در دسترس نیست.',
+            ]);
+        }
+
+        $deviceName = $data['device_name'] ?? ($payload['device_name'] ?? null);
+        $user->forceFill(['last_login_at' => now()])->save();
+
+        return $this->tokenResponse($user, $tokens, is_string($deviceName) ? $deviceName : null);
     }
 
     public function logout(Request $request): JsonResponse
