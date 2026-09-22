@@ -26,15 +26,20 @@ class NexusAiSettingsController extends Controller
             'nexus_ai_title' => ['required', 'string', 'max:100'],
             'nexus_ai_description' => ['nullable', 'string', 'max:500'],
             'nexus_ai_nav_label' => ['required', 'string', 'max:40'],
-            'nexus_ai_iframe_url' => ['required', 'url:http,https', 'max:500'],
-            'nexus_ai_min_height' => ['required', 'integer', 'between:520,1200'],
+            'nexus_ai_worker_url' => ['required', 'url:http,https', 'max:500'],
+            'nexus_ai_launcher_label' => ['required', 'string', 'max:60'],
+            'nexus_ai_welcome_title' => ['required', 'string', 'max:100'],
+            'nexus_ai_welcome_text' => ['required', 'string', 'max:500'],
             'nexus_ai_status_text' => ['nullable', 'string', 'max:40'],
         ]);
 
         $data['nexus_ai_title'] = trim($data['nexus_ai_title']);
         $data['nexus_ai_description'] = trim((string) ($data['nexus_ai_description'] ?? ''));
         $data['nexus_ai_nav_label'] = trim($data['nexus_ai_nav_label']);
-        $data['nexus_ai_iframe_url'] = rtrim(trim($data['nexus_ai_iframe_url']), '/');
+        $data['nexus_ai_worker_url'] = rtrim(trim($data['nexus_ai_worker_url']), '/');
+        $data['nexus_ai_launcher_label'] = trim($data['nexus_ai_launcher_label']);
+        $data['nexus_ai_welcome_title'] = trim($data['nexus_ai_welcome_title']);
+        $data['nexus_ai_welcome_text'] = trim($data['nexus_ai_welcome_text']);
         $data['nexus_ai_status_text'] = trim((string) ($data['nexus_ai_status_text'] ?? ''));
 
         $settings->update($data);
