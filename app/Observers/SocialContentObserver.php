@@ -24,7 +24,10 @@ class SocialContentObserver
     public function updated(SocialContent $content): void
     {
         if (
-            in_array($content->type, ['post', 'video'], true)
+            (
+                in_array($content->type, ['post', 'video'], true)
+                || in_array($content->getRawOriginal('type'), ['post', 'video'], true)
+            )
             && $content->wasChanged([
                 'game_id', 'related_product_id', 'related_content_id', 'type', 'feed_type', 'feed_badge',
                 'title', 'slug', 'excerpt', 'body', 'seo_title', 'seo_description', 'thumbnail',
