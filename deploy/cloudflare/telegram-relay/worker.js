@@ -1,4 +1,5 @@
 const TELEGRAM_ORIGIN = "https://api.telegram.org";
+const PLAYNEXUS_WEBHOOK = "https://playnexus.ir/api/telegram/webhook";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -54,6 +55,64 @@ function upstreamRequest(request, url) {
 
 export default {
   async fetch(request, env) {
+    const incoming = new URL(request.url);
+
+    // Inbound Telegram webhook relay. Telegram cannot send our private
+    // X-PlayNexus-Relay-Key, so this path authenticates with Telegram's
+    // X-Telegram-Bot-Api-Secret-Token and lets PlayNexus validate the value.
+    if (incoming.pathname === "/webhook") {
+      if (request.method !== "POST") {
+        return json({ ok: false, error: "method not allowed" }, 405);
+      }
+
+      const telegramSecret =
+        request.headers.get("x-telegram-bot-api-secret-token") || "";
+
+      if (
+        !telegramSecret ||
+        !/^[A-Za-z0-9_-]{1,256}$/.test(telegramSecret)
+      ) {
+        return unauthorized("telegram webhook secret missing or malformed");
+      }
+
+      const contentLength = Number(request.headers.get("content-length") || "0");
+      if (contentLength > 1024 * 1024) {
+        return json({ ok: false, error: "webhook payload too large" }, 413);
+      }
+
+      try {
+        const headers = cleanForwardHeaders(request);
+        headers.set(
+          "x-telegram-bot-api-secret-token",
+          telegramSecret,
+        );
+        headers.set("content-type", "application/json");
+
+        const response = await fetch(PLAYNEXUS_WEBHOOK, {
+          method: "POST",
+          headers,
+          body: request.body,
+          redirect: "manual",
+        });
+
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: {
+            "content-type":
+              response.headers.get("content-type") ||
+              "application/json; charset=utf-8",
+            "cache-control": "no-store",
+          },
+        });
+      } catch {
+        return json(
+          { ok: false, error: "playnexus webhook unavailable" },
+          502,
+        );
+      }
+    }
+
     const relayKey = request.headers.get("x-playnexus-relay-key") || "";
     if (!env.RELAY_KEY || relayKey !== env.RELAY_KEY) {
       return unauthorized("relay key rejected");
@@ -64,7 +123,6 @@ export default {
       return unauthorized("bot token missing or malformed", 401);
     }
 
-    const incoming = new URL(request.url);
     let upstream;
 
     if (incoming.pathname === "/health") {

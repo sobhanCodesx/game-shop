@@ -100,7 +100,7 @@ final class TelegramBotSettings
             'proxy_password_configured' => filled($settings['proxy_password']),
             'webhook_secret_configured' => filled($settings['webhook_secret']),
             'configured' => filled($settings['bot_token']) && filled($settings['admin_user_id']),
-            'webhook_url' => route('telegram.webhook'),
+            'webhook_url' => $this->webhookUrl($settings),
             'max_download_bytes' => (int) config('telegram_bot.max_download_bytes', 20 * 1024 * 1024),
         ];
     }
@@ -307,6 +307,22 @@ final class TelegramBotSettings
         } catch (Throwable) {
         }
     }
+    private function webhookUrl(array $settings): string
+    {
+        $mode = (string) ($settings['transport_mode'] ?? 'auto');
+        $relayBaseUrl = rtrim(trim((string) ($settings['relay_base_url'] ?? '')), '/');
+
+        if (
+            in_array($mode, ['auto', 'relay'], true)
+            && $relayBaseUrl !== ''
+            && filled($settings['relay_key'] ?? null)
+        ) {
+            return $relayBaseUrl.'/webhook';
+        }
+
+        return route('telegram.webhook');
+    }
+
 
     private function tableExists(): bool
     {
