@@ -205,6 +205,10 @@ final class TelegramBotCommandRouter
         $parts = explode(':', $data);
         $action = $parts[0] ?? '';
 
+        if (! in_array($action, ['confirm', 'cancel'], true)) {
+            $this->sessions->clear($userId, $chatId);
+        }
+
         if ($action === 'menu') {
             $target = $parts[1] ?? 'home';
 
