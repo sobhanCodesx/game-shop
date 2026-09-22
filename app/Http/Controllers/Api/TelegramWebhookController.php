@@ -17,16 +17,15 @@ class TelegramWebhookController extends Controller
         TelegramBotService $bot,
     ): JsonResponse {
         $resolved = $settings->resolved();
-
-        if (! ($resolved['enabled'] ?? false)) {
-            return response()->json(['ok' => true, 'disabled' => true]);
-        }
-
         $expected = trim((string) ($resolved['webhook_secret'] ?? ''));
         $received = trim((string) $request->header('X-Telegram-Bot-Api-Secret-Token', ''));
 
         if ($expected === '' || $received === '' || ! hash_equals($expected, $received)) {
             return response()->json(['ok' => false], 403);
+        }
+
+        if (! ($resolved['enabled'] ?? false)) {
+            return response()->json(['ok' => true]);
         }
 
         $payload = $request->json()->all();
