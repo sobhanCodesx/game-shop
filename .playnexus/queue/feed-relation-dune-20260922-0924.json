@@ -1,1 +1,0 @@
-{"job_id":"feed-engine-20260922-dune-relation","tool":"query_playnexus_graph","arguments":{"query":"query DuneRelation { search(query: \"Dune Awakening\", first: 6) { games { id name status releaseDate } content { id type title status publishedAt } } }","variables":{},"operation_name":"DuneRelation"}}
