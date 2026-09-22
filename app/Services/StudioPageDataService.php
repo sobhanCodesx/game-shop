@@ -26,6 +26,7 @@ final class StudioPageDataService
             'studio',
             "studio:{$studio->id}:channels:{$channelsPage}:collections:{$collectionsPage}",
             fn () => $this->build($studio, $channelsPage, $collectionsPage),
+            21600,
         );
 
         return $this->withLiveFollowers($payload);
@@ -36,9 +37,14 @@ final class StudioPageDataService
         $channels = Game::query()
             ->whereBelongsTo($studio)
             ->whereIn('status', ['active', 'published'])
-            ->withCount(['videos' => fn ($query) => $query->published()])
+            ->withCount([
+                'videos' => fn ($query) => $query->published(),
+                'subscribers',
+            ])
+            ->orderByDesc('subscribers_count')
             ->latest('id')
             ->paginate(18, ['*'], 'channels_page', $channelsPage)
+            ->withQueryString()
             ->through(fn (Game $game) => [
                 'id' => $game->id,
                 'name' => $game->name,
@@ -47,7 +53,7 @@ final class StudioPageDataService
                 'logo_url' => MediaStorage::url($game->cover),
                 'background_url' => MediaStorage::url($game->background),
                 'videos_count' => (int) $game->videos_count,
-                'followers_count' => 0,
+                'followers_count' => (int) $game->subscribers_count,
             ])
             ->toArray();
 
@@ -61,6 +67,7 @@ final class StudioPageDataService
             ->orderBy('sort_order')
             ->latest('id')
             ->paginate(12, ['*'], 'collections_page', $collectionsPage)
+            ->withQueryString()
             ->through(fn (VideoPlaylist $playlist) => [
                 'id' => $playlist->id,
                 'title' => $playlist->title,
