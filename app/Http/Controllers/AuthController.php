@@ -64,9 +64,10 @@ class AuthController extends Controller
 
             $supported = ($settings['enabled'] ?? false)
                 && filled($settings['bot_username'] ?? null);
-            $connected = (bool) ($user
-                && filled($user->telegram_chat_id)
-                && filled($user->telegram_linked_at));
+            // For registration fallback, a normal Telegram account link
+            // is not enough. The user must have freshly proven ownership of
+            // the exact phone through Telegram's request_contact flow.
+            $connected = (bool) ($user && $telegramLinks->hasRecentPhoneProof($user));
             $connectUrl = null;
 
             if ($supported && $user && ! $connected && ! $user->phone_verified_at) {
