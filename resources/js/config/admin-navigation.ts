@@ -1,5 +1,6 @@
 import {
     BadgePercent,
+    Bot,
     Boxes,
     Building2,
     ClipboardList,
@@ -121,6 +122,7 @@ export const adminNavigation: NavigationEntry[] = [
             link("پنل‌های پیامکی", "/admin/sms-providers", MessageSquareText),
             link("پترن‌های پیامک", "/admin/sms-patterns", ListChecks),
             link("تست پیامک", "/admin/sms-test", MessageSquareText),
+            link("ربات تلگرام", "/admin/telegram-bot", Bot, { superAdminOnly: true }),
             link("به‌روزرسانی سیستم", "/admin/deployments", Rocket),
             link("ریلیز نسخه اندروید", "/admin/android-releases", Smartphone),
             link("نگهداری سیستم", "/admin/system-maintenance", TerminalSquare, {
