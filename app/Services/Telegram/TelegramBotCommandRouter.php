@@ -31,6 +31,19 @@ final class TelegramBotCommandRouter
         'products' => 'product',
     ];
 
+    private const RESOURCE_LABELS = [
+        'game' => ['label' => 'بازی‌ها', 'icon' => '🎮', 'hub' => 'library'],
+        'studio' => ['label' => 'استودیوها', 'icon' => '🏭', 'hub' => 'library'],
+        'platform' => ['label' => 'پلتفرم‌ها', 'icon' => '🎛', 'hub' => 'library'],
+        'collection' => ['label' => 'کالکشن‌ها', 'icon' => '📚', 'hub' => 'content'],
+        'feed' => ['label' => 'فید', 'icon' => '📰', 'hub' => 'content'],
+        'story' => ['label' => 'استوری', 'icon' => '📱', 'hub' => 'content'],
+        'video' => ['label' => 'ویدیوها', 'icon' => '🎬', 'hub' => 'content'],
+        'product' => ['label' => 'محصولات', 'icon' => '🛍', 'hub' => 'commerce'],
+    ];
+
+    private const MUTABLE_RESOURCES = ['game', 'studio', 'collection', 'feed', 'story', 'video'];
+
     public function __construct(
         private readonly TelegramApiClient $telegram,
         private readonly TelegramBotSettings $settings,
@@ -69,6 +82,47 @@ final class TelegramBotCommandRouter
         $session = $this->sessions->get($userId, $chatId);
         if (! str_starts_with($text, '/') && $session?->state === 'awaiting_tool_json') {
             return $this->handleAwaitingJson($userId, $chatId, $session->context ?? [], $text);
+        }
+
+        if (! str_starts_with($text, '/') && $session?->state === 'awaiting_search') {
+            $context = is_array($session->context) ? $session->context : [];
+            $resource = $this->resource((string) ($context['resource'] ?? ''));
+            $this->sessions->clear($userId, $chatId);
+
+            return $this->sendResourceList($chatId, $resource, $text);
+        }
+
+        if (! str_starts_with($text, '/') && $session?->state === 'awaiting_graph_query') {
+            $this->sessions->clear($userId, $chatId);
+
+            return $this->executeReadTool($chatId, 'query_playnexus_graph', ['query' => $text]);
+        }
+
+        if (! str_starts_with($text, '/') && $session?->state === 'awaiting_restore_id') {
+            $context = is_array($session->context) ? $session->context : [];
+            $resource = $this->resource((string) ($context['resource'] ?? ''));
+            $id = $this->positiveInt(trim($text));
+            $this->sessions->clear($userId, $chatId);
+
+            return $this->queueTool($userId, $chatId, 'restore_content', compact('resource', 'id'));
+        }
+
+        if (! str_starts_with($text, '/') && $session?->state === 'awaiting_sync_collection') {
+            $context = is_array($session->context) ? $session->context : [];
+            $collectionId = $this->positiveInt($context['collection_id'] ?? null);
+            $videoIds = array_values(array_filter(array_map(
+                fn ($value) => filter_var(trim($value), FILTER_VALIDATE_INT) ?: null,
+                explode(',', $text),
+            )));
+            if ($videoIds === []) {
+                throw new InvalidArgumentException('حداقل یک Video ID بده؛ مثال: 10,11,12');
+            }
+            $this->sessions->clear($userId, $chatId);
+
+            return $this->queueTool($userId, $chatId, 'sync_collection_videos', [
+                'collection_id' => $collectionId,
+                'video_ids' => $videoIds,
+            ]);
         }
 
         if (! str_starts_with($text, '/') && $session?->state === 'pending_confirmation') {
@@ -133,18 +187,126 @@ final class TelegramBotCommandRouter
         $action = $parts[0] ?? '';
 
         if ($action === 'menu') {
-            $resource = $parts[1] ?? '';
-            if ($resource === 'home') {
+            $target = $parts[1] ?? 'home';
+
+            if ($target === 'home') {
                 return $this->showMenu($chatId);
             }
-            if ($resource === 'status') {
+            if ($target === 'status') {
                 return $this->showStatus($chatId);
             }
-            if ($resource === 'help') {
+            if ($target === 'help') {
                 return $this->sendAndReturn($chatId, $this->formatter->help(), 'help');
             }
+            if ($target === 'advanced') {
+                return $this->sendAndReturn($chatId, $this->formatter->advancedHelp(), 'advanced_help');
+            }
+            if (in_array($target, ['content', 'library', 'commerce', 'intelligence', 'system'], true)) {
+                return $this->showHub($chatId, $target);
+            }
 
-            return $this->sendResourceList($chatId, $this->resource($resource));
+            return $this->showResourceHub($chatId, $this->resource($target));
+        }
+
+        if ($action === 'list') {
+            $resource = $this->resource($parts[1] ?? '');
+            $offset = max(0, (int) ($parts[2] ?? 0));
+
+            return $this->sendResourceList($chatId, $resource, '', $offset);
+        }
+
+        if ($action === 'search') {
+            $resource = $this->resource($parts[1] ?? '');
+            $this->sessions->put($userId, $chatId, 'awaiting_search', compact('resource'));
+            $meta = $this->resourceMeta($resource);
+            $this->send(
+                $chatId,
+                "🔎 <b>جستجو در {$this->formatter->escape($meta['label'])}</b>\nعبارت جستجو را در پیام بعدی بفرست.",
+                $this->cancelKeyboard("menu:{$resource}"),
+            );
+
+            return ['action' => 'awaiting_search', 'resource' => $resource];
+        }
+
+        if ($action === 'graph-prompt') {
+            $this->sessions->put($userId, $chatId, 'awaiting_graph_query');
+            $this->send(
+                $chatId,
+                "🧠 <b>GraphQL Query</b>\nQuery را در پیام بعدی بفرست. این مسیر فقط‌خواندنی است.",
+                $this->cancelKeyboard('menu:intelligence'),
+            );
+
+            return ['action' => 'awaiting_graph_query'];
+        }
+
+        if ($action === 'events') {
+            $offset = max(0, (int) ($parts[1] ?? 0));
+
+            return $this->showEvents($chatId, $offset);
+        }
+
+        if ($action === 'event-new') {
+            $this->executor->authorize('upsert_game_event');
+            $this->sessions->put($userId, $chatId, 'awaiting_tool_json', [
+                'tool' => 'upsert_game_event',
+                'mode' => 'create',
+            ]);
+            $template = json_encode([
+                'game_id' => null,
+                'type' => 'update',
+                'title' => 'عنوان رویداد',
+                'summary' => null,
+                'source_type' => 'manual',
+                'source_name' => 'Telegram Admin',
+                'source_url' => null,
+                'importance_score' => 50,
+                'confidence' => 1,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}';
+            $this->send(
+                $chatId,
+                "➕ <b>Game Event جدید</b>\nJSON را در پیام بعدی بفرست:\n<pre>".$this->formatter->escape($template)."</pre>",
+                $this->cancelKeyboard('menu:intelligence'),
+            );
+
+            return ['action' => 'awaiting_event_json'];
+        }
+
+        if ($action === 'event-state') {
+            $id = $this->positiveInt($parts[1] ?? null);
+            $state = (string) ($parts[2] ?? '');
+
+            return $this->queueTool($userId, $chatId, 'set_game_event_state', compact('id', 'state'));
+        }
+
+        if ($action === 'restore-prompt') {
+            $resource = $this->resource($parts[1] ?? '');
+            if (! in_array($resource, ['game', 'studio'], true)) {
+                throw new InvalidArgumentException('Restore فقط برای game و studio فعال است.');
+            }
+            $this->executor->authorize('restore_content');
+            $this->sessions->put($userId, $chatId, 'awaiting_restore_id', compact('resource'));
+            $this->send(
+                $chatId,
+                "♻️ <b>Restore {$this->formatter->escape($this->resourceMeta($resource)['label'])}</b>\nID رکورد حذف‌شده را بفرست.",
+                $this->cancelKeyboard("menu:{$resource}"),
+            );
+
+            return ['action' => 'awaiting_restore_id', 'resource' => $resource];
+        }
+
+        if ($action === 'sync-prompt') {
+            $collectionId = $this->positiveInt($parts[1] ?? null);
+            $this->executor->authorize('sync_collection_videos');
+            $this->sessions->put($userId, $chatId, 'awaiting_sync_collection', [
+                'collection_id' => $collectionId,
+            ]);
+            $this->send(
+                $chatId,
+                "🔗 <b>Sync Collection #{$collectionId}</b>\nVideo IDها را با کاما بفرست؛ مثال: <code>10,11,12</code>",
+                $this->cancelKeyboard("view:collection:{$collectionId}"),
+            );
+
+            return ['action' => 'awaiting_sync_collection', 'resource' => 'collection', 'resource_id' => $collectionId];
         }
 
         if ($action === 'view') {
@@ -178,9 +340,11 @@ final class TelegramBotCommandRouter
             $this->sessions->put($userId, $chatId, 'awaiting_media', compact('resource', 'id', 'slot'));
             $this->send(
                 $chatId,
-                "فایل را همین حالا بفرست.\n<b>Resource:</b> ".$this->formatter->escape($resource)
-                ."\n<b>ID:</b> {$id}\n<b>Slot:</b> ".$this->formatter->escape($slot)
-                ."\n\nحد Bot API رسمی برای دانلود فایل توسط بات 20MB است. برای لغو: <code>/cancel</code>",
+                "📤 <b>ارسال مدیا</b>\n"
+                ."Resource: <b>".$this->formatter->escape($this->resourceMeta($resource)['label'])."</b>\n"
+                ."ID: <b>{$id}</b>\nSlot: <b>".$this->formatter->escape($slot)."</b>\n\n"
+                ."فایل را همین حالا بفرست. برای لغو از دکمه زیر استفاده کن.",
+                $this->cancelKeyboard("view:{$resource}:{$id}"),
             );
 
             return ['action' => 'awaiting_media', 'resource' => $resource, 'resource_id' => $id];
@@ -225,7 +389,7 @@ final class TelegramBotCommandRouter
             $token = (string) ($parts[1] ?? '');
             $pending = $this->sessions->consumeConfirmation($userId, $chatId, $token);
             if (! $pending) {
-                $this->send($chatId, 'این تأیید منقضی شده یا متعلق به عملیات دیگری است.');
+                $this->send($chatId, '⏳ این تأیید منقضی شده یا متعلق به عملیات دیگری است.', $this->menuKeyboard());
 
                 return ['action' => 'confirmation_expired'];
             }
@@ -233,23 +397,30 @@ final class TelegramBotCommandRouter
             $tool = (string) ($pending['tool'] ?? '');
             $arguments = is_array($pending['arguments'] ?? null) ? $pending['arguments'] : [];
             $result = $this->executor->execute($tool, $arguments);
-            $this->send($chatId, "✅ عملیات انجام شد.\n\n".$this->formatter->result($tool, $result), $this->menuKeyboard());
+            $resource = isset($arguments['resource']) ? (string) $arguments['resource'] : null;
+            $resourceId = $arguments['id'] ?? $arguments['collection_id'] ?? null;
+            $keyboard = $resource && $resourceId
+                ? $this->resourceBackKeyboard($resource, (int) $resourceId)
+                : $this->menuKeyboard();
+
+            $this->send($chatId, "✅ <b>عملیات انجام شد</b>\n\n".$this->formatter->result($tool, $result), $keyboard);
 
             return [
                 'action' => 'tool_confirmed:'.$tool,
-                'resource' => $arguments['resource'] ?? null,
-                'resource_id' => $arguments['id'] ?? $arguments['collection_id'] ?? null,
+                'resource' => $resource,
+                'resource_id' => $resourceId,
             ];
         }
 
         if ($action === 'cancel') {
             $this->sessions->clear($userId, $chatId);
-            $this->send($chatId, 'عملیات لغو شد.', $this->menuKeyboard());
+            $back = (string) ($parts[1] ?? 'menu-home');
+            $this->send($chatId, '✕ عملیات لغو شد.', $this->menuKeyboard());
 
-            return ['action' => 'callback_cancel'];
+            return ['action' => 'callback_cancel', 'back' => $back];
         }
 
-        $this->send($chatId, 'این دکمه دیگر معتبر نیست. <code>/menu</code> را باز کن.');
+        $this->send($chatId, 'این دکمه دیگر معتبر نیست. <code>/menu</code> را باز کن.', $this->menuKeyboard());
 
         return ['action' => 'unknown_callback'];
     }
