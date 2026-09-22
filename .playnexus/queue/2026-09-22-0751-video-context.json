@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-09-22-0751-video-context",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "operation_name": "VideoPublishingContext",
-    "variables": {},
-    "query": "query VideoPublishingContext { games(first: 25, offset: 0) { nodes { id name slug status releaseDate } pageInfo { total first offset hasMore nextOffset } } videos(first: 50, offset: 0) { nodes { id title slug status duration publishedAt game { id name slug } playlists { id title slug } } pageInfo { total first offset hasMore nextOffset } } collections(first: 30, offset: 0) { nodes { id title slug game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }"
-  }
-}
