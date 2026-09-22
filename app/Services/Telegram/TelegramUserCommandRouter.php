@@ -4,6 +4,7 @@ namespace App\Services\Telegram;
 
 use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 final class TelegramUserCommandRouter
 {
@@ -32,6 +33,16 @@ final class TelegramUserCommandRouter
         try {
             if ($command === '/start' && str_starts_with($payload, 'connect_')) {
                 $user = $this->links->consume(substr($payload, 8), $userId, $chatId);
+
+                try {
+                    // Also refresh Telegram command scopes so regular users only
+                    // see the user-safe command menu while the owner keeps the
+                    // private admin command scope. Linking must still succeed
+                    // if Telegram temporarily rejects this maintenance call.
+                    $this->telegram->registerWebhook();
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
 
                 $this->telegram->sendMessage(
                     $chatId,
