@@ -221,21 +221,29 @@ class TelegramBotSettingsController extends Controller
     }
 
     public function testMtProto(
+        Request $request,
         TelegramMtProtoService $mtproto,
         TelegramBotSettings $settings,
     ): RedirectResponse {
+        $request->merge(['mtproto_enabled' => true]);
+
         try {
+            $validated = $this->validatedSettings($request, $settings);
+            $validated['mtproto_enabled'] = true;
+            $settings->save($validated, $request->user()?->id);
+
             $result = $mtproto->health();
 
             return back()->with(
                 'success',
-                'MTProto آماده است ✅ @'.($result['username'] ?? 'bot').' • فایل‌های بزرگ می‌توانند با fallback دریافت شوند.',
+                'فایل‌های بزرگ فعال شدند ✅ @'.($result['username'] ?? 'bot')
+                .' • MTProto آماده است • تست '.(int) ($result['elapsed_ms'] ?? 0).'ms',
             );
         } catch (Throwable $exception) {
             $settings->markMtProtoError($exception->getMessage());
 
             return back()->withErrors([
-                'telegram' => 'MTProto آماده نیست: '.$exception->getMessage(),
+                'mtproto' => 'فعال‌سازی فایل‌های بزرگ کامل نشد: '.$exception->getMessage(),
             ]);
         }
     }
