@@ -191,6 +191,7 @@ final class TelegramBotCommandRouter
         $callbackId = (string) ($callback['id'] ?? '');
         $data = (string) ($callback['data'] ?? '');
         $chatId = (string) ($callback['message']['chat']['id'] ?? '');
+        $messageId = (int) ($callback['message']['message_id'] ?? 0);
         $userId = (string) ($callback['from']['id'] ?? '');
 
         if ($callbackId !== '') {
@@ -208,10 +209,10 @@ final class TelegramBotCommandRouter
             $target = $parts[1] ?? 'home';
 
             if ($target === 'home') {
-                return $this->showMenu($chatId);
+                return $this->showMenu($chatId, $messageId);
             }
             if ($target === 'status') {
-                return $this->showStatus($chatId);
+                return $this->showStatus($chatId, $messageId);
             }
             if ($target === 'help') {
                 return $this->sendAndReturn($chatId, $this->formatter->help(), 'help');
@@ -223,17 +224,17 @@ final class TelegramBotCommandRouter
                 return $this->executeReadTool($chatId, 'describe_playnexus_graph', []);
             }
             if (in_array($target, ['content', 'library', 'commerce', 'intelligence', 'system'], true)) {
-                return $this->showHub($chatId, $target);
+                return $this->showHub($chatId, $target, $messageId);
             }
 
-            return $this->showResourceHub($chatId, $this->resource($target));
+            return $this->showResourceHub($chatId, $this->resource($target), $messageId);
         }
 
         if ($action === 'list') {
             $resource = $this->resource($parts[1] ?? '');
             $offset = max(0, (int) ($parts[2] ?? 0));
 
-            return $this->sendResourceList($chatId, $resource, '', $offset);
+            return $this->sendResourceList($chatId, $resource, '', $offset, $messageId);
         }
 
         if ($action === 'search') {
@@ -263,7 +264,7 @@ final class TelegramBotCommandRouter
         if ($action === 'events') {
             $offset = max(0, (int) ($parts[1] ?? 0));
 
-            return $this->showEvents($chatId, $offset);
+            return $this->showEvents($chatId, $offset, $messageId);
         }
 
         if ($action === 'event-new') {
@@ -295,7 +296,7 @@ final class TelegramBotCommandRouter
         if ($action === 'event-actions') {
             $id = $this->positiveInt($parts[1] ?? null);
 
-            return $this->showEventActions($chatId, $id);
+            return $this->showEventActions($chatId, $id, $messageId);
         }
 
         if ($action === 'event-state') {
@@ -340,7 +341,7 @@ final class TelegramBotCommandRouter
             $resource = $this->resource($parts[1] ?? '');
             $id = $this->positiveInt($parts[2] ?? null);
 
-            return $this->showResource($chatId, $resource, $id);
+            return $this->showResource($chatId, $resource, $id, $messageId);
         }
 
         if ($action === 'assets') {
@@ -357,7 +358,7 @@ final class TelegramBotCommandRouter
             $resource = $this->resource($parts[1] ?? '');
             $id = $this->positiveInt($parts[2] ?? null);
 
-            return $this->showMediaSlots($chatId, $resource, $id);
+            return $this->showMediaSlots($chatId, $resource, $id, $messageId);
         }
 
         if ($action === 'await-media') {
@@ -452,33 +453,34 @@ final class TelegramBotCommandRouter
         return ['action' => 'unknown_callback'];
     }
 
-    private function showMenu(string $chatId): array
+    private function showMenu(string $chatId, ?int $messageId = null): array
     {
-        $this->send($chatId, $this->formatter->menuText(), $this->menuKeyboard());
+        $this->render($chatId, $this->formatter->menuText(), $this->menuKeyboard(), $messageId);
 
         return ['action' => 'menu'];
     }
 
-    private function showHub(string $chatId, string $hub): array
+    private function showHub(string $chatId, string $hub, ?int $messageId = null): array
     {
-        $this->send($chatId, $this->formatter->hubText($hub), $this->hubKeyboard($hub));
+        $this->render($chatId, $this->formatter->hubText($hub), $this->hubKeyboard($hub), $messageId);
 
         return ['action' => 'hub:'.$hub];
     }
 
-    private function showResourceHub(string $chatId, string $resource): array
+    private function showResourceHub(string $chatId, string $resource, ?int $messageId = null): array
     {
         $meta = $this->resourceMeta($resource);
-        $this->send(
+        $this->render(
             $chatId,
             $this->formatter->resourceHub($meta['label'], $meta['icon']),
             $this->resourceHubKeyboard($resource),
+            $messageId,
         );
 
         return ['action' => 'resource_hub', 'resource' => $resource];
     }
 
-    private function showStatus(string $chatId): array
+    private function showStatus(string $chatId, ?int $messageId = null): array
     {
         $settings = $this->settings->resolved();
         $webhook = [];
@@ -516,7 +518,7 @@ final class TelegramBotCommandRouter
             }
         }
 
-        $this->send($chatId, $text, [
+        $this->render($chatId, $text, [
             'inline_keyboard' => [
                 [
                     ['text' => '🔄 Refresh', 'callback_data' => 'menu:status'],
@@ -527,7 +529,7 @@ final class TelegramBotCommandRouter
                     'url' => route('admin.telegram-bot.index'),
                 ]],
             ],
-        ]);
+        ], $messageId);
 
         return ['action' => 'status'];
     }
@@ -855,7 +857,7 @@ final class TelegramBotCommandRouter
         ];
     }
 
-    private function sendResourceList(string $chatId, string $resource, string $query = '', int $offset = 0): array
+    private function sendResourceList(string $chatId, string $resource, string $query = '', int $offset = 0, ?int $messageId = null): array
     {
         $limit = 8;
         $arguments = [
@@ -875,10 +877,11 @@ final class TelegramBotCommandRouter
             ? $meta['icon'].' جستجو: '.Str::limit($query, 40)
             : $meta['icon'].' '.$meta['label'];
 
-        $this->send(
+        $this->render(
             $chatId,
             $this->formatter->result($title, $result),
             $this->resourceListKeyboard($resource, $result, trim($query) === ''),
+            $messageId,
         );
 
         return [
@@ -888,38 +891,40 @@ final class TelegramBotCommandRouter
         ];
     }
 
-    private function showResource(string $chatId, string $resource, int $id): array
+    private function showResource(string $chatId, string $resource, int $id, ?int $messageId = null): array
     {
         $result = $this->executor->execute('get_content', compact('resource', 'id'));
         $meta = $this->resourceMeta($resource);
-        $this->send(
+        $this->render(
             $chatId,
             $meta['icon']." <b>".$this->formatter->escape($meta['label'])."</b>\n━━━━━━━━━━━━━━━━━━\n".$this->formatter->itemDetails($result),
             $this->resourceKeyboard($resource, $id, $result),
+            $messageId,
         );
 
         return ['action' => 'view', 'resource' => $resource, 'resource_id' => $id];
     }
 
-    private function showEvents(string $chatId, int $offset = 0): array
+    private function showEvents(string $chatId, int $offset = 0, ?int $messageId = null): array
     {
         $result = $this->executor->execute('list_game_events', [
             'limit' => 8,
             'offset' => max(0, $offset),
         ]);
 
-        $this->send(
+        $this->render(
             $chatId,
             $this->formatter->result('🧩 Game Events', $result),
             $this->eventListKeyboard($result),
+            $messageId,
         );
 
         return ['action' => 'events', 'offset' => max(0, $offset)];
     }
 
-    private function showEventActions(string $chatId, int $id): array
+    private function showEventActions(string $chatId, int $id, ?int $messageId = null): array
     {
-        $this->send(
+        $this->render(
             $chatId,
             "🧩 <b>Game Event #{$id}</b>\nوضعیت جدید را انتخاب کن. این تغییر قبل از اجرا تأیید نهایی می‌خواهد.",
             [
@@ -938,12 +943,12 @@ final class TelegramBotCommandRouter
                     ],
                 ],
             ],
-        );
+        }, $messageId);
 
         return ['action' => 'event_actions', 'resource_id' => $id];
     }
 
-    private function showMediaSlots(string $chatId, string $resource, int $id): array
+    private function showMediaSlots(string $chatId, string $resource, int $id, ?int $messageId = null): array
     {
         $slots = match ($resource) {
             'game' => ['cover', 'background', 'attachment'],
@@ -983,10 +988,11 @@ final class TelegramBotCommandRouter
             ['text' => '🏠 Home', 'callback_data' => 'menu:home'],
         ];
 
-        $this->send(
+        $this->render(
             $chatId,
             "🖼 <b>Media Manager</b>\nنوع مدیا را برای #{$id} انتخاب کن.",
             $keyboard,
+            $messageId,
         );
 
         return ['action' => 'media_slots', 'resource' => $resource, 'resource_id' => $id];
@@ -1515,6 +1521,27 @@ final class TelegramBotCommandRouter
             str_contains($message, 'Telegram bot is disabled') => 'Bot در پنل ادمین غیرفعال است.',
             default => $message,
         };
+    }
+
+    private function render(
+        string $chatId,
+        string $text,
+        ?array $keyboard = null,
+        ?int $messageId = null,
+    ): void {
+        if ($messageId && $messageId > 0) {
+            try {
+                $this->telegram->editMessageText($chatId, $messageId, $text, $keyboard);
+
+                return;
+            } catch (RuntimeException $exception) {
+                if (str_contains(strtolower($exception->getMessage()), 'message is not modified')) {
+                    return;
+                }
+            }
+        }
+
+        $this->send($chatId, $text, $keyboard);
     }
 
     private function send(string $chatId, string $text, ?array $keyboard = null): void
