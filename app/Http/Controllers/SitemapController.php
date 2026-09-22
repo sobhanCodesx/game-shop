@@ -9,6 +9,7 @@ use App\Models\SocialContent;
 use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use App\Services\MediaStorage;
+use App\Services\SitemapCacheService;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
@@ -19,44 +20,57 @@ class SitemapController extends Controller
 {
     private const TYPES = ['static', 'products', 'categories', 'feed', 'videos', 'content', 'channels', 'studios', 'playlists'];
 
-    public function index(): Response
+    public function index(SitemapCacheService $cache): Response
     {
-        $writer = $this->writer('sitemapindex');
+        $xml = $cache->remember('index', function (): string {
+            $writer = $this->writer('sitemapindex');
 
-        foreach (self::TYPES as $type) {
-            $writer->startElement('sitemap');
-            $writer->writeElement('loc', route('sitemap.show', $type));
-            if ($lastModified = $this->lastModified($type)) {
-                $writer->writeElement('lastmod', $lastModified);
-            }
-            $writer->endElement();
-        }
-
-        return $this->response($writer);
-    }
-
-    public function show(string $type): Response
-    {
-        abort_unless(in_array($type, self::TYPES, true), 404);
-
-        $writer = $this->writer('urlset', in_array($type, ['videos', 'content'], true));
-        foreach ($this->urls($type) as $entry) {
-            $writer->startElement('url');
-            $writer->writeElement('loc', $entry['loc']);
-            if (isset($entry['lastmod'])) {
-                $writer->writeElement('lastmod', $entry['lastmod']);
-            }
-            if (isset($entry['video'])) {
-                $writer->startElement('video:video');
-                foreach ($entry['video'] as $name => $value) {
-                    $writer->writeElement("video:{$name}", (string) $value);
+            foreach (self::TYPES as $type) {
+                $writer->startElement('sitemap');
+                $writer->writeElement('loc', route('sitemap.show', $type));
+                if ($lastModified = $this->lastModified($type)) {
+                    $writer->writeElement('lastmod', $lastModified);
                 }
                 $writer->endElement();
             }
-            $writer->endElement();
-        }
 
-        return $this->response($writer);
+            return $this->finish($writer);
+        });
+
+        return $this->response($xml);
+    }
+
+    public function show(string $type, SitemapCacheService $cache): Response
+    {
+        abort_unless(in_array($type, self::TYPES, true), 404);
+
+        $ttl = $type === 'static' ? 21600 : 3600;
+        $xml = $cache->remember($type, function () use ($type): string {
+            $writer = $this->writer('urlset', in_array($type, ['videos', 'content'], true));
+
+            foreach ($this->urls($type) as $entry) {
+                $writer->startElement('url');
+                $writer->writeElement('loc', $entry['loc']);
+
+                if (isset($entry['lastmod'])) {
+                    $writer->writeElement('lastmod', $entry['lastmod']);
+                }
+
+                if (isset($entry['video'])) {
+                    $writer->startElement('video:video');
+                    foreach ($entry['video'] as $name => $value) {
+                        $writer->writeElement("video:{$name}", (string) $value);
+                    }
+                    $writer->endElement();
+                }
+
+                $writer->endElement();
+            }
+
+            return $this->finish($writer);
+        }, $ttl);
+
+        return $this->response($xml);
     }
 
     /** @return iterable<array{loc: string, lastmod?: string, video?: array<string, mixed>}> */
@@ -218,12 +232,17 @@ class SitemapController extends Controller
         return $writer;
     }
 
-    private function response(XMLWriter $writer): Response
+    private function finish(XMLWriter $writer): string
     {
         $writer->endElement();
         $writer->endDocument();
 
-        return response($writer->outputMemory(), 200, [
+        return $writer->outputMemory();
+    }
+
+    private function response(string $xml): Response
+    {
+        return response($xml, 200, [
             'Content-Type' => 'application/xml; charset=UTF-8',
             'X-Robots-Tag' => 'noindex, follow',
         ]);
