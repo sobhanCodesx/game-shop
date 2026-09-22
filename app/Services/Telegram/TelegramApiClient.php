@@ -47,16 +47,22 @@ final class TelegramApiClient
 
         $this->request('setMyCommands', [
             'commands' => [
-                ['command' => 'menu', 'description' => 'منوی مدیریت PlayNexus'],
-                ['command' => 'status', 'description' => 'وضعیت بات و اتصال'],
-                ['command' => 'search', 'description' => 'جستجو در محتوای PlayNexus'],
-                ['command' => 'list', 'description' => 'فهرست منابع'],
-                ['command' => 'get', 'description' => 'نمایش یک رکورد'],
-                ['command' => 'assets', 'description' => 'مدیای یک رکورد'],
-                ['command' => 'media', 'description' => 'آماده‌سازی دریافت مدیا'],
-                ['command' => 'tool', 'description' => 'اجرای ابزار پیشرفته'],
-                ['command' => 'help', 'description' => 'راهنمای کامل'],
-                ['command' => 'cancel', 'description' => 'لغو عملیات جاری'],
+                ['command' => 'menu', 'description' => '🏠 منوی اصلی مدیریت'],
+                ['command' => 'new', 'description' => '➕ ساخت محتوای جدید'],
+                ['command' => 'videos', 'description' => '🎬 مدیریت ویدیوها'],
+                ['command' => 'feeds', 'description' => '📰 مدیریت فیدها'],
+                ['command' => 'stories', 'description' => '📱 مدیریت استوری‌ها'],
+                ['command' => 'games', 'description' => '🎮 مدیریت بازی‌ها'],
+                ['command' => 'collections', 'description' => '📚 مدیریت کالکشن‌ها'],
+                ['command' => 'status', 'description' => '📡 وضعیت اتصال ربات'],
+                ['command' => 'help', 'description' => '❓ راهنمای استفاده'],
+                ['command' => 'cancel', 'description' => '✕ لغو عملیات جاری'],
+            ],
+        ]);
+
+        $this->request('setChatMenuButton', [
+            'menu_button' => [
+                'type' => 'commands',
             ],
         ]);
 
