@@ -90,6 +90,7 @@ class SocialContentController extends Controller
                 'likes_count' => (int) ($reactionCounts['like'] ?? 0),
                 'dislikes_count' => (int) ($reactionCounts['dislike'] ?? 0),
                 'user_reaction' => $userReaction,
+                'is_liked' => $userReaction === 'like',
                 'comments_count' => $content->comments()->published()->count(),
             ],
             'channel' => $content->game ? [
