@@ -112,6 +112,16 @@ final class TelegramUserCommandRouter
                     report($exception);
                 }
 
+                if ($this->links->prepareLinkedPhoneVerification($user, $userId, $chatId)) {
+                    $this->sendPhoneVerificationPrompt($chatId, $user);
+
+                    return [
+                        'action' => 'user_linked_phone_contact_requested',
+                        'resource' => 'user',
+                        'resource_id' => $user->id,
+                    ];
+                }
+
                 $this->telegram->sendMessage(
                     $chatId,
                     "✅ <b>تلگرام با موفقیت وصل شد</b>\n"
@@ -131,6 +141,20 @@ final class TelegramUserCommandRouter
             }
 
             $user = $this->links->byTelegramUserId($userId);
+
+            if (
+                $command === '/start'
+                && $user
+                && $this->links->prepareLinkedPhoneVerification($user, $userId, $chatId)
+            ) {
+                $this->sendPhoneVerificationPrompt($chatId, $user);
+
+                return [
+                    'action' => 'phone_contact_requested_for_linked_user',
+                    'resource' => 'user',
+                    'resource_id' => $user->id,
+                ];
+            }
 
             if ($command === '/unlink' && $user) {
                 $this->links->disconnect($user);
@@ -173,6 +197,26 @@ final class TelegramUserCommandRouter
 
             return ['action' => 'user_error'];
         }
+    }
+
+    private function sendPhoneVerificationPrompt(string $chatId, object $user): void
+    {
+        $this->telegram->sendMessage(
+            $chatId,
+            "✅ <b>تلگرام به حساب PlayNexus وصل است</b>\n"
+            ."برای فعال شدن ورود با کد Telegram فقط یک مرحله مانده: شماره موبایل حسابت را با دکمه رسمی زیر تأیید کن.\n\n"
+            ."شماره PlayNexus: <code>".$this->escape((string) $user->phone)."</code>\n"
+            ."Telegram فقط شماره متعلق به خود همین حساب را قبول می‌کند.",
+            [
+                'keyboard' => [[[
+                    'text' => '📱 اشتراک شماره خودم',
+                    'request_contact' => true,
+                ]]],
+                'resize_keyboard' => true,
+                'one_time_keyboard' => true,
+                'input_field_placeholder' => 'دکمه اشتراک شماره خودم را بزن',
+            ],
+        );
     }
 
     private function split(string $text): array
