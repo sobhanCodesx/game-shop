@@ -1,0 +1,15 @@
+{
+  "job_id": "2026-09-22-1003-create-ds3-video",
+  "tool": "create_video",
+  "arguments": {
+    "title": "تریلر پیش‌خرید رسمی Dark Souls III؛ آماده ورود به لاثریک",
+    "game_id": 21,
+    "playlist_ids": [],
+    "excerpt": "تریلر رسمی پیش‌خرید Dark Souls III از Steam؛ نگاهی کوتاه به فضای تاریک لاثریک و نبردهای بازی.",
+    "body": "تریلر رسمی پیش‌خرید Dark Souls III را ببینید؛ ویدیویی رسمی از بازی FromSoftware که از مسیر Steam منتشر شده است. فایل نهایی این ویدیو پس از بررسی واقعی صدا، مدت، رزولوشن و حجم روی CDN داخلی PlayNexus قرار می‌گیرد.",
+    "seo_title": "تریلر رسمی Dark Souls III | PlayNexus",
+    "seo_description": "تریلر رسمی پیش‌خرید Dark Souls III با ویدیوی کامل، اطلاعات بازی و پخش از CDN داخلی PlayNexus.",
+    "featured": false,
+    "allow_comments": true
+  }
+}
