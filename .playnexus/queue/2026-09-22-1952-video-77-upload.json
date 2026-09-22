@@ -1,0 +1,15 @@
+{
+  "job_id": "video-77-upload-main-20260922",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "video",
+    "id": 77,
+    "slot": "video",
+    "source_url": "https://video.akamai.steamstatic.com/store_trailers/2638890/1053843670/2a387b30ca36af73fab2198941de6282587f2bfe/1788938110/hls_264_master.m3u8",
+    "name": "onimusha-way-of-the-sword-official-pv7.mp4",
+    "require_audio": true,
+    "max_duration_seconds": 900,
+    "transcode_max_height": 720,
+    "max_height": 720
+  }
+}
