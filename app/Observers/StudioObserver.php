@@ -9,23 +9,23 @@ class StudioObserver
 {
     public function created(Studio $studio): void
     {
-        app(StorefrontPageCache::class)->invalidate('channel', 'home');
+        app(StorefrontPageCache::class)->invalidate('channel', 'home', 'studio');
     }
 
     public function updated(Studio $studio): void
     {
-        if ($studio->wasChanged(['name', 'slug', 'logo', 'status'])) {
-            app(StorefrontPageCache::class)->invalidate('channel', 'home');
+        if ($studio->wasChanged(['name', 'slug', 'logo', 'background', 'description', 'website', 'status'])) {
+            app(StorefrontPageCache::class)->invalidate('channel', 'home', 'studio');
         }
     }
 
     public function deleted(Studio $studio): void
     {
-        app(StorefrontPageCache::class)->invalidate('channel', 'home');
+        app(StorefrontPageCache::class)->invalidate('channel', 'home', 'studio');
     }
 
     public function restored(Studio $studio): void
     {
-        app(StorefrontPageCache::class)->invalidate('channel', 'home');
+        app(StorefrontPageCache::class)->invalidate('channel', 'home', 'studio');
     }
 }
