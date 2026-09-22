@@ -21,8 +21,10 @@ type NexusAiConfig = {
     title: string;
     description: string;
     nav_label: string;
-    iframe_url: string;
-    min_height: number;
+    worker_url: string;
+    launcher_label: string;
+    welcome_title: string;
+    welcome_text: string;
     status_text: string;
 };
 
@@ -32,7 +34,6 @@ type ChatMessage = {
 };
 
 const STORAGE_KEY = "playnexus:nexus-ai:history";
-const WORKER_URL = "https://nexus-ai-relay.sobhankhorshidi1397.workers.dev";
 
 const QUICK_PROMPTS = [
     "یه بازی جهان‌باز خفن برای PS5 پیشنهاد بده",
@@ -79,7 +80,11 @@ export default function NexusAiWidget({
 }: {
     config: NexusAiConfig;
 }) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(
+        () =>
+            typeof window !== "undefined" &&
+            window.location.pathname === "/nexus-ai",
+    );
     const [online, setOnline] = useState<boolean | null>(null);
     const [busy, setBusy] = useState(false);
     const [input, setInput] = useState("");
@@ -113,7 +118,7 @@ export default function NexusAiWidget({
 
         const check = async () => {
             try {
-                const response = await fetch(WORKER_URL + "/health", {
+                const response = await fetch(config.worker_url + "/health", {
                     cache: "no-store",
                 });
                 const data = await response.json();
@@ -147,7 +152,7 @@ export default function NexusAiWidget({
         ]);
 
         try {
-            const response = await fetch(WORKER_URL + "/api/chat", {
+            const response = await fetch(config.worker_url + "/api/chat", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -287,10 +292,10 @@ export default function NexusAiWidget({
                                 </div>
 
                                 <h3 className="mt-5 text-center text-xl font-black tracking-tight text-white">
-                                    چی تو ذهنت داری؟
+                                    {config.welcome_title}
                                 </h3>
                                 <p className="mx-auto mt-2 max-w-[310px] text-center text-[11px] leading-6 text-slate-400">
-                                    درباره بازی‌ها، لور، انتخاب بازی، Build، باس‌ها و اصطلاحات گیم ازم بپرس.
+                                    {config.welcome_text}
                                 </p>
 
                                 <div className="mt-5 grid gap-2">
