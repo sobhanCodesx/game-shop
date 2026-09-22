@@ -24,6 +24,12 @@ final class TelegramBotSettings
                 'publish_enabled' => (bool) config('telegram_bot.publish_enabled', false),
                 'destructive_enabled' => (bool) config('telegram_bot.destructive_enabled', false),
                 'media_enabled' => (bool) config('telegram_bot.media_enabled', true),
+                'mtproto_enabled' => (bool) config('telegram_bot.mtproto.enabled', false),
+                'mtproto_api_id' => (int) config('telegram_bot.mtproto.api_id', 0),
+                'mtproto_api_hash' => (string) config('telegram_bot.mtproto.api_hash', ''),
+                'mtproto_initialized_at' => null,
+                'mtproto_last_health_at' => null,
+                'mtproto_last_error' => null,
                 'transport_mode' => (string) config('telegram_bot.transport_mode', 'auto'),
                 'api_base_url' => (string) config('telegram_bot.api_base_url', 'https://api.telegram.org'),
                 'relay_base_url' => (string) config('telegram_bot.relay_base_url', ''),
@@ -62,6 +68,12 @@ final class TelegramBotSettings
                 'publish_enabled' => (bool) $stored->publish_enabled,
                 'destructive_enabled' => (bool) $stored->destructive_enabled,
                 'media_enabled' => (bool) $stored->media_enabled,
+                'mtproto_enabled' => (bool) $stored->mtproto_enabled,
+                'mtproto_api_id' => (int) ($stored->mtproto_api_id ?: $defaults['mtproto_api_id']),
+                'mtproto_api_hash' => (string) ($stored->mtproto_api_hash ?: $defaults['mtproto_api_hash']),
+                'mtproto_initialized_at' => $stored->mtproto_initialized_at?->toISOString(),
+                'mtproto_last_health_at' => $stored->mtproto_last_health_at?->toISOString(),
+                'mtproto_last_error' => $stored->mtproto_last_error,
                 'transport_mode' => (string) ($stored->transport_mode ?: $defaults['transport_mode']),
                 'api_base_url' => (string) ($stored->api_base_url ?: $defaults['api_base_url']),
                 'relay_base_url' => (string) ($stored->relay_base_url ?: ''),
@@ -94,11 +106,16 @@ final class TelegramBotSettings
             'relay_key' => '',
             'proxy_password' => '',
             'webhook_secret' => '',
+            'mtproto_api_hash' => '',
             'bot_token_configured' => filled($settings['bot_token']),
             'relay_key_configured' => filled($settings['relay_key']),
             'relay_configured' => filled($settings['relay_base_url']) && filled($settings['relay_key']),
             'proxy_password_configured' => filled($settings['proxy_password']),
             'webhook_secret_configured' => filled($settings['webhook_secret']),
+            'mtproto_api_hash_configured' => filled($settings['mtproto_api_hash']),
+            'mtproto_configured' => ($settings['mtproto_enabled'] ?? false)
+                && (int) ($settings['mtproto_api_id'] ?? 0) > 0
+                && filled($settings['mtproto_api_hash']),
             'configured' => filled($settings['bot_token']) && filled($settings['admin_user_id']),
             'webhook_url' => $this->webhookUrl($settings),
             'max_download_bytes' => (int) config('telegram_bot.max_download_bytes', 20 * 1024 * 1024),
@@ -116,7 +133,7 @@ final class TelegramBotSettings
 
         foreach ([
             'enabled', 'write_enabled', 'publish_enabled', 'destructive_enabled',
-            'media_enabled', 'use_proxy',
+            'media_enabled', 'mtproto_enabled', 'use_proxy',
         ] as $field) {
             if (array_key_exists($field, $data)) {
                 $existing->{$field} = (bool) $data[$field];
@@ -124,7 +141,7 @@ final class TelegramBotSettings
         }
 
         foreach ([
-            'admin_user_id', 'transport_mode', 'api_base_url', 'relay_base_url',
+            'admin_user_id', 'mtproto_api_id', 'transport_mode', 'api_base_url', 'relay_base_url',
             'proxy_type', 'proxy_host', 'proxy_port', 'proxy_username',
         ] as $field) {
             if (array_key_exists($field, $data)) {
@@ -150,6 +167,15 @@ final class TelegramBotSettings
             $existing->proxy_password = (string) $data['proxy_password'];
         } elseif (! $existing->exists && filled($resolved['proxy_password'] ?? null)) {
             $existing->proxy_password = (string) $resolved['proxy_password'];
+        }
+
+        if (array_key_exists('mtproto_api_hash', $data) && filled($data['mtproto_api_hash'])) {
+            $existing->mtproto_api_hash = trim((string) $data['mtproto_api_hash']);
+            $existing->mtproto_initialized_at = null;
+            $existing->mtproto_last_health_at = null;
+            $existing->mtproto_last_error = null;
+        } elseif (! $existing->exists && filled($resolved['mtproto_api_hash'] ?? null)) {
+            $existing->mtproto_api_hash = (string) $resolved['mtproto_api_hash'];
         }
 
         if (! filled($existing->webhook_secret)) {
@@ -224,6 +250,33 @@ final class TelegramBotSettings
 
         TelegramBotSetting::query()->limit(1)->update([
             'last_error' => Str::limit($message, 2000),
+        ]);
+        $this->forget();
+    }
+
+    public function markMtProtoHealthy(): void
+    {
+        if (! $this->tableExists()) {
+            return;
+        }
+
+        TelegramBotSetting::query()->limit(1)->update([
+            'mtproto_initialized_at' => now(),
+            'mtproto_last_health_at' => now(),
+            'mtproto_last_error' => null,
+        ]);
+        $this->forget();
+    }
+
+    public function markMtProtoError(string $message): void
+    {
+        if (! $this->tableExists()) {
+            return;
+        }
+
+        TelegramBotSetting::query()->limit(1)->update([
+            'mtproto_last_health_at' => now(),
+            'mtproto_last_error' => Str::limit($message, 2000),
         ]);
         $this->forget();
     }
