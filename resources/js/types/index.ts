@@ -27,6 +27,16 @@ export interface SharedPageProps {
     } | null;
     cart: { item_count: number };
     storefront: {
+        nexus_ai: {
+            enabled: boolean;
+            show_in_nav: boolean;
+            title: string;
+            description: string;
+            nav_label: string;
+            iframe_url: string;
+            min_height: number;
+            status_text: string;
+        };
         categories: import("../Components/Storefront/Navigation/types").NavigationCategory[];
         stories: import("../Components/Storefront/Navigation/types").StorefrontStory[];
         fresh_content_at: string | null;
