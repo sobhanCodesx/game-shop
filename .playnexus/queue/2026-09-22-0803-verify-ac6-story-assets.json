@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-22-0803-verify-ac6-story-assets",
-  "tool": "list_content_assets",
-  "arguments": {
-    "resource": "video",
-    "id": 67
-  }
-}
