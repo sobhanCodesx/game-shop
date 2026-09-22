@@ -21,6 +21,7 @@ return [
     'relay_key' => (string) env('TELEGRAM_BOT_RELAY_KEY', ''),
     'request_timeout' => max(5, (int) env('TELEGRAM_BOT_REQUEST_TIMEOUT', 30)),
     'connect_timeout' => max(2, (int) env('TELEGRAM_BOT_CONNECT_TIMEOUT', 10)),
+    // Large Telegram media falls back to the isolated MTProto downloader when configured.
     'max_download_bytes' => min(
         20 * 1024 * 1024,
         max(1024, (int) env('TELEGRAM_BOT_MAX_DOWNLOAD_BYTES', 20 * 1024 * 1024)),
