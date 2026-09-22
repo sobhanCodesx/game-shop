@@ -1,0 +1,15 @@
+{
+  "job_id": "2026-09-22-1010-upload-ds3-movie",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "video",
+    "id": 70,
+    "slot": "video",
+    "source_url": "https://video.akamai.steamstatic.com/store_trailers/374320/55427/16e21902f35c1a672b19ac4668ac02c76317f58d/1750520163/hls_264_master.m3u8",
+    "name": "dark-souls-iii-the-movie.mp4",
+    "require_audio": true,
+    "max_duration_seconds": 900,
+    "transcode_max_height": 720,
+    "max_height": 720
+  }
+}
