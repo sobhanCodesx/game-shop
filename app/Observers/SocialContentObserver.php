@@ -13,7 +13,7 @@ class SocialContentObserver
     public function created(SocialContent $content): void
     {
         if ($content->type === 'video') {
-            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'home');
+            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'home', 'studio');
         } elseif ($content->type === 'post') {
             app(StorefrontPageCache::class)->invalidate('channel');
         } elseif ($content->type === 'short') {
@@ -39,7 +39,7 @@ class SocialContentObserver
                 app(StorefrontPageCache::class)->invalidate('channel');
 
                 if ($content->type === 'video' || $content->getRawOriginal('type') === 'video') {
-                    app(StorefrontPageCache::class)->invalidate('playlist', 'home');
+                    app(StorefrontPageCache::class)->invalidate('playlist', 'home', 'studio');
                 }
             }
         }
@@ -78,7 +78,7 @@ class SocialContentObserver
     public function deleted(SocialContent $content): void
     {
         if ($content->type === 'video') {
-            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'home');
+            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'home', 'studio');
         } elseif ($content->type === 'post') {
             app(StorefrontPageCache::class)->invalidate('channel');
         } elseif ($content->type === 'short') {
