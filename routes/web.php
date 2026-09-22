@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\SmsProviderSettingsController;
 use App\Http\Controllers\Admin\SmsTestController;
 use App\Http\Controllers\Admin\StudioController as AdminStudioController;
 use App\Http\Controllers\Admin\SystemMaintenanceController;
+use App\Http\Controllers\Admin\TelegramBotSettingsController;
 use App\Http\Controllers\Admin\TemporaryUploadController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -204,6 +205,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('sms-test', [SmsTestController::class, 'index'])->name('sms-test.index');
     Route::post('sms-test', [SmsTestController::class, 'store'])->middleware('throttle:5,1')->name('sms-test.store');
     Route::middleware('super-admin')->group(function () {
+        Route::get('telegram-bot', [TelegramBotSettingsController::class, 'index'])->name('telegram-bot.index');
+        Route::put('telegram-bot', [TelegramBotSettingsController::class, 'update'])->name('telegram-bot.update');
+        Route::post('telegram-bot/test', [TelegramBotSettingsController::class, 'test'])->middleware('throttle:6,1')->name('telegram-bot.test');
+        Route::post('telegram-bot/webhook', [TelegramBotSettingsController::class, 'registerWebhook'])->middleware('throttle:6,1')->name('telegram-bot.webhook.register');
+        Route::delete('telegram-bot/webhook', [TelegramBotSettingsController::class, 'deleteWebhook'])->middleware('throttle:6,1')->name('telegram-bot.webhook.destroy');
+        Route::post('telegram-bot/webhook/rotate', [TelegramBotSettingsController::class, 'rotateWebhook'])->middleware('throttle:4,1')->name('telegram-bot.webhook.rotate');
+        Route::post('telegram-bot/send-test', [TelegramBotSettingsController::class, 'sendTest'])->middleware('throttle:4,1')->name('telegram-bot.send-test');
         Route::get('system-maintenance', [SystemMaintenanceController::class, 'index'])->name('system-maintenance.index');
         Route::post('system-maintenance/run', [SystemMaintenanceController::class, 'run'])->middleware('throttle:6,1')->name('system-maintenance.run');
         Route::post('system-maintenance/cron', [SystemMaintenanceController::class, 'manageCron'])->middleware('throttle:4,1')->name('system-maintenance.cron');
