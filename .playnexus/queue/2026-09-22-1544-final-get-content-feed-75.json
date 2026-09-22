@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-22-1544-final-get-content-feed-75",
-  "tool": "get_content",
-  "arguments": {
-    "resource": "feed",
-    "id": 75
-  }
-}
