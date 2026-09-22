@@ -12,6 +12,7 @@ use App\Models\Studio;
 use App\Models\User;
 use App\Models\VideoPlaylist;
 use App\Support\RichText;
+use App\Services\StorefrontPageCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Validator;
@@ -357,6 +358,7 @@ class ContentAgentService
 
         if (array_key_exists('playlist_ids', $data)) {
             $video->playlists()->sync($this->playlistSync($data['playlist_ids']));
+            app(StorefrontPageCache::class)->invalidate('playlist');
         }
 
         return $this->serializeVideo($video->fresh());
@@ -572,6 +574,7 @@ class ContentAgentService
 
         $collection = VideoPlaylist::query()->findOrFail((int) $data['collection_id']);
         $collection->videos()->sync($this->playlistSync($data['video_ids']));
+        app(StorefrontPageCache::class)->invalidate('playlist');
 
         return $this->serializeCollection($collection->fresh());
     }
