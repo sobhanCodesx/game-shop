@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - '.env.example'
+      - 'composer.json'
+      - 'composer.lock'
       - '.github/workflows/playnexus-telegram-bot-check.yml'
       - 'app/Http/Controllers/Admin/TelegramBotSettingsController.php'
       - 'app/Http/Controllers/Api/TelegramWebhookController.php'
@@ -27,6 +29,7 @@ on:
       - 'config/telegram_bot.php'
       - 'database/migrations/2026_09_22_130000_create_telegram_bot_tables.php'
       - 'database/migrations/2026_09_22_170000_add_user_telegram_notifications.php'
+      - 'database/migrations/2026_09_22_190000_add_mtproto_to_telegram_bot_settings.php'
       - 'deploy/cloudflare/telegram-relay/**'
       - 'resources/js/Pages/Admin/TelegramBot/**'
       - 'resources/js/Pages/Account/**'
@@ -36,9 +39,12 @@ on:
       - 'routes/web.php'
       - 'tests/Feature/TelegramAdminBotTest.php'
       - 'tests/Feature/TelegramUserNotificationsTest.php'
+      - 'tests/Feature/TelegramMtProtoLargeFileTest.php'
   pull_request:
     paths:
       - '.env.example'
+      - 'composer.json'
+      - 'composer.lock'
       - '.github/workflows/playnexus-telegram-bot-check.yml'
       - 'app/Http/Controllers/Admin/TelegramBotSettingsController.php'
       - 'app/Http/Controllers/Api/TelegramWebhookController.php'
@@ -62,6 +68,7 @@ on:
       - 'config/telegram_bot.php'
       - 'database/migrations/2026_09_22_130000_create_telegram_bot_tables.php'
       - 'database/migrations/2026_09_22_170000_add_user_telegram_notifications.php'
+      - 'database/migrations/2026_09_22_190000_add_mtproto_to_telegram_bot_settings.php'
       - 'deploy/cloudflare/telegram-relay/**'
       - 'resources/js/Pages/Admin/TelegramBot/**'
       - 'resources/js/Pages/Account/**'
@@ -71,6 +78,7 @@ on:
       - 'routes/web.php'
       - 'tests/Feature/TelegramAdminBotTest.php'
       - 'tests/Feature/TelegramUserNotificationsTest.php'
+      - 'tests/Feature/TelegramMtProtoLargeFileTest.php'
 
 permissions:
   contents: read
@@ -114,8 +122,10 @@ jobs:
           php -l config/telegram_bot.php
           php -l database/migrations/2026_09_22_130000_create_telegram_bot_tables.php
           php -l database/migrations/2026_09_22_170000_add_user_telegram_notifications.php
+          php -l database/migrations/2026_09_22_190000_add_mtproto_to_telegram_bot_settings.php
           php -l tests/Feature/TelegramAdminBotTest.php
           php -l tests/Feature/TelegramUserNotificationsTest.php
+          php -l tests/Feature/TelegramMtProtoLargeFileTest.php
 
       - name: Cloudflare relay syntax
         run: node --check deploy/cloudflare/telegram-relay/worker.js
@@ -127,7 +137,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run Telegram bot security and feature tests
-        run: php artisan test tests/Feature/TelegramAdminBotTest.php tests/Feature/TelegramUserNotificationsTest.php
+        run: php artisan test tests/Feature/TelegramAdminBotTest.php tests/Feature/TelegramUserNotificationsTest.php tests/Feature/TelegramMtProtoLargeFileTest.php
 
       - name: Set up Node
         uses: actions/setup-node@v4

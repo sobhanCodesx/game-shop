@@ -3,7 +3,6 @@
 namespace App\Services\Telegram;
 
 use App\Services\ContentAgentMediaService;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
 use Throwable;
@@ -14,6 +13,7 @@ final class TelegramMediaTransferService
         private readonly TelegramApiClient $telegram,
         private readonly TelegramBotSettings $settings,
         private readonly ContentAgentMediaService $media,
+        private readonly TelegramMtProtoService $mtproto,
     ) {}
 
     public function attach(
@@ -28,88 +28,84 @@ final class TelegramMediaTransferService
             throw new RuntimeException('Telegram media writes are disabled.');
         }
 
-        $download = $this->telegram->downloadFile(
-            (string) $telegramFile['file_id'],
-            $telegramFile['file_name'] ?? null,
-            $telegramFile['mime'] ?? null,
-            isset($telegramFile['file_size']) ? (int) $telegramFile['file_size'] : null,
-        );
+        $fileId = trim((string) ($telegramFile['file_id'] ?? ''));
+        if ($fileId === '') {
+            throw new RuntimeException('Telegram file_id is missing.');
+        }
 
-        $uploadId = null;
+        $fileSize = isset($telegramFile['file_size'])
+            ? max(0, (int) $telegramFile['file_size'])
+            : null;
+        $cloudLimit = (int) config('telegram_bot.max_download_bytes', 20 * 1024 * 1024);
+
+        if ($fileSize !== null && $fileSize > $cloudLimit) {
+            $download = $this->downloadLargeFile($telegramFile, $fileId, $fileSize);
+        } else {
+            try {
+                $download = $this->telegram->downloadFile(
+                    $fileId,
+                    $telegramFile['file_name'] ?? null,
+                    $telegramFile['mime'] ?? null,
+                    $fileSize,
+                );
+            } catch (Throwable $exception) {
+                if (! $this->isCloudSizeLimitError($exception)) {
+                    throw $exception;
+                }
+
+                $download = $this->downloadLargeFile($telegramFile, $fileId, $fileSize);
+            }
+        }
+
         try {
-            $size = (int) $download['size'];
-            $chunkSize = min(
-                max(64 * 1024, (int) config('content_agent.uploads.max_chunk_size', 2 * 1024 * 1024)),
-                2 * 1024 * 1024,
-            );
-            $totalChunks = (int) ceil($size / $chunkSize);
-            $sha256 = hash_file('sha256', (string) $download['path']);
+            @set_time_limit(0);
+            @ignore_user_abort(true);
 
-            $upload = $this->media->startUpload([
+            return $this->media->attachLocalFile([
                 'resource' => $resource,
                 'id' => $id,
                 'slot' => $slot,
-                'name' => (string) $download['name'],
-                'mime' => (string) $download['mime'],
-                'size' => $size,
-                'chunk_size' => $chunkSize,
-                'total_chunks' => $totalChunks,
-                'sha256' => $sha256,
+                'name' => (string) ($download['name'] ?? $telegramFile['file_name'] ?? 'telegram-file.bin'),
+                'mime' => (string) ($download['mime'] ?? $telegramFile['mime'] ?? 'application/octet-stream'),
                 'alt' => $alt,
-                'duration' => isset($telegramFile['duration']) ? (int) $telegramFile['duration'] : null,
-            ]);
-            $uploadId = (string) $upload['upload_id'];
-
-            $source = fopen((string) $download['path'], 'rb');
-            if (! is_resource($source)) {
-                throw new RuntimeException('Could not open the downloaded Telegram file.');
-            }
-
-            try {
-                for ($index = 0; $index < $totalChunks; $index++) {
-                    $bytes = fread($source, $chunkSize);
-                    if ($bytes === false || $bytes === '') {
-                        throw new RuntimeException("Could not read Telegram file chunk {$index}.");
-                    }
-
-                    $chunkPath = tempnam(storage_path('app/telegram-bot/tmp'), 'chunk-');
-                    if ($chunkPath === false) {
-                        throw new RuntimeException('Could not allocate temporary chunk storage.');
-                    }
-
-                    try {
-                        File::put($chunkPath, $bytes);
-                        $chunk = new UploadedFile(
-                            $chunkPath,
-                            'telegram-chunk-'.$index.'.bin',
-                            'application/octet-stream',
-                            null,
-                            true,
-                        );
-                        $this->media->uploadChunkFile([
-                            'upload_id' => $uploadId,
-                            'chunk_index' => $index,
-                        ], $chunk);
-                    } finally {
-                        File::delete($chunkPath);
-                    }
-                }
-            } finally {
-                fclose($source);
-            }
-
-            return $this->media->completeUpload(['upload_id' => $uploadId]);
-        } catch (Throwable $exception) {
-            if ($uploadId) {
-                try {
-                    $this->media->abortUpload(['upload_id' => $uploadId]);
-                } catch (Throwable) {
-                }
-            }
-
-            throw $exception;
+                'duration' => isset($telegramFile['duration'])
+                    ? (int) $telegramFile['duration']
+                    : null,
+            ], (string) $download['path']);
         } finally {
             File::delete((string) ($download['path'] ?? ''));
         }
+    }
+
+    private function downloadLargeFile(
+        array $telegramFile,
+        string $fileId,
+        ?int $fileSize,
+    ): array {
+        if (! $this->mtproto->isConfigured()) {
+            throw new RuntimeException(
+                'این فایل بزرگ‌تر از محدودیت Bot API است. '
+                .'فقط یک‌بار API ID و API Hash را در پنل Telegram Bot وارد و MTProto را فعال کن؛ '
+                .'بعد از آن فایل‌های بزرگ خودکار دریافت می‌شوند.',
+            );
+        }
+
+        return $this->mtproto->download(
+            $fileId,
+            $telegramFile['file_name'] ?? null,
+            $telegramFile['mime'] ?? null,
+            $fileSize,
+        );
+    }
+
+    private function isCloudSizeLimitError(Throwable $exception): bool
+    {
+        $message = mb_strtolower($exception->getMessage());
+
+        return str_contains($message, 'file is too big')
+            || str_contains($message, 'file too big')
+            || str_contains($message, 'too large')
+            || str_contains($message, 'larger than the configured download limit')
+            || str_contains($message, 'exceeds the configured limit');
     }
 }

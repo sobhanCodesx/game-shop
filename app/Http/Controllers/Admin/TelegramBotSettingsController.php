@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\TelegramBotAudit;
 use App\Services\Telegram\TelegramApiClient;
 use App\Services\Telegram\TelegramBotSettings;
+use App\Services\Telegram\TelegramMtProtoCompatibilityService;
+use App\Services\Telegram\TelegramMtProtoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -17,6 +19,7 @@ class TelegramBotSettingsController extends Controller
     public function index(
         TelegramBotSettings $settings,
         TelegramApiClient $telegram,
+        TelegramMtProtoCompatibilityService $mtprotoCompatibility,
     ): Response {
         $webhookInfo = null;
         $webhookError = null;
@@ -33,6 +36,7 @@ class TelegramBotSettingsController extends Controller
             'settings' => $settings->adminPayload(),
             'webhookInfo' => $webhookInfo,
             'webhookError' => $webhookError,
+            'mtprotoCompatibility' => $mtprotoCompatibility->report(),
             'audits' => TelegramBotAudit::query()
                 ->latest('id')
                 ->limit(50)
@@ -67,6 +71,7 @@ class TelegramBotSettingsController extends Controller
         Request $request,
         TelegramBotSettings $settings,
         TelegramApiClient $telegram,
+        TelegramMtProtoService $mtproto,
     ): RedirectResponse {
         $request->merge(['enabled' => true]);
         $validated = $this->validatedSettings($request, $settings);
@@ -80,12 +85,24 @@ class TelegramBotSettingsController extends Controller
             $telegram->registerWebhook();
 
             $transport = $telegram->lastTransport() ?: 'unknown';
+            $mtprotoNote = '';
+
+            $resolved = $settings->resolved();
+            if ($resolved['mtproto_enabled'] ?? false) {
+                try {
+                    $mtproto->health();
+                    $mtprotoNote = ' • MTProto آماده فایل‌های بزرگ ✅';
+                } catch (Throwable $exception) {
+                    $mtprotoNote = ' • MTProto نیاز به بررسی دارد: '.$exception->getMessage();
+                }
+            }
 
             try {
-                $resolved = $settings->resolved();
                 $telegram->sendMessage(
                     (string) $resolved['admin_user_id'],
-                    '<b>PlayNexus Bot اجرا شد ✅</b>'."\n".'Webhook و دستورات Telegram آماده هستند.',
+                    '<b>PlayNexus Bot اجرا شد ✅</b>'."\n"
+                    .'Webhook و دستورات Telegram آماده هستند.'
+                    .(($resolved['mtproto_enabled'] ?? false) ? "\nMTProto: ".($mtproto->isConfigured() ? 'تنظیم‌شده' : 'ناقص') : ''),
                 );
             } catch (Throwable) {
                 // A bot cannot initiate a chat before the owner opens it once.
@@ -94,7 +111,8 @@ class TelegramBotSettingsController extends Controller
 
             return back()->with(
                 'success',
-                'Bot اجرا شد، اتصال تست شد و Webhook/Commands همگام شدند — مسیر: '.$transport,
+                'Bot اجرا شد، اتصال تست شد و Webhook/Commands همگام شدند — مسیر: '
+                .$transport.$mtprotoNote,
             );
         } catch (Throwable $exception) {
             try {
@@ -202,6 +220,34 @@ class TelegramBotSettingsController extends Controller
         }
     }
 
+    public function testMtProto(
+        Request $request,
+        TelegramMtProtoService $mtproto,
+        TelegramBotSettings $settings,
+    ): RedirectResponse {
+        $request->merge(['mtproto_enabled' => true]);
+
+        try {
+            $validated = $this->validatedSettings($request, $settings);
+            $validated['mtproto_enabled'] = true;
+            $settings->save($validated, $request->user()?->id);
+
+            $result = $mtproto->health();
+
+            return back()->with(
+                'success',
+                'فایل‌های بزرگ فعال شدند ✅ @'.($result['username'] ?? 'bot')
+                .' • MTProto آماده است • تست '.(int) ($result['elapsed_ms'] ?? 0).'ms',
+            );
+        } catch (Throwable $exception) {
+            $settings->markMtProtoError($exception->getMessage());
+
+            return back()->withErrors([
+                'mtproto' => 'فعال‌سازی فایل‌های بزرگ کامل نشد: '.$exception->getMessage(),
+            ]);
+        }
+    }
+
     public function sendTest(
         TelegramApiClient $telegram,
         TelegramBotSettings $settings,
@@ -232,6 +278,9 @@ class TelegramBotSettingsController extends Controller
             'publish_enabled' => ['required', 'boolean'],
             'destructive_enabled' => ['required', 'boolean'],
             'media_enabled' => ['required', 'boolean'],
+            'mtproto_enabled' => ['sometimes', 'boolean'],
+            'mtproto_api_id' => ['nullable', 'integer', 'min:1', 'max:4294967295'],
+            'mtproto_api_hash' => ['nullable', 'string', 'size:32', 'regex:/^[a-f0-9]{32}$/i'],
             'transport_mode' => ['required', 'in:auto,relay,proxy,direct'],
             'api_base_url' => ['required', 'url', 'max:500'],
             'relay_base_url' => ['nullable', 'url', 'max:500'],
@@ -283,6 +332,30 @@ class TelegramBotSettingsController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'bot_token' => 'برای فعال‌سازی Bot، Bot Token معتبر لازم است.',
             ]);
+        }
+
+        if ($request->boolean('mtproto_enabled')) {
+            $effectiveApiId = (int) ($validated['mtproto_api_id'] ?? 0);
+            if ($effectiveApiId < 1) {
+                $effectiveApiId = (int) ($current['mtproto_api_id'] ?? 0);
+            }
+
+            $effectiveApiHash = trim((string) ($validated['mtproto_api_hash'] ?? ''));
+            if ($effectiveApiHash === '') {
+                $effectiveApiHash = trim((string) ($current['mtproto_api_hash'] ?? ''));
+            }
+
+            if ($effectiveApiId < 1) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'mtproto_api_id' => 'برای MTProto باید Telegram API ID وارد شود.',
+                ]);
+            }
+
+            if ($effectiveApiHash === '') {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'mtproto_api_hash' => 'برای MTProto باید Telegram API Hash وارد شود.',
+                ]);
+            }
         }
 
         return $validated;

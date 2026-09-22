@@ -278,6 +278,82 @@ class ContentAgentMediaService
         ];
     }
 
+    public function attachLocalFile(
+        array $arguments,
+        string $path,
+    ): array {
+        $this->ensureUploadsAllowed();
+
+        if (! File::isFile($path)) {
+            throw new RuntimeException('Local media file does not exist.');
+        }
+
+        $maxSize = $this->maxUploadSize();
+        $actualSize = (int) File::size($path);
+        if ($actualSize < 1 || $actualSize > $maxSize) {
+            throw new RuntimeException(
+                'Local media file size is outside the allowed upload range.',
+            );
+        }
+
+        $data = $this->validate($arguments, [
+            'resource' => ['required', Rule::in(self::RESOURCES)],
+            'id' => ['required', 'integer', 'min:1'],
+            'slot' => ['required', 'string', 'max:32'],
+            'name' => ['required', 'string', 'max:255'],
+            'mime' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'alt' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'sort_order' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:4294967295'],
+            'duration' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:4294967295'],
+        ]);
+
+        $resource = (string) $data['resource'];
+        $id = (int) $data['id'];
+        $slot = (string) $data['slot'];
+
+        $this->resolveTarget($resource, $id);
+        $this->ensureValidSlot($resource, $slot);
+
+        $file = new UploadedFile(
+            $path,
+            basename((string) $data['name']),
+            isset($data['mime']) && filled($data['mime'])
+                ? (string) $data['mime']
+                : null,
+            null,
+            true,
+        );
+
+        $actualMime = strtolower((string) ($file->getMimeType() ?: ($data['mime'] ?? 'application/octet-stream')));
+        $this->ensureMimeAllowedForSlot($resource, $slot, $actualMime);
+
+        $sha256 = hash_file('sha256', $path);
+        if (! is_string($sha256) || strlen($sha256) !== 64) {
+            throw new RuntimeException('Could not calculate media SHA-256.');
+        }
+
+        $metadata = [
+            'resource' => $resource,
+            'id' => $id,
+            'slot' => $slot,
+            'name' => basename((string) $data['name']),
+            'mime' => $actualMime,
+            'size' => $actualSize,
+            'sha256' => $sha256,
+            'alt' => isset($data['alt']) ? trim((string) $data['alt']) : null,
+            'sort_order' => isset($data['sort_order']) ? (int) $data['sort_order'] : null,
+            'duration' => isset($data['duration']) ? (int) $data['duration'] : null,
+        ];
+
+        return [
+            'resource' => $resource,
+            'id' => $id,
+            'slot' => $slot,
+            'sha256' => $sha256,
+            'asset' => $this->attach($metadata, $file, $actualMime, $sha256),
+        ];
+    }
+
     public function abortUpload(array $arguments): array
     {
         $this->ensureUploadsAllowed();
