@@ -57,7 +57,7 @@ MCP_TOOLS = {
 
 # Synthetic GitHub-runner operation. source_url/file_path/source_base64 are
 # consumed here and are never forwarded to the PlayNexus MCP endpoint.
-LOCAL_TOOLS = {"upload_asset", "upload_asset_by_query"}
+LOCAL_TOOLS = {"upload_asset", "upload_asset_by_query", "verify_feed_ready"}
 ALLOWED_TOOLS = MCP_TOOLS | LOCAL_TOOLS
 
 DEFAULT_CHUNK_SIZE = 2 * 1024 * 1024
@@ -184,6 +184,160 @@ def structured_result(response: dict[str, Any]) -> dict[str, Any]:
 
     return value
 
+
+
+def local_structured_response(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "result": {
+            "structuredContent": {
+                "result": result,
+            },
+        },
+    }
+
+
+def looks_like_supported_image(prefix: bytes) -> bool:
+    return (
+        prefix.startswith(b"\xff\xd8\xff")
+        or prefix.startswith(b"\x89PNG\r\n\x1a\n")
+        or prefix.startswith(b"GIF87a")
+        or prefix.startswith(b"GIF89a")
+        or (len(prefix) >= 12 and prefix.startswith(b"RIFF") and prefix[8:12] == b"WEBP")
+    )
+
+
+def verify_public_asset_url(asset_url: Any, expected_kind: str) -> dict[str, Any]:
+    if not isinstance(asset_url, str) or not asset_url.strip():
+        fail("Feed asset is missing a public URL.")
+
+    asset_url = asset_url.strip()
+    validate_public_https_url(asset_url)
+
+    request = urllib.request.Request(
+        asset_url,
+        method="GET",
+        headers={
+            "Accept": "image/*,video/*;q=0.9,*/*;q=0.1",
+            "Range": "bytes=0-65535",
+            "User-Agent": "PlayNexus-GitHub-Publisher/2.3",
+        },
+    )
+    opener = urllib.request.build_opener(SafeRedirectHandler())
+
+    try:
+        with opener.open(request, timeout=30) as response:
+            final_url = response.geturl()
+            validate_public_https_url(final_url)
+            status = int(getattr(response, "status", 200) or 200)
+            if status not in (200, 206):
+                fail(f"Feed asset public URL returned unexpected HTTP {status}.")
+
+            mime = str(response.headers.get_content_type() or "").casefold()
+            prefix = response.read(64)
+    except urllib.error.HTTPError as exc:
+        fail(f"Feed asset public URL returned HTTP {exc.code}.")
+    except urllib.error.URLError as exc:
+        fail(f"Could not reach feed asset public URL: {exc.reason}")
+
+    if not prefix:
+        fail("Feed asset public URL returned an empty body.")
+
+    if expected_kind == "image":
+        if not mime.startswith("image/"):
+            fail(f"Feed image public URL returned non-image Content-Type {mime!r}.")
+        if not looks_like_supported_image(prefix):
+            fail("Feed image public URL did not return a supported image signature.")
+    elif expected_kind == "video":
+        if not mime.startswith("video/"):
+            fail(f"Feed video public URL returned non-video Content-Type {mime!r}.")
+    else:
+        fail(f"Unsupported feed media kind during verification: {expected_kind!r}.")
+
+    return {
+        "url": final_url,
+        "http_status": status,
+        "content_type": mime,
+        "kind": expected_kind,
+    }
+
+
+def verify_feed_ready(
+    url: str,
+    token: str,
+    *,
+    feed_id: int,
+    request_id: str,
+) -> dict[str, Any]:
+    if not isinstance(feed_id, int) or isinstance(feed_id, bool) or feed_id < 1:
+        fail("verify_feed_ready requires a positive integer feed id.")
+
+    content_response = rpc_request(
+        url,
+        token,
+        tool="get_content",
+        arguments={"resource": "feed", "id": feed_id},
+        request_id=f"{request_id}:content",
+    )
+    feed = structured_result(content_response)
+
+    if int(feed.get("id") or 0) != feed_id:
+        fail("Feed verification returned the wrong feed id.")
+    if not str(feed.get("title") or "").strip():
+        fail("Feed cannot be published without a title.")
+    if not str(feed.get("body") or "").strip():
+        fail("Feed cannot be published without body content.")
+    if not str(feed.get("feed_type") or "").strip():
+        fail("Feed cannot be published without feed_type metadata.")
+
+    if str(feed.get("feed_type") or "").casefold() == "news":
+        if not str(feed.get("seo_title") or "").strip():
+            fail("News feed cannot be published without seo_title.")
+        if not str(feed.get("seo_description") or "").strip():
+            fail("News feed cannot be published without seo_description.")
+
+    status = str(feed.get("status") or "")
+    if status not in {"draft", "published"}:
+        fail(f"Feed has an invalid publish state: {status!r}.")
+
+    assets_response = rpc_request(
+        url,
+        token,
+        tool="list_content_assets",
+        arguments={"resource": "feed", "id": feed_id},
+        request_id=f"{request_id}:assets",
+    )
+    assets = structured_result(assets_response)
+    slots = assets.get("slots")
+    if not isinstance(slots, list) or not slots:
+        fail("Feed cannot be published without internal media.")
+
+    verified_assets: list[dict[str, Any]] = []
+    for asset in slots:
+        if not isinstance(asset, dict):
+            fail("Feed asset verification returned an invalid asset record.")
+
+        path_value = asset.get("path")
+        if not isinstance(path_value, str) or not path_value.strip():
+            fail("Feed asset is missing its internal storage path.")
+
+        if asset.get("storage_exists") is False:
+            fail(f"Feed asset is missing from storage: {path_value}")
+
+        kind = str(asset.get("kind") or "").casefold()
+        verified = verify_public_asset_url(asset.get("url"), kind)
+        verified["path"] = path_value
+        verified["storage_exists"] = asset.get("storage_exists")
+        verified_assets.append(verified)
+
+    return local_structured_response({
+        "feed_id": feed_id,
+        "status": status,
+        "feed_type": feed.get("feed_type"),
+        "seo_title": feed.get("seo_title"),
+        "seo_description": feed.get("seo_description"),
+        "verified_assets": verified_assets,
+        "ready": True,
+    })
 
 
 def normalized_lookup_value(value: Any) -> str:
@@ -829,6 +983,31 @@ def main() -> None:
         response = upload_asset(url, token, job, request_id)
     elif job["tool"] == "upload_asset_by_query":
         response = upload_asset_by_query(url, token, job, request_id)
+    elif job["tool"] == "verify_feed_ready":
+        arguments = job.get("arguments", {})
+        feed_id = arguments.get("id") if isinstance(arguments, dict) else None
+        response = verify_feed_ready(
+            url,
+            token,
+            feed_id=feed_id,
+            request_id=request_id,
+        )
+    elif job["tool"] == "publish_feed":
+        arguments = job.get("arguments", {})
+        feed_id = arguments.get("id") if isinstance(arguments, dict) else None
+        verify_feed_ready(
+            url,
+            token,
+            feed_id=feed_id,
+            request_id=f"{request_id}:preflight",
+        )
+        response = rpc_request(
+            url,
+            token,
+            tool="publish_feed",
+            arguments=arguments,
+            request_id=request_id,
+        )
     else:
         response = rpc_request(
             url,
