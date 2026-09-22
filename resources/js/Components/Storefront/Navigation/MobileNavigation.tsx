@@ -53,6 +53,7 @@ export default function MobileNavigation({
         "/studios",
         "/offers",
         "/exchange-products",
+        "/nexus-ai",
     ].some((path) => pathname === path || pathname.startsWith(`${path}/`));
     const menuActive =
         activePanel === "menu" || (!activePanel && menuRouteActive);
