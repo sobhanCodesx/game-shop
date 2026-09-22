@@ -38,6 +38,7 @@ final class MobileAuthPushService
                 'purpose' => 'passwordless_login',
                 'phone' => $phone,
                 'code' => $code,
+                'installation_id' => $installationId,
                 'title' => 'کد ورود PlayNexus آماده است',
                 'message' => 'اگر صفحه ورود باز باشد، کد به‌صورت خودکار داخل فیلد قرار می‌گیرد.',
                 'url' => '/auth/otp',
