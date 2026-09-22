@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\AndroidReleaseAgentService;
 use App\Services\ContentAgentMediaService;
 use App\Services\ContentAgentService;
 use App\Services\FeedService;
@@ -19,7 +20,7 @@ class ContentAgentMcpController extends Controller
     private const MODERN_PROTOCOL = '2026-07-28';
     private const LEGACY_PROTOCOL = '2025-11-25';
 
-    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, PlayNexusGraphService $graph): Response
+    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases): Response
     {
         $payload = $request->json()->all();
 
@@ -44,7 +45,7 @@ class ContentAgentMcpController extends Controller
                 'initialize' => $this->rpcResult($id, $this->initializeResult($params)),
                 'server/discover' => $this->rpcResult($id, $this->discoverResult()),
                 'tools/list' => $this->rpcResult($id, $this->toolsListResult()),
-                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia, $graph)),
+                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia, $graph, $androidReleases)),
                 'ping' => $this->rpcResult($id, new \stdClass()),
                 default => $this->rpcError($id, -32601, 'Method not found.'),
             };
@@ -116,7 +117,7 @@ class ContentAgentMcpController extends Controller
         ];
     }
 
-    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, PlayNexusGraphService $graph): array
+    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases): array
     {
         $name = (string) ($params['name'] ?? '');
         $arguments = is_array($params['arguments'] ?? null) ? $params['arguments'] : [];
@@ -152,6 +153,7 @@ class ContentAgentMcpController extends Controller
             'unpublish_feed' => $contentAgent->unpublishFeed($arguments),
             'delete_content' => $contentAgent->deleteContent($arguments),
             'restore_content' => $contentAgent->restoreContent($arguments),
+            'publish_android_release' => $androidReleases->publish($arguments),
             'start_asset_upload' => $contentMedia->startUpload($arguments),
             'upload_asset_chunk' => $contentMedia->uploadChunk($arguments),
             'complete_asset_upload' => $contentMedia->completeUpload($arguments),
@@ -610,6 +612,24 @@ class ContentAgentMcpController extends Controller
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
             ],
             [
+                'name' => 'publish_android_release',
+                'description' => 'Publish an Android APK as the active PlayNexus app release. The server fetches the APK only from allowlisted GitHub asset hosts, verifies size/ZIP signature and optional SHA-256, stores release metadata and notes, then returns the PlayNexus download URL. Requires upload and publish permissions.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'source_url' => ['type' => 'string', 'format' => 'uri', 'maxLength' => 2048, 'description' => 'Direct HTTPS APK URL on an allowlisted GitHub asset host.'],
+                        'release_notes' => ['type' => ['string', 'null'], 'maxLength' => 5000, 'description' => 'Human-readable release notes/changelog shown with the Android release.'],
+                        'file_name' => ['type' => ['string', 'null'], 'maxLength' => 255, 'pattern' => '\\.apk$', 'description' => 'Display filename for the stored release.'],
+                        'version' => ['type' => ['string', 'null'], 'pattern' => '^\\d+\\.\\d+\\.\\d+$', 'description' => 'Optional semantic version. Omit to auto-increment.'],
+                        'version_code' => ['type' => ['integer', 'null'], 'minimum' => 1, 'description' => 'Optional Android version code. Omit to auto-increment.'],
+                        'sha256' => ['type' => ['string', 'null'], 'pattern' => '^[a-fA-F0-9]{64}$', 'description' => 'Optional expected SHA-256 for integrity verification.'],
+                    ],
+                    'required' => ['source_url'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
                 'name' => 'sync_collection_videos',
                 'description' => 'Replace the ordered videos in a collection. video_ids order becomes playlist position.',
                 'inputSchema' => [
@@ -711,7 +731,7 @@ class ContentAgentMcpController extends Controller
 
     private function instructions(): string
     {
-        return 'PlayNexus Content Admin MCP v2.2. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary media/files use the dedicated chunked asset tools; the MCP never fetches arbitrary remote URLs. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+        return 'PlayNexus Content Admin MCP v2.3. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary content media uses dedicated chunked asset tools. Android releases use the dedicated publish_android_release tool, which may fetch only direct APKs from an explicit GitHub asset allowlist and can record release notes/version metadata. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
     }
 
     private function serverInfo(): array

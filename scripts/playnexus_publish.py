@@ -53,6 +53,7 @@ MCP_TOOLS = {
     "abort_asset_upload",
     "list_content_assets",
     "remove_content_asset",
+    "publish_android_release",
 }
 
 # Synthetic GitHub-runner operation. source_url/file_path/source_base64 are
