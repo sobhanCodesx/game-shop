@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\TelegramBotAudit;
+use App\Services\Telegram\TelegramBotSessionStore;
+use App\Services\Telegram\TelegramAdminNotificationService;
+use App\Models\SocialContent;
 use App\Models\TelegramBotSetting;
 use App\Models\User;
 use App\Services\Telegram\TelegramApiClient;
@@ -642,6 +645,96 @@ class TelegramAdminBotTest extends TestCase
             return str_contains($text, 'انتشار فید #12')
                 && ! str_contains($text, 'publish_feed')
                 && ! str_contains($text, '{');
+        });
+    }
+
+    public function test_confirming_new_video_immediately_requests_video_file_upload(): void
+    {
+        $author = User::factory()->create([
+            'is_admin' => true,
+            'status' => 'active',
+            'role' => 'super-admin',
+        ]);
+        config(['content_agent.author_user_id' => $author->id]);
+
+        $setting = $this->configureBot();
+        $setting->forceFill([
+            'write_enabled' => true,
+            'media_enabled' => true,
+        ])->save();
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => [],
+            ]),
+        ]);
+
+        $token = app(TelegramBotSessionStore::class)->queueConfirmation(
+            '777777777',
+            '777777777',
+            'create_video',
+            ['title' => 'ویدیوی تست مستقیم'],
+            'ساخت ویدیو',
+        );
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson('/api/telegram/webhook', $this->telegramCallback(
+            2200,
+            '777777777',
+            'confirm:'.$token,
+        ))->assertOk();
+
+        $video = SocialContent::query()
+            ->where('type', 'video')
+            ->where('title', 'ویدیوی تست مستقیم')
+            ->firstOrFail();
+
+        $session = app(TelegramBotSessionStore::class)->get('777777777', '777777777');
+
+        $this->assertNotNull($session);
+        $this->assertSame('awaiting_media', $session->state);
+        $this->assertSame('video', $session->context['resource'] ?? null);
+        $this->assertSame($video->id, $session->context['id'] ?? null);
+        $this->assertSame('video', $session->context['slot'] ?? null);
+        $this->assertSame('video_create', $session->context['flow'] ?? null);
+
+        Http::assertSent(function ($request): bool {
+            return str_ends_with($request->url(), '/sendMessage')
+                && str_contains((string) ($request->data()['text'] ?? ''), 'فایل ویدیو');
+        });
+    }
+
+    public function test_new_user_notification_is_sent_to_the_owner_without_breaking_registration_flow(): void
+    {
+        $this->configureBot();
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => [],
+            ]),
+        ]);
+
+        $user = User::factory()->create([
+            'name' => 'کاربر جدید تست',
+            'email' => 'new-user@example.test',
+            'role' => 'user',
+            'status' => 'active',
+            'is_admin' => false,
+        ]);
+
+        app(TelegramAdminNotificationService::class)->newUser($user, 'web-email');
+
+        Http::assertSent(function ($request): bool {
+            $text = (string) ($request->data()['text'] ?? '');
+
+            return str_ends_with($request->url(), '/sendMessage')
+                && ($request->data()['chat_id'] ?? null) === '777777777'
+                && str_contains($text, 'عضو جدید PlayNexus')
+                && str_contains($text, 'کاربر جدید تست')
+                && str_contains($text, 'وب • ایمیل');
         });
     }
 
