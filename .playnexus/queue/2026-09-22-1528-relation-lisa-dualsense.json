@@ -1,0 +1,9 @@
+{
+  "job_id": "2026-09-22-1528-relation-lisa-dualsense",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query ProductRelation($q: String!) { search(query: $q, first: 5) { products { id title status } } }",
+    "variables": {"q": "DualSense Lisa Limited Edition"},
+    "operation_name": "ProductRelation"
+  }
+}
