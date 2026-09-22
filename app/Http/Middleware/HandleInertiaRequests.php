@@ -186,7 +186,9 @@ class HandleInertiaRequests extends Middleware
                         ->orderBy('sort_order')->orderByDesc('published_at')->limit(20)->get()->map(fn (SocialContent $story) => [
                             ...$story->only(['id', 'title', 'excerpt', 'media_type', 'duration', 'link_url', 'link_label']),
                             'media_url' => MediaStorage::url($story->video_path),
-                            'thumbnail_url' => MediaStorage::url($story->thumbnail),
+                            'thumbnail_url' => MediaStorage::url(
+                                $story->thumbnail ?: ($story->media_type === 'image' ? $story->video_path : null),
+                            ),
                             'channel_name' => $story->game?->name ?? 'PlayNexus',
                             'channel_avatar_url' => MediaStorage::url($story->game?->cover) ?: url((string) config('seo.default_image', '/logo.png')),
                         ])->values()->all()
