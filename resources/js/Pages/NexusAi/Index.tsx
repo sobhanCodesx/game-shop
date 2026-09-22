@@ -1,5 +1,5 @@
 import { Head } from "@inertiajs/react";
-import { Bot, ExternalLink, ShieldCheck, Sparkles } from "lucide-react";
+import { Bot, MessageCircleMore, ShieldCheck, Sparkles } from "lucide-react";
 
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 
@@ -9,8 +9,10 @@ type NexusAiConfig = {
     title: string;
     description: string;
     nav_label: string;
-    iframe_url: string;
-    min_height: number;
+    worker_url: string;
+    launcher_label: string;
+    welcome_title: string;
+    welcome_text: string;
     status_text: string;
 };
 
@@ -19,65 +21,64 @@ export default function NexusAiIndex({ nexusAi }: { nexusAi: NexusAiConfig }) {
         <StorefrontLayout>
             <Head title={`${nexusAi.title} | PlayNexus`} />
 
-            <main className="mx-auto w-full max-w-[1500px] px-0 py-0 sm:px-4 sm:py-5 lg:px-6">
-                <section className="overflow-hidden border-y border-[var(--store-border)] bg-[var(--store-surface)] sm:rounded-[30px] sm:border">
-                    <header className="relative overflow-hidden border-b border-[var(--store-border)] px-5 py-5 sm:px-7 lg:px-9">
-                        <div className="pointer-events-none absolute -left-20 -top-24 size-72 rounded-full bg-violet-500/10 blur-3xl" />
-                        <div className="pointer-events-none absolute -right-16 -bottom-28 size-72 rounded-full bg-cyan-500/10 blur-3xl" />
+            <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+                <section className="relative overflow-hidden rounded-[32px] border border-[var(--store-border)] bg-[var(--store-surface)] p-6 sm:p-10 lg:p-14">
+                    <div className="pointer-events-none absolute -right-24 -top-28 size-96 rounded-full bg-violet-500/10 blur-3xl" />
+                    <div className="pointer-events-none absolute -bottom-28 -left-24 size-96 rounded-full bg-cyan-500/10 blur-3xl" />
 
-                        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex min-w-0 items-center gap-4">
-                                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 to-cyan-600 text-white shadow-lg shadow-violet-500/20">
-                                    <Bot size={23} />
+                    <div className="relative mx-auto max-w-3xl text-center">
+                        <div className="mx-auto grid size-16 place-items-center rounded-[22px] bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 text-white shadow-[0_18px_55px_rgba(99,102,241,.28)]">
+                            <Bot size={30} strokeWidth={2.1} />
+                        </div>
+
+                        <div className="mt-6 flex items-center justify-center gap-2">
+                            <Sparkles size={14} className="text-violet-500" />
+                            <span className="text-[10px] font-black tracking-[.18em] text-[var(--store-muted)]">
+                                PLAYNEXUS INTELLIGENCE
+                            </span>
+                        </div>
+
+                        <h1 className="mt-3 text-2xl font-black text-[var(--store-text)] sm:text-4xl">
+                            {nexusAi.title}
+                        </h1>
+
+                        <p className="mx-auto mt-4 max-w-2xl text-sm leading-8 text-[var(--store-muted)]">
+                            {nexusAi.description}
+                        </p>
+
+                        <div className="mx-auto mt-7 grid max-w-2xl gap-3 sm:grid-cols-2">
+                            <div className="flex items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)]/70 p-4 text-right">
+                                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-500/10 text-violet-500">
+                                    <MessageCircleMore size={18} />
                                 </span>
-                                <div className="min-w-0">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <h1 className="text-xl font-black text-[var(--store-text)] sm:text-2xl">
-                                            {nexusAi.title}
-                                        </h1>
-                                        {nexusAi.status_text && (
-                                            <span className="rounded-full border border-emerald-500/15 bg-emerald-500/[.08] px-2.5 py-1 text-[9px] font-black text-emerald-500">
-                                                {nexusAi.status_text}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="mt-2 max-w-3xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm">
-                                        {nexusAi.description}
-                                    </p>
+                                <div>
+                                    <strong className="block text-xs text-[var(--store-text)]">
+                                        چت Native داخل PlayNexus
+                                    </strong>
+                                    <span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">
+                                        بدون iframe و بدون اسکرول دوگانه
+                                    </span>
                                 </div>
                             </div>
 
-                            <div className="flex shrink-0 items-center gap-2">
-                                <span className="hidden items-center gap-2 rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] px-3 py-2 text-[10px] font-bold text-[var(--store-muted)] md:flex">
-                                    <ShieldCheck size={14} className="text-emerald-500" />
-                                    اتصال امن PlayNexus
+                            <div className="flex items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)]/70 p-4 text-right">
+                                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                                    <ShieldCheck size={18} />
                                 </span>
-                                <a
-                                    aria-label="باز کردن Nexus AI در صفحه جدا"
-                                    className="grid size-10 place-items-center rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-muted)] transition hover:text-indigo-500"
-                                    href={nexusAi.iframe_url}
-                                    rel="noreferrer"
-                                    target="_blank"
-                                >
-                                    <ExternalLink size={17} />
-                                </a>
+                                <div>
+                                    <strong className="block text-xs text-[var(--store-text)]">
+                                        اتصال امن به Nexus AI
+                                    </strong>
+                                    <span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">
+                                        Worker فقط نقش Relay/API را دارد
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    </header>
 
-                    <div className="relative bg-[#050711]">
-                        <div className="pointer-events-none absolute left-1/2 top-0 z-10 flex -translate-x-1/2 items-center gap-2 rounded-b-xl border-x border-b border-white/5 bg-black/25 px-3 py-1.5 text-[8px] font-black tracking-wide text-white/35 backdrop-blur">
-                            <Sparkles size={10} />
-                            NEXUS INTELLIGENCE
-                        </div>
-                        <iframe
-                            allow="clipboard-write"
-                            className="block w-full border-0"
-                            loading="eager"
-                            src={nexusAi.iframe_url}
-                            style={{ minHeight: `${nexusAi.min_height}px`, height: "calc(100dvh - 190px)" }}
-                            title={nexusAi.title}
-                        />
+                        <p className="mt-7 text-[11px] font-bold text-[var(--store-muted)]">
+                            پنل Nexus AI همین حالا باز شده؛ اگر بسته شد، از دکمه شناور پایین صفحه دوباره بازش کن.
+                        </p>
                     </div>
                 </section>
             </main>
