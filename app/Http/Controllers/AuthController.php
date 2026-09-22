@@ -8,6 +8,7 @@ use App\Services\AuthenticationSessionService;
 use App\Services\EmailCodeService;
 use App\Services\MobileCodeService;
 use App\Services\Telegram\TelegramAdminNotificationService;
+use App\Services\Telegram\TelegramBotSettings;
 use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,9 +50,27 @@ class AuthController extends Controller
         return to_route('register');
     }
 
-    public function passwordlessNotice(Request $request): Response|RedirectResponse
-    {
-        return $request->session()->has('login_phone') ? Inertia::render('Auth/VerifyCode', ['destination' => $request->session()->get('login_phone'), 'channel' => 'mobile', 'purpose' => 'login']) : to_route('login');
+    public function passwordlessNotice(
+        Request $request,
+        TelegramBotSettings $telegramSettings,
+    ): Response|RedirectResponse {
+        if (! $request->session()->has('login_phone')) {
+            return to_route('login');
+        }
+
+        $settings = $telegramSettings->resolved();
+
+        return Inertia::render('Auth/VerifyCode', [
+            'destination' => $request->session()->get('login_phone'),
+            'channel' => 'mobile',
+            'purpose' => 'login',
+            'telegram' => [
+                'supported' => ($settings['enabled'] ?? false) && filled($settings['bot_username'] ?? null),
+                'bot_username' => filled($settings['bot_username'] ?? null)
+                    ? '@'.ltrim((string) $settings['bot_username'], '@')
+                    : null,
+            ],
+        ]);
     }
 
     public function resetPassword(Request $request): Response|RedirectResponse
@@ -192,6 +211,22 @@ class AuthController extends Controller
         }
 
         return back()->with('success', 'کد جدید ارسال شد.');
+    }
+
+    public function sendPasswordlessTelegram(
+        Request $request,
+        MobileCodeService $codes,
+    ): RedirectResponse {
+        $phone = (string) $request->session()->get('login_phone');
+
+        if ($phone !== '' && $codes->telegramAvailable($phone)) {
+            $codes->sendViaTelegram($phone, 'passwordless_login');
+        }
+
+        return back()->with(
+            'success',
+            'اگر این حساب قبلاً به تلگرام وصل شده باشد، کد ورود در همان چت ارسال شد.',
+        );
     }
 
     public function resendPasswordless(Request $request, MobileCodeService $codes): RedirectResponse

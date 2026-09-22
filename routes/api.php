@@ -65,6 +65,9 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
         Route::post('passwordless/request', [MobileAuthController::class, 'requestPasswordless'])
             ->middleware('throttle:3,1')
             ->name('passwordless.request');
+        Route::post('passwordless/telegram', [MobileAuthController::class, 'requestPasswordlessTelegram'])
+            ->middleware('throttle:2,1')
+            ->name('passwordless.telegram');
         Route::post('passwordless/verify', [MobileAuthController::class, 'verifyPasswordless'])
             ->middleware('throttle:10,1')
             ->name('passwordless.verify');

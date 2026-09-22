@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ContentNotificationPreference extends Model
 {
-    protected $fillable = ['sms_enabled', 'email_enabled', 'feed_enabled'];
+    protected $fillable = ['sms_enabled', 'email_enabled', 'feed_enabled', 'telegram_enabled'];
 
     protected function casts(): array
     {
@@ -15,6 +15,7 @@ class ContentNotificationPreference extends Model
             'sms_enabled' => 'boolean',
             'email_enabled' => 'boolean',
             'feed_enabled' => 'boolean',
+            'telegram_enabled' => 'boolean',
         ];
     }
 

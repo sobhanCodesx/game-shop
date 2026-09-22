@@ -7,6 +7,8 @@ use App\Models\SocialContent;
 use App\Models\User;
 use App\Notifications\Channels\ExpoPushChannel;
 use App\Notifications\Channels\SmsChannel;
+use App\Notifications\Channels\TelegramChannel;
+use App\Services\MediaStorage;
 use App\Services\Sms\SmsPattern;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -38,6 +40,9 @@ class ContentPublishedNotification extends Notification
         if (($preference?->email_enabled ?? false) && filled($notifiable->email)) {
             $channels[] = 'mail';
         }
+        if ($preference?->telegram_enabled ?? false) {
+            $channels[] = TelegramChannel::class;
+        }
 
         return $channels;
     }
@@ -52,6 +57,7 @@ class ContentPublishedNotification extends Notification
             'content_type' => $this->contentType(),
             'content_id' => $this->content->id,
             'game_id' => $this->content->game_id,
+            'image_url' => $this->imageUrl(),
         ];
     }
 
@@ -76,6 +82,25 @@ class ContentPublishedNotification extends Notification
             ],
             'idempotency_key' => 'content-published:'.$this->contentType().':'.$this->content->id,
         ];
+    }
+
+    private function imageUrl(): ?string
+    {
+        if ($this->content instanceof Product) {
+            $path = $this->content->coverMedia()->value('path');
+
+            return filled($path) ? MediaStorage::url((string) $path) : null;
+        }
+
+        if (filled($this->content->thumbnail)) {
+            return MediaStorage::url((string) $this->content->thumbnail);
+        }
+
+        $path = $this->content->media()
+            ->where('type', 'image')
+            ->value('path');
+
+        return filled($path) ? MediaStorage::url((string) $path) : null;
     }
 
     private function contentType(): string

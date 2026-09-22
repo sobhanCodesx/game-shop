@@ -73,6 +73,7 @@ Route::middleware('guest')->group(function () {
     Route::get('login/otp', [AuthController::class, 'passwordlessNotice'])->name('login.otp.notice');
     Route::post('login/otp/verify', [AuthController::class, 'confirmPasswordlessLogin'])->middleware('throttle:8,1')->name('login.otp.verify');
     Route::post('login/otp/resend', [AuthController::class, 'resendPasswordless'])->middleware('throttle:2,1')->name('login.otp.resend');
+    Route::post('login/otp/telegram', [AuthController::class, 'sendPasswordlessTelegram'])->middleware('throttle:2,1')->name('login.otp.telegram');
     Route::get('register', [AuthController::class, 'register'])->name('register');
     Route::post('register', [AuthController::class, 'storeRegistration'])->middleware('throttle:3,1')->name('register.store');
     Route::get('verify-email', [AuthController::class, 'verifyAccount'])->name('verification.notice');
@@ -90,6 +91,8 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::patch('profile', [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::put('password', [AccountController::class, 'updatePassword'])->name('password.update');
     Route::put('content-notifications', [AccountController::class, 'updateContentNotificationPreferences'])->name('content-notifications.update');
+    Route::post('telegram/connect', [AccountController::class, 'connectTelegram'])->middleware('throttle:5,1')->name('telegram.connect');
+    Route::delete('telegram', [AccountController::class, 'disconnectTelegram'])->middleware('throttle:5,1')->name('telegram.disconnect');
     Route::put('home-experience', [AccountController::class, 'updateHomeExperiencePreference'])->name('home-experience.update');
     Route::post('addresses', [AccountController::class, 'storeAddress'])->name('addresses.store');
     Route::put('addresses/{address}', [AccountController::class, 'updateAddress'])->name('addresses.update');

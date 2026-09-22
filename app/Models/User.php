@@ -31,6 +31,9 @@ class User extends Authenticatable
         'google_id',
         'username',
         'phone',
+        'telegram_user_id',
+        'telegram_chat_id',
+        'telegram_linked_at',
         'avatar',
         'birth_date',
         'home_focus_preference',
@@ -62,6 +65,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
+            'telegram_linked_at' => 'datetime',
             'is_admin' => 'boolean',
             'last_login_at' => 'datetime',
             'birth_date' => 'date',

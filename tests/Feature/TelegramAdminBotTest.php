@@ -381,10 +381,15 @@ class TelegramAdminBotTest extends TestCase
         $this->assertDatabaseCount('telegram_bot_audits', 0);
     }
 
-    public function test_webhook_silently_ignores_every_user_except_configured_owner(): void
+    public function test_non_owner_private_chat_is_isolated_from_admin_router(): void
     {
         $this->configureBot();
-        Http::fake();
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
 
         $this->withHeaders([
             'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
@@ -396,11 +401,17 @@ class TelegramAdminBotTest extends TestCase
         $this->assertDatabaseHas('telegram_bot_audits', [
             'update_id' => 1002,
             'user_id' => '888888888',
-            'status' => 'ignored',
-            'action' => 'unauthorized_or_non_private',
+            'status' => 'succeeded',
+            'action' => 'user_unlinked_help',
         ]);
 
-        Http::assertNothingSent();
+        Http::assertSent(function ($request): bool {
+            $text = (string) ($request->data()['text'] ?? '');
+
+            return str_ends_with($request->url(), '/sendMessage')
+                && str_contains($text, 'هیچ دسترسی مدیریتی ندارد')
+                && ! str_contains($text, 'مرکز مدیریت PlayNexus');
+        });
     }
 
     public function test_group_messages_are_rejected_even_from_owner_id(): void

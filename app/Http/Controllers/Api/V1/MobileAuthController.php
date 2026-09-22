@@ -212,6 +212,23 @@ class MobileAuthController extends Controller
         ]);
     }
 
+    public function requestPasswordlessTelegram(
+        Request $request,
+        MobileCodeService $codes,
+    ): JsonResponse {
+        $data = $request->validate(['phone' => ['required', 'string']]);
+        $phone = PhoneNumber::normalize($data['phone']);
+
+        if ($codes->telegramAvailable($phone)) {
+            $codes->sendViaTelegram($phone, 'passwordless_login');
+        }
+
+        return response()->json([
+            'identifier' => $phone,
+            'message' => 'اگر این حساب قبلاً به تلگرام وصل شده باشد، کد ورود در همان چت ارسال شد.',
+        ]);
+    }
+
     public function verifyPasswordless(
         Request $request,
         MobileCodeService $codes,

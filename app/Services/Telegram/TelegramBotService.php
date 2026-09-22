@@ -11,6 +11,7 @@ final class TelegramBotService
     public function __construct(
         private readonly TelegramBotSettings $settings,
         private readonly TelegramBotCommandRouter $router,
+        private readonly TelegramUserCommandRouter $userRouter,
     ) {}
 
     public function handleUpdate(array $update): void
@@ -40,7 +41,10 @@ final class TelegramBotService
         ]);
         $audit->save();
 
-        if (! $this->settings->acceptsUser($userId, $chatType)) {
+        $isOwner = $this->settings->acceptsUser($userId, $chatType);
+        $isPrivateUser = $chatType === 'private' && filled($userId) && filled($chatId);
+
+        if (! $isOwner && ! $isPrivateUser) {
             $audit->status = 'ignored';
             $audit->action = 'unauthorized_or_non_private';
             $audit->save();
@@ -51,7 +55,9 @@ final class TelegramBotService
         $this->settings->markWebhookReceived();
 
         try {
-            $result = $this->router->handle($update);
+            $result = $isOwner
+                ? $this->router->handle($update)
+                : $this->userRouter->handle($update);
             $audit->action = (string) ($result['action'] ?? $actionHint ?? 'handled');
             $audit->resource = $result['resource'] ?? null;
             $audit->resource_id = isset($result['resource_id']) ? (int) $result['resource_id'] : null;

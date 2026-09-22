@@ -9,6 +9,8 @@ use App\Http\Requests\Account\UpdatePasswordRequest;
 use App\Http\Requests\Account\UpdateProfileRequest;
 use App\Models\UserAddress;
 use App\Services\MediaStorage;
+use App\Services\Telegram\TelegramBotSettings;
+use App\Services\Telegram\TelegramUserLinkService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,9 +18,10 @@ use Inertia\Response;
 
 class AccountController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, TelegramBotSettings $telegramSettings): Response
     {
         $user = request()->user();
+        $telegramBot = $telegramSettings->resolved();
         $statuses = ['pending', 'approved', 'processing', 'shipped', 'delivered', 'rejected', 'cancelled'];
         $status = in_array($request->string('status')->toString(), $statuses, true)
             ? $request->string('status')->toString()
@@ -54,6 +57,15 @@ class AccountController extends Controller
                 'sms_enabled' => $user->contentNotificationPreference?->sms_enabled ?? true,
                 'email_enabled' => $user->contentNotificationPreference?->email_enabled ?? false,
                 'feed_enabled' => $user->contentNotificationPreference?->feed_enabled ?? false,
+                'telegram_enabled' => $user->contentNotificationPreference?->telegram_enabled ?? false,
+            ],
+            'telegramIntegration' => [
+                'available' => ($telegramBot['enabled'] ?? false) && filled($telegramBot['bot_username'] ?? null),
+                'connected' => filled($user->telegram_chat_id) && filled($user->telegram_linked_at),
+                'bot_username' => filled($telegramBot['bot_username'] ?? null)
+                    ? '@'.ltrim((string) $telegramBot['bot_username'], '@')
+                    : null,
+                'linked_at' => $user->telegram_linked_at?->toISOString(),
             ],
             'homeExperiencePreference' => $user->home_focus_preference ?? 'system',
             'profileCompletion' => collect([$user->name, $user->email, $user->phone, $user->avatar, $user->addresses()->exists()])->filter()->count() * 20,
@@ -129,6 +141,20 @@ class AccountController extends Controller
         $request->user()->contentNotificationPreference()->updateOrCreate([], $request->validated());
 
         return back()->with('success', 'تنظیمات اطلاع‌رسانی محتوا ذخیره شد.');
+    }
+
+    public function connectTelegram(Request $request, TelegramUserLinkService $links)
+    {
+        return Inertia::location($links->begin($request->user()));
+    }
+
+    public function disconnectTelegram(
+        Request $request,
+        TelegramUserLinkService $links,
+    ): RedirectResponse {
+        $links->disconnect($request->user());
+
+        return back()->with('success', 'اتصال تلگرام از حساب شما قطع شد.');
     }
 
     public function updateHomeExperiencePreference(UpdateHomeExperiencePreferenceRequest $request): RedirectResponse

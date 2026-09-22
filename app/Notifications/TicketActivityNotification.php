@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Models\Ticket;
 use App\Notifications\Channels\ExpoPushChannel;
 use App\Notifications\Channels\SmsChannel;
+use App\Notifications\Channels\TelegramChannel;
 use App\Services\Sms\SmsPattern;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
@@ -17,7 +18,7 @@ class TicketActivityNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database', SmsChannel::class, ExpoPushChannel::class];
+        return ['database', SmsChannel::class, ExpoPushChannel::class, TelegramChannel::class];
     }
 
     public function toArray(object $notifiable): array

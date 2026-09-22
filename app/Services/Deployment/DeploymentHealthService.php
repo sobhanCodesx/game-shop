@@ -5,6 +5,7 @@ namespace App\Services\Deployment;
 use App\Models\ContentAsset;
 use App\Services\GraphQL\PlayNexusGraphService;
 use App\Services\MediaStorage;
+use App\Services\Telegram\TelegramMtProtoCompatibilityService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -14,6 +15,7 @@ final class DeploymentHealthService
 {
     public function __construct(
         private readonly PlayNexusGraphService $graph,
+        private readonly TelegramMtProtoCompatibilityService $telegramMtProto,
     ) {}
 
     public function report(?string $expectedSha = null): array
@@ -120,6 +122,12 @@ final class DeploymentHealthService
 
             return 'read-write-ok';
         });
+
+        $check('telegram_mtproto_compatibility', function (): string {
+            $report = $this->telegramMtProto->report();
+
+            return json_encode($report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        }, blocking: false);
 
         $check('vite_manifest', function (): string {
             $path = public_path('build/manifest.json');

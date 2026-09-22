@@ -234,6 +234,7 @@ class MobileAccountController extends Controller
                 'sms_enabled' => (bool) $preference->sms_enabled,
                 'email_enabled' => (bool) $preference->email_enabled,
                 'feed_enabled' => (bool) $preference->feed_enabled,
+                'telegram_enabled' => (bool) $preference->telegram_enabled,
             ],
         ]);
     }
@@ -286,6 +287,7 @@ class MobileAccountController extends Controller
             'has_password' => filled($user->getAuthPassword()),
             'email_verified' => (bool) $user->email_verified_at,
             'phone_verified' => (bool) $user->phone_verified_at,
+            'telegram_connected' => filled($user->telegram_chat_id) && filled($user->telegram_linked_at),
         ];
     }
 
@@ -295,6 +297,7 @@ class MobileAccountController extends Controller
             'sms_enabled' => $user->contentNotificationPreference?->sms_enabled ?? true,
             'email_enabled' => $user->contentNotificationPreference?->email_enabled ?? false,
             'feed_enabled' => $user->contentNotificationPreference?->feed_enabled ?? false,
+            'telegram_enabled' => $user->contentNotificationPreference?->telegram_enabled ?? false,
         ];
     }
 

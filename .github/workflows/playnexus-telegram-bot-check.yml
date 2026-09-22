@@ -7,42 +7,70 @@ on:
       - '.github/workflows/playnexus-telegram-bot-check.yml'
       - 'app/Http/Controllers/Admin/TelegramBotSettingsController.php'
       - 'app/Http/Controllers/Api/TelegramWebhookController.php'
+      - 'app/Http/Controllers/AccountController.php'
+      - 'app/Http/Controllers/AuthController.php'
+      - 'app/Http/Controllers/Api/V1/MobileAccountController.php'
+      - 'app/Http/Controllers/Api/V1/MobileAuthController.php'
       - 'app/Http/Controllers/AuthController.php'
       - 'app/Http/Controllers/Api/V1/MobileAuthController.php'
       - 'app/Services/GoogleAccountService.php'
       - 'app/Models/TelegramBotAudit.php'
       - 'app/Models/TelegramBotSession.php'
       - 'app/Models/TelegramBotSetting.php'
+      - 'app/Models/User.php'
+      - 'app/Models/ContentNotificationPreference.php'
+      - 'app/Models/MobileVerificationCode.php'
       - 'app/Services/Telegram/**'
+      - 'app/Services/MobileCodeService.php'
+      - 'app/Services/Deployment/DeploymentHealthService.php'
+      - 'app/Notifications/**'
       - 'config/telegram_bot.php'
       - 'database/migrations/2026_09_22_130000_create_telegram_bot_tables.php'
+      - 'database/migrations/2026_09_22_170000_add_user_telegram_notifications.php'
       - 'deploy/cloudflare/telegram-relay/**'
       - 'resources/js/Pages/Admin/TelegramBot/**'
+      - 'resources/js/Pages/Account/**'
+      - 'resources/js/Pages/Auth/**'
       - 'resources/js/config/admin-navigation.ts'
       - 'routes/api.php'
       - 'routes/web.php'
       - 'tests/Feature/TelegramAdminBotTest.php'
+      - 'tests/Feature/TelegramUserNotificationsTest.php'
   pull_request:
     paths:
       - '.env.example'
       - '.github/workflows/playnexus-telegram-bot-check.yml'
       - 'app/Http/Controllers/Admin/TelegramBotSettingsController.php'
       - 'app/Http/Controllers/Api/TelegramWebhookController.php'
+      - 'app/Http/Controllers/AccountController.php'
+      - 'app/Http/Controllers/AuthController.php'
+      - 'app/Http/Controllers/Api/V1/MobileAccountController.php'
+      - 'app/Http/Controllers/Api/V1/MobileAuthController.php'
       - 'app/Http/Controllers/AuthController.php'
       - 'app/Http/Controllers/Api/V1/MobileAuthController.php'
       - 'app/Services/GoogleAccountService.php'
       - 'app/Models/TelegramBotAudit.php'
       - 'app/Models/TelegramBotSession.php'
       - 'app/Models/TelegramBotSetting.php'
+      - 'app/Models/User.php'
+      - 'app/Models/ContentNotificationPreference.php'
+      - 'app/Models/MobileVerificationCode.php'
       - 'app/Services/Telegram/**'
+      - 'app/Services/MobileCodeService.php'
+      - 'app/Services/Deployment/DeploymentHealthService.php'
+      - 'app/Notifications/**'
       - 'config/telegram_bot.php'
       - 'database/migrations/2026_09_22_130000_create_telegram_bot_tables.php'
+      - 'database/migrations/2026_09_22_170000_add_user_telegram_notifications.php'
       - 'deploy/cloudflare/telegram-relay/**'
       - 'resources/js/Pages/Admin/TelegramBot/**'
+      - 'resources/js/Pages/Account/**'
+      - 'resources/js/Pages/Auth/**'
       - 'resources/js/config/admin-navigation.ts'
       - 'routes/api.php'
       - 'routes/web.php'
       - 'tests/Feature/TelegramAdminBotTest.php'
+      - 'tests/Feature/TelegramUserNotificationsTest.php'
 
 permissions:
   contents: read
@@ -69,6 +97,13 @@ jobs:
           set -Eeuo pipefail
           php -l app/Http/Controllers/Admin/TelegramBotSettingsController.php
           php -l app/Http/Controllers/Api/TelegramWebhookController.php
+          php -l app/Http/Controllers/AccountController.php
+          php -l app/Http/Controllers/AuthController.php
+          php -l app/Http/Controllers/Api/V1/MobileAccountController.php
+          php -l app/Http/Controllers/Api/V1/MobileAuthController.php
+          php -l app/Services/MobileCodeService.php
+          php -l app/Services/Deployment/DeploymentHealthService.php
+          php -l app/Notifications/Channels/TelegramChannel.php
           php -l app/Http/Controllers/AuthController.php
           php -l app/Http/Controllers/Api/V1/MobileAuthController.php
           php -l app/Services/GoogleAccountService.php
@@ -78,7 +113,9 @@ jobs:
           for file in app/Services/Telegram/*.php; do php -l "$file"; done
           php -l config/telegram_bot.php
           php -l database/migrations/2026_09_22_130000_create_telegram_bot_tables.php
+          php -l database/migrations/2026_09_22_170000_add_user_telegram_notifications.php
           php -l tests/Feature/TelegramAdminBotTest.php
+          php -l tests/Feature/TelegramUserNotificationsTest.php
 
       - name: Cloudflare relay syntax
         run: node --check deploy/cloudflare/telegram-relay/worker.js
@@ -90,7 +127,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run Telegram bot security and feature tests
-        run: php artisan test tests/Feature/TelegramAdminBotTest.php
+        run: php artisan test tests/Feature/TelegramAdminBotTest.php tests/Feature/TelegramUserNotificationsTest.php
 
       - name: Set up Node
         uses: actions/setup-node@v4

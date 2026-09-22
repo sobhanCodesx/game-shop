@@ -45,20 +45,37 @@ final class TelegramApiClient
             'max_connections' => 10,
         ]);
 
+        // Default scope is intentionally user-safe. Admin commands are only
+        // exposed inside the configured owner's private chat.
         $this->request('setMyCommands', [
             'commands' => [
-                ['command' => 'menu', 'description' => '🏠 منوی اصلی مدیریت'],
-                ['command' => 'new', 'description' => '➕ ساخت محتوای جدید'],
-                ['command' => 'videos', 'description' => '🎬 مدیریت ویدیوها'],
-                ['command' => 'feeds', 'description' => '📰 مدیریت فیدها'],
-                ['command' => 'stories', 'description' => '📱 مدیریت استوری‌ها'],
-                ['command' => 'games', 'description' => '🎮 مدیریت بازی‌ها'],
-                ['command' => 'collections', 'description' => '📚 مدیریت کالکشن‌ها'],
-                ['command' => 'status', 'description' => '📡 وضعیت اتصال ربات'],
-                ['command' => 'help', 'description' => '❓ راهنمای استفاده'],
-                ['command' => 'cancel', 'description' => '✕ لغو عملیات جاری'],
+                ['command' => 'start', 'description' => '🎮 وضعیت اتصال PlayNexus'],
+                ['command' => 'unlink', 'description' => '🔌 قطع اتصال حساب'],
+                ['command' => 'help', 'description' => '❓ راهنمای اعلان‌های PlayNexus'],
             ],
         ]);
+
+        $adminChatId = trim((string) ($settings['admin_user_id'] ?? ''));
+        if ($adminChatId !== '') {
+            $this->request('setMyCommands', [
+                'scope' => [
+                    'type' => 'chat',
+                    'chat_id' => $adminChatId,
+                ],
+                'commands' => [
+                    ['command' => 'menu', 'description' => '🏠 منوی اصلی مدیریت'],
+                    ['command' => 'new', 'description' => '➕ ساخت محتوای جدید'],
+                    ['command' => 'videos', 'description' => '🎬 مدیریت ویدیوها'],
+                    ['command' => 'feeds', 'description' => '📰 مدیریت فیدها'],
+                    ['command' => 'stories', 'description' => '📱 مدیریت استوری‌ها'],
+                    ['command' => 'games', 'description' => '🎮 مدیریت بازی‌ها'],
+                    ['command' => 'collections', 'description' => '📚 مدیریت کالکشن‌ها'],
+                    ['command' => 'status', 'description' => '📡 وضعیت اتصال ربات'],
+                    ['command' => 'help', 'description' => '❓ راهنمای مدیریت'],
+                    ['command' => 'cancel', 'description' => '✕ لغو عملیات جاری'],
+                ],
+            ]);
+        }
 
         $this->request('setChatMenuButton', [
             'menu_button' => [
@@ -90,6 +107,26 @@ final class TelegramApiClient
         }
 
         return $this->request('sendMessage', $payload);
+    }
+
+    public function sendPhoto(
+        string|int $chatId,
+        string $photo,
+        string $caption = '',
+        ?array $replyMarkup = null,
+    ): array {
+        $payload = [
+            'chat_id' => (string) $chatId,
+            'photo' => $photo,
+            'caption' => $caption,
+            'parse_mode' => 'HTML',
+        ];
+
+        if ($replyMarkup !== null) {
+            $payload['reply_markup'] = $replyMarkup;
+        }
+
+        return $this->request('sendPhoto', $payload);
     }
 
     public function editMessageText(
