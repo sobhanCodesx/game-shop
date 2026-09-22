@@ -8,14 +8,14 @@ on:
       - 'app/**'
       - 'resources/js/**'
       - 'routes/**'
-      - 'tests/Feature/StorefrontCache*.php'
+      - 'tests/**'
       - '.github/workflows/storefront-cache-phases-check.yml'
   pull_request:
     paths:
       - 'app/**'
       - 'resources/js/**'
       - 'routes/**'
-      - 'tests/Feature/StorefrontCache*.php'
+      - 'tests/**'
 
 permissions:
   contents: read
