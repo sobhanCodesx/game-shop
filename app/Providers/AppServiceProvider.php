@@ -4,7 +4,11 @@ namespace App\Providers;
 
 use App\Models\Game;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\SocialContent;
+use App\Models\SocialContentMedia;
+use App\Observers\FeedPageMediaObserver;
+use App\Observers\FeedPageProductMediaObserver;
 use App\Observers\GameObserver;
 use App\Observers\ProductObserver;
 use App\Observers\SocialContentObserver;
@@ -42,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
     {
         Game::observe(GameObserver::class);
         Product::observe(ProductObserver::class);
+        ProductMedia::observe(FeedPageProductMediaObserver::class);
         SocialContent::observe(SocialContentObserver::class);
+        SocialContentMedia::observe(FeedPageMediaObserver::class);
     }
 }
