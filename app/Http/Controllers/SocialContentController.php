@@ -9,6 +9,7 @@ use App\Services\ContentViewService;
 use App\Services\MediaStorage;
 use App\Services\StorefrontDataService;
 use App\Services\VideoCommunityService;
+use App\Services\VideoPageDataService;
 use App\Support\RichText;
 use App\Support\Seo;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,7 +20,7 @@ use Inertia\Response;
 
 class SocialContentController extends Controller
 {
-    public function show(Request $request, string $type, SocialContent $content, StorefrontDataService $data, VideoCommunityService $community, ContentViewService $views): Response
+    public function show(Request $request, string $type, SocialContent $content, StorefrontDataService $data, VideoCommunityService $community, ContentViewService $views, VideoPageDataService $videoPage): Response
     {
         $expectedType = match ($type) {
             'posts' => 'post', 'videos' => 'video', 'shorts' => 'short', default => abort(404),
@@ -29,6 +30,10 @@ class SocialContentController extends Controller
 
         if (in_array($content->type, ['video', 'short'], true)) {
             $views->record($request, $content);
+        }
+
+        if ($content->type === 'video') {
+            return $this->videoResponse($request, $content, $community, $videoPage);
         }
 
         $content->load([
@@ -102,6 +107,79 @@ class SocialContentController extends Controller
             'related' => $related,
             'playlist' => $playlist,
             'breadcrumbs' => $breadcrumbs,
+        ]);
+    }
+
+    private function videoResponse(
+        Request $request,
+        SocialContent $content,
+        VideoCommunityService $community,
+        VideoPageDataService $videoPage,
+    ): Response {
+        $pageData = $videoPage->get($content, $request->string('list')->toString());
+        $pageData = $videoPage->withLiveCardMetrics($pageData);
+
+        $reactionCounts = $content->reactions()
+            ->selectRaw('type, COUNT(*) as aggregate')
+            ->groupBy('type')
+            ->pluck('aggregate', 'type');
+
+        $userReaction = $request->user()
+            ? $content->reactions()->where('user_id', $request->user()->id)->value('type')
+            : null;
+
+        $comments = null;
+        if ($content->allow_comments) {
+            $commentQuery = SocialComment::query()
+                ->published()
+                ->whereBelongsTo($content, 'content')
+                ->whereNull('parent_id')
+                ->with('user:id,name,avatar')
+                ->withCount('likedBy');
+
+            $request->string('comment_sort')->toString() === 'newest'
+                ? $commentQuery->latest()
+                : $commentQuery->orderByDesc('liked_by_count')->latest();
+
+            $likedCommentIds = $request->user()
+                ? $request->user()->belongsToMany(SocialComment::class, 'social_comment_likes')->pluck('social_comments.id')->all()
+                : [];
+
+            $comments = $commentQuery->paginate(20, ['*'], 'comments_page')->withQueryString();
+            $community->loadCommentReplies($content, $comments->getCollection());
+            $comments->through(fn (SocialComment $comment) => $this->commentData($comment, $request, $likedCommentIds));
+        }
+
+        $channel = $pageData['channel'];
+        if (is_array($channel) && $content->game_id) {
+            $game = $content->game()->withCount('subscribers')->first(['games.id']);
+            $channel = [
+                ...$channel,
+                'subscribers_count' => (int) ($game?->subscribers_count ?? 0),
+                'is_subscribed' => (bool) ($request->user() && $game
+                    ? $game->subscribers()->whereKey($request->user()->id)->exists()
+                    : false),
+            ];
+        }
+
+        $seo = $videoPage->seo($pageData['seo_input'], (int) $content->views);
+
+        return Inertia::render('Content/Show', [
+            ...$seo,
+            'content' => [
+                ...$pageData['content'],
+                'views' => (int) $content->views,
+                'allow_comments' => (bool) $content->allow_comments,
+                'likes_count' => (int) ($reactionCounts['like'] ?? 0),
+                'dislikes_count' => (int) ($reactionCounts['dislike'] ?? 0),
+                'user_reaction' => $userReaction,
+                'comments_count' => $content->comments()->published()->count(),
+            ],
+            'channel' => $channel,
+            'comments' => $comments,
+            'related' => $pageData['related'],
+            'playlist' => $pageData['playlist'],
+            'breadcrumbs' => $pageData['breadcrumbs'],
         ]);
     }
 
