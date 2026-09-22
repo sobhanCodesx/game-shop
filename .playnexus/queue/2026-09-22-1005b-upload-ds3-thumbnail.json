@@ -1,13 +1,8 @@
 {
-  "job_id": "2026-09-22-1005b-upload-ds3-thumbnail",
-  "tool": "upload_asset",
+  "job_id": "2026-09-22-1005b-delete-rejected-ds3-draft",
+  "tool": "delete_content",
   "arguments": {
     "resource": "video",
-    "id": 69,
-    "slot": "thumbnail",
-    "source_url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/256659154/movie_full.jpg",
-    "name": "dark-souls-iii-preorder-trailer.jpg",
-    "mime": "image/jpeg",
-    "alt": "تریلر رسمی پیش‌خرید Dark Souls III"
+    "id": 69
   }
 }
