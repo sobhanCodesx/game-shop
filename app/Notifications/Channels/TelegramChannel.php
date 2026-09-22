@@ -41,6 +41,9 @@ final class TelegramChannel
 
         $replyMarkup = $this->replyMarkup($payload['url'] ?? null);
         $image = trim((string) ($payload['image_url'] ?? ''));
+        if ($image !== '' && ! filter_var($image, FILTER_VALIDATE_URL)) {
+            $image = url('/'.ltrim($image, '/'));
+        }
 
         try {
             if ($image !== '') {
