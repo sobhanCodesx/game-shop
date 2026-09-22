@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-09-22-0957-video-context-v2",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "operation_name": "VideoInventoryStage1",
-    "variables": {},
-    "query": "query VideoInventoryStage1 { games(first: 40, offset: 0) { nodes { id name slug status releaseDate videoCount } pageInfo { total first offset hasMore nextOffset } } videos(first: 50, offset: 0) { nodes { id title slug status duration publishedAt game { id name slug } playlists { id title slug } } pageInfo { total first offset hasMore nextOffset } } }"
-  }
-}
