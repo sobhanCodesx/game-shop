@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-22-1005b-delete-rejected-ds3-draft",
-  "tool": "delete_content",
-  "arguments": {
-    "resource": "video",
-    "id": 69
-  }
-}
