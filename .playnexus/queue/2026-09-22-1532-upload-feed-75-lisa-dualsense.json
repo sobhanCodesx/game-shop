@@ -1,0 +1,12 @@
+{
+  "job_id": "2026-09-22-1532-upload-feed-75-lisa-dualsense",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 75,
+    "slot": "media",
+    "source_url": "https://blog.playstation.com/tachyon/2086/09/efd65b55603b49fbda58885fe06907507308679e.jpg?crop_strategy=smart&resize=1088%2C612",
+    "name": "lisa-playstation-dualsense-limited-edition.jpg",
+    "alt": "کنترلر DualSense نسخه محدود Lisa در همکاری رسمی با PlayStation"
+  }
+}
