@@ -78,7 +78,7 @@ class TelegramUserNotificationsTest extends TestCase
 
             return str_ends_with($request->url(), '/sendMessage')
                 && str_contains($text, 'تلگرام به حساب PlayNexus وصل است')
-                && str_contains($text, 'اشتراک شماره خودم')
+                && (($replyMarkup['keyboard'][0][0]['text'] ?? null) === '📱 اشتراک شماره خودم')
                 && (($replyMarkup['keyboard'][0][0]['request_contact'] ?? false) === true);
         });
     }
