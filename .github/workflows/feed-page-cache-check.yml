@@ -1,0 +1,69 @@
+name: Feed Page Cache Check
+
+on:
+  push:
+    paths:
+      - 'app/Http/Controllers/FeedController.php'
+      - 'app/Http/Controllers/Admin/FeedPostController.php'
+      - 'app/Observers/FeedPageMediaObserver.php'
+      - 'app/Observers/FeedPageProductMediaObserver.php'
+      - 'app/Observers/GameObserver.php'
+      - 'app/Observers/ProductObserver.php'
+      - 'app/Observers/SocialContentObserver.php'
+      - 'app/Providers/AppServiceProvider.php'
+      - 'app/Services/FeedPageCache.php'
+      - 'app/Services/FeedPageDataService.php'
+      - 'tests/Feature/FeedPageCacheTest.php'
+      - '.github/workflows/feed-page-cache-check.yml'
+  pull_request:
+    paths:
+      - 'app/Http/Controllers/FeedController.php'
+      - 'app/Http/Controllers/Admin/FeedPostController.php'
+      - 'app/Observers/FeedPageMediaObserver.php'
+      - 'app/Observers/FeedPageProductMediaObserver.php'
+      - 'app/Observers/GameObserver.php'
+      - 'app/Observers/ProductObserver.php'
+      - 'app/Observers/SocialContentObserver.php'
+      - 'app/Providers/AppServiceProvider.php'
+      - 'app/Services/FeedPageCache.php'
+      - 'app/Services/FeedPageDataService.php'
+      - 'tests/Feature/FeedPageCacheTest.php'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax
+        run: |
+          php -l app/Http/Controllers/FeedController.php
+          php -l app/Http/Controllers/Admin/FeedPostController.php
+          php -l app/Observers/FeedPageMediaObserver.php
+          php -l app/Observers/FeedPageProductMediaObserver.php
+          php -l app/Observers/GameObserver.php
+          php -l app/Observers/ProductObserver.php
+          php -l app/Observers/SocialContentObserver.php
+          php -l app/Providers/AppServiceProvider.php
+          php -l app/Services/FeedPageCache.php
+          php -l app/Services/FeedPageDataService.php
+          php -l tests/Feature/FeedPageCacheTest.php
+
+      - name: Validate Composer files
+        run: composer validate --no-check-publish
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run feed page cache regression tests
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+        run: php artisan test tests/Feature/FeedPageCacheTest.php tests/Feature/SearchPerformanceSeoTest.php
