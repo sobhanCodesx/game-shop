@@ -1,1 +1,0 @@
-{"job_id":"feed-engine-20260922-1123-stronghold4-relation","tool":"query_playnexus_graph","arguments":{"query":"query Stronghold4Relation { games(first: 20, offset: 0, search: \"Stronghold 4\") { nodes { id name slug } pageInfo { total first offset hasMore nextOffset } } }","variables":{},"operation_name":"Stronghold4Relation"}}
