@@ -78,10 +78,17 @@ class TelegramBotSettingsController extends Controller
             return back()->withErrors(['proxy_host' => 'برای Proxy باید Host وارد شود.']);
         }
 
-        $resolved = $settings->save($validated, $request->user()?->id);
-        if (($resolved['enabled'] ?? false) && ! $settings->isConfigured()) {
+        $current = $settings->resolved();
+        $effectiveToken = trim((string) ($validated['bot_token'] ?? ''));
+        if ($effectiveToken === '') {
+            $effectiveToken = trim((string) ($current['bot_token'] ?? ''));
+        }
+
+        if ($request->boolean('enabled') && $effectiveToken === '') {
             return back()->withErrors(['bot_token' => 'برای فعال‌سازی بات، Bot Token معتبر لازم است.']);
         }
+
+        $settings->save($validated, $request->user()?->id);
 
         return back()->with('success', 'تنظیمات Telegram Bot ذخیره شد.');
     }
