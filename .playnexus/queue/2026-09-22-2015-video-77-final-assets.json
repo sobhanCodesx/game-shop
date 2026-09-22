@@ -1,0 +1,8 @@
+{
+  "job_id": "video-77-final-assets-20260922",
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "video",
+    "id": 77
+  }
+}

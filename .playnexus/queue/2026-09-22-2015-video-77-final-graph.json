@@ -1,0 +1,11 @@
+{
+  "job_id": "video-77-final-graph-20260922",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query VerifyVideo($id: ID!) { content(id: $id, type: \"video\") { id type title status publishedAt duration game { id name slug } playlists { id title slug } } }",
+    "variables": {
+      "id": "77"
+    },
+    "operation_name": "VerifyVideo"
+  }
+}
