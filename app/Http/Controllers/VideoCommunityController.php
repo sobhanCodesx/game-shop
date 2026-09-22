@@ -16,7 +16,7 @@ class VideoCommunityController extends Controller
 {
     public function react(VideoReactionRequest $request, SocialContent $content, VideoCommunityService $community): JsonResponse|RedirectResponse
     {
-        $this->ensureVideo($content);
+        $this->ensureReactable($content);
         $reaction = $community->toggleReaction($content, $request->user(), $request->string('type')->toString());
 
         return $this->respond($request, ['reaction' => $reaction]);
@@ -58,6 +58,16 @@ class VideoCommunityController extends Controller
         $subscribed = $community->toggleSubscription($game, $request->user());
 
         return $this->respond($request, ['subscribed' => $subscribed]);
+    }
+
+    private function ensureReactable(SocialContent $content): void
+    {
+        abort_unless(
+            in_array($content->type, ['video', 'short'], true)
+            && $content->status === 'published'
+            && $content->published_at?->isPast(),
+            404,
+        );
     }
 
     private function ensureVideo(SocialContent $content): void
