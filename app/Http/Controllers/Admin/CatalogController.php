@@ -368,6 +368,8 @@ class CatalogController extends Controller
 
             if ($catalog === 'games') {
                 app(StorefrontPageCache::class)->invalidate('channel');
+            } elseif ($catalog === 'products') {
+                app(StorefrontPageCache::class)->invalidate('product');
             }
         }
     }
