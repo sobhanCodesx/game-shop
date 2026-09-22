@@ -120,6 +120,7 @@ class MobilePushNotificationTest extends TestCase
                 && ($job->payload['purpose'] ?? null) === 'passwordless_login'
                 && ($job->payload['phone'] ?? null) === $user->phone
                 && ($job->payload['code'] ?? null) === $code
+                && ($job->payload['installation_id'] ?? null) === $trusted->installation_id
                 && ! str_contains((string) ($job->payload['message'] ?? ''), $code);
         });
     }
