@@ -8,21 +8,43 @@ final class TelegramBotFormatter
 {
     public function menuText(): string
     {
-        return "<b>PlayNexus Admin Bot</b>\n"
-            ."مدیریت مستقیم محتوا، مدیا و وضعیت انتشار از تلگرام.\n\n"
-            ."برای عملیات حساس همیشه تأیید نهایی لازم است.";
+        return "✦ <b>PLAYNEXUS CONTROL</b> ✦\n"
+            ."━━━━━━━━━━━━━━━━━━\n"
+            ."ربات خصوصی مدیریت PlayNexus آماده است.\n"
+            ."از داشبورد زیر وارد بخش موردنظر شو؛ عملیات حساس قبل از اجرا دوباره تأیید می‌شوند.\n\n"
+            ."🔐 <b>Private • Owner Only</b>";
+    }
+
+    public function hubText(string $hub): string
+    {
+        return match ($hub) {
+            'content' => "✨ <b>Content Studio</b>\nفید، ویدیو، استوری و کالکشن‌ها را مدیریت کن.",
+            'library' => "🎮 <b>Game Library</b>\nبازی‌ها، استودیوها، پلتفرم‌ها و کالکشن‌ها.",
+            'commerce' => "🛍 <b>Commerce</b>\nمحصولات و مدیای فروشگاه.",
+            'intelligence' => "🧠 <b>Intelligence</b>\nGame Events، GraphQL و وضعیت داده‌ها.",
+            'system' => "⚙️ <b>System</b>\nسلامت Bot، راهنما و ابزارهای پیشرفته.",
+            default => "✦ <b>PlayNexus</b>",
+        };
+    }
+
+    public function resourceHub(string $label, string $icon): string
+    {
+        return "{$icon} <b>{$this->escape($label)}</b>\n"
+            ."━━━━━━━━━━━━━━━━━━\n"
+            ."عملیات موردنظر را انتخاب کن.";
     }
 
     public function help(): string
     {
-        return "<b>راهنمای دستورات</b>\n\n"
-            ."<code>/menu</code> منوی اصلی\n"
+        return "<b>راهنمای PlayNexus Admin Bot</b>\n\n"
+            ."تقریباً همه کارهای روزمره از دکمه‌ها قابل انجام است. دستورات مستقیم برای سرعت بیشتر:\n\n"
+            ."<code>/menu</code> داشبورد اصلی\n"
             ."<code>/status</code> وضعیت اتصال\n"
             ."<code>/search game query</code> جستجو\n"
             ."<code>/list video published</code> فهرست محتوا\n"
             ."<code>/get video 12</code> نمایش رکورد\n"
             ."<code>/assets video 12</code> نمایش مدیا\n"
-            ."<code>/media video 12 video</code> آماده دریافت فایل\n"
+            ."<code>/media video 12 video</code> دریافت فایل\n"
             ."<code>/create feed {json}</code> ساخت محتوا\n"
             ."<code>/update video 12 {json}</code> ویرایش\n"
             ."<code>/state video 12 published</code> تغییر وضعیت\n"
@@ -31,8 +53,17 @@ final class TelegramBotFormatter
             ."<code>/restore game 12</code> بازیابی game/studio\n"
             ."<code>/sync_collection 4 10,11,12</code> همگام‌سازی ویدیوها\n"
             ."<code>/graph { ... }</code> GraphQL فقط‌خواندنی\n"
-            ."<code>/tool tool_name {json}</code> دسترسی کامل ابزارهای Content Agent\n"
+            ."<code>/tool tool_name {json}</code> ابزار پیشرفته Content Agent\n"
             ."<code>/cancel</code> لغو عملیات جاری";
+    }
+
+    public function advancedHelp(): string
+    {
+        return "🧰 <b>Advanced Tools</b>\n"
+            ."برای عملیات خاصی که دکمه اختصاصی ندارند از <code>/tool</code> استفاده کن.\n\n"
+            ."نمونه:\n"
+            ."<code>/tool select_content {\"resource\":\"video\",\"limit\":5}</code>\n\n"
+            ."دستور <code>/schema</code> ساختار Graph را نشان می‌دهد و <code>/graph</code> Query خام را اجرا می‌کند.";
     }
 
     public function result(string $title, array $result): string
@@ -46,7 +77,12 @@ final class TelegramBotFormatter
             }
 
             if (isset($result['pagination']['total'])) {
-                $lines[] = "\nکل: <b>".(int) $result['pagination']['total']."</b>";
+                $total = (int) $result['pagination']['total'];
+                $offset = (int) ($result['pagination']['offset'] ?? 0);
+                $limit = (int) ($result['pagination']['limit'] ?? count($result['items']));
+                $from = $total > 0 ? $offset + 1 : 0;
+                $to = min($offset + $limit, $total);
+                $lines[] = "\n📚 <b>{$from}–{$to}</b> از <b>{$total}</b>";
             }
 
             return implode("\n", $lines);
@@ -92,7 +128,7 @@ final class TelegramBotFormatter
         foreach (['url', 'public_url', 'link_url'] as $key) {
             if (filled($item[$key] ?? null)) {
                 $url = $this->escape((string) $item[$key]);
-                $lines[] = "<a href=\"{$url}\">باز کردن در PlayNexus</a>";
+                $lines[] = "<a href=\"{$url}\">↗️ باز کردن در PlayNexus</a>";
                 break;
             }
         }
