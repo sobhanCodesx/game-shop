@@ -1,1 +1,0 @@
-{"job_id":"2026-09-21-1748-video-graph-read","tool":"query_playnexus_graph","arguments":{"query":"query { games(first: 40) { data { id slug name } } videos(first: 30) { data { id title status duration sourceUrl publishedAt game { id slug name } collections { id title } } } }"}}
