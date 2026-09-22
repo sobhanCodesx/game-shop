@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\Telegram\TelegramAdminNotificationService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -10,6 +11,10 @@ use Illuminate\Support\Str;
 
 final class GoogleAccountService
 {
+    public function __construct(
+        private readonly TelegramAdminNotificationService $telegramNotifications,
+    ) {}
+
     /** @param array{id:string,email:string,name:?string,picture:?string} $identity */
     public function findOrCreate(array $identity): User
     {
@@ -56,7 +61,13 @@ final class GoogleAccountService
             $this->storeInitialAvatar($user, $identity['picture']);
         }
 
-        return $user->refresh();
+        $user = $user->refresh();
+
+        if ($created) {
+            $this->telegramNotifications->newUser($user, 'google');
+        }
+
+        return $user;
     }
 
     private function storeInitialAvatar(User $user, string $url): void

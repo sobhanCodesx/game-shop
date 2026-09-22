@@ -7,6 +7,9 @@ on:
       - '.github/workflows/playnexus-telegram-bot-check.yml'
       - 'app/Http/Controllers/Admin/TelegramBotSettingsController.php'
       - 'app/Http/Controllers/Api/TelegramWebhookController.php'
+      - 'app/Http/Controllers/AuthController.php'
+      - 'app/Http/Controllers/Api/V1/MobileAuthController.php'
+      - 'app/Services/GoogleAccountService.php'
       - 'app/Models/TelegramBotAudit.php'
       - 'app/Models/TelegramBotSession.php'
       - 'app/Models/TelegramBotSetting.php'
@@ -25,6 +28,9 @@ on:
       - '.github/workflows/playnexus-telegram-bot-check.yml'
       - 'app/Http/Controllers/Admin/TelegramBotSettingsController.php'
       - 'app/Http/Controllers/Api/TelegramWebhookController.php'
+      - 'app/Http/Controllers/AuthController.php'
+      - 'app/Http/Controllers/Api/V1/MobileAuthController.php'
+      - 'app/Services/GoogleAccountService.php'
       - 'app/Models/TelegramBotAudit.php'
       - 'app/Models/TelegramBotSession.php'
       - 'app/Models/TelegramBotSetting.php'
@@ -63,6 +69,9 @@ jobs:
           set -Eeuo pipefail
           php -l app/Http/Controllers/Admin/TelegramBotSettingsController.php
           php -l app/Http/Controllers/Api/TelegramWebhookController.php
+          php -l app/Http/Controllers/AuthController.php
+          php -l app/Http/Controllers/Api/V1/MobileAuthController.php
+          php -l app/Services/GoogleAccountService.php
           php -l app/Models/TelegramBotAudit.php
           php -l app/Models/TelegramBotSession.php
           php -l app/Models/TelegramBotSetting.php

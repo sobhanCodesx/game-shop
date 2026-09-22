@@ -404,6 +404,18 @@ final class TelegramBotCommandRouter
             return $this->queueTool($userId, $chatId, 'delete_content', compact('resource', 'id'));
         }
 
+        if ($action === 'video-thumb-skip') {
+            $id = $this->positiveInt($parts[1] ?? null);
+            $this->sessions->clear($userId, $chatId);
+            $this->send(
+                $chatId,
+                "✅ <b>ساخت ویدیو کامل شد</b>\nThumbnail فعلاً رد شد؛ هر وقت خواستی از بخش «مدیا» اضافه‌اش کن.",
+                $this->resourceBackKeyboard('video', $id),
+            );
+
+            return ['action' => 'video_thumbnail_skipped', 'resource' => 'video', 'resource_id' => $id];
+        }
+
         if ($action === 'confirm') {
             $token = (string) ($parts[1] ?? '');
             $pending = $this->sessions->consumeConfirmation($userId, $chatId, $token);
@@ -416,6 +428,31 @@ final class TelegramBotCommandRouter
             $tool = (string) ($pending['tool'] ?? '');
             $arguments = is_array($pending['arguments'] ?? null) ? $pending['arguments'] : [];
             $result = $this->executor->execute($tool, $arguments);
+
+            if ($tool === 'create_video') {
+                $videoId = $this->positiveInt($result['id'] ?? null);
+                $this->sessions->put($userId, $chatId, 'awaiting_media', [
+                    'resource' => 'video',
+                    'id' => $videoId,
+                    'slot' => 'video',
+                    'flow' => 'video_create',
+                ]);
+
+                $this->send(
+                    $chatId,
+                    "✅ <b>ویدیو ساخته شد</b>\n"
+                    ."حالا خود فایل ویدیو را همین‌جا بفرست.\n\n"
+                    ."بعد از آپلود، Thumbnail را هم همان لحظه می‌توانی بفرستی.",
+                    $this->cancelKeyboard("view:video:{$videoId}"),
+                );
+
+                return [
+                    'action' => 'video_created_awaiting_upload',
+                    'resource' => 'video',
+                    'resource_id' => $videoId,
+                ];
+            }
+
             $resource = isset($arguments['resource']) ? (string) $arguments['resource'] : null;
             $resourceId = $arguments['id'] ?? $arguments['collection_id'] ?? null;
             $keyboard = $resource && $resourceId
@@ -778,6 +815,14 @@ final class TelegramBotCommandRouter
             throw new RuntimeException('Media slot is missing from the Telegram session.');
         }
 
+        $mime = mb_strtolower(trim((string) ($telegramFile['mime'] ?? '')));
+        if ($resource === 'video' && $slot === 'video' && ! str_starts_with($mime, 'video/')) {
+            throw new InvalidArgumentException('الان منتظر فایل ویدیو هستم؛ یک فایل ویدیویی بفرست.');
+        }
+        if ($resource === 'video' && $slot === 'thumbnail' && ! str_starts_with($mime, 'image/')) {
+            throw new InvalidArgumentException('برای Thumbnail یک عکس بفرست یا گزینه «رد کردن Thumbnail» را بزن.');
+        }
+
         $this->telegram->sendChatAction($chatId, 'typing');
         $result = $this->mediaTransfer->attach(
             $telegramFile,
@@ -786,7 +831,49 @@ final class TelegramBotCommandRouter
             $slot,
             filled($message['caption'] ?? null) ? (string) $message['caption'] : null,
         );
+        $flow = (string) ($context['flow'] ?? '');
+
+        if ($resource === 'video' && $slot === 'video' && $flow === 'video_create') {
+            $this->sessions->put($userId, $chatId, 'awaiting_media', [
+                'resource' => 'video',
+                'id' => $id,
+                'slot' => 'thumbnail',
+                'flow' => 'video_create_thumbnail',
+            ]);
+
+            $this->send(
+                $chatId,
+                "✅ <b>فایل ویدیو آپلود شد</b>\n"
+                ."اگر Thumbnail داری همین حالا عکسش را بفرست؛ اگر نداری ردش کن.",
+                [
+                    'inline_keyboard' => [
+                        [[
+                            'text' => '⏭ رد کردن Thumbnail',
+                            'callback_data' => "video-thumb-skip:{$id}",
+                        ]],
+                        [[
+                            'text' => '✕ لغو',
+                            'callback_data' => 'cancel',
+                        ]],
+                    ],
+                ],
+            );
+
+            return ['action' => 'video_uploaded_awaiting_thumbnail', 'resource' => 'video', 'resource_id' => $id];
+        }
+
         $this->sessions->clear($userId, $chatId);
+
+        if ($resource === 'video' && $slot === 'thumbnail' && $flow === 'video_create_thumbnail') {
+            $this->send(
+                $chatId,
+                "✅ <b>ساخت ویدیو کامل شد</b>\nفایل ویدیو و Thumbnail هر دو با موفقیت ثبت شدند.",
+                $this->resourceBackKeyboard('video', $id),
+            );
+
+            return ['action' => 'video_creation_completed', 'resource' => 'video', 'resource_id' => $id];
+        }
+
         $this->send(
             $chatId,
             "✅ <b>مدیا منتقل شد</b>\n\n".$this->formatter->result('نتیجه آپلود', $result),

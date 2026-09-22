@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\AuthenticationSessionService;
 use App\Services\EmailCodeService;
 use App\Services\MobileCodeService;
+use App\Services\Telegram\TelegramAdminNotificationService;
 use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -60,7 +61,12 @@ class AuthController extends Controller
         return $identifier ? Inertia::render('Auth/ResetPassword', ['identifier' => $identifier, 'channel' => $request->session()->get('reset_channel', 'email')]) : to_route('password.request');
     }
 
-    public function storeRegistration(Request $request, EmailCodeService $emails, MobileCodeService $mobiles): RedirectResponse
+    public function storeRegistration(
+        Request $request,
+        EmailCodeService $emails,
+        MobileCodeService $mobiles,
+        TelegramAdminNotificationService $telegramNotifications,
+    ): RedirectResponse
     {
         $channel = $request->input('channel', $request->filled('phone') ? 'mobile' : 'email');
         validator(['channel' => $channel], ['channel' => ['required', Rule::in(['email', 'mobile'])]])->validate();
@@ -75,6 +81,7 @@ class AuthController extends Controller
             }
             $user = User::create([...$data, 'status' => 'active', 'role' => 'user']);
             $emails->send($user, 'verify_email');
+            $telegramNotifications->newUser($user, 'web-email');
             $request->session()->put('verification_email', $user->email);
 
             return to_route('verification.notice')->with('success', 'کد تأیید به ایمیل شما ارسال شد.');
@@ -89,6 +96,7 @@ class AuthController extends Controller
             $user->forceDelete();
             throw $e;
         }
+        $telegramNotifications->newUser($user, 'web-phone');
         $request->session()->put('verification_phone', $user->phone);
 
         return to_route('verification.notice')->with('success', 'کد تأیید پیامکی ارسال شد.');
