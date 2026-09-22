@@ -11,6 +11,7 @@ use App\Services\ContentViewService;
 use App\Services\MediaStorage;
 use App\Services\SmartSearchService;
 use App\Services\StorefrontDataService;
+use App\Support\RichText;
 use App\Support\Seo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -155,11 +157,70 @@ class StorefrontController extends Controller
         for ($cursor = 0; $cursor < count($ids); $cursor++) {
             array_push($ids, ...$allCategories->where('parent_id', $ids[$cursor])->pluck('id')->all());
         }
+
         $products = $this->productQuery($request)->whereIn('category_id', $ids)->paginate(18)->withQueryString()
             ->through(fn (Product $product) => $data->product($product, $request->user()));
 
+        $categoryData = $data->category($category);
+        $canonical = route('categories.show', $category->slug);
+        $description = Str::limit(
+            RichText::plainText($category->description)
+                ?: "محصولات و بازی‌های دسته {$category->name} را در پلی نکسوس ببینید؛ قیمت، موجودی و تازه‌ترین گزینه‌های مرتبط.",
+            160,
+            '…',
+        );
+        $imagePath = (string) ($categoryData['image_url'] ?? '');
+        $image = $imagePath !== ''
+            ? (Str::startsWith($imagePath, ['http://', 'https://']) ? $imagePath : url($imagePath))
+            : url((string) config('seo.default_image', '/logo.png'));
+        $hasFilters = $request->hasAny(['q', 'sort', 'trade', 'page']);
+        $itemListId = $canonical.'#products';
+
         return Inertia::render('Categories/Show', [
-            'category' => $data->category($category),
+            ...Seo::page([
+                'title' => "{$category->name}؛ محصولات و بازی‌ها",
+                'description' => $description,
+                'canonical' => $canonical,
+                'robots' => $hasFilters
+                    ? 'noindex, follow'
+                    : 'index, follow, max-image-preview:large, max-snippet:-1',
+                'type' => 'website',
+                'image' => $image,
+                'imageAlt' => "دسته {$category->name}",
+                'structuredData' => [
+                    '@context' => 'https://schema.org',
+                    '@graph' => [
+                        [
+                            '@type' => 'CollectionPage',
+                            '@id' => $canonical.'#category',
+                            'url' => $canonical,
+                            'name' => $category->name,
+                            'description' => $description,
+                            'image' => $image,
+                            'mainEntity' => ['@id' => $itemListId],
+                        ],
+                        [
+                            '@type' => 'ItemList',
+                            '@id' => $itemListId,
+                            'numberOfItems' => count($products->items()),
+                            'itemListElement' => collect($products->items())->values()->map(fn (array $product, int $index) => [
+                                '@type' => 'ListItem',
+                                'position' => $index + 1,
+                                'name' => $product['title'],
+                                'url' => url($product['url']),
+                            ])->all(),
+                        ],
+                        [
+                            '@type' => 'BreadcrumbList',
+                            'itemListElement' => [
+                                ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => route('home')],
+                                ['@type' => 'ListItem', 'position' => 2, 'name' => $category->name, 'item' => $canonical],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+            'category' => $categoryData,
             'products' => $products,
             'filters' => $request->only(['q', 'sort', 'trade']),
         ]);
