@@ -23,11 +23,13 @@ final class ChannelPageDataService
     {
         $page = max(1, $request->integer('page', 1));
 
-        $payload = $this->cache->remember(
-            'channel',
-            "game:{$game->id}:page:{$page}",
-            fn () => $this->build($game, $page),
-        );
+        $payload = $page <= 50
+            ? $this->cache->remember(
+                'channel',
+                "game:{$game->id}:page:{$page}",
+                fn () => $this->build($game, $page),
+            )
+            : $this->build($game, $page);
 
         return $this->withLiveState($payload, $request->user());
     }
@@ -43,7 +45,6 @@ final class ChannelPageDataService
             ->with(['game:id,name,slug,cover'])
             ->latest('published_at')
             ->paginate(18, ['*'], 'page', $page)
-            ->withQueryString()
             ->through(fn (SocialContent $video) => $this->staticContent($this->data->content($video)))
             ->toArray();
 
