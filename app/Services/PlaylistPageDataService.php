@@ -7,7 +7,6 @@ use App\Models\SocialContent;
 use App\Models\VideoPlaylist;
 use App\Support\RichText;
 use App\Support\Seo;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -45,7 +44,7 @@ final class PlaylistPageDataService
     {
         $playlist->load([
             'game:id,name,slug,cover,status',
-            'videos' => fn (Builder $query) => $query
+            'videos' => fn ($query) => $query
                 ->published()
                 ->where('type', 'video')
                 ->with(['game:id,name,slug,cover', 'media']),
