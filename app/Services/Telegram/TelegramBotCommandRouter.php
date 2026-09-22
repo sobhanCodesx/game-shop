@@ -815,6 +815,14 @@ final class TelegramBotCommandRouter
             throw new RuntimeException('Media slot is missing from the Telegram session.');
         }
 
+        $mime = mb_strtolower(trim((string) ($telegramFile['mime'] ?? '')));
+        if ($resource === 'video' && $slot === 'video' && ! str_starts_with($mime, 'video/')) {
+            throw new InvalidArgumentException('الان منتظر فایل ویدیو هستم؛ یک فایل ویدیویی بفرست.');
+        }
+        if ($resource === 'video' && $slot === 'thumbnail' && ! str_starts_with($mime, 'image/')) {
+            throw new InvalidArgumentException('برای Thumbnail یک عکس بفرست یا گزینه «رد کردن Thumbnail» را بزن.');
+        }
+
         $this->telegram->sendChatAction($chatId, 'typing');
         $result = $this->mediaTransfer->attach(
             $telegramFile,
