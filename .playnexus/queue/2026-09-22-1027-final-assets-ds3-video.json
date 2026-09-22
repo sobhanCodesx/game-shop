@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-22-1027-final-assets-ds3-video",
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "video",
+    "id": 70
+  }
+}
