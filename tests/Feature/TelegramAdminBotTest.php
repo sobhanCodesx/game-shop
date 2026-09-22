@@ -489,7 +489,7 @@ class TelegramAdminBotTest extends TestCase
         });
     }
 
-    public function test_resource_hub_exposes_list_search_create_and_restore_actions(): void
+    public function test_resource_hub_exposes_simple_list_search_and_create_actions(): void
     {
         $this->configureBot();
 
@@ -536,7 +536,7 @@ class TelegramAdminBotTest extends TestCase
             return in_array('list:game:0', $callbacks, true)
                 && in_array('search:game', $callbacks, true)
                 && in_array('template:game:create', $callbacks, true)
-                && in_array('restore-prompt:game', $callbacks, true);
+                && ! in_array('restore-prompt:game', $callbacks, true);
         });
     }
 
