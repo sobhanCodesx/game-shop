@@ -11,7 +11,7 @@ use Throwable;
 
 final class TelegramBotSettings
 {
-    private const CACHE_KEY = 'telegram-bot:settings:v1';
+    private const CACHE_KEY = 'telegram-bot:settings:v2';
 
     public function resolved(): array
     {
@@ -24,7 +24,10 @@ final class TelegramBotSettings
                 'publish_enabled' => (bool) config('telegram_bot.publish_enabled', false),
                 'destructive_enabled' => (bool) config('telegram_bot.destructive_enabled', false),
                 'media_enabled' => (bool) config('telegram_bot.media_enabled', true),
+                'transport_mode' => (string) config('telegram_bot.transport_mode', 'auto'),
                 'api_base_url' => (string) config('telegram_bot.api_base_url', 'https://api.telegram.org'),
+                'relay_base_url' => (string) config('telegram_bot.relay_base_url', ''),
+                'relay_key' => (string) config('telegram_bot.relay_key', ''),
                 'use_proxy' => (bool) config('telegram_bot.proxy.enabled', false),
                 'proxy_type' => (string) config('telegram_bot.proxy.type', 'socks5h'),
                 'proxy_host' => (string) config('telegram_bot.proxy.host', ''),
@@ -59,7 +62,10 @@ final class TelegramBotSettings
                 'publish_enabled' => (bool) $stored->publish_enabled,
                 'destructive_enabled' => (bool) $stored->destructive_enabled,
                 'media_enabled' => (bool) $stored->media_enabled,
+                'transport_mode' => (string) ($stored->transport_mode ?: $defaults['transport_mode']),
                 'api_base_url' => (string) ($stored->api_base_url ?: $defaults['api_base_url']),
+                'relay_base_url' => (string) ($stored->relay_base_url ?: ''),
+                'relay_key' => (string) ($stored->relay_key ?: ''),
                 'use_proxy' => (bool) $stored->use_proxy,
                 'proxy_type' => (string) ($stored->proxy_type ?: 'socks5h'),
                 'proxy_host' => (string) ($stored->proxy_host ?: ''),
@@ -85,9 +91,12 @@ final class TelegramBotSettings
         return [
             ...$settings,
             'bot_token' => '',
+            'relay_key' => '',
             'proxy_password' => '',
             'webhook_secret' => '',
             'bot_token_configured' => filled($settings['bot_token']),
+            'relay_key_configured' => filled($settings['relay_key']),
+            'relay_configured' => filled($settings['relay_base_url']) && filled($settings['relay_key']),
             'proxy_password_configured' => filled($settings['proxy_password']),
             'webhook_secret_configured' => filled($settings['webhook_secret']),
             'configured' => filled($settings['bot_token']) && filled($settings['admin_user_id']),
@@ -115,8 +124,8 @@ final class TelegramBotSettings
         }
 
         foreach ([
-            'admin_user_id', 'api_base_url', 'proxy_type', 'proxy_host',
-            'proxy_port', 'proxy_username',
+            'admin_user_id', 'transport_mode', 'api_base_url', 'relay_base_url',
+            'proxy_type', 'proxy_host', 'proxy_port', 'proxy_username',
         ] as $field) {
             if (array_key_exists($field, $data)) {
                 $existing->{$field} = is_string($data[$field])
@@ -129,6 +138,12 @@ final class TelegramBotSettings
             $existing->bot_token = trim((string) $data['bot_token']);
         } elseif (! $existing->exists && filled($resolved['bot_token'] ?? null)) {
             $existing->bot_token = (string) $resolved['bot_token'];
+        }
+
+        if (array_key_exists('relay_key', $data) && filled($data['relay_key'])) {
+            $existing->relay_key = (string) $data['relay_key'];
+        } elseif (! $existing->exists && filled($resolved['relay_key'] ?? null)) {
+            $existing->relay_key = (string) $resolved['relay_key'];
         }
 
         if (array_key_exists('proxy_password', $data) && filled($data['proxy_password'])) {
