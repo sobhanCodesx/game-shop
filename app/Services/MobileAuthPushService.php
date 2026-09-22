@@ -8,13 +8,21 @@ use Throwable;
 
 final class MobileAuthPushService
 {
-    public function sendPasswordlessOtp(User $user, string $phone, string $code): void
-    {
-        if (! config('services.expo_push.enabled')) {
+    public function sendPasswordlessOtp(
+        User $user,
+        string $phone,
+        string $code,
+        ?string $installationId,
+    ): void {
+        if (
+            ! config('services.expo_push.enabled')
+            || blank($installationId)
+        ) {
             return;
         }
 
         $deviceIds = $user->mobileDevices()
+            ->where('installation_id', $installationId)
             ->where('push_enabled', true)
             ->where('last_seen_at', '>=', now()->subDays(180))
             ->pluck('id')
