@@ -50,6 +50,11 @@ interface BotSettings {
     publish_enabled: boolean;
     destructive_enabled: boolean;
     media_enabled: boolean;
+    mtproto_enabled: boolean;
+    mtproto_api_id: number;
+    mtproto_initialized_at?: string | null;
+    mtproto_last_health_at?: string | null;
+    mtproto_last_error?: string | null;
     transport_mode: TransportMode;
     api_base_url: string;
     relay_base_url: string;
@@ -70,9 +75,22 @@ interface BotSettings {
     relay_configured: boolean;
     proxy_password_configured: boolean;
     webhook_secret_configured: boolean;
+    mtproto_api_hash_configured: boolean;
+    mtproto_configured: boolean;
     configured: boolean;
     webhook_url: string;
     max_download_bytes: number;
+}
+
+interface MtProtoCompatibility {
+    compatible: boolean;
+    required: Record<string, boolean>;
+    recommended: Record<string, boolean>;
+    network: string;
+    php: string;
+    sapi: string;
+    memory_limit: string;
+    max_execution_time: string;
 }
 
 interface WebhookInfo {
@@ -195,11 +213,13 @@ export default function TelegramBotIndex({
     settings,
     webhookInfo,
     webhookError,
+    mtprotoCompatibility,
     audits,
 }: {
     settings: BotSettings;
     webhookInfo: WebhookInfo | null;
     webhookError: string | null;
+    mtprotoCompatibility: MtProtoCompatibility;
     audits: AuditRow[];
 }) {
     const form = useForm({
@@ -210,6 +230,9 @@ export default function TelegramBotIndex({
         publish_enabled: settings.publish_enabled,
         destructive_enabled: settings.destructive_enabled,
         media_enabled: settings.media_enabled,
+        mtproto_enabled: settings.mtproto_enabled,
+        mtproto_api_id: settings.mtproto_api_id || 0,
+        mtproto_api_hash: "",
         transport_mode: settings.transport_mode || "auto",
         api_base_url: settings.api_base_url || "https://api.telegram.org",
         relay_base_url: settings.relay_base_url ?? "",
@@ -311,6 +334,18 @@ export default function TelegramBotIndex({
             label: "Webhook",
             ready: webhookHealthy,
         },
+        ...(form.data.mtproto_enabled
+            ? [
+                  {
+                      label: "فایل بزرگ",
+                      ready:
+                          mtprotoCompatibility.compatible &&
+                          (settings.mtproto_configured ||
+                              (form.data.mtproto_api_id > 0 &&
+                                  Boolean(form.data.mtproto_api_hash))),
+                  },
+              ]
+            : []),
     ];
 
     const setupReadyCount = setupChecks.filter((item) => item.ready).length;
@@ -848,6 +883,182 @@ export default function TelegramBotIndex({
                                     از Delete تأیید نهایی می‌گیرد.
                                 </div>
                             )}
+                        </div>
+                    </section>
+
+                    <section className={glassPanel}>
+                        <div className="flex flex-col gap-4 border-b border-white/[0.06] p-5 md:flex-row md:items-center md:justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="grid size-11 place-items-center rounded-2xl border border-emerald-300/10 bg-emerald-400/[0.07] text-emerald-200">
+                                    <Database size={21} />
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-white">
+                                        فایل‌های بزرگ با MTProto
+                                    </h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        برای ویدیوهای بزرگ‌تر از محدودیت Bot API؛ بعد از یک‌بار تنظیم کاملاً خودکار است.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Chip size="sm">
+                                    {settings.mtproto_initialized_at
+                                        ? "READY"
+                                        : settings.mtproto_configured
+                                          ? "CONFIGURED"
+                                          : "ONE-TIME SETUP"}
+                                </Chip>
+                                <Switch
+                                    isSelected={form.data.mtproto_enabled}
+                                    onValueChange={(value) =>
+                                        form.setData("mtproto_enabled", value)
+                                    }
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-5 p-5">
+                            <div className="rounded-2xl border border-emerald-300/10 bg-emerald-400/[0.04] p-4 text-xs leading-6 text-slate-400">
+                                <strong className="text-emerald-200">
+                                    فقط یک‌بار:
+                                </strong>{" "}
+                                API ID و API Hash حساب Telegram را وارد کن و
+                                <b className="text-slate-200"> Run Bot </b>
+                                را بزن. بعد از آن فایل بزرگ را مثل فایل عادی برای Bot می‌فرستی؛ انتخاب مسیر با خود PlayNexus است.
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <label>
+                                    <span className={labelClass}>
+                                        <KeyRound size={14} />
+                                        Telegram API ID
+                                    </span>
+                                    <Input
+                                        dir="ltr"
+                                        min="1"
+                                        placeholder="12345678"
+                                        type="number"
+                                        value={
+                                            form.data.mtproto_api_id > 0
+                                                ? String(form.data.mtproto_api_id)
+                                                : ""
+                                        }
+                                        onChange={(event) =>
+                                            form.setData(
+                                                "mtproto_api_id",
+                                                Number(event.target.value || 0),
+                                            )
+                                        }
+                                    />
+                                    {form.errors.mtproto_api_id && (
+                                        <p className="mt-1 text-xs text-rose-400">
+                                            {form.errors.mtproto_api_id}
+                                        </p>
+                                    )}
+                                </label>
+
+                                <label>
+                                    <span className={labelClass}>
+                                        <FileKey2 size={14} />
+                                        Telegram API Hash
+                                    </span>
+                                    <Input
+                                        dir="ltr"
+                                        placeholder={
+                                            settings.mtproto_api_hash_configured
+                                                ? "••••••••  فقط برای تغییر"
+                                                : "API Hash"
+                                        }
+                                        type="password"
+                                        value={form.data.mtproto_api_hash}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                "mtproto_api_hash",
+                                                event.target.value,
+                                            )
+                                        }
+                                    />
+                                    <p className="mt-2 flex items-center gap-1.5 text-[10px] leading-5 text-slate-600">
+                                        <EyeOff size={12} />
+                                        Hash رمزنگاری‌شده ذخیره می‌شود و دوباره نمایش داده نمی‌شود.
+                                    </p>
+                                    {form.errors.mtproto_api_hash && (
+                                        <p className="mt-1 text-xs text-rose-400">
+                                            {form.errors.mtproto_api_hash}
+                                        </p>
+                                    )}
+                                </label>
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                <div className={`${glassInset} p-3`}>
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-600">
+                                        Host
+                                    </p>
+                                    <p className="mt-1 text-xs font-bold text-slate-300">
+                                        {mtprotoCompatibility.compatible
+                                            ? "سازگار ✅"
+                                            : "نیاز به بررسی"}
+                                    </p>
+                                </div>
+                                <div className={`${glassInset} p-3`}>
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-600">
+                                        Telegram DC
+                                    </p>
+                                    <p className="mt-1 truncate text-xs font-bold text-slate-300">
+                                        {mtprotoCompatibility.network}
+                                    </p>
+                                </div>
+                                <div className={`${glassInset} p-3`}>
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-600">
+                                        Session
+                                    </p>
+                                    <p className="mt-1 text-xs font-bold text-slate-300">
+                                        {settings.mtproto_initialized_at
+                                            ? "Initialized"
+                                            : "Not initialized"}
+                                    </p>
+                                </div>
+                                <div className={`${glassInset} p-3`}>
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-600">
+                                        Last health
+                                    </p>
+                                    <p className="mt-1 text-xs font-bold text-slate-300">
+                                        {formatDate(settings.mtproto_last_health_at)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {settings.mtproto_last_error && (
+                                <div className="flex items-start gap-2 rounded-2xl border border-rose-400/15 bg-rose-400/[0.045] p-3 text-xs leading-6 text-rose-200">
+                                    <AlertTriangle
+                                        className="mt-0.5 shrink-0"
+                                        size={15}
+                                    />
+                                    {settings.mtproto_last_error}
+                                </div>
+                            )}
+
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    className={glassButton}
+                                    isDisabled={!settings.mtproto_configured}
+                                    onPress={() =>
+                                        action(
+                                            "post",
+                                            "/admin/telegram-bot/mtproto/test",
+                                        )
+                                    }
+                                    variant="secondary"
+                                >
+                                    <CheckCircle2 size={16} />
+                                    تست MTProto
+                                </Button>
+                                <span className="self-center text-[10px] leading-5 text-slate-600">
+                                    برای تست مقادیر تازه، اول Save یا Run Bot را بزن.
+                                </span>
+                            </div>
                         </div>
                     </section>
 
@@ -1504,10 +1715,18 @@ export default function TelegramBotIndex({
                                     ),
                                 ],
                                 [
-                                    "Max media",
+                                    "Bot API media",
                                     `${(
                                         settings.max_download_bytes / 1048576
                                     ).toFixed(0)} MB`,
+                                ],
+                                [
+                                    "MTProto large files",
+                                    settings.mtproto_enabled
+                                        ? settings.mtproto_initialized_at
+                                            ? "READY"
+                                            : "CONFIGURED"
+                                        : "OFF",
                                 ],
                                 [
                                     "Config source",
