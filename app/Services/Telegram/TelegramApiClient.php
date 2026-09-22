@@ -12,6 +12,8 @@ use Throwable;
 
 final class TelegramApiClient
 {
+    private ?string $lastTransport = null;
+
     public function __construct(
         private readonly TelegramBotSettings $settings,
         private readonly TelegramTransportManager $transports,
@@ -136,6 +138,7 @@ final class TelegramApiClient
                 continue;
             }
 
+            $this->lastTransport = (string) $candidate['name'];
             $result = $json['result'] ?? [];
 
             return is_array($result) ? $result : ['value' => $result];
@@ -196,6 +199,7 @@ final class TelegramApiClient
                     continue;
                 }
 
+                $this->lastTransport = (string) $candidate['name'];
                 break;
             } catch (Throwable $exception) {
                 $failures[] = $candidate['name'].': transport failure';
@@ -223,6 +227,11 @@ final class TelegramApiClient
             'size' => $actualSize,
             'telegram_file' => $file,
         ];
+    }
+
+    public function lastTransport(): ?string
+    {
+        return $this->lastTransport;
     }
 
     private function http(array $candidate): PendingRequest
