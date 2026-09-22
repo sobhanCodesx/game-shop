@@ -5,9 +5,15 @@ namespace App\Providers;
 use App\Models\Game;
 use App\Models\Product;
 use App\Models\SocialContent;
+use App\Models\SocialContentMedia;
+use App\Models\Studio;
+use App\Models\VideoPlaylist;
 use App\Observers\GameObserver;
 use App\Observers\ProductObserver;
+use App\Observers\SocialContentMediaObserver;
 use App\Observers\SocialContentObserver;
+use App\Observers\StudioObserver;
+use App\Observers\VideoPlaylistObserver;
 use App\Services\Sms\PayamakPanelSmsService;
 use App\Services\Sms\SmsIrSmsService;
 use App\Services\Sms\SmsProvider;
@@ -43,5 +49,8 @@ class AppServiceProvider extends ServiceProvider
         Game::observe(GameObserver::class);
         Product::observe(ProductObserver::class);
         SocialContent::observe(SocialContentObserver::class);
+        SocialContentMedia::observe(SocialContentMediaObserver::class);
+        Studio::observe(StudioObserver::class);
+        VideoPlaylist::observe(VideoPlaylistObserver::class);
     }
 }
