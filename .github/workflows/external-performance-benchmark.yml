@@ -48,24 +48,22 @@ jobs:
             fi
 
             echo "=== $label | $preset | run $run ==="
-            lighthouse "$url" \
+            timeout 55s lighthouse "$url" \
               --quiet \
               --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
               --only-categories=performance,accessibility,best-practices,seo \
               --output=json \
               --output-path="benchmark-reports/${label}-${preset}-${run}.json" \
-              --max-wait-for-load=30000 \
+              --max-wait-for-load=20000 \
               $preset_arg || true
           }
 
           for i in 1 2 3; do
             run_lh "https://playnexus.ir/" "playnexus-home" "mobile" "$i"
-            run_lh "https://www.digikala.com/" "digikala-home" "mobile" "$i"
           done
 
           for i in 1 2 3; do
             run_lh "https://playnexus.ir/" "playnexus-home" "desktop" "$i"
-            run_lh "https://www.digikala.com/" "digikala-home" "desktop" "$i"
           done
 
 
@@ -128,9 +126,7 @@ jobs:
           const rows = files.map(read);
           const groups = [
             ['playnexus-home','mobile'],
-            ['digikala-home','mobile'],
             ['playnexus-home','desktop'],
-            ['digikala-home','desktop'],
           ];
 
           const summary = {};
