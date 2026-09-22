@@ -2,6 +2,7 @@
 
 namespace App\Services\Telegram;
 
+use App\Models\User;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
@@ -169,6 +170,7 @@ final class TelegramBotCommandRouter
             '/stories' => $this->showResourceHub($chatId, 'story'),
             '/games' => $this->showResourceHub($chatId, 'game'),
             '/collections' => $this->showResourceHub($chatId, 'collection'),
+            '/users' => $this->showUsers($chatId),
             '/help' => $this->sendAndReturn($chatId, $this->formatter->help(), 'help'),
             '/status' => $this->showStatus($chatId),
             '/cancel' => $this->cancel($userId, $chatId),
@@ -236,6 +238,9 @@ final class TelegramBotCommandRouter
             if ($target === 'status') {
                 return $this->showStatus($chatId, $messageId);
             }
+            if ($target === 'users') {
+                return $this->showUsers($chatId, 0, $messageId);
+            }
             if ($target === 'help') {
                 return $this->sendAndReturn($chatId, $this->formatter->help(), 'help');
             }
@@ -250,6 +255,18 @@ final class TelegramBotCommandRouter
             }
 
             return $this->showResourceHub($chatId, $this->resource($target), $messageId);
+        }
+
+        if ($action === 'users') {
+            $offset = max(0, (int) ($parts[1] ?? 0));
+
+            return $this->showUsers($chatId, $offset, $messageId);
+        }
+
+        if ($action === 'user') {
+            $id = $this->positiveInt($parts[1] ?? null);
+
+            return $this->showUser($chatId, $id, $messageId);
         }
 
         if ($action === 'list') {
@@ -532,6 +549,128 @@ final class TelegramBotCommandRouter
         $this->render($chatId, $this->formatter->hubText($hub), $this->hubKeyboard($hub), $messageId);
 
         return ['action' => 'hub:'.$hub];
+    }
+
+    private function showUsers(string $chatId, int $offset = 0, ?int $messageId = null): array
+    {
+        $limit = 8;
+        $offset = max(0, $offset);
+        $total = User::query()->count();
+        $telegramConnected = User::query()
+            ->whereNotNull('telegram_chat_id')
+            ->whereNotNull('telegram_linked_at')
+            ->count();
+
+        $users = User::query()
+            ->latest('id')
+            ->offset($offset)
+            ->limit($limit)
+            ->get([
+                'id',
+                'name',
+                'email',
+                'phone',
+                'status',
+                'is_admin',
+                'telegram_chat_id',
+                'telegram_linked_at',
+                'created_at',
+            ]);
+
+        $page = (int) floor($offset / $limit) + 1;
+        $pages = max(1, (int) ceil(max(1, $total) / $limit));
+
+        $text = "👥 <b>کاربران PlayNexus</b>\n"
+            ."━━━━━━━━━━━━━━━━━━\n"
+            ."کل کاربران: <b>{$total}</b>\n"
+            ."متصل به تلگرام: <b>{$telegramConnected}</b> 📲\n"
+            ."صفحه: <b>{$page} / {$pages}</b>\n\n"
+            ."برای دیدن جزئیات، روی کاربر بزن.";
+
+        $rows = [];
+        foreach ($users as $user) {
+            $connected = filled($user->telegram_chat_id) && $user->telegram_linked_at !== null;
+            $label = trim((string) ($user->name ?: $user->email ?: $user->phone ?: 'کاربر'));
+            $label = Str::limit($label, 28);
+
+            $rows[] = [[
+                'text' => ($connected ? '📲 ' : '👤 ').'#'.$user->id.' · '.$label,
+                'callback_data' => 'user:'.$user->id,
+            ]];
+        }
+
+        $navigation = [];
+        if ($offset > 0) {
+            $navigation[] = [
+                'text' => '‹ قبلی',
+                'callback_data' => 'users:'.max(0, $offset - $limit),
+            ];
+        }
+        if ($offset + $limit < $total) {
+            $navigation[] = [
+                'text' => 'بعدی ›',
+                'callback_data' => 'users:'.($offset + $limit),
+            ];
+        }
+        if ($navigation !== []) {
+            $rows[] = $navigation;
+        }
+
+        $rows[] = [
+            ['text' => '🔄 تازه‌سازی', 'callback_data' => 'users:'.$offset],
+            ['text' => '🏠 خانه', 'callback_data' => 'menu:home'],
+        ];
+
+        $this->render($chatId, $text, ['inline_keyboard' => $rows], $messageId);
+
+        return ['action' => 'users'];
+    }
+
+    private function showUser(string $chatId, int $id, ?int $messageId = null): array
+    {
+        $user = User::query()->find($id);
+        if (! $user) {
+            throw new RuntimeException('کاربر پیدا نشد یا دیگر در PlayNexus وجود ندارد.');
+        }
+        $telegramConnected = filled($user->telegram_chat_id) && $user->telegram_linked_at !== null;
+        $name = trim((string) ($user->name ?: 'بدون نام'));
+        $email = trim((string) ($user->email ?: '—'));
+        $phone = trim((string) ($user->phone ?: '—'));
+        $role = trim((string) ($user->role ?: ($user->is_admin ? 'admin' : 'user')));
+        $createdAt = $user->created_at?->format('Y-m-d H:i') ?: '—';
+        $linkedAt = $user->telegram_linked_at?->format('Y-m-d H:i') ?: '—';
+
+        $text = "👤 <b>".$this->formatter->escape($name)."</b>\n"
+            ."━━━━━━━━━━━━━━━━━━\n"
+            ."شناسه: <code>#{$user->id}</code>\n"
+            ."ایمیل: <code>".$this->formatter->escape($email)."</code>\n"
+            ."موبایل: <code>".$this->formatter->escape($phone)."</code>\n"
+            ."وضعیت: <b>".$this->formatter->escape((string) ($user->status ?: '—'))."</b>\n"
+            ."نقش: <b>".$this->formatter->escape($role)."</b>\n"
+            ."مدیر: <b>".($user->is_admin ? 'بله' : 'خیر')."</b>\n"
+            ."عضویت: <b>".$this->formatter->escape($createdAt)."</b>\n\n"
+            ."تلگرام: <b>".($telegramConnected ? 'متصل ✅' : 'متصل نیست')."</b>";
+
+        if ($telegramConnected) {
+            $text .= "\nTelegram User ID: <code>".$this->formatter->escape((string) ($user->telegram_user_id ?: '—'))."</code>"
+                ."\nChat ID: <code>".$this->formatter->escape((string) $user->telegram_chat_id)."</code>"
+                ."\nزمان اتصال: <b>".$this->formatter->escape($linkedAt)."</b>";
+        }
+
+        $this->render($chatId, $text, [
+            'inline_keyboard' => [
+                [
+                    ['text' => '↩️ کاربران', 'callback_data' => 'users:0'],
+                    ['text' => '🏠 خانه', 'callback_data' => 'menu:home'],
+                ],
+                [[
+                    'text' => '🪟 مدیریت کاربران',
+                    'url' => route('admin.users.index'),
+                ]],
+            ],
+        ], $messageId);
+
+        return ['action' => 'user', 'resource' => 'user', 'resource_id' => $id];
     }
 
     private function showResourceHub(string $chatId, string $resource, ?int $messageId = null): array
@@ -1136,9 +1275,13 @@ final class TelegramBotCommandRouter
                     ['text' => '🧠 هوشمندی', 'callback_data' => 'menu:intelligence'],
                 ],
                 [
+                    ['text' => '👥 کاربران', 'callback_data' => 'menu:users'],
                     ['text' => '📡 وضعیت', 'callback_data' => 'menu:status'],
-                    ['text' => '⚙️ سیستم', 'callback_data' => 'menu:system'],
                 ],
+                [[
+                    'text' => '⚙️ سیستم',
+                    'callback_data' => 'menu:system',
+                ]],
                 [[
                     'text' => '🪟 پنل ادمین PlayNexus',
                     'url' => route('admin.telegram-bot.index'),
@@ -1185,8 +1328,12 @@ final class TelegramBotCommandRouter
             'system' => [
                 [
                     ['text' => '📡 وضعیت اتصال', 'callback_data' => 'menu:status'],
-                    ['text' => '❓ راهنما', 'callback_data' => 'menu:help'],
+                    ['text' => '👥 کاربران', 'callback_data' => 'menu:users'],
                 ],
+                [[
+                    'text' => '❓ راهنما',
+                    'callback_data' => 'menu:help',
+                ]],
                 [[
                     'text' => '⚙️ تنظیمات ربات',
                     'url' => route('admin.telegram-bot.index'),

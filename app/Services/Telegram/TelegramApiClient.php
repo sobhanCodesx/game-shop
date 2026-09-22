@@ -70,6 +70,7 @@ final class TelegramApiClient
                     ['command' => 'stories', 'description' => '📱 مدیریت استوری‌ها'],
                     ['command' => 'games', 'description' => '🎮 مدیریت بازی‌ها'],
                     ['command' => 'collections', 'description' => '📚 مدیریت کالکشن‌ها'],
+                    ['command' => 'users', 'description' => '👥 کاربران PlayNexus'],
                     ['command' => 'status', 'description' => '📡 وضعیت اتصال ربات'],
                     ['command' => 'help', 'description' => '❓ راهنمای مدیریت'],
                     ['command' => 'cancel', 'description' => '✕ لغو عملیات جاری'],

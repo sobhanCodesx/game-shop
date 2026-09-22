@@ -46,6 +46,7 @@ final class TelegramBotFormatter
             ."<code>/stories</code> مدیریت استوری‌ها\n"
             ."<code>/games</code> مدیریت بازی‌ها\n"
             ."<code>/collections</code> مدیریت کالکشن‌ها\n"
+            ."<code>/users</code> کاربران PlayNexus\n"
             ."<code>/status</code> وضعیت اتصال\n"
             ."<code>/cancel</code> لغو عملیات جاری\n\n"
             ."برای جستجو، انتخاب بازی/استودیو/کالکشن، انتشار و مدیا هم از دکمه‌های همان بخش استفاده کن.";

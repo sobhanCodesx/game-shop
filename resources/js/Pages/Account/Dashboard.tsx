@@ -157,7 +157,6 @@ export default function Dashboard({
             ? requestedTab
             : "overview",
     );
-    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] =
         useState(false);
     const tabs: [Tab, string, typeof Home][] = [
@@ -215,58 +214,27 @@ export default function Dashboard({
                     </p>
                 )}
                 <div
-                    className={`relative mt-4 grid grid-cols-[64px_minmax(0,1fr)] gap-3 sm:mt-6 sm:gap-4 lg:gap-6 ${desktopSidebarCollapsed ? "lg:grid-cols-[76px_minmax(0,1fr)]" : "lg:grid-cols-[240px_minmax(0,1fr)]"}`}
+                    className={`relative mt-4 grid grid-cols-1 gap-3 sm:mt-6 sm:gap-4 lg:gap-6 ${desktopSidebarCollapsed ? "lg:grid-cols-[76px_minmax(0,1fr)]" : "lg:grid-cols-[240px_minmax(0,1fr)]"}`}
                 >
-                    {mobileSidebarOpen && (
-                        <button
-                            aria-label="بستن منوی حساب"
-                            className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-[2px] lg:hidden"
-                            onClick={() => setMobileSidebarOpen(false)}
-                            type="button"
-                        />
-                    )}
                     <nav
                         aria-label="بخش‌های حساب کاربری"
-                        className={`border border-[var(--store-border)] bg-[var(--store-surface)] p-2 transition-[width,transform,box-shadow] duration-300 ${mobileSidebarOpen ? "fixed bottom-20 right-3 top-20 z-[60] w-[min(17rem,calc(100vw-1.5rem))] overflow-y-auto rounded-3xl shadow-2xl" : "sticky top-20 w-16 self-start rounded-2xl"} lg:sticky lg:bottom-auto lg:right-auto lg:top-24 lg:z-auto lg:w-auto lg:self-start lg:overflow-visible lg:rounded-3xl lg:p-3 lg:shadow-none`}
+                        className="sticky top-[72px] z-30 -mx-1 overflow-x-auto rounded-2xl border border-[var(--store-border)] bg-[color-mix(in_srgb,var(--store-surface)_94%,transparent)] p-2 shadow-lg shadow-black/5 backdrop-blur-xl lg:top-24 lg:mx-0 lg:self-start lg:overflow-visible lg:rounded-3xl lg:p-3 lg:shadow-none"
                     >
                         <div
-                            className={`mb-2 flex items-center ${mobileSidebarOpen ? "justify-between px-2" : "justify-center"} ${desktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "lg:justify-between lg:px-2"}`}
+                            className={`mb-2 hidden items-center lg:flex ${desktopSidebarCollapsed ? "justify-center" : "justify-between px-2"}`}
                         >
                             <strong
-                                className={`text-xs text-[var(--store-text)] ${mobileSidebarOpen ? "block" : "hidden"} ${desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}`}
+                                className={`text-xs text-[var(--store-text)] ${desktopSidebarCollapsed ? "hidden" : "block"}`}
                             >
                                 منوی حساب
                             </strong>
-                            <button
-                                aria-label={
-                                    mobileSidebarOpen
-                                        ? "جمع کردن سایدبار"
-                                        : "باز کردن سایدبار"
-                                }
-                                className="grid size-10 place-items-center rounded-xl text-indigo-500 transition hover:bg-[var(--store-bg)] lg:hidden"
-                                onClick={() =>
-                                    setMobileSidebarOpen((current) => !current)
-                                }
-                                title={
-                                    mobileSidebarOpen
-                                        ? "جمع کردن منو"
-                                        : "باز کردن منو"
-                                }
-                                type="button"
-                            >
-                                {mobileSidebarOpen ? (
-                                    <ChevronRight size={19} />
-                                ) : (
-                                    <ChevronLeft size={19} />
-                                )}
-                            </button>
                             <button
                                 aria-label={
                                     desktopSidebarCollapsed
                                         ? "باز کردن سایدبار"
                                         : "جمع کردن سایدبار"
                                 }
-                                className="hidden size-10 place-items-center rounded-xl text-indigo-500 transition hover:bg-[var(--store-bg)] lg:grid"
+                                className="grid size-10 place-items-center rounded-xl text-indigo-500 transition hover:bg-[var(--store-bg)]"
                                 onClick={() =>
                                     setDesktopSidebarCollapsed(
                                         (current) => !current,
@@ -286,44 +254,41 @@ export default function Dashboard({
                                 )}
                             </button>
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col lg:gap-1.5">
                             {tabs.map(([id, label, Icon]) => (
                                 <button
                                     aria-current={
                                         tab === id ? "page" : undefined
                                     }
-                                    className={`flex min-h-12 w-full items-center rounded-xl text-sm font-bold transition ${mobileSidebarOpen ? "justify-start gap-3 px-3" : "justify-center px-0"} ${desktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "lg:justify-start lg:gap-3 lg:px-4"} ${tab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-[var(--store-muted)] hover:bg-[var(--store-bg)]"}`}
+                                    className={`flex min-h-11 min-w-max items-center justify-center gap-2 rounded-xl px-3 text-xs font-bold transition sm:min-h-12 sm:text-sm lg:w-full ${desktopSidebarCollapsed ? "lg:min-w-0 lg:px-0" : "lg:justify-start lg:px-4"} ${tab === id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-[var(--store-muted)] hover:bg-[var(--store-bg)]"}`}
                                     key={id}
-                                    onClick={() => {
-                                        setTab(id);
-                                        setMobileSidebarOpen(false);
-                                    }}
+                                    onClick={() => setTab(id)}
                                     title={label}
                                     type="button"
                                 >
-                                    <Icon className="shrink-0" size={20} />
+                                    <Icon className="shrink-0" size={19} />
                                     <span
-                                        className={`${mobileSidebarOpen ? "block" : "hidden"} ${desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}`}
+                                        className={desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}
                                     >
                                         {label}
                                     </span>
                                 </button>
                             ))}
                             <a
-                                className={`flex min-h-12 w-full items-center rounded-xl text-sm font-bold text-[var(--store-muted)] transition hover:bg-[var(--store-bg)] ${mobileSidebarOpen ? "justify-start gap-3 px-3" : "justify-center px-0"} ${desktopSidebarCollapsed ? "lg:justify-center lg:px-0" : "lg:justify-start lg:gap-3 lg:px-4"}`}
+                                className={`flex min-h-11 min-w-max items-center justify-center gap-2 rounded-xl px-3 text-xs font-bold text-[var(--store-muted)] transition hover:bg-[var(--store-bg)] sm:min-h-12 sm:text-sm lg:w-full ${desktopSidebarCollapsed ? "lg:min-w-0 lg:px-0" : "lg:justify-start lg:px-4"}`}
                                 href="/account/tickets"
                                 title="تیکت‌های پشتیبانی"
                             >
-                                <LifeBuoy className="shrink-0" size={20} />
+                                <LifeBuoy className="shrink-0" size={19} />
                                 <span
-                                    className={`${mobileSidebarOpen ? "block" : "hidden"} ${desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}`}
+                                    className={desktopSidebarCollapsed ? "lg:hidden" : "lg:block"}
                                 >
                                     تیکت‌های پشتیبانی
                                 </span>
                             </a>
                         </div>
                     </nav>
-                    <section className="pn-deferred-zone min-w-0 rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:rounded-3xl sm:p-7">
+                    <section className="pn-deferred-zone min-w-0 rounded-[22px] border border-[var(--store-border)] bg-[var(--store-surface)] p-3.5 sm:rounded-3xl sm:p-7">
                         {tab === "overview" && (
                             <>
                                 <Overview
@@ -880,11 +845,11 @@ function ContentNotificationsPanel({
 
     return (
         <form onSubmit={submit}>
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-indigo-700 via-violet-700 to-fuchsia-700 p-5 text-white shadow-xl shadow-indigo-500/15 sm:p-7">
+            <div className="relative overflow-hidden rounded-[22px] bg-gradient-to-l from-indigo-700 via-violet-700 to-fuchsia-700 p-4 text-white shadow-xl shadow-indigo-500/15 sm:rounded-3xl sm:p-7">
                 <div className="absolute -left-12 -top-16 size-52 rounded-full bg-white/10 blur-3xl" />
-                <div className="relative flex items-start gap-4">
-                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/10 backdrop-blur">
-                        <BellRing size={24} />
+                <div className="relative flex items-start gap-3 sm:gap-4">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/10 backdrop-blur sm:size-12 sm:rounded-2xl">
+                        <BellRing className="size-5 sm:size-6" />
                     </span>
                     <div>
                         <p className="text-xs font-bold text-indigo-100">
@@ -901,10 +866,10 @@ function ContentNotificationsPanel({
                 </div>
             </div>
 
-            <div className="mt-5 overflow-hidden rounded-3xl border border-sky-500/20 bg-gradient-to-l from-sky-500/[0.09] via-indigo-500/[0.05] to-transparent p-4 sm:p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-500/20">
-                        <Send size={23} />
+            <div className="mt-4 overflow-hidden rounded-[22px] border border-sky-500/20 bg-gradient-to-l from-sky-500/[0.09] via-indigo-500/[0.05] to-transparent p-3.5 sm:mt-5 sm:rounded-3xl sm:p-5">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 sm:flex sm:items-center sm:gap-4">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-sky-500 text-white shadow-lg shadow-sky-500/20 sm:size-12 sm:rounded-2xl">
+                        <Send className="size-5 sm:size-[23px]" />
                     </span>
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -932,10 +897,10 @@ function ContentNotificationsPanel({
                             </button>
                         )}
                     </div>
-                    <div className="flex shrink-0 gap-2">
+                    <div className="col-span-2 flex shrink-0 gap-2 sm:col-auto">
                         {telegram.connected ? (
                             <button
-                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-500/20 px-4 text-xs font-black text-rose-600"
+                                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-rose-500/20 px-4 text-xs font-black text-rose-600 sm:flex-none"
                                 onClick={() =>
                                     confirm("اتصال تلگرام از حساب قطع شود؟") &&
                                     router.delete("/account/telegram", {
@@ -949,7 +914,7 @@ function ContentNotificationsPanel({
                             </button>
                         ) : (
                             <button
-                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 text-xs font-black text-white shadow-lg shadow-sky-500/20 disabled:opacity-50"
+                                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 text-xs font-black text-white shadow-lg shadow-sky-500/20 disabled:opacity-50 sm:flex-none"
                                 disabled={!telegram.available}
                                 onClick={() =>
                                     router.post("/account/telegram/connect", {})
@@ -964,12 +929,12 @@ function ContentNotificationsPanel({
                 </div>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs leading-6 text-amber-700 dark:text-amber-300">
+            <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3.5 text-[11px] leading-6 text-amber-700 sm:mt-5 sm:p-4 sm:text-xs dark:text-amber-300">
                 پیامک، ایمیل و فید شخصی برای انتشار محتوای دنبال‌شده‌اند.
                 تلگرام علاوه بر محتوا، اعلان‌های حساب مثل سفارش و پشتیبانی را هم پوشش می‌دهد.
             </div>
 
-            <div className="mt-5 grid gap-3">
+            <div className="mt-4 grid gap-2.5 sm:mt-5 sm:gap-3">
                 <NotificationMethod
                     active={data.telegram_enabled}
                     description={
@@ -1014,7 +979,7 @@ function ContentNotificationsPanel({
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <button
-                    className="min-h-12 rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+                    className="min-h-12 w-full rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20 disabled:opacity-50 sm:w-auto"
                     disabled={processing}
                     type="submit"
                 >
@@ -1050,13 +1015,13 @@ function NotificationMethod({
     return (
         <button
             aria-checked={active}
-            className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-right transition sm:p-5 ${active ? "border-indigo-500/40 bg-indigo-500/[0.07] shadow-sm" : "border-[var(--store-border)] bg-[var(--store-bg)] hover:border-indigo-500/30"}`}
+            className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-2xl border p-3 text-right transition sm:gap-3 sm:p-5 ${active ? "border-indigo-500/40 bg-indigo-500/[0.07] shadow-sm" : "border-[var(--store-border)] bg-[var(--store-bg)] hover:border-indigo-500/30"}`}
             onClick={() => onChange(!active)}
             role="switch"
             type="button"
         >
             <span
-                className={`grid size-11 shrink-0 place-items-center rounded-xl ${active ? "bg-indigo-600 text-white" : "bg-[var(--store-surface)] text-[var(--store-muted)]"}`}
+                className={`grid size-10 shrink-0 place-items-center rounded-xl sm:size-11 ${active ? "bg-indigo-600 text-white" : "bg-[var(--store-surface)] text-[var(--store-muted)]"}`}
             >
                 <Icon size={21} />
             </span>
