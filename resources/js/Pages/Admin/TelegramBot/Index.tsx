@@ -127,7 +127,13 @@ export default function TelegramBotIndex({
         confirmation?: string,
     ) => {
         if (confirmation && !confirm(confirmation)) return;
-        router[method](url, {}, { preserveScroll: true });
+
+        if (method === "delete") {
+            router.delete(url, { preserveScroll: true });
+            return;
+        }
+
+        router.post(url, {}, { preserveScroll: true });
     };
 
     const webhookHealthy =
