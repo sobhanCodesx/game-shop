@@ -132,6 +132,81 @@ class TelegramUserNotificationsTest extends TestCase
         );
     }
 
+    public function test_unverified_account_cannot_receive_passwordless_telegram_otp(): void
+    {
+        $this->configureBot();
+
+        $user = User::factory()->create([
+            'phone' => '09124445555',
+            'phone_verified_at' => null,
+            'status' => 'active',
+            'telegram_user_id' => '444444444',
+            'telegram_chat_id' => '444444444',
+            'telegram_linked_at' => now(),
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        $this->withSession(['login_phone' => $user->phone])
+            ->post('/login/otp/telegram')
+            ->assertSessionHasNoErrors();
+
+        Http::assertNothingSent();
+        $this->assertDatabaseMissing('mobile_verification_codes', [
+            'phone' => $user->phone,
+            'purpose' => 'passwordless_login',
+        ]);
+    }
+
+    public function test_telegram_api_failure_does_not_mark_otp_as_delivered(): void
+    {
+        $this->configureBot();
+
+        $user = User::factory()->create([
+            'phone' => '09125556666',
+            'phone_verified_at' => now(),
+            'status' => 'active',
+            'telegram_user_id' => '333333333',
+            'telegram_chat_id' => '333333333',
+            'telegram_linked_at' => now(),
+        ]);
+
+        MobileVerificationCode::query()->create([
+            'phone' => $user->phone,
+            'purpose' => 'passwordless_login',
+            'code_hash' => Hash::make('112233'),
+            'code_ciphertext' => Crypt::encryptString('112233'),
+            'attempts' => 0,
+            'expires_at' => now()->addMinutes(10),
+            'sent_at' => now()->subMinutes(2),
+            'telegram_sent_at' => null,
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => false,
+                'description' => 'temporary upstream failure',
+            ], 502),
+        ]);
+
+        $this->withSession(['login_phone' => $user->phone])
+            ->post('/login/otp/telegram')
+            ->assertSessionHasErrors('telegram');
+
+        $this->assertNull(
+            MobileVerificationCode::query()
+                ->where('phone', $user->phone)
+                ->where('purpose', 'passwordless_login')
+                ->firstOrFail()
+                ->telegram_sent_at,
+        );
+    }
+
     public function test_telegram_notification_channel_prefers_rich_photo_message(): void
     {
         $this->configureBot();
