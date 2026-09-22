@@ -11,7 +11,9 @@ use App\Http\Middleware\RejectImpersonatedDeployment;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -52,5 +54,31 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (
+            TooManyRequestsHttpException $exception,
+            Request $request,
+        ) {
+            if (! $request->is(
+                'login/otp',
+                'login/otp/*',
+                'verify-email',
+                'verify-email/*',
+                'forgot-password',
+                'reset-password',
+            )) {
+                return null;
+            }
+
+            $retryAfter = max(
+                1,
+                (int) ($exception->getHeaders()['Retry-After'] ?? 60),
+            );
+            $message = "درخواست‌های پشت‌سرهم زیاد بود؛ {$retryAfter} ثانیه صبر کن و دوباره تلاش کن.";
+
+            if ($request->is('login/otp/telegram', 'verify-email/telegram')) {
+                return back()->withErrors(['telegram' => $message]);
+            }
+
+            return back()->with('error', $message);
+        });
     })->create();
