@@ -30,10 +30,10 @@ class SocialContentMediaObserver
         $type = $media->content()->value('type');
 
         if ($type === 'video') {
-            app(StorefrontPageCache::class)->invalidate('playlist', 'channel');
+            app(StorefrontPageCache::class)->invalidate('playlist', 'channel', 'video', 'feed');
             app(SitemapCacheService::class)->invalidate();
         } elseif ($type === 'post') {
-            app(StorefrontPageCache::class)->invalidate('channel');
+            app(StorefrontPageCache::class)->invalidate('channel', 'feed');
         } elseif ($type === 'short') {
             app(StorefrontPageCache::class)->invalidate('short');
             app(SitemapCacheService::class)->invalidate();
