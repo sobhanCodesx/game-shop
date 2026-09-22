@@ -496,7 +496,73 @@ class TelegramAdminBotTest extends TestCase
                 && in_array('menu:library', $callbacks, true)
                 && in_array('menu:commerce', $callbacks, true)
                 && in_array('menu:intelligence', $callbacks, true)
+                && in_array('menu:users', $callbacks, true)
                 && in_array('menu:system', $callbacks, true);
+        });
+    }
+
+    public function test_admin_can_browse_playnexus_users_and_telegram_link_status(): void
+    {
+        $this->configureBot();
+
+        $linked = User::factory()->create([
+            'name' => 'کاربر متصل',
+            'email' => 'linked@example.com',
+            'telegram_user_id' => '9001001',
+            'telegram_chat_id' => '9001001',
+            'telegram_linked_at' => now(),
+            'status' => 'active',
+        ]);
+        User::factory()->create([
+            'name' => 'کاربر عادی',
+            'email' => 'plain@example.com',
+            'status' => 'active',
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => [],
+            ]),
+        ]);
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson(
+            '/api/telegram/webhook',
+            $this->telegramUpdate(2050, '777777777', '/users'),
+        )->assertOk();
+
+        Http::assertSent(function ($request) use ($linked): bool {
+            if (! str_ends_with($request->url(), '/sendMessage')) {
+                return false;
+            }
+
+            $text = (string) ($request->data()['text'] ?? '');
+            $callbacks = $this->callbackDataFromRequest($request->data());
+
+            return str_contains($text, 'کاربران PlayNexus')
+                && str_contains($text, 'متصل به تلگرام')
+                && in_array('user:'.$linked->id, $callbacks, true);
+        });
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson(
+            '/api/telegram/webhook',
+            $this->telegramCallback(2051, '777777777', 'user:'.$linked->id),
+        )->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            if (! str_ends_with($request->url(), '/editMessageText')) {
+                return false;
+            }
+
+            $text = (string) ($request->data()['text'] ?? '');
+
+            return str_contains($text, 'linked@example.com')
+                && str_contains($text, 'تلگرام: <b>متصل ✅</b>')
+                && str_contains($text, 'Telegram User ID');
         });
     }
 
