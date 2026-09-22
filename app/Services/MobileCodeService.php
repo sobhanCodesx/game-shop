@@ -22,9 +22,9 @@ class MobileCodeService
         private readonly TelegramBotSettings $telegramSettings,
     ) {}
 
-    public function send(string $phone, string $purpose): void
+    public function send(string $phone, string $purpose): string
     {
-        DB::transaction(function () use ($phone, $purpose): void {
+        return DB::transaction(function () use ($phone, $purpose): string {
             $record = MobileVerificationCode::query()
                 ->where(compact('phone', 'purpose'))
                 ->lockForUpdate()
@@ -59,6 +59,8 @@ class MobileCodeService
                 ['code' => $code],
                 "otp:{$record->id}:{$sentAt->getTimestamp()}",
             );
+
+            return $code;
         });
     }
 
