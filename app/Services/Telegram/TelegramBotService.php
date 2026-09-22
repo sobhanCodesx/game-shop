@@ -55,7 +55,12 @@ final class TelegramBotService
         $this->settings->markWebhookReceived();
 
         try {
-            $result = $isOwner
+            // A dashboard-generated /start connect_* deep link is an account
+            // linking flow even when the Telegram sender is also the bot owner.
+            // This keeps the owner's PlayNexus account linkable without ever
+            // exposing the admin router to regular users.
+            $isAccountLink = $isPrivateUser && $this->isAccountLinkUpdate($update);
+            $result = $isOwner && ! $isAccountLink
                 ? $this->router->handle($update)
                 : $this->userRouter->handle($update);
             $audit->action = (string) ($result['action'] ?? $actionHint ?? 'handled');
@@ -72,6 +77,17 @@ final class TelegramBotService
 
             throw $exception;
         }
+    }
+
+    private function isAccountLinkUpdate(array $update): bool
+    {
+        $message = is_array($update['message'] ?? null) ? $update['message'] : [];
+        $text = trim((string) ($message['text'] ?? ''));
+
+        return (bool) preg_match(
+            '/^\/start(?:@[A-Za-z0-9_]+)?\s+connect_[A-Za-z0-9]{32}$/',
+            $text,
+        );
     }
 
     private function actor(array $update): array
