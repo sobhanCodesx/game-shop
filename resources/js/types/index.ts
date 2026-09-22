@@ -33,8 +33,10 @@ export interface SharedPageProps {
             title: string;
             description: string;
             nav_label: string;
-            iframe_url: string;
-            min_height: number;
+            worker_url: string;
+            launcher_label: string;
+            welcome_title: string;
+            welcome_text: string;
             status_text: string;
         };
         categories: import("../Components/Storefront/Navigation/types").NavigationCategory[];
