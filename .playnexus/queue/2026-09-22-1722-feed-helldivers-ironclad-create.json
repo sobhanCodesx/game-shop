@@ -1,0 +1,14 @@
+{
+  "job_id": "2026-09-22-1722-feed-helldivers-ironclad-create",
+  "tool": "create_feed",
+  "arguments": {
+    "title": "Warbond جدید Helldivers 2 با نام Ironclad Democracy امروز منتشر شد",
+    "body": "<p>Warbond پریمیوم جدید <strong>Helldivers 2</strong> با نام <strong>Ironclad Democracy</strong> امروز ۲۲ سپتامبر منتشر شد. طبق اعلام رسمی Arrowhead در PlayStation Blog، این بسته روی تجهیزات سنگین، مقابله با اهداف زرهی و مقاومت بیشتر در میدان نبرد تمرکز دارد.</p><p>مهم‌ترین سلاح‌های این Warbond شامل AR-11 Arbitrator با شاتگان زیرلوله‌ای، نارنجک‌انداز GL-15 Evictor و تپانچه موشکی P-34 Breacher است. دو نارنجک G-60 Anti-Tank Seeker و G-8 Immolation نیز برای مقابله با زره و ایجاد آتش اضافه شده‌اند.</p><p>دو ست زره BFM-16 Tanker و BFM-220 Ironclad از Passive جدید Blunt-Force Mitigation استفاده می‌کنند؛ این قابلیت آسیب ناشی از برخورد را ۳۰ درصد کاهش می‌دهد و مقاومت Helldiver در برابر زمین خوردن هنگام حمله را بیشتر می‌کند. Ironclad Democracy همچنین دو Booster، شنل‌ها، Player Cardها، Emote و سه الگوی اختصاصی برای تانک دارد.</p><p>برای دسترسی به Warbond، داشتن بازی پایه، Super Credits و پیشرفت داخل بازی لازم است. Helldivers 2 هم‌اکنون در Game Catalog پلی‌استیشن پلاس نیز حضور دارد.</p>",
+    "feed_type": "game_update",
+    "feed_badge": "update",
+    "allow_comments": true,
+    "notify_followers": true,
+    "seo_title": "Warbond جدید Helldivers 2 منتشر شد",
+    "seo_description": "Ironclad Democracy برای Helldivers 2 منتشر شد؛ سلاح‌های جدید، زره سنگین، نارنجک ضدتانک و Passive تازه مهم‌ترین محتویات این Warbond هستند."
+  }
+}
