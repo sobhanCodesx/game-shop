@@ -18,9 +18,29 @@ final class VideoPageDataService
 
     public function get(SocialContent $content, string $playlistSlug = ''): array
     {
+        $playlistSlug = trim($playlistSlug);
+
+        if ($playlistSlug === '') {
+            return $this->cache->remember(
+                'video',
+                $content->id.':default',
+                fn () => $this->build($content, ''),
+            );
+        }
+
+        $playlistId = VideoPlaylist::query()
+            ->where('slug', $playlistSlug)
+            ->whereIn('visibility', ['public', 'unlisted'])
+            ->whereHas('videos', fn ($query) => $query->whereKey($content->id))
+            ->value('id');
+
+        if (! $playlistId) {
+            return $this->build($content, $playlistSlug);
+        }
+
         return $this->cache->remember(
             'video',
-            $content->id.':'.($playlistSlug !== '' ? $playlistSlug : 'default'),
+            $content->id.':playlist:'.$playlistId,
             fn () => $this->build($content, $playlistSlug),
         );
     }
