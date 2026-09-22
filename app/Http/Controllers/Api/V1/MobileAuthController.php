@@ -10,6 +10,7 @@ use App\Services\GoogleAccountService;
 use App\Services\GoogleIdentityTokenService;
 use App\Services\MediaStorage;
 use App\Services\MobileApiTokenService;
+use App\Services\MobileAuthPushService;
 use App\Services\MobileCodeService;
 use App\Services\Telegram\TelegramAdminNotificationService;
 use App\Support\PhoneNumber;
@@ -214,17 +215,23 @@ class MobileAuthController extends Controller
         return $this->tokenResponse($user, $tokens, $data['device_name'] ?? null);
     }
 
-    public function requestPasswordless(Request $request, MobileCodeService $codes): JsonResponse
-    {
+    public function requestPasswordless(
+        Request $request,
+        MobileCodeService $codes,
+        MobileAuthPushService $push,
+    ): JsonResponse {
         $data = $request->validate(['phone' => ['required', 'string']]);
         $phone = PhoneNumber::normalize($data['phone']);
 
-        if (User::query()
+        $user = User::query()
             ->where('phone', $phone)
             ->where('status', 'active')
             ->whereNotNull('phone_verified_at')
-            ->exists()) {
-            $codes->send($phone, 'passwordless_login');
+            ->first();
+
+        if ($user) {
+            $code = $codes->send($phone, 'passwordless_login');
+            $push->sendPasswordlessOtp($user, $phone, $code);
         }
 
         return response()->json([
