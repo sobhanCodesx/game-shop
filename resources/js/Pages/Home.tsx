@@ -24,6 +24,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import NewsletterSignup from "../Components/Home/NewsletterSignup";
+import NexusAiWidget from "../Components/NexusAI/NexusAiWidget";
 import {
     HomeTemplateHero,
     resolveHomeTemplateRuntime,
@@ -3786,6 +3787,7 @@ export default function Home({
                     />
                 )}
             </main>
+            <NexusAiWidget config={storefront.nexus_ai} />
             <footer
                 className="scroll-mt-24 border-t border-slate-800 bg-slate-950"
                 id="store-information"
