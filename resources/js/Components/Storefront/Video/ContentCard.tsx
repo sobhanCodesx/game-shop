@@ -48,7 +48,7 @@ export default function ContentCard({
                             </span>
                         </span>
                     )}
-                    {duration(content.duration) && (
+                    {isPlayable && duration(content.duration) && (
                         <span
                             className="absolute bottom-2 left-2 z-[3] rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] text-white"
                             dir="ltr"
