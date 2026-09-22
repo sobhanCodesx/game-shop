@@ -179,6 +179,15 @@ final class TelegramBotSettings
         $this->forget();
     }
 
+    public function markWebhookUnregistered(): void
+    {
+        $model = $this->model();
+        $model->webhook_registered_at = null;
+        $model->last_error = null;
+        $model->save();
+        $this->forget();
+    }
+
     public function markWebhookReceived(): void
     {
         if (! $this->tableExists()) {
