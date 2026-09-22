@@ -13,6 +13,6 @@ class ProductMediaObserver
 
     private function invalidate(): void
     {
-        app(StorefrontPageCache::class)->invalidate('home');
+        app(StorefrontPageCache::class)->invalidate('home', 'product');
     }
 }
