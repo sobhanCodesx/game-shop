@@ -59,7 +59,7 @@ class StorefrontCachePhaseTwoTest extends TestCase
             'slug' => 'channel-cache-feed',
             'excerpt' => 'Feed body',
             'status' => 'published',
-            'published_at' => now()->subMinutes(2),
+            'published_at' => now()->subSeconds(30),
             'allow_comments' => true,
         ]);
 
