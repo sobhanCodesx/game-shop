@@ -80,6 +80,10 @@ class TelegramBotSettingsController extends Controller
         $current = $settings->resolved();
         $transportMode = (string) ($validated['transport_mode'] ?? 'auto');
 
+        if ($transportMode === 'proxy' && ! $request->boolean('use_proxy')) {
+            return back()->withErrors(['use_proxy' => 'برای حالت Proxy باید Proxy را فعال کنی.']);
+        }
+
         if (($transportMode === 'proxy' || $request->boolean('use_proxy')) && blank($validated['proxy_host'] ?? null)) {
             return back()->withErrors(['proxy_host' => 'برای Proxy باید Host وارد شود.']);
         }
