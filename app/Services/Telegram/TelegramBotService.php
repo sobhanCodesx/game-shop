@@ -21,7 +21,7 @@ final class TelegramBotService
         }
 
         $existing = TelegramBotAudit::query()->where('update_id', $updateId)->first();
-        if ($existing && in_array($existing->status, ['succeeded', 'ignored'], true)) {
+        if ($existing && in_array($existing->status, ['processing', 'succeeded', 'ignored'], true)) {
             return;
         }
 
