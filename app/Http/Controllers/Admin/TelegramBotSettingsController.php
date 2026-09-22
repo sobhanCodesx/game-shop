@@ -123,7 +123,9 @@ class TelegramBotSettingsController extends Controller
             $me = $telegram->getMe();
             $settings->updateBotIdentity($me);
 
-            return back()->with('success', 'اتصال به Telegram موفق بود: @'.($me['username'] ?? 'unknown'));
+            $transport = $telegram->lastTransport() ?: 'unknown';
+
+            return back()->with('success', 'اتصال به Telegram موفق بود: @'.($me['username'] ?? 'unknown').' — مسیر: '.$transport);
         } catch (Throwable $exception) {
             $settings->rememberError($exception->getMessage());
 
