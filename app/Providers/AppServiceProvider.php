@@ -2,13 +2,19 @@
 
 namespace App\Providers;
 
+use App\Models\Category;
 use App\Models\Game;
+use App\Models\HomeSlide;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\SocialContent;
 use App\Models\SocialContentMedia;
 use App\Models\Studio;
 use App\Models\VideoPlaylist;
+use App\Observers\CategoryObserver;
 use App\Observers\GameObserver;
+use App\Observers\HomeSlideObserver;
+use App\Observers\ProductMediaObserver;
 use App\Observers\ProductObserver;
 use App\Observers\SocialContentMediaObserver;
 use App\Observers\SocialContentObserver;
@@ -46,8 +52,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Category::observe(CategoryObserver::class);
         Game::observe(GameObserver::class);
+        HomeSlide::observe(HomeSlideObserver::class);
         Product::observe(ProductObserver::class);
+        ProductMedia::observe(ProductMediaObserver::class);
         SocialContent::observe(SocialContentObserver::class);
         SocialContentMedia::observe(SocialContentMediaObserver::class);
         Studio::observe(StudioObserver::class);
