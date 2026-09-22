@@ -43,6 +43,7 @@ final class ChannelPageDataService
             ->with(['game:id,name,slug,cover'])
             ->latest('published_at')
             ->paginate(18, ['*'], 'page', $page)
+            ->withQueryString()
             ->through(fn (SocialContent $video) => $this->staticContent($this->data->content($video)))
             ->toArray();
 
