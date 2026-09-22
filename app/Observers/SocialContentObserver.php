@@ -21,7 +21,7 @@ class SocialContentObserver
         } elseif ($content->type === 'post') {
             app(StorefrontPageCache::class)->invalidate('channel', 'feed');
         } elseif ($content->type === 'short') {
-            app(StorefrontPageCache::class)->invalidate('short');
+            app(StorefrontPageCache::class)->invalidate('short', 'feed');
         }
 
         if ($this->isPublished($content)) {
@@ -58,7 +58,7 @@ class SocialContentObserver
                 'sort_order', 'status', 'published_at',
             ])
         ) {
-            app(StorefrontPageCache::class)->invalidate('short');
+            app(StorefrontPageCache::class)->invalidate('short', 'feed');
             app(SitemapCacheService::class)->invalidate();
         }
 
