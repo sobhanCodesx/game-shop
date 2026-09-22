@@ -315,7 +315,7 @@ final class TelegramBotCommandRouter
             $this->sessions->put($userId, $chatId, 'awaiting_restore_id', compact('resource'));
             $this->send(
                 $chatId,
-                "♻️ <b>بازیابی {$this->formatter->escape($this->resourceMeta($resource)['label'])}</b>\nID رکورد حذف‌شده را بفرست.",
+                "♻️ <b>بازیابی {$this->formatter->escape($this->resourceMeta($resource)['label'])}</b>\nشناسه رکورد حذف‌شده را بفرست.",
                 $this->cancelKeyboard("menu:{$resource}"),
             );
 
@@ -1129,13 +1129,6 @@ final class TelegramBotCommandRouter
             $rows[] = [[
                 'text' => '➕ ساخت جدید',
                 'callback_data' => "template:{$resource}:create",
-            ]];
-        }
-
-        if (in_array($resource, ['game', 'studio'], true)) {
-            $rows[] = [[
-                'text' => '♻️ Restore با ID',
-                'callback_data' => "restore-prompt:{$resource}",
             ]];
         }
 
