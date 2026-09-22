@@ -1,0 +1,8 @@
+{
+  "job_id": "video-77-content-prepublish-20260922",
+  "tool": "get_content",
+  "arguments": {
+    "resource": "video",
+    "id": 77
+  }
+}
