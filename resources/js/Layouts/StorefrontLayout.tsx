@@ -41,8 +41,8 @@ function DeferredAuthOverlay() {
 }
 
 export default function StorefrontLayout({ children, announcement }: Props) {
-    const { auth, storefront, impersonation } =
-        usePage<SharedPageProps>().props;
+    const page = usePage<SharedPageProps>();
+    const { auth, storefront, impersonation } = page.props;
     const { theme, toggleTheme } = useStorefrontTheme();
 
     return (
@@ -74,7 +74,9 @@ export default function StorefrontLayout({ children, announcement }: Props) {
             />
             {children}
             <StorefrontFooter androidApp={storefront.android_app} />
-            <NexusAiWidget config={storefront.nexus_ai} />
+            {!page.url.startsWith("/nexus-ai") && (
+                <NexusAiWidget config={storefront.nexus_ai} />
+            )}
             <DeferredAuthOverlay />
         </div>
     );
