@@ -78,7 +78,11 @@ final class NexusAiProviderClient
         $accountId = rawurlencode((string) $settings['account_id']);
         $url = "https://api.cloudflare.com/client/v4/accounts/{$accountId}/ai/v1/chat/completions";
 
-        $request = $this->jsonRequest($timeout)->withToken((string) $settings['api_token']);
+        // GPT-OSS 120B can occasionally sit in Cloudflare capacity queues longer
+        // than the generic provider timeout. Give the primary model enough room
+        // before falling back to Local.
+        $request = $this->jsonRequest(max(60, $timeout))
+            ->withToken((string) $settings['api_token']);
         if (filled($settings['gateway_id'] ?? null)) {
             $request = $request->withHeaders(['cf-aig-gateway-id' => (string) $settings['gateway_id']]);
         }
