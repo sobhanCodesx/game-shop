@@ -165,11 +165,13 @@ final class NexusAiProviderSettings
             ]);
 
         return $providers
-            ->sortBy(fn (array $item): string => sprintf(
-                '%d-%04d',
-                $freeFirst ? ($item['free_tier'] ? 0 : 1) : 0,
-                $item['priority'],
-            ))
+            ->sortBy(function (array $item) use ($freeFirst): string {
+                $group = $item['key'] === self::LOCAL_RELAY
+                    ? 2
+                    : ($freeFirst ? ($item['free_tier'] ? 0 : 1) : 0);
+
+                return sprintf('%d-%04d', $group, $item['priority']);
+            })
             ->values()
             ->all();
     }
