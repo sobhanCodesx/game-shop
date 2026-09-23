@@ -166,12 +166,24 @@ final class NexusAiProviderSettings
                 $this->isConfigured($provider)
                 && ($this->enabled($provider) || ($autopilot && in_array($provider, $autoProviders, true)))
             )
-            ->map(fn (string $provider): array => [
-                'key' => $provider,
-                'settings' => $this->resolved($provider),
-                'priority' => $this->priority($provider),
-                'free_tier' => (bool) $this->definitions()[$provider]['free_tier'],
-            ]);
+            ->map(function (string $provider) use ($autopilot): array {
+                $settings = $this->resolved($provider);
+
+                if ($autopilot && $provider === self::CLOUDFLARE_WORKERS_AI) {
+                    $settings['model'] = '@cf/openai/gpt-oss-120b';
+                }
+
+                if ($autopilot && $provider === self::GROQ) {
+                    $settings['model'] = 'openai/gpt-oss-120b';
+                }
+
+                return [
+                    'key' => $provider,
+                    'settings' => $settings,
+                    'priority' => $this->priority($provider),
+                    'free_tier' => (bool) $this->definitions()[$provider]['free_tier'],
+                ];
+            });
 
         return $providers
             ->sortBy(function (array $item) use ($freeFirst): string {
