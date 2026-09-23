@@ -1,9 +1,0 @@
-{
-  "job_id": "video-79-final-graph-verify-20260923-0803",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "operation_name": "VerifyPublishedVideo",
-    "variables": {"id": "79"},
-    "query": "query VerifyPublishedVideo($id: ID!) { content(id: $id, type: \"video\") { id title slug status duration publishedAt game { id name slug } playlists { id title slug } } }"
-  }
-}
