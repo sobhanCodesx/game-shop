@@ -1,0 +1,8 @@
+{
+  "job_id": "video-82-content-verify",
+  "tool": "get_content",
+  "arguments": {
+    "resource": "video",
+    "id": 82
+  }
+}
