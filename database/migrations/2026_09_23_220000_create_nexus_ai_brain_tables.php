@@ -44,7 +44,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('interaction_id')->unique()->constrained('nexus_ai_interactions')->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->signedTinyInteger('value');
+            $table->tinyInteger('value');
             $table->string('reason', 500)->nullable();
             $table->timestamps();
         });
