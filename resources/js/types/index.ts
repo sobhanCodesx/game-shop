@@ -33,7 +33,6 @@ export interface SharedPageProps {
             title: string;
             description: string;
             nav_label: string;
-            worker_url: string;
             launcher_label: string;
             welcome_title: string;
             welcome_text: string;
