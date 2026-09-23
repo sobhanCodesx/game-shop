@@ -35,6 +35,7 @@ class NexusAiSettingsController extends Controller
     ): RedirectResponse {
         $data = $request->validate([
             'nexus_ai_enabled' => ['required', 'boolean'],
+            'nexus_ai_page_enabled' => ['required', 'boolean'],
             'nexus_ai_show_in_nav' => ['required', 'boolean'],
             'nexus_ai_title' => ['required', 'string', 'max:100'],
             'nexus_ai_description' => ['nullable', 'string', 'max:500'],

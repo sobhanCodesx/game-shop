@@ -51,6 +51,7 @@ type Provider = {
 
 type Settings = {
     nexus_ai_enabled: boolean;
+    nexus_ai_page_enabled: boolean;
     nexus_ai_show_in_nav: boolean;
     nexus_ai_title: string;
     nexus_ai_description: string;
@@ -474,6 +475,18 @@ export default function NexusAI({
                                     label="فعال بودن Nexus AI"
                                     onChange={(value) =>
                                         form.setData("nexus_ai_enabled", value)
+                                    }
+                                />
+
+                                <Toggle
+                                    checked={form.data.nexus_ai_page_enabled}
+                                    description="صفحه مستقل /nexus-ai ایندکس شود و در دسترس کاربران و گوگل باشد. با خاموش کردن، صفحه 404 می‌شود و از sitemap حذف می‌شود."
+                                    label="صفحه اختصاصی Nexus AI"
+                                    onChange={(value) =>
+                                        form.setData(
+                                            "nexus_ai_page_enabled",
+                                            value,
+                                        )
                                     }
                                 />
 
