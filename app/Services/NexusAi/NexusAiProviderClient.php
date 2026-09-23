@@ -76,8 +76,7 @@ final class NexusAiProviderClient
         float $temperature,
     ): string {
         $accountId = rawurlencode((string) $settings['account_id']);
-        $model = ltrim((string) $settings['model'], '/');
-        $url = "https://api.cloudflare.com/client/v4/accounts/{$accountId}/ai/run/{$model}";
+        $url = "https://api.cloudflare.com/client/v4/accounts/{$accountId}/ai/v1/chat/completions";
 
         $request = $this->jsonRequest($timeout)->withToken((string) $settings['api_token']);
         if (filled($settings['gateway_id'] ?? null)) {
@@ -85,15 +84,15 @@ final class NexusAiProviderClient
         }
 
         $response = $request->post($url, [
+            'model' => (string) $settings['model'],
             'messages' => $messages,
             'max_tokens' => $maxTokens,
             'temperature' => $temperature,
         ]);
 
         $this->guardResponse($response);
-        $answer = data_get($response->json(), 'result.response');
 
-        return $this->guardAnswer($answer);
+        return $this->guardAnswer(data_get($response->json(), 'choices.0.message.content'));
     }
 
     private function cloudflareGateway(
