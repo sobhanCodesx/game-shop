@@ -169,6 +169,25 @@ final class NexusAiAnalyticsService
                 ])
                 ->all();
 
+            $topEntities = [];
+            if ($this->available('nexus_ai_events')) {
+                $topEntities = NexusAiEvent::query()
+                    ->select('entity_type', 'entity_slug', DB::raw('COUNT(*) as total'))
+                    ->where('created_at', '>=', now()->subDays(7))
+                    ->whereNotNull('entity_type')
+                    ->whereNotNull('entity_slug')
+                    ->groupBy('entity_type', 'entity_slug')
+                    ->orderByDesc('total')
+                    ->limit(12)
+                    ->get()
+                    ->map(fn ($row): array => [
+                        'type' => $row->entity_type,
+                        'slug' => $row->entity_slug,
+                        'total' => (int) $row->total,
+                    ])
+                    ->all();
+            }
+
             $recent = NexusAiInteraction::query()
                 ->latest('id')
                 ->limit(12)
@@ -197,6 +216,7 @@ final class NexusAiAnalyticsService
                 'feedback' => $feedback,
                 'intents' => $intents,
                 'providers' => $providers,
+                'top_entities' => $topEntities,
                 'recent' => $recent,
             ];
         } catch (Throwable $exception) {
@@ -220,6 +240,7 @@ final class NexusAiAnalyticsService
             'feedback' => ['positive' => 0, 'negative' => 0, 'positive_rate' => null],
             'intents' => [],
             'providers' => [],
+            'top_entities' => [],
             'recent' => [],
         ];
     }
