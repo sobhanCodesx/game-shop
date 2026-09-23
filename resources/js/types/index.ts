@@ -29,6 +29,7 @@ export interface SharedPageProps {
     storefront: {
         nexus_ai: {
             enabled: boolean;
+            page_enabled: boolean;
             show_in_nav: boolean;
             title: string;
             description: string;
