@@ -7,6 +7,8 @@ import {
     X,
 } from "lucide-react";
 import { createPortal } from "react-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
     useEffect,
     useMemo,
@@ -40,6 +42,116 @@ const QUICK_PROMPTS = [
     "فرق Soulslike با Action RPG چیه؟",
     "برای یه باس سخت چه نکاتی رو رعایت کنم؟",
 ];
+
+function MarkdownMessage({ content }: { content: string }) {
+    return (
+        <ReactMarkdown
+            skipHtml
+            remarkPlugins={[remarkGfm]}
+            components={{
+                h1: ({ children }) => (
+                    <h3 className="mb-2 mt-3 text-sm font-black text-white">
+                        {children}
+                    </h3>
+                ),
+                h2: ({ children }) => (
+                    <h4 className="mb-2 mt-3 text-[13px] font-black text-white">
+                        {children}
+                    </h4>
+                ),
+                h3: ({ children }) => (
+                    <h5 className="mb-1.5 mt-2.5 text-xs font-black text-white">
+                        {children}
+                    </h5>
+                ),
+                p: ({ children }) => (
+                    <p className="my-1.5 break-words leading-6 [overflow-wrap:anywhere]">
+                        {children}
+                    </p>
+                ),
+                strong: ({ children }) => (
+                    <strong className="font-black text-white">
+                        {children}
+                    </strong>
+                ),
+                em: ({ children }) => (
+                    <em className="italic text-slate-100">{children}</em>
+                ),
+                ul: ({ children }) => (
+                    <ul className="my-2 list-disc space-y-1 pr-5 marker:text-violet-300">
+                        {children}
+                    </ul>
+                ),
+                ol: ({ children }) => (
+                    <ol className="my-2 list-decimal space-y-1 pr-5 marker:font-bold marker:text-violet-300">
+                        {children}
+                    </ol>
+                ),
+                li: ({ children }) => (
+                    <li className="pr-0.5 leading-6">{children}</li>
+                ),
+                blockquote: ({ children }) => (
+                    <blockquote className="my-2 border-r-2 border-violet-400/45 bg-violet-500/[.06] py-2 pl-2 pr-3 text-slate-300">
+                        {children}
+                    </blockquote>
+                ),
+                hr: () => (
+                    <hr className="my-3 border-0 border-t border-white/[.09]" />
+                ),
+                a: ({ href, children }) => {
+                    const external = Boolean(
+                        href && /^https?:\/\//i.test(href),
+                    );
+                    return (
+                        <a
+                            className="font-bold text-cyan-300 underline decoration-cyan-400/35 underline-offset-4 hover:text-cyan-200"
+                            href={href}
+                            rel={external ? "noreferrer noopener" : undefined}
+                            target={external ? "_blank" : undefined}
+                        >
+                            {children}
+                        </a>
+                    );
+                },
+                pre: ({ children }) => (
+                    <pre
+                        className="my-2 overflow-x-auto rounded-xl border border-white/[.08] bg-slate-950/80 p-3 text-left font-mono text-[11px] leading-5 text-slate-200 [scrollbar-width:thin] [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-inherit"
+                        dir="ltr"
+                    >
+                        {children}
+                    </pre>
+                ),
+                code: ({ children }) => (
+                    <code
+                        className="rounded-md border border-white/[.08] bg-slate-950/70 px-1.5 py-0.5 font-mono text-[.92em] text-cyan-200"
+                        dir="ltr"
+                    >
+                        {children}
+                    </code>
+                ),
+                table: ({ children }) => (
+                    <div className="my-2 max-w-full overflow-x-auto rounded-xl border border-white/[.08] [scrollbar-width:thin]">
+                        <table className="min-w-full border-collapse text-[10px] leading-5">
+                            {children}
+                        </table>
+                    </div>
+                ),
+                th: ({ children }) => (
+                    <th className="whitespace-nowrap border-b border-white/[.08] bg-white/[.05] px-2.5 py-2 text-right font-black text-slate-100">
+                        {children}
+                    </th>
+                ),
+                td: ({ children }) => (
+                    <td className="min-w-28 border-b border-white/[.06] px-2.5 py-2 align-top text-slate-300">
+                        {children}
+                    </td>
+                ),
+            }}
+        >
+            {content}
+        </ReactMarkdown>
+    );
+}
 
 function loadHistory(): ChatMessage[] {
     if (typeof window === "undefined") return [];
@@ -75,11 +187,7 @@ function friendlyError(code?: string): string {
     return "ارتباط با Nexus AI موقتاً مشکل خورد. دوباره امتحان کن.";
 }
 
-export default function NexusAiWidget({
-    config,
-}: {
-    config: NexusAiConfig;
-}) {
+export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
     const [mounted, setMounted] = useState(false);
     const [open, setOpen] = useState(
         () =>
@@ -165,10 +273,7 @@ export default function NexusAiWidget({
 
         setInput("");
         setBusy(true);
-        setMessages((current) => [
-            ...current,
-            { role: "user", content: text },
-        ]);
+        setMessages((current) => [...current, { role: "user", content: text }]);
 
         try {
             const response = await fetch(config.worker_url + "/api/chat", {
@@ -333,7 +438,9 @@ export default function NexusAiWidget({
                                                 ) : index === 1 ? (
                                                     <Bot size={15} />
                                                 ) : (
-                                                    <MessageCircleMore size={15} />
+                                                    <MessageCircleMore
+                                                        size={15}
+                                                    />
                                                 )}
                                             </span>
                                             <span className="min-w-0 flex-1 text-[11px] font-bold leading-5 text-slate-300">
@@ -355,13 +462,19 @@ export default function NexusAiWidget({
                                         key={index}
                                     >
                                         <div
-                                            className={`max-w-[86%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-[12px] leading-6 ${
+                                            className={`max-w-[86%] rounded-2xl px-3.5 py-2.5 text-[12px] leading-6 ${
                                                 message.role === "user"
-                                                    ? "rounded-br-md bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-[0_8px_25px_rgba(79,70,229,.18)]"
+                                                    ? "whitespace-pre-wrap rounded-br-md bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-[0_8px_25px_rgba(79,70,229,.18)]"
                                                     : "rounded-bl-md border border-white/[.07] bg-white/[.045] text-slate-200"
                                             }`}
                                         >
-                                            {message.content}
+                                            {message.role === "assistant" ? (
+                                                <MarkdownMessage
+                                                    content={message.content}
+                                                />
+                                            ) : (
+                                                message.content
+                                            )}
                                         </div>
                                     </div>
                                 ))}
