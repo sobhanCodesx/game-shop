@@ -12,6 +12,7 @@ class NexusAiSettings
 
     public const DEFAULTS = [
         'nexus_ai_enabled' => true,
+        'nexus_ai_page_enabled' => true,
         'nexus_ai_show_in_nav' => false,
         'nexus_ai_title' => 'Nexus AI',
         'nexus_ai_description' => 'دستیار گیمینگ PlayNexus برای سؤال درباره بازی‌ها، اصطلاحات، راهنما و انتخاب بازی.',
@@ -49,6 +50,7 @@ class NexusAiSettings
 
         return [
             'enabled' => (bool) $settings['nexus_ai_enabled'],
+            'page_enabled' => (bool) $settings['nexus_ai_page_enabled'],
             'show_in_nav' => (bool) $settings['nexus_ai_show_in_nav'],
             'title' => (string) $settings['nexus_ai_title'],
             'description' => (string) $settings['nexus_ai_description'],
@@ -75,5 +77,6 @@ class NexusAiSettings
 
         Cache::forget(self::CACHE_KEY);
         Cache::forget('nexus-ai.settings.v1');
+        app(SitemapCacheService::class)->invalidate();
     }
 }
