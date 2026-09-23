@@ -195,7 +195,13 @@ PROMPT;
             $messages[] = ['role' => $role, 'content' => mb_substr($content, 0, 3000)];
         }
 
-        $messages[] = ['role' => 'user', 'content' => $message];
+        $finalUserMessage = $message;
+
+        if ($intent === 'recommendation') {
+            $finalUserMessage .= "\n\n[INSTRUCTION: Answer with at least one concrete game recommendation immediately. Do not ask a clarification before the recommendation. Start with the game name or direct pick, then explain briefly why it matches.]";
+        }
+
+        $messages[] = ['role' => 'user', 'content' => $finalUserMessage];
 
         return $messages;
     }
