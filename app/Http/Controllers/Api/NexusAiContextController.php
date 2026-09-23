@@ -7,11 +7,12 @@ use App\Services\GraphQL\PlayNexusGraphService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 use Throwable;
 
 class NexusAiContextController extends Controller
 {
+    private const MAX_CONTEXT_CHARS = 6000;
+
     public function __invoke(Request $request, PlayNexusGraphService $graph): JsonResponse
     {
         $data = $request->validate([
@@ -31,22 +32,29 @@ class NexusAiContextController extends Controller
 
         $context = Cache::remember($key, now()->addMinute(), function () use ($graph, $terms): string {
             $chunks = [];
+            $usedChars = 0;
 
             foreach ($terms as $term) {
                 try {
                     $result = $graph->execute($this->query(), ['q' => $term]);
                     $data = is_array($result['data'] ?? null) ? $result['data'] : [];
-                    $formatted = $this->format($term, $data);
+                    $remaining = self::MAX_CONTEXT_CHARS - $usedChars - ($chunks === [] ? 0 : 2);
+                    $formatted = $this->format($term, $data, max(0, $remaining));
 
-                    if ($formatted !== '') {
+                    if ($formatted !== '' && ! in_array($formatted, $chunks, true)) {
                         $chunks[] = $formatted;
+                        $usedChars += mb_strlen($formatted) + (count($chunks) > 1 ? 2 : 0);
+                    }
+
+                    if ($usedChars >= self::MAX_CONTEXT_CHARS) {
+                        break;
                     }
                 } catch (Throwable $exception) {
                     report($exception);
                 }
             }
 
-            return Str::limit(implode("\n\n", array_unique($chunks)), 6000, '');
+            return implode("\n\n", $chunks);
         });
 
         return response()->json([
@@ -60,8 +68,6 @@ class NexusAiContextController extends Controller
         $normalized = preg_replace('/[\x{200c}\s]+/u', ' ', trim($question)) ?: $question;
         $terms = [];
 
-        // Prefer compact Latin entity names (game/studio/product names) but do not
-        // let trailing conversational words become part of the Graph search term.
         if (preg_match_all('/[A-Za-z0-9][A-Za-z0-9:+\'’.-]*/u', $normalized, $matches)) {
             $latinStop = [
                 'a', 'an', 'and', 'are', 'for', 'from', 'game', 'games', 'in', 'is', 'of',
@@ -127,18 +133,10 @@ query NexusAiContext($q: String!) {
       name slug description developer publisher releaseDate url
       studio { name }
       platforms { name }
-      products(first: 3, status: "published", visibility: "public") {
-        nodes { title price discountPrice availability url }
-      }
-      content(first: 5, status: "published", orderBy: "published_at") {
-        nodes { type title excerpt publishedAt url }
-      }
-      collections(first: 3, visibility: "public") {
-        nodes { title description videoCount url }
-      }
-      events(first: 4, status: "active", minImportance: 50) {
-        nodes { type title summary importanceScore sourceName detectedAt }
-      }
+      products(first: 3, status: "published", visibility: "public") { nodes { title price discountPrice availability url } }
+      content(first: 5, status: "published", orderBy: "published_at") { nodes { type title excerpt publishedAt url } }
+      collections(first: 3, visibility: "public") { nodes { title description videoCount url } }
+      events(first: 4, status: "active", minImportance: 50) { nodes { type title summary importanceScore sourceName detectedAt } }
     }
   }
   publishedGames: games(search: $q, status: "published", first: 4) {
@@ -146,45 +144,27 @@ query NexusAiContext($q: String!) {
       name slug description developer publisher releaseDate url
       studio { name }
       platforms { name }
-      products(first: 3, status: "published", visibility: "public") {
-        nodes { title price discountPrice availability url }
-      }
-      content(first: 5, status: "published", orderBy: "published_at") {
-        nodes { type title excerpt publishedAt url }
-      }
-      collections(first: 3, visibility: "public") {
-        nodes { title description videoCount url }
-      }
-      events(first: 4, status: "active", minImportance: 50) {
-        nodes { type title summary importanceScore sourceName detectedAt }
-      }
+      products(first: 3, status: "published", visibility: "public") { nodes { title price discountPrice availability url } }
+      content(first: 5, status: "published", orderBy: "published_at") { nodes { type title excerpt publishedAt url } }
+      collections(first: 3, visibility: "public") { nodes { title description videoCount url } }
+      events(first: 4, status: "active", minImportance: 50) { nodes { type title summary importanceScore sourceName detectedAt } }
     }
   }
-  studios(search: $q, status: "active", first: 3) {
-    nodes { name description website url gameCount collectionCount }
-  }
-  products(search: $q, status: "published", visibility: "public", first: 4) {
-    nodes { title shortDescription price discountPrice availability condition url game { name } brand { name } platforms { name } }
-  }
-  contents(search: $q, status: "published", first: 5, orderBy: "published_at") {
-    nodes { type title excerpt publishedAt url game { name } }
-  }
-  collections(search: $q, visibility: "public", first: 3) {
-    nodes { title description videoCount url game { name } studio { name } }
-  }
-  radar(search: $q, first: 4) {
-    nodes {
-      title status releaseDate developer publisher gameUrl
-      xbox { available platforms }
-      playstation { available platforms }
-    }
-  }
+  studios(search: $q, status: "active", first: 3) { nodes { name description website url gameCount collectionCount } }
+  products(search: $q, status: "published", visibility: "public", first: 4) { nodes { title shortDescription price discountPrice availability condition url game { name } brand { name } platforms { name } } }
+  contents(search: $q, status: "published", first: 5, orderBy: "published_at") { nodes { type title excerpt publishedAt url game { name } } }
+  collections(search: $q, visibility: "public", first: 3) { nodes { title description videoCount url game { name } studio { name } } }
+  radar(search: $q, first: 4) { nodes { title status releaseDate developer publisher gameUrl xbox { available platforms } playstation { available platforms } } }
 }
 GRAPHQL;
     }
 
-    private function format(string $term, array $data): string
+    private function format(string $term, array $data, int $maxChars): string
     {
+        if ($maxChars <= 0) {
+            return '';
+        }
+
         $payload = [
             'query' => $term,
             'games' => array_values(array_unique([
@@ -198,17 +178,32 @@ GRAPHQL;
             'radar' => $data['radar']['nodes'] ?? [],
         ];
 
-        $hasResults = collect($payload)
-            ->except('query')
-            ->contains(fn ($items) => is_array($items) && $items !== []);
-
+        $hasResults = collect($payload)->except('query')->contains(fn ($items) => is_array($items) && $items !== []);
         if (! $hasResults) {
             return '';
         }
 
-        return 'PLAYNEXUS LIVE CONTEXT: '.json_encode(
-            $payload,
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
-        );
+        $prefix = 'PLAYNEXUS LIVE CONTEXT: ';
+        $priority = ['radar', 'collections', 'content', 'products', 'studios', 'games'];
+
+        while (true) {
+            $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if (is_string($encoded) && mb_strlen($prefix.$encoded) <= $maxChars) {
+                return $prefix.$encoded;
+            }
+
+            $trimmed = false;
+            foreach ($priority as $key) {
+                if (isset($payload[$key]) && is_array($payload[$key]) && $payload[$key] !== []) {
+                    array_pop($payload[$key]);
+                    $trimmed = true;
+                    break;
+                }
+            }
+
+            if (! $trimmed) {
+                return '';
+            }
+        }
     }
 }
