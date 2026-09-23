@@ -1,9 +1,0 @@
-{
-  "job_id": "video-context-20260923-0753-run2b",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "operation_name": "VideoRunContext",
-    "variables": {},
-    "query": "query VideoRunContext { games(first: 60, offset: 0) { nodes { id name slug } pageInfo { total first offset hasMore nextOffset } } videos(first: 100, offset: 0) { nodes { id title slug status duration publishedAt game { id name slug } playlists { id title slug } } pageInfo { total first offset hasMore nextOffset } } collections(first: 100, offset: 0) { nodes { id title slug game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }"
-  }
-}
