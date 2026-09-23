@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\NexusAiInteraction;
 use App\Services\NexusAi\NexusAiAnalyticsService;
+use App\Services\NexusAiSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -20,8 +21,14 @@ final class NexusAiEventController extends Controller
         'conversation_cleared',
     ];
 
-    public function __invoke(Request $request, NexusAiAnalyticsService $analytics): JsonResponse
-    {
+    public function __invoke(
+        Request $request,
+        NexusAiAnalyticsService $analytics,
+        NexusAiSettings $settings,
+    ): JsonResponse {
+        if (! (bool) ($settings->all()['nexus_ai_collect_analytics'] ?? true)) {
+            return response()->json(['saved' => false]);
+        }
         $data = $request->validate([
             'event_type' => ['required', 'string', 'in:'.implode(',', self::ALLOWED_EVENTS)],
             'interaction_id' => ['nullable', 'integer', 'min:1'],
