@@ -13,6 +13,8 @@ class NexusAiBrainTest extends TestCase
         $classifier = new NexusAiIntentClassifier();
 
         $this->assertSame('recommendation', $classifier->classify('یه بازی شبیه Hogwarts Legacy معرفی کن'));
+        $this->assertSame('recommendation', $classifier->classify('یه بازی جهان باز خفن برای PS5 میخوام، اتمسفر و گرافیک برام مهمه'));
+        $this->assertSame('recommendation', $classifier->classify('بعد از Elden Ring چی بزنم؟'));
         $this->assertSame('comparison', $classifier->classify('فرق PS5 و Xbox برای این بازی چیه؟'));
         $this->assertSame('purchase_intent', $classifier->classify('این بازی ارزش خرید داره؟'));
         $this->assertSame('story_lore', $classifier->classify('لور و داستان این شخصیت رو بگو'));
