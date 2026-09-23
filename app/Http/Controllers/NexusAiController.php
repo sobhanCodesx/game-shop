@@ -18,7 +18,7 @@ class NexusAiController extends Controller
         $siteName = (string) config('seo.site_name', 'PlayNexus');
         $locale = (string) config('seo.locale', 'fa-IR');
         $canonical = route('nexus-ai.index');
-        $title = 'Nexus AI | دستیار هوش مصنوعی گیمینگ پلی نکسوس';
+        $title = 'Nexus AI | دستیار هوش مصنوعی گیمینگ';
         $description = 'با Nexus AI درباره بازی‌ها، انتخاب بازی، لور، باس‌ها، بیلد، پرفورمنس و دنیای گیم گفتگو کن؛ دستیار گیمینگ هوشمند PlayNexus با پاسخ فارسی و کانتکست زنده سایت.';
 
         return Inertia::render('NexusAi/Index', [
