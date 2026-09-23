@@ -191,7 +191,7 @@ final class NexusAiProviderClient
         string $context,
         int $timeout,
     ): string {
-        $response = $this->jsonRequest($timeout)
+        $response = $this->jsonRequest(max(45, $timeout))
             ->post(rtrim((string) $settings['base_url'], '/').'/api/chat', [
                 'message' => $message,
                 'history' => $history,
