@@ -1,0 +1,5 @@
+{
+  "job_id": "video-79-final-get-verify-20260923-0803",
+  "tool": "get_content",
+  "arguments": {"resource": "video", "id": 79}
+}
