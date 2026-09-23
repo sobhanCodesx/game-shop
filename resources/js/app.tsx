@@ -22,9 +22,14 @@ import {
 if ("serviceWorker" in navigator) {
     if (import.meta.env.PROD) {
         const registerServiceWorker = () => {
-            void navigator.serviceWorker.register("/service-worker.js", {
-                scope: "/",
-            });
+            void navigator.serviceWorker
+                .register("/pn-sw.js", {
+                    scope: "/",
+                })
+                .catch(() => {
+                    // A service worker is an enhancement, not a hard dependency.
+                    // Hosting/WAF failures must not surface as unhandled promises.
+                });
         };
         window.addEventListener(
             "load",

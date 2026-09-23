@@ -84,6 +84,7 @@
             </style>
         @endif
         <meta name="application-name" content="{{ config('seo.site_name', 'PlayNexus') }}">
+        <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <meta name="apple-mobile-web-app-title" content="{{ config('seo.site_name', 'PlayNexus') }}">
