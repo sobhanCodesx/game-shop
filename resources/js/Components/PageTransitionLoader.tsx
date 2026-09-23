@@ -1,8 +1,8 @@
 import { router } from "@inertiajs/react";
 import { useEffect, useRef, useState } from "react";
 
-const SHOW_DELAY = 120;
-const MIN_VISIBLE_TIME = 320;
+const SHOW_DELAY = 180;
+const MIN_VISIBLE_TIME = 180;
 
 export default function PageTransitionLoader() {
     const [visible, setVisible] = useState(false);

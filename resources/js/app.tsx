@@ -130,12 +130,21 @@ function installPublicScrollPerformanceMode(): void {
         if (!root) return;
 
         activeRoot = root;
-        root.dataset.pnScrolling = "true";
+
+        // Avoid writing the same attribute on every scroll frame. Even when
+        // the value does not change, repeated DOM mutations can force style
+        // invalidation across the large storefront subtree.
+        if (root.dataset.pnScrolling !== "true") {
+            root.dataset.pnScrolling = "true";
+        }
+
         if (settleTimer !== null) window.clearTimeout(settleTimer);
         settleTimer = window.setTimeout(() => {
-            delete root.dataset.pnScrolling;
+            if (root.isConnected) {
+                delete root.dataset.pnScrolling;
+            }
             settleTimer = null;
-        }, 120);
+        }, 160);
     };
 
     window.addEventListener(

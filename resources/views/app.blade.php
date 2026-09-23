@@ -6,14 +6,35 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <meta name="theme-color" content="#020307">
 
-        <!-- Google tag (gtag.js) -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-6X384L0TH0"></script>
+        <!-- Google tag (gtag.js): queue immediately, fetch after the critical render. -->
         <script>
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-
             gtag('config', 'G-6X384L0TH0');
+
+            (() => {
+                let loaded = false;
+                const loadAnalytics = () => {
+                    if (loaded) return;
+                    loaded = true;
+
+                    const script = document.createElement('script');
+                    script.async = true;
+                    script.src = 'https://www.googletagmanager.com/gtag/js?id=G-6X384L0TH0';
+                    document.head.appendChild(script);
+                };
+
+                const scheduleAnalytics = () => {
+                    if ('requestIdleCallback' in window) {
+                        window.requestIdleCallback(loadAnalytics, { timeout: 3500 });
+                    } else {
+                        window.setTimeout(loadAnalytics, 1800);
+                    }
+                };
+
+                window.addEventListener('load', scheduleAnalytics, { once: true });
+            })();
         </script>
         <script>
             (() => {
@@ -76,6 +97,12 @@
 
         @if (app()->environment('production') && filled(config('services.posthog.token')) && ! request()->is('admin', 'admin/*'))
             <script>
+                (() => {
+                    let started = false;
+                    const startPostHog = () => {
+                        if (started) return;
+                        started = true;
+
                 /*
                  * Lightweight public RUM. We intentionally keep click/form
                  * autocapture, feature flags and session replay out of the
@@ -103,6 +130,18 @@
                     app_surface: 'playnexus-web',
                     environment: 'production',
                 });
+                    };
+
+                    const schedulePostHog = () => {
+                        if ('requestIdleCallback' in window) {
+                            window.requestIdleCallback(startPostHog, { timeout: 4500 });
+                        } else {
+                            window.setTimeout(startPostHog, 2200);
+                        }
+                    };
+
+                    window.addEventListener('load', schedulePostHog, { once: true });
+                })();
             </script>
         @endif
         @if (! $__inertiaSsrResponse)

@@ -119,8 +119,7 @@ textarea {
     place-items: center;
     overflow: hidden;
     color: #f8fafc;
-    background: rgb(7 11 20 / 78%);
-    backdrop-filter: blur(10px);
+    background: rgb(7 11 20 / 84%);
     pointer-events: none;
     animation: page-loader-in 180ms ease-out both;
 }
@@ -936,66 +935,19 @@ html[data-storefront-theme="dark"] .storefront-theme select {
     animation-play-state: paused !important;
 }
 
-.storefront-theme[data-pn-scrolling="true"] .pn-signature-frame::after,
-.storefront-theme[data-pn-scrolling="true"] .pn-media-cloud__halo {
-    opacity: 0.42;
-}
+/* Keep the visual treatment stable while scrolling. Toggling blur,
+   backgrounds, transitions or generic animations across the whole main tree
+   causes large style/paint invalidations and visible "ticks" at scroll start
+   and stop. Only the explicitly expensive ambient effects are paused above. */
 
-.storefront-theme[data-pn-scrolling="true"] main [class*="backdrop-blur"] {
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-}
-
-.storefront-theme[data-pn-scrolling="true"] .mobile-top-nav,
-.storefront-theme[data-pn-scrolling="true"] .mobile-bottom-nav,
-.storefront-theme[data-pn-scrolling="true"] .mobile-stories {
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-}
-
-.storefront-theme[data-pn-scrolling="true"] .mobile-top-nav,
-.storefront-theme[data-pn-scrolling="true"] .mobile-stories {
-    background: rgb(5 9 17 / 96%);
-}
-
-.storefront-theme[data-pn-scrolling="true"] .mobile-bottom-nav {
-    background: rgb(3 7 14 / 98%);
-}
-
-html[data-storefront-theme="light"]
-    .storefront-theme[data-pn-scrolling="true"]
-    .mobile-top-nav,
-html[data-storefront-theme="light"]
-    .storefront-theme[data-pn-scrolling="true"]
-    .mobile-stories,
-html[data-storefront-theme="light"]
-    .storefront-theme[data-pn-scrolling="true"]
-    .mobile-bottom-nav {
-    background: rgb(250 252 255 / 98%);
-}
-
-.storefront-theme[data-pn-scrolling="true"] main img,
-.storefront-theme[data-pn-scrolling="true"] main [class*="transition"] {
-    transition-duration: 0ms !important;
-}
-
-.storefront-theme[data-pn-scrolling="true"] main [class*="animate-"] {
-    animation-play-state: paused !important;
-}
-
-/* Below-the-fold Home zones stay in the DOM/SSR output but the browser skips
-   their paint/layout work until they approach the viewport. */
+/* These sections used to rely on content-visibility:auto with one synthetic
+   height for many very different layouts. That saved initial paint work but
+   could change document geometry when a section approached the viewport,
+   which felt like the page jumping. Keep layout geometry real and stable. */
 .pn-render-zone,
 .pn-deferred-zone {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 680px;
-}
-
-@media (max-width: 640px) {
-    .pn-render-zone,
-    .pn-deferred-zone {
-        contain-intrinsic-size: auto 540px;
-    }
+    content-visibility: visible;
+    contain-intrinsic-size: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

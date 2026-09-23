@@ -35,7 +35,7 @@ function DeferredAuthOverlay() {
 
     return (
         <Suspense fallback={null}>
-            <DeferredAuthOverlay />
+            <StorefrontAuthOverlay />
         </Suspense>
     );
 }
@@ -75,7 +75,7 @@ export default function StorefrontLayout({ children, announcement }: Props) {
             {children}
             <StorefrontFooter androidApp={storefront.android_app} />
             <NexusAiWidget config={storefront.nexus_ai} />
-            <StorefrontAuthOverlay />
+            <DeferredAuthOverlay />
         </div>
     );
 }
