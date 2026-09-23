@@ -1,8 +1,0 @@
-{
-  "job_id": "cleanup-fresh-draft-81-20260923",
-  "tool": "delete_content",
-  "arguments": {
-    "resource": "video",
-    "id": 81
-  }
-}
