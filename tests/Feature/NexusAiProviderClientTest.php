@@ -18,9 +18,8 @@ class NexusAiProviderClientTest extends TestCase
     public function test_workers_ai_uses_cloudflare_rest_api(): void
     {
         Http::fake([
-            'https://api.cloudflare.com/client/v4/accounts/account-1/ai/run/*' => Http::response([
-                'result' => ['response' => 'پاسخ کلادفلر'],
-                'success' => true,
+            'https://api.cloudflare.com/client/v4/accounts/account-1/ai/v1/chat/completions' => Http::response([
+                'choices' => [['message' => ['content' => 'پاسخ کلادفلر']]],
             ]),
         ]);
 
@@ -42,8 +41,9 @@ class NexusAiProviderClientTest extends TestCase
 
         $this->assertSame('پاسخ کلادفلر', $answer);
         Http::assertSent(fn (Request $request): bool =>
-            str_ends_with($request->url(), '/ai/run/@cf/openai/gpt-oss-20b')
+            $request->url() === 'https://api.cloudflare.com/client/v4/accounts/account-1/ai/v1/chat/completions'
             && $request->hasHeader('Authorization', 'Bearer cf-token')
+            && $request['model'] === '@cf/openai/gpt-oss-20b'
             && $request['max_tokens'] === 512
         );
     }
