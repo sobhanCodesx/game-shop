@@ -1,16 +1,15 @@
 {
-  "job_id": "video-run3-upload-sekiro-video-20260923-0958",
+  "job_id": "video-run3-upload-sekiro-video-20260923-0958b",
   "tool": "upload_asset",
   "arguments": {
     "resource": "video",
     "id": 81,
     "slot": "video",
-    "source_url": "https://video.akamai.steamstatic.com/store_trailers/256806899/movie_max.mp4",
-    "name": "sekiro-official-trailer.mp4",
+    "source_url": "https://video.akamai.steamstatic.com/store_trailers/256806899/movie720.mp4",
+    "name": "sekiro-official-trailer-720.mp4",
     "mime": "video/mp4",
     "require_audio": true,
     "max_duration_seconds": 900,
-    "transcode_max_height": 720,
     "max_height": 720
   }
 }
