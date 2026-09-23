@@ -1,0 +1,5 @@
+{
+  "job_id": "video-nightreign-preorder-assets-verify-20260923-0800",
+  "tool": "list_content_assets",
+  "arguments": {"resource": "video", "id": 79}
+}
