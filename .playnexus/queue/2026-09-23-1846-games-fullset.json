@@ -1,0 +1,9 @@
+{
+  "job_id": "games-fullset-20260923-1846",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query AutomationGamesFullSet { games(first: 100, offset: 0) { nodes { id name slug status releaseDate developer publisher studio { id name slug } platforms { id name slug } } pageInfo { total first offset hasMore nextOffset } } }",
+    "variables": {},
+    "operation_name": "AutomationGamesFullSet"
+  }
+}
