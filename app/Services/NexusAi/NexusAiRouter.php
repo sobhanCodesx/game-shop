@@ -36,7 +36,7 @@ final class NexusAiRouter
         $contextTerms = is_array($contextResult['terms'] ?? null) ? $contextResult['terms'] : [];
         $knowledge = $this->knowledge->promptContext();
         $intent = $this->intent->classify($message);
-        $messages = $this->messages($message, $history, $liveContext, $knowledge, $config);
+        $messages = $this->messages($message, $history, $liveContext, $knowledge, $config, $intent);
         $attempted = [];
 
         foreach ($this->providers->ordered($freeFirst, $autopilot) as $provider) {
@@ -117,6 +117,7 @@ final class NexusAiRouter
         string $context,
         string $knowledge,
         array $config,
+        string $intent,
     ): array {
         $system = <<<'PROMPT'
 You are Nexus AI, the gamer-native assistant inside PlayNexus.
@@ -157,7 +158,9 @@ WRITING
 - Do not repeat the user's question back to them.
 PROMPT;
 
-        if ((bool) ($config['nexus_ai_clarify_ambiguity'] ?? true)) {
+        if ($intent === 'recommendation') {
+            $system .= "\nCURRENT TASK IS A GAME RECOMMENDATION. Give at least one concrete game recommendation immediately. Do not ask a follow-up question before giving the recommendation. Use the constraints already present in the user's message and make a best-effort pick. You may optionally end with one short refinement question after the recommendation if it would improve a second round.";
+        } elseif ((bool) ($config['nexus_ai_clarify_ambiguity'] ?? true)) {
             $system .= "\nIf the user's request is materially ambiguous, ask one focused clarification instead of giving a generic answer.";
         }
 

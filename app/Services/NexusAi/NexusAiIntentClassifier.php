@@ -9,7 +9,8 @@ final class NexusAiIntentClassifier
         $q = mb_strtolower(trim($question));
 
         return match (true) {
-            $this->has($q, ['پیشنهاد', 'معرفی کن', 'چی بازی', 'چه بازی', 'recommend', 'similar to', 'شبیه']) => 'recommendation',
+            $this->has($q, ['پیشنهاد', 'معرفی کن', 'چی بازی', 'چه بازی', 'چی بزنم', 'دنبال بازی', 'دنبال یه بازی', 'recommend', 'similar to', 'شبیه'])
+                || (str_contains($q, 'بازی') && $this->has($q, ['میخوام', 'می‌خوام', 'می خوام'])) => 'recommendation',
             $this->has($q, ['مقایسه', 'بهتره', 'فرق', 'versus', ' vs ', 'compare']) => 'comparison',
             $this->has($q, ['خرید', 'قیمت', 'ارزش', 'بخرم', 'تخفیف', 'price', 'buy', 'worth']) => 'purchase_intent',
             $this->has($q, ['داستان', 'لور', 'پایان', 'شخصیت', 'story', 'lore', 'ending']) => 'story_lore',
