@@ -13,7 +13,7 @@ class NexusAiController extends Controller
     {
         $config = $settings->publicConfig();
 
-        abort_unless($config['enabled'], 404);
+        abort_unless($config['enabled'] && $config['page_enabled'], 404);
 
         $siteName = (string) config('seo.site_name', 'PlayNexus');
         $locale = (string) config('seo.locale', 'fa-IR');
