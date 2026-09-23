@@ -25,7 +25,9 @@ class NexusAiContextController extends Controller
             return response()->json(['context' => '', 'terms' => []]);
         }
 
-        $key = 'nexus-ai:context:'.sha1(implode('|', $terms));
+        $cacheTerms = $terms;
+        sort($cacheTerms, SORT_NATURAL | SORT_FLAG_CASE);
+        $key = 'nexus-ai:context:'.sha1(implode('|', $cacheTerms));
 
         $context = Cache::remember($key, now()->addMinute(), function () use ($graph, $terms): string {
             $chunks = [];
