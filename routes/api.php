@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\ContentAgentMcpController;
 use App\Http\Controllers\Api\DeploymentAgentController;
 use App\Http\Controllers\Api\NexusAiChatController;
 use App\Http\Controllers\Api\NexusAiContextController;
+use App\Http\Controllers\Api\NexusAiEventController;
+use App\Http\Controllers\Api\NexusAiFeedbackController;
 use App\Http\Controllers\Api\NexusAiHealthController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\V1\MobileAccountController;
@@ -42,6 +44,14 @@ Route::post('/nexus-ai/chat', NexusAiChatController::class)
 Route::post('/nexus-ai/context', NexusAiContextController::class)
     ->middleware('throttle:60,1')
     ->name('nexus-ai.context');
+
+Route::post('/nexus-ai/feedback', NexusAiFeedbackController::class)
+    ->middleware('throttle:30,1')
+    ->name('nexus-ai.feedback');
+
+Route::post('/nexus-ai/events', NexusAiEventController::class)
+    ->middleware('throttle:90,1')
+    ->name('nexus-ai.events');
 
 Route::post('/content-agent/upload/chunk', [ContentAgentMcpController::class, 'uploadChunkFile'])
     ->middleware(['content.agent', 'throttle:1200,1'])
