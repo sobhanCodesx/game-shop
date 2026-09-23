@@ -421,11 +421,18 @@ html[data-storefront-theme="dark"] .storefront-theme select {
         padding-bottom: calc(5rem + env(safe-area-inset-bottom));
     }
 
+    /* Android Chrome can repeatedly re-composite fixed/sticky backdrop-filter
+       layers while the visual viewport is moving. That presents as a full-page
+       flash/jump even though layout geometry itself is stable. Keep the same
+       glass palette with opaque-enough gradients and avoid live backdrop blur
+       on the persistent mobile chrome. */
     .mobile-top-nav,
     .mobile-bottom-nav,
     .mobile-stories {
-        -webkit-backdrop-filter: blur(14px) saturate(1.18);
-        backdrop-filter: blur(14px) saturate(1.18);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        transform: translateZ(0);
+        backface-visibility: hidden;
     }
 
     .mobile-top-nav {
