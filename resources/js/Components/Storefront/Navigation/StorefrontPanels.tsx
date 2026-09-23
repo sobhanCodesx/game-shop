@@ -107,7 +107,7 @@ export default function StorefrontPanels({
     const nexusAi = page.props.storefront.nexus_ai;
     const visibleMobileMenuLinks = [
         ...mobileMenuLinks,
-        ...(nexusAi?.enabled && nexusAi.show_in_nav
+        ...(nexusAi?.enabled && nexusAi.page_enabled && nexusAi.show_in_nav
             ? [
                   {
                       href: "/nexus-ai",
