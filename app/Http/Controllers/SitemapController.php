@@ -9,6 +9,7 @@ use App\Models\SocialContent;
 use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use App\Services\MediaStorage;
+use App\Services\NexusAiSettings;
 use App\Services\SitemapCacheService;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,10 @@ use XMLWriter;
 
 class SitemapController extends Controller
 {
+    public function __construct(private readonly NexusAiSettings $nexusAiSettings)
+    {
+    }
+
     private const TYPES = ['static', 'products', 'categories', 'feed', 'videos', 'content', 'channels', 'studios', 'playlists'];
 
     public function index(SitemapCacheService $cache): Response
@@ -79,6 +84,11 @@ class SitemapController extends Controller
         if ($type === 'static') {
             foreach (['home', 'android.app', 'shop.index', 'exchange-products.index', 'discover', 'game-radar.index', 'offers.index', 'videos.index', 'studios.index'] as $routeName) {
                 yield ['loc' => route($routeName)];
+            }
+
+            $nexusAi = $this->nexusAiSettings->publicConfig();
+            if (($nexusAi['enabled'] ?? false) && ($nexusAi['page_enabled'] ?? false)) {
+                yield ['loc' => route('nexus-ai.index')];
             }
 
             return;
