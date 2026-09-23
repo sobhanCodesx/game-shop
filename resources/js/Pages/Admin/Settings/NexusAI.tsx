@@ -97,6 +97,11 @@ type Analytics = {
         total: number;
         avg_latency: number;
     }>;
+    top_entities: Array<{
+        type: string;
+        slug: string;
+        total: number;
+    }>;
     recent: Array<{
         id: number;
         question: string;
@@ -786,6 +791,25 @@ export default function NexusAI({
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
+                                )}
+
+                                {analytics.top_entities.length > 0 && (
+                                    <div className="border-t border-white/[.06] pt-4">
+                                        <p className="mb-3 text-[10px] font-black text-slate-400">
+                                            چیزهایی که AI به engagement تبدیل کرده
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {analytics.top_entities.map((item) => (
+                                                <span
+                                                    className="rounded-full border border-cyan-500/10 bg-cyan-500/[.045] px-3 py-1.5 text-[9px] font-bold text-cyan-200"
+                                                    key={`${item.type}:${item.slug}`}
+                                                >
+                                                    {item.type} · {item.slug} ·{" "}
+                                                    {item.total.toLocaleString("fa-IR")}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </Card.Content>
