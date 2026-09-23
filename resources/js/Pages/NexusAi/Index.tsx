@@ -9,7 +9,6 @@ type NexusAiConfig = {
     title: string;
     description: string;
     nav_label: string;
-    worker_url: string;
     launcher_label: string;
     welcome_title: string;
     welcome_text: string;
@@ -70,7 +69,7 @@ export default function NexusAiIndex({ nexusAi }: { nexusAi: NexusAiConfig }) {
                                         اتصال امن به Nexus AI
                                     </strong>
                                     <span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">
-                                        Worker فقط نقش Relay/API را دارد
+                                        Router سرور کلیدها و fallback را مدیریت می‌کند
                                     </span>
                                 </div>
                             </div>
