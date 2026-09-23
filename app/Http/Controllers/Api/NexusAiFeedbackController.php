@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\NexusAiInteraction;
 use App\Services\NexusAi\NexusAiAnalyticsService;
 use App\Services\NexusAi\NexusAiIdentity;
+use App\Services\NexusAiSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,7 +16,11 @@ final class NexusAiFeedbackController extends Controller
         Request $request,
         NexusAiAnalyticsService $analytics,
         NexusAiIdentity $identity,
+        NexusAiSettings $settings,
     ): JsonResponse {
+        if (! (bool) ($settings->all()['nexus_ai_collect_analytics'] ?? true)) {
+            return response()->json(['saved' => false]);
+        }
         $data = $request->validate([
             'interaction_id' => ['required', 'integer', 'min:1'],
             'conversation_id' => ['required', 'uuid'],
