@@ -1,9 +1,12 @@
 import {
     Bot,
+    Copy,
     MessageCircleMore,
     RotateCcw,
     Send,
     Sparkles,
+    ThumbsDown,
+    ThumbsUp,
     X,
 } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -32,9 +35,43 @@ type NexusAiConfig = {
 type ChatMessage = {
     role: "user" | "assistant";
     content: string;
+    interaction_id?: number | null;
+    feedback?: 1 | -1 | null;
 };
 
 const STORAGE_KEY = "playnexus:nexus-ai:history";
+const VISITOR_KEY = "playnexus:nexus-ai:visitor";
+const CONVERSATION_KEY = "playnexus:nexus-ai:conversation";
+
+function makeUuid(): string {
+    if (typeof window === "undefined") return "";
+
+    if (typeof window.crypto?.randomUUID === "function") {
+        return window.crypto.randomUUID();
+    }
+
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (byte) =>
+        byte.toString(16).padStart(2, "0"),
+    ).join("");
+
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function persistentUuid(key: string): string {
+    if (typeof window === "undefined") return "";
+
+    const current = window.localStorage.getItem(key);
+    if (current) return current;
+
+    const value = makeUuid();
+    window.localStorage.setItem(key, value);
+
+    return value;
+}
 
 const QUICK_PROMPTS = [
     "یه بازی جهان‌باز خفن برای PS5 پیشنهاد بده",
@@ -42,7 +79,13 @@ const QUICK_PROMPTS = [
     "برای یه باس سخت چه نکاتی رو رعایت کنم؟",
 ];
 
-function MarkdownMessage({ content }: { content: string }) {
+function MarkdownMessage({
+    content,
+    onLinkClick,
+}: {
+    content: string;
+    onLinkClick?: (href: string) => void;
+}) {
     return (
         <ReactMarkdown
             skipHtml
@@ -107,6 +150,7 @@ function MarkdownMessage({ content }: { content: string }) {
                             href={href}
                             rel={external ? "noreferrer noopener" : undefined}
                             target={external ? "_blank" : undefined}
+                            onClick={() => href && onLinkClick?.(href)}
                         >
                             {children}
                         </a>
@@ -187,6 +231,10 @@ function friendlyError(code?: string): string {
         return "همه مسیرهای Nexus AI موقتاً در دسترس نیستند؛ چند لحظه دیگه دوباره امتحان کن.";
     }
 
+    if (code === "daily_limit_reached") {
+        return "سهمیه رایگان امروزت تموم شده. فردا دوباره سهمیه‌ات خودکار شارژ می‌شه.";
+    }
+
     return "ارتباط با Nexus AI موقتاً مشکل خورد. دوباره امتحان کن.";
 }
 
@@ -201,13 +249,25 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
     const [busy, setBusy] = useState(false);
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<ChatMessage[]>(loadHistory);
+    const [visitorId, setVisitorId] = useState("");
+    const [conversationId, setConversationId] = useState("");
+    const [remainingToday, setRemainingToday] = useState<number | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    const history = useMemo(() => messages.slice(-8), [messages]);
+    const history = useMemo(
+        () =>
+            messages.slice(-8).map(({ role, content }) => ({
+                role,
+                content,
+            })),
+        [messages],
+    );
 
     useEffect(() => {
         setMounted(true);
+        setVisitorId(persistentUuid(VISITOR_KEY));
+        setConversationId(persistentUuid(CONVERSATION_KEY));
     }, []);
 
     useEffect(() => {
@@ -272,6 +332,63 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
         };
     }, []);
 
+    const postEvent = async (
+        eventType: string,
+        interactionId?: number | null,
+        payload?: Record<string, unknown>,
+    ) => {
+        if (!visitorId || !conversationId) return;
+
+        try {
+            await fetch("/api/nexus-ai/events", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    event_type: eventType,
+                    interaction_id: interactionId || undefined,
+                    conversation_id: conversationId,
+                    visitor_id: visitorId,
+                    payload,
+                }),
+            });
+        } catch {
+            // Analytics must never interrupt the chat experience.
+        }
+    };
+
+    const sendFeedback = async (
+        index: number,
+        interactionId: number,
+        value: 1 | -1,
+    ) => {
+        if (!visitorId || !conversationId) return;
+
+        try {
+            const response = await fetch("/api/nexus-ai/feedback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    interaction_id: interactionId,
+                    conversation_id: conversationId,
+                    visitor_id: visitorId,
+                    value,
+                }),
+            });
+
+            if (response.ok) {
+                setMessages((current) =>
+                    current.map((message, currentIndex) =>
+                        currentIndex === index
+                            ? { ...message, feedback: value }
+                            : message,
+                    ),
+                );
+            }
+        } catch {
+            // Feedback is optional and should remain unobtrusive.
+        }
+    };
+
     const send = async (value?: string) => {
         const text = (value ?? input).trim();
         if (!text || busy) return;
@@ -289,12 +406,28 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
                 body: JSON.stringify({
                     message: text,
                     history,
+                    conversation_id: conversationId || undefined,
+                    visitor_id: visitorId || undefined,
                 }),
             });
             const data = (await response.json().catch(() => ({}))) as {
                 answer?: string;
                 error?: string;
+                interaction_id?: number | null;
+                conversation_id?: string;
+                remaining_today?: number | null;
             };
+
+            if (typeof data.remaining_today === "number") {
+                setRemainingToday(data.remaining_today);
+            }
+            if (data.conversation_id && !conversationId) {
+                setConversationId(data.conversation_id);
+                window.localStorage.setItem(
+                    CONVERSATION_KEY,
+                    data.conversation_id,
+                );
+            }
 
             setMessages((current) => [
                 ...current,
@@ -303,8 +436,16 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
                     content: response.ok
                         ? data.answer?.trim() || "جوابی دریافت نشد."
                         : friendlyError(data.error),
+                    interaction_id: response.ok
+                        ? data.interaction_id || null
+                        : null,
+                    feedback: null,
                 },
             ]);
+
+            if (response.ok && history.some((item) => item.role === "assistant")) {
+                void postEvent("followup_sent", data.interaction_id);
+            }
         } catch {
             setMessages((current) => [
                 ...current,
@@ -326,8 +467,13 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
     };
 
     const clear = () => {
+        void postEvent("conversation_cleared");
         setMessages([]);
         window.localStorage.removeItem(STORAGE_KEY);
+
+        const nextConversation = makeUuid();
+        setConversationId(nextConversation);
+        window.localStorage.setItem(CONVERSATION_KEY, nextConversation);
     };
 
     if (!config.enabled || !mounted) return null;
@@ -474,9 +620,74 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
                                             }`}
                                         >
                                             {message.role === "assistant" ? (
-                                                <MarkdownMessage
-                                                    content={message.content}
-                                                />
+                                                <>
+                                                    <MarkdownMessage
+                                                        content={message.content}
+                                                        onLinkClick={(href) =>
+                                                            void postEvent(
+                                                                "link_clicked",
+                                                                message.interaction_id,
+                                                                { href },
+                                                            )
+                                                        }
+                                                    />
+                                                    {message.interaction_id && (
+                                                        <div className="mt-2 flex items-center gap-1 border-t border-white/[.06] pt-2 text-slate-500">
+                                                            <button
+                                                                aria-label="پاسخ مفید بود"
+                                                                className={`grid size-7 place-items-center rounded-lg transition hover:bg-white/[.06] hover:text-emerald-300 ${
+                                                                    message.feedback === 1
+                                                                        ? "bg-emerald-500/10 text-emerald-300"
+                                                                        : ""
+                                                                }`}
+                                                                onClick={() =>
+                                                                    void sendFeedback(
+                                                                        index,
+                                                                        message.interaction_id!,
+                                                                        1,
+                                                                    )
+                                                                }
+                                                                type="button"
+                                                            >
+                                                                <ThumbsUp size={13} />
+                                                            </button>
+                                                            <button
+                                                                aria-label="پاسخ مفید نبود"
+                                                                className={`grid size-7 place-items-center rounded-lg transition hover:bg-white/[.06] hover:text-rose-300 ${
+                                                                    message.feedback === -1
+                                                                        ? "bg-rose-500/10 text-rose-300"
+                                                                        : ""
+                                                                }`}
+                                                                onClick={() =>
+                                                                    void sendFeedback(
+                                                                        index,
+                                                                        message.interaction_id!,
+                                                                        -1,
+                                                                    )
+                                                                }
+                                                                type="button"
+                                                            >
+                                                                <ThumbsDown size={13} />
+                                                            </button>
+                                                            <button
+                                                                aria-label="کپی پاسخ"
+                                                                className="grid size-7 place-items-center rounded-lg transition hover:bg-white/[.06] hover:text-cyan-300"
+                                                                onClick={() => {
+                                                                    void navigator.clipboard.writeText(
+                                                                        message.content,
+                                                                    );
+                                                                    void postEvent(
+                                                                        "answer_copied",
+                                                                        message.interaction_id,
+                                                                    );
+                                                                }}
+                                                                type="button"
+                                                            >
+                                                                <Copy size={13} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </>
                                             ) : (
                                                 message.content
                                             )}
@@ -535,7 +746,11 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
 
                         <div className="mt-2 flex items-center justify-between px-1 text-[8px] text-slate-600">
                             <span>{config.status_text || "Nexus AI"}</span>
-                            <span>PlayNexus Intelligence</span>
+                            <span>
+                                {remainingToday === null
+                                    ? "PlayNexus Intelligence"
+                                    : `${remainingToday} پیام رایگان باقی‌مانده`}
+                            </span>
                         </div>
                     </footer>
                 </div>
