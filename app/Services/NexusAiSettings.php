@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class NexusAiSettings
 {
-    private const CACHE_KEY = 'nexus-ai.settings.v1';
+    private const CACHE_KEY = 'nexus-ai.settings.v2';
 
     public const DEFAULTS = [
         'nexus_ai_enabled' => true,
@@ -21,6 +21,10 @@ class NexusAiSettings
         'nexus_ai_welcome_title' => 'چی تو ذهنت داری؟',
         'nexus_ai_welcome_text' => 'درباره بازی‌ها، لور، انتخاب بازی، Build، باس‌ها و اصطلاحات گیم ازم بپرس.',
         'nexus_ai_status_text' => 'نسخه آزمایشی',
+        'nexus_ai_free_first' => true,
+        'nexus_ai_provider_timeout_seconds' => 20,
+        'nexus_ai_max_output_tokens' => 1000,
+        'nexus_ai_temperature' => 0.65,
     ];
 
     public function all(): array
@@ -42,7 +46,6 @@ class NexusAiSettings
             'title' => (string) $settings['nexus_ai_title'],
             'description' => (string) $settings['nexus_ai_description'],
             'nav_label' => (string) $settings['nexus_ai_nav_label'],
-            'worker_url' => (string) $settings['nexus_ai_worker_url'],
             'launcher_label' => (string) $settings['nexus_ai_launcher_label'],
             'welcome_title' => (string) $settings['nexus_ai_welcome_title'],
             'welcome_text' => (string) $settings['nexus_ai_welcome_text'],
@@ -64,5 +67,6 @@ class NexusAiSettings
         });
 
         Cache::forget(self::CACHE_KEY);
+        Cache::forget('nexus-ai.settings.v1');
     }
 }
