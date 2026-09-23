@@ -2,16 +2,39 @@ import { Button, Card, Input } from "@heroui/react";
 import { Head, useForm } from "@inertiajs/react";
 import {
     Bot,
+    CircleDollarSign,
     Eye,
     EyeOff,
-    Link2,
+    Gauge,
     MessageCircleMore,
     Save,
     ShieldCheck,
     Sparkles,
+    Workflow,
 } from "lucide-react";
 
 import AdminLayout from "../../../Layouts/AdminLayout";
+
+type ProviderField = {
+    key: string;
+    label: string;
+    type: "text" | "password" | "url";
+    secret: boolean;
+};
+
+type Provider = {
+    key: string;
+    label: string;
+    short_label: string;
+    description: string;
+    free_tier: boolean;
+    enabled: boolean;
+    priority: number;
+    configured: boolean;
+    fields: ProviderField[];
+    settings: Record<string, string>;
+    secret_configured: Record<string, boolean>;
+};
 
 type Settings = {
     nexus_ai_enabled: boolean;
@@ -24,6 +47,14 @@ type Settings = {
     nexus_ai_welcome_title: string;
     nexus_ai_welcome_text: string;
     nexus_ai_status_text: string;
+    nexus_ai_free_first: boolean;
+    nexus_ai_provider_timeout_seconds: number;
+    nexus_ai_max_output_tokens: number;
+    nexus_ai_temperature: number;
+};
+
+type FormData = Settings & {
+    providers: Provider[];
 };
 
 function Toggle({
@@ -75,19 +106,55 @@ function Toggle({
     );
 }
 
-export default function NexusAI({ settings }: { settings: Settings }) {
-    const { data, setData, put, processing, errors, recentlySuccessful } =
-        useForm<Settings>(settings);
+export default function NexusAI({
+    settings,
+    providers,
+}: {
+    settings: Settings;
+    providers: Provider[];
+}) {
+    const {
+        data,
+        setData,
+        put,
+        processing,
+        errors,
+        recentlySuccessful,
+    } = useForm<FormData>({ ...settings, providers });
 
     const save = () =>
         put("/admin/nexus-ai", {
             preserveScroll: true,
         });
 
+    const updateProvider = (index: number, patch: Partial<Provider>) => {
+        setData(
+            "providers",
+            data.providers.map((provider, current) =>
+                current === index ? { ...provider, ...patch } : provider,
+            ),
+        );
+    };
+
+    const updateProviderSetting = (
+        index: number,
+        key: string,
+        value: string,
+    ) => {
+        const provider = data.providers[index];
+
+        updateProvider(index, {
+            settings: {
+                ...provider.settings,
+                [key]: value,
+            },
+        });
+    };
+
     return (
         <AdminLayout
             title="Nexus AI"
-            description="مدیریت ویجت شناور هوش مصنوعی PlayNexus"
+            description="مدیریت دستیار، Providerها و مسیر هوشمند fallback"
             actions={
                 <Button
                     isDisabled={processing}
@@ -111,17 +178,18 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                 </span>
                                 <div>
                                     <h2 className="font-black text-white">
-                                        نمایش ویجت
+                                        نمایش Nexus AI
                                     </h2>
                                     <p className="mt-1 text-xs leading-6 text-slate-500">
-                                        ویجت Native روی خود PlayNexus اجرا می‌شود؛ بدون iframe.
+                                        UI روی PlayNexus اجرا می‌شود و API Key هیچ
+                                        Providerی به مرورگر ارسال نمی‌شود.
                                     </p>
                                 </div>
                             </div>
 
                             <Toggle
                                 checked={data.nexus_ai_enabled}
-                                description="با خاموش شدن این گزینه، دکمه شناور و صفحه Nexus AI برای کاربران نمایش داده نمی‌شود."
+                                description="دکمه شناور و صفحه Nexus AI را در سایت فعال می‌کند."
                                 label="نمایش هوش مصنوعی در سایت"
                                 onChange={(value) =>
                                     setData("nexus_ai_enabled", value)
@@ -130,12 +198,260 @@ export default function NexusAI({ settings }: { settings: Settings }) {
 
                             <Toggle
                                 checked={data.nexus_ai_show_in_nav}
-                                description="در صورت نیاز، یک لینک جدا برای Nexus AI در منوی سایت هم نشان داده شود."
+                                description="یک لینک جدا برای Nexus AI در منوی اصلی نمایش داده شود."
                                 label="نمایش در منوی اصلی"
                                 onChange={(value) =>
                                     setData("nexus_ai_show_in_nav", value)
                                 }
                             />
+                        </Card.Content>
+                    </Card>
+
+                    <Card variant="secondary">
+                        <Card.Content className="space-y-5 p-6">
+                            <div className="flex items-center gap-3">
+                                <Workflow className="text-cyan-400" size={20} />
+                                <div>
+                                    <h2 className="font-black text-white">
+                                        Smart Provider Router
+                                    </h2>
+                                    <p className="mt-1 text-xs leading-6 text-slate-500">
+                                        Providerهای فعال با priority مرتب می‌شوند؛
+                                        خطای quota یا upstream باعث fallback خودکار
+                                        و cooldown موقت همان Provider می‌شود.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <Toggle
+                                checked={data.nexus_ai_free_first}
+                                description="تا وقتی Provider رایگان سالم و دارای سهمیه است، Providerهای پولی مصرف نمی‌شوند."
+                                label="Free Tier First"
+                                onChange={(value) =>
+                                    setData("nexus_ai_free_first", value)
+                                }
+                            />
+
+                            <div className="grid gap-4 md:grid-cols-3">
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-bold text-slate-300">
+                                        Timeout هر Provider
+                                    </span>
+                                    <Input
+                                        min={3}
+                                        max={60}
+                                        type="number"
+                                        value={String(
+                                            data.nexus_ai_provider_timeout_seconds,
+                                        )}
+                                        onChange={(event) =>
+                                            setData(
+                                                "nexus_ai_provider_timeout_seconds",
+                                                Number(event.target.value || 20),
+                                            )
+                                        }
+                                    />
+                                </label>
+
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-bold text-slate-300">
+                                        Max Output Tokens
+                                    </span>
+                                    <Input
+                                        min={128}
+                                        max={8192}
+                                        type="number"
+                                        value={String(
+                                            data.nexus_ai_max_output_tokens,
+                                        )}
+                                        onChange={(event) =>
+                                            setData(
+                                                "nexus_ai_max_output_tokens",
+                                                Number(event.target.value || 1000),
+                                            )
+                                        }
+                                    />
+                                </label>
+
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-bold text-slate-300">
+                                        Temperature
+                                    </span>
+                                    <Input
+                                        min={0}
+                                        max={2}
+                                        step={0.05}
+                                        type="number"
+                                        value={String(
+                                            data.nexus_ai_temperature,
+                                        )}
+                                        onChange={(event) =>
+                                            setData(
+                                                "nexus_ai_temperature",
+                                                Number(event.target.value || 0),
+                                            )
+                                        }
+                                    />
+                                </label>
+                            </div>
+
+                            <div className="rounded-2xl border border-cyan-500/10 bg-cyan-500/[.04] p-4 text-xs leading-7 text-slate-400">
+                                <div className="mb-2 flex items-center gap-2 font-black text-cyan-300">
+                                    <ShieldCheck size={16} />
+                                    Failover هوشمند
+                                </div>
+                                خطای 429 یا تمام‌شدن quota باعث می‌شود Provider
+                                برای مدتی از چرخه کنار برود؛ 401/403 هم cooldown
+                                بلندتر می‌گیرند تا درخواست‌های بعدی روی همان خطا
+                                تلف نشوند.
+                            </div>
+                        </Card.Content>
+                    </Card>
+
+                    <Card variant="secondary">
+                        <Card.Content className="space-y-5 p-6">
+                            <div className="flex items-center gap-3">
+                                <CircleDollarSign
+                                    className="text-emerald-400"
+                                    size={20}
+                                />
+                                <div>
+                                    <h2 className="font-black text-white">
+                                        AI Providers
+                                    </h2>
+                                    <p className="mt-1 text-xs leading-6 text-slate-500">
+                                        ترتیب پیشنهادی: Workers AI → Groq →
+                                        Gemini/AI Gateway → OpenAI → Compatible →
+                                        Local. هر بخش مستقل قابل خاموش‌کردن است.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                {data.providers.map((provider, index) => (
+                                    <div
+                                        className={`rounded-3xl border p-4 transition ${
+                                            provider.enabled
+                                                ? "border-violet-500/20 bg-violet-500/[.035]"
+                                                : "border-white/[.07] bg-slate-950/35"
+                                        }`}
+                                        key={provider.key}
+                                    >
+                                        <div className="flex flex-wrap items-start gap-3">
+                                            <button
+                                                className={`mt-1 h-7 w-12 shrink-0 rounded-full p-1 transition ${
+                                                    provider.enabled
+                                                        ? "bg-emerald-500"
+                                                        : "bg-slate-700"
+                                                }`}
+                                                onClick={() =>
+                                                    updateProvider(index, {
+                                                        enabled:
+                                                            !provider.enabled,
+                                                    })
+                                                }
+                                                type="button"
+                                            >
+                                                <span
+                                                    className={`block size-5 rounded-full bg-white transition ${
+                                                        provider.enabled
+                                                            ? "translate-x-0"
+                                                            : "-translate-x-5"
+                                                    }`}
+                                                />
+                                            </button>
+
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <strong className="text-sm text-white">
+                                                        {provider.label}
+                                                    </strong>
+                                                    {provider.free_tier && (
+                                                        <span className="rounded-full border border-emerald-500/20 bg-emerald-500/[.08] px-2 py-0.5 text-[9px] font-black text-emerald-300">
+                                                            FREE-FIRST
+                                                        </span>
+                                                    )}
+                                                    <span
+                                                        className={`rounded-full px-2 py-0.5 text-[9px] font-black ${
+                                                            provider.configured
+                                                                ? "bg-cyan-500/[.08] text-cyan-300"
+                                                                : "bg-amber-500/[.08] text-amber-300"
+                                                        }`}
+                                                    >
+                                                        {provider.configured
+                                                            ? "CONFIGURED"
+                                                            : "NEEDS CONFIG"}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-1 text-[11px] leading-6 text-slate-500">
+                                                    {provider.description}
+                                                </p>
+                                            </div>
+
+                                            <label className="w-24 shrink-0">
+                                                <span className="mb-1 block text-[9px] font-bold text-slate-500">
+                                                    Priority
+                                                </span>
+                                                <Input
+                                                    min={1}
+                                                    max={999}
+                                                    type="number"
+                                                    value={String(
+                                                        provider.priority,
+                                                    )}
+                                                    onChange={(event) =>
+                                                        updateProvider(index, {
+                                                            priority: Number(
+                                                                event.target
+                                                                    .value || 100,
+                                                            ),
+                                                        })
+                                                    }
+                                                />
+                                            </label>
+                                        </div>
+
+                                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                            {provider.fields.map((field) => (
+                                                <label
+                                                    className="block"
+                                                    key={field.key}
+                                                >
+                                                    <span className="mb-1.5 block text-[10px] font-bold text-slate-400">
+                                                        {field.label}
+                                                    </span>
+                                                    <Input
+                                                        dir="ltr"
+                                                        type={field.type}
+                                                        placeholder={
+                                                            field.secret &&
+                                                            provider
+                                                                .secret_configured[
+                                                                field.key
+                                                            ]
+                                                                ? "••••••••  (ذخیره شده)"
+                                                                : undefined
+                                                        }
+                                                        value={
+                                                            provider.settings[
+                                                                field.key
+                                                            ] ?? ""
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateProviderSetting(
+                                                                index,
+                                                                field.key,
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                    />
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </Card.Content>
                     </Card>
 
@@ -154,13 +470,13 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                         عنوان دستیار
                                     </span>
                                     <Input
+                                        value={data.nexus_ai_title}
                                         onChange={(event) =>
                                             setData(
                                                 "nexus_ai_title",
                                                 event.target.value,
                                             )
                                         }
-                                        value={data.nexus_ai_title}
                                     />
                                 </label>
 
@@ -169,13 +485,13 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                         متن کنار دکمه شناور
                                     </span>
                                     <Input
+                                        value={data.nexus_ai_launcher_label}
                                         onChange={(event) =>
                                             setData(
                                                 "nexus_ai_launcher_label",
                                                 event.target.value,
                                             )
                                         }
-                                        value={data.nexus_ai_launcher_label}
                                     />
                                 </label>
 
@@ -184,13 +500,13 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                         عنوان منو
                                     </span>
                                     <Input
+                                        value={data.nexus_ai_nav_label}
                                         onChange={(event) =>
                                             setData(
                                                 "nexus_ai_nav_label",
                                                 event.target.value,
                                             )
                                         }
-                                        value={data.nexus_ai_nav_label}
                                     />
                                 </label>
 
@@ -199,13 +515,13 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                         برچسب وضعیت
                                     </span>
                                     <Input
+                                        value={data.nexus_ai_status_text}
                                         onChange={(event) =>
                                             setData(
                                                 "nexus_ai_status_text",
                                                 event.target.value,
                                             )
                                         }
-                                        value={data.nexus_ai_status_text}
                                     />
                                 </label>
                             </div>
@@ -216,13 +532,13 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                 </span>
                                 <textarea
                                     className="min-h-24 w-full rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-7 text-slate-200 outline-none transition focus:border-violet-500/40"
+                                    value={data.nexus_ai_description}
                                     onChange={(event) =>
                                         setData(
                                             "nexus_ai_description",
                                             event.target.value,
                                         )
                                     }
-                                    value={data.nexus_ai_description}
                                 />
                             </label>
 
@@ -231,13 +547,13 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                     عنوان صفحه خوش‌آمد چت
                                 </span>
                                 <Input
+                                    value={data.nexus_ai_welcome_title}
                                     onChange={(event) =>
                                         setData(
                                             "nexus_ai_welcome_title",
                                             event.target.value,
                                         )
                                     }
-                                    value={data.nexus_ai_welcome_title}
                                 />
                             </label>
 
@@ -247,64 +563,27 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                 </span>
                                 <textarea
                                     className="min-h-24 w-full rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-7 text-slate-200 outline-none transition focus:border-violet-500/40"
+                                    value={data.nexus_ai_welcome_text}
                                     onChange={(event) =>
                                         setData(
                                             "nexus_ai_welcome_text",
                                             event.target.value,
                                         )
                                     }
-                                    value={data.nexus_ai_welcome_text}
                                 />
                             </label>
 
                             {Object.values(errors).length > 0 && (
                                 <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[.06] p-4 text-xs leading-6 text-rose-300">
-                                    {Object.values(errors)[0]}
+                                    {String(Object.values(errors)[0])}
                                 </div>
                             )}
                         </Card.Content>
                     </Card>
 
-                    <Card variant="secondary">
-                        <Card.Content className="space-y-5 p-6">
-                            <div className="flex items-center gap-3">
-                                <Link2 className="text-cyan-400" size={20} />
-                                <h2 className="font-black text-white">
-                                    اتصال Worker
-                                </h2>
-                            </div>
-
-                            <label className="block">
-                                <span className="mb-2 block text-xs font-bold text-slate-300">
-                                    آدرس Worker
-                                </span>
-                                <Input
-                                    dir="ltr"
-                                    onChange={(event) =>
-                                        setData(
-                                            "nexus_ai_worker_url",
-                                            event.target.value,
-                                        )
-                                    }
-                                    value={data.nexus_ai_worker_url}
-                                />
-                            </label>
-
-                            <div className="rounded-2xl border border-cyan-500/10 bg-cyan-500/[.04] p-4 text-xs leading-7 text-slate-400">
-                                <div className="mb-2 flex items-center gap-2 font-black text-cyan-300">
-                                    <ShieldCheck size={16} />
-                                    معماری Native
-                                </div>
-                                UI داخل React خود PlayNexus اجرا می‌شود. Worker فقط
-                                Relay/API است و هیچ iframe یا پنل خارجی داخل سایت
-                                لود نمی‌شود.
-                            </div>
-                        </Card.Content>
-                    </Card>
-
                     {recentlySuccessful && (
                         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[.06] px-4 py-3 text-sm font-bold text-emerald-300">
-                            تنظیمات Nexus AI ذخیره شد.
+                            تنظیمات Nexus AI و Provider Router ذخیره شد.
                         </div>
                     )}
                 </div>
@@ -315,7 +594,7 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                             پیش‌نمایش ویجت
                         </p>
                         <p className="mt-1 text-[11px] text-slate-500">
-                            ظاهر تقریبی همان پنلی که کاربر در PlayNexus می‌بیند
+                            Provider Router پشت صحنه عوض می‌شود؛ ظاهر چت ثابت می‌ماند.
                         </p>
                     </div>
 
@@ -338,7 +617,7 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                         <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.8)]" />
                                     </div>
                                     <span className="mt-1 block text-[10px] text-slate-500">
-                                        دستیار گیمینگ PlayNexus
+                                        Smart Provider Router
                                     </span>
                                 </div>
                             </div>
@@ -364,23 +643,29 @@ export default function NexusAI({ settings }: { settings: Settings }) {
                                     مثلاً: بعد از Elden Ring چی بازی کنم؟
                                 </div>
                                 <span className="grid size-10 place-items-center rounded-[14px] bg-gradient-to-br from-violet-600 to-cyan-500 text-white">
-                                    <Sparkles size={16} />
+                                    <Gauge size={16} />
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/[.08] bg-[#0a0d18] p-2 pl-4">
-                        <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 text-white">
-                            <Bot size={21} />
-                        </span>
-                        <div>
-                            <strong className="block text-[11px] text-white">
-                                {data.nexus_ai_title}
-                            </strong>
-                            <small className="text-[9px] text-slate-500">
-                                {data.nexus_ai_launcher_label}
-                            </small>
+                    <div className="mt-4 rounded-2xl border border-white/[.08] bg-[#0a0d18] p-4">
+                        <div className="flex items-center gap-2 text-xs font-black text-white">
+                            <Workflow size={15} className="text-cyan-300" />
+                            مسیرهای فعال
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {data.providers
+                                .filter((provider) => provider.enabled)
+                                .sort((a, b) => a.priority - b.priority)
+                                .map((provider) => (
+                                    <span
+                                        className="rounded-full border border-white/[.08] bg-white/[.04] px-2.5 py-1 text-[9px] font-bold text-slate-300"
+                                        key={provider.key}
+                                    >
+                                        {provider.priority}. {provider.short_label}
+                                    </span>
+                                ))}
                         </div>
                     </div>
                 </aside>

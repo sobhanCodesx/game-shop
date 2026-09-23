@@ -14,6 +14,36 @@ return [
     |
     */
 
+    'cloudflare_ai' => [
+        'account_id' => env('CLOUDFLARE_AI_ACCOUNT_ID'),
+        'api_token' => env('CLOUDFLARE_AI_API_TOKEN'),
+        'gateway_id' => env('CLOUDFLARE_AI_GATEWAY_ID'),
+        'model' => env('CLOUDFLARE_AI_MODEL', '@cf/openai/gpt-oss-20b'),
+        'gateway_model' => env('CLOUDFLARE_AI_GATEWAY_MODEL'),
+    ],
+
+    'groq' => [
+        'api_key' => env('GROQ_API_KEY'),
+        'model' => env('GROQ_MODEL', 'openai/gpt-oss-120b'),
+        'base_url' => env('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
+    ],
+
+    'gemini' => [
+        'cloudflare_model' => env('GEMINI_CLOUDFLARE_MODEL', 'google/gemini-3-flash'),
+    ],
+
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL'),
+        'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+    ],
+
+    'nexus_ai_compatible' => [
+        'api_key' => env('NEXUS_AI_COMPATIBLE_API_KEY'),
+        'model' => env('NEXUS_AI_COMPATIBLE_MODEL'),
+        'base_url' => env('NEXUS_AI_COMPATIBLE_BASE_URL'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

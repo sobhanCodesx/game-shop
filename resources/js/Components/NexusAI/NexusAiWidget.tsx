@@ -23,7 +23,6 @@ type NexusAiConfig = {
     title: string;
     description: string;
     nav_label: string;
-    worker_url: string;
     launcher_label: string;
     welcome_title: string;
     welcome_text: string;
@@ -184,6 +183,10 @@ function friendlyError(code?: string): string {
         return "پاسخ بیشتر از حد معمول طول کشید؛ دوباره امتحان کن.";
     }
 
+    if (code === "upstream_unavailable") {
+        return "همه مسیرهای Nexus AI موقتاً در دسترس نیستند؛ چند لحظه دیگه دوباره امتحان کن.";
+    }
+
     return "ارتباط با Nexus AI موقتاً مشکل خورد. دوباره امتحان کن.";
 }
 
@@ -245,13 +248,15 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
 
         const check = async () => {
             try {
-                const response = await fetch(config.worker_url + "/health", {
+                const response = await fetch("/api/nexus-ai/health", {
                     cache: "no-store",
                 });
-                const data = await response.json();
+                const data = (await response.json().catch(() => ({}))) as {
+                    available?: boolean;
+                };
 
                 if (active) {
-                    setOnline(response.ok && Boolean(data.agent_connected));
+                    setOnline(response.ok && Boolean(data.available));
                 }
             } catch {
                 if (active) setOnline(false);
@@ -276,7 +281,7 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
         setMessages((current) => [...current, { role: "user", content: text }]);
 
         try {
-            const response = await fetch(config.worker_url + "/api/chat", {
+            const response = await fetch("/api/nexus-ai/chat", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
