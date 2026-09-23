@@ -27,7 +27,14 @@ final class NexusAiProviderClient
                 $maxTokens,
                 $temperature,
             ),
-            NexusAiProviderSettings::GROQ,
+            NexusAiProviderSettings::GROQ => $this->chatCompletions(
+                $settings,
+                $messages,
+                $timeout,
+                $maxTokens,
+                $temperature,
+                true,
+            ),
             NexusAiProviderSettings::OPENAI_COMPATIBLE => $this->chatCompletions(
                 $settings,
                 $messages,
@@ -120,6 +127,7 @@ final class NexusAiProviderClient
         int $timeout,
         int $maxTokens,
         float $temperature,
+        bool $preferCompletionTokens = false,
     ): string {
         $baseUrl = rtrim((string) $settings['base_url'], '/');
         $request = $this->jsonRequest($timeout);
@@ -128,12 +136,14 @@ final class NexusAiProviderClient
             $request = $request->withToken((string) $settings['api_key']);
         }
 
-        $response = $request->post($baseUrl.'/chat/completions', [
+        $payload = [
             'model' => (string) $settings['model'],
             'messages' => $messages,
-            'max_tokens' => $maxTokens,
             'temperature' => $temperature,
-        ]);
+        ];
+        $payload[$preferCompletionTokens ? 'max_completion_tokens' : 'max_tokens'] = $maxTokens;
+
+        $response = $request->post($baseUrl.'/chat/completions', $payload);
 
         $this->guardResponse($response);
 
@@ -153,7 +163,6 @@ final class NexusAiProviderClient
                 'model' => (string) $settings['model'],
                 'input' => $messages,
                 'max_output_tokens' => $maxTokens,
-                'temperature' => $temperature,
             ]);
 
         $this->guardResponse($response);
