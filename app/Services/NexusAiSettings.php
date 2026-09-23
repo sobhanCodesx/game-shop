@@ -22,8 +22,15 @@ class NexusAiSettings
         'nexus_ai_welcome_text' => 'درباره بازی‌ها، لور، انتخاب بازی، Build، باس‌ها و اصطلاحات گیم ازم بپرس.',
         'nexus_ai_status_text' => 'نسخه آزمایشی',
         'nexus_ai_free_first' => true,
+        'nexus_ai_autopilot' => true,
+        'nexus_ai_collect_analytics' => true,
+        'nexus_ai_guest_daily_limit' => 10,
+        'nexus_ai_user_daily_limit' => 30,
+        'nexus_ai_spoiler_guard' => true,
+        'nexus_ai_clarify_ambiguity' => true,
+        'nexus_ai_response_style' => 'balanced',
         'nexus_ai_provider_timeout_seconds' => 20,
-        'nexus_ai_max_output_tokens' => 1000,
+        'nexus_ai_max_output_tokens' => 1200,
         'nexus_ai_temperature' => 0.65,
     ];
 
