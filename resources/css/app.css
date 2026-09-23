@@ -3384,3 +3384,15 @@ html[data-storefront-theme="light"] .storefront-theme .pn-notification-item[data
     border-color: rgb(99 102 241 / 22%) !important;
     color: #1f2937 !important;
 }
+
+/* Mobile compositor safety --------------------------------------------------
+   Avoid live backdrop sampling on persistent layers while the viewport moves.
+   This keeps the glass palette but prevents Chromium/Android full-page flashes. */
+@media (max-width: 1023px) {
+    .storefront-theme .fixed,
+    .storefront-theme .sticky,
+    .storefront-theme .pn-feed-toolbar {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+}
