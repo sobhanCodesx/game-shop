@@ -1,9 +1,11 @@
 import {
     Bot,
     Copy,
+    Gamepad2,
     MessageCircleMore,
     RotateCcw,
     Send,
+    ShieldCheck,
     Sparkles,
     ThumbsDown,
     ThumbsUp,
@@ -483,54 +485,53 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
             {open && (
                 <div
                     aria-hidden="true"
-                    className="fixed inset-0 z-[139] bg-slate-950/55 backdrop-blur-[3px] lg:bg-slate-950/20 lg:backdrop-blur-[1px]"
+                    className="fixed inset-0 z-[139] bg-[#02040a]/72 transition-opacity duration-200 lg:bg-[#02040a]/45"
                     onClick={() => setOpen(false)}
                 />
             )}
 
             <section
                 aria-hidden={!open}
-                className={`fixed z-[140] overflow-hidden border border-white/[.10] bg-[linear-gradient(180deg,rgba(10,14,29,.98),rgba(5,8,18,.985))] shadow-[0_32px_100px_rgba(2,6,23,.72)] backdrop-blur-2xl transition-all duration-300
-                inset-x-2 bottom-0 top-[max(8px,env(safe-area-inset-top))] rounded-t-[30px]
-                sm:inset-x-3
-                lg:inset-auto lg:bottom-24 lg:right-6 lg:top-auto lg:h-[min(690px,calc(100vh-130px))] lg:w-[430px] lg:rounded-[30px]
+                aria-label="Nexus AI"
+                className={`fixed z-[140] overflow-hidden border border-white/[.09] bg-[#070a12] shadow-[0_30px_90px_rgba(0,0,0,.65)] transition-[transform,opacity] duration-300 ease-out
+                inset-x-0 bottom-0 top-[max(0px,env(safe-area-inset-top))] rounded-none
+                sm:inset-x-3 sm:top-[max(10px,env(safe-area-inset-top))] sm:rounded-[28px]
+                lg:inset-auto lg:bottom-5 lg:right-5 lg:top-auto lg:h-[min(760px,calc(100dvh-40px))] lg:w-[min(480px,calc(100vw-40px))] lg:rounded-[28px]
                 ${
                     open
-                        ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-                        : "pointer-events-none translate-y-5 scale-[.98] opacity-0 lg:translate-y-4"
+                        ? "pointer-events-auto translate-y-0 opacity-100"
+                        : "pointer-events-none translate-y-6 opacity-0"
                 }`}
             >
                 <div className="grid h-full min-h-0 grid-rows-[auto_1fr_auto]">
-                    <header className="relative border-b border-white/[.07] px-4 pb-4 pt-[calc(17px+env(safe-area-inset-top))] sm:px-5 lg:pt-4">
-                        <span className="absolute left-1/2 top-[calc(7px+env(safe-area-inset-top))] h-1 w-10 -translate-x-1/2 rounded-full bg-white/10 lg:hidden" />
-                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(124,58,237,.18),transparent_45%),radial-gradient(circle_at_0%_100%,rgba(14,165,233,.10),transparent_40%)]" />
+                    <header className="relative border-b border-white/[.07] bg-[#090d18] px-4 pb-3 pt-[calc(13px+env(safe-area-inset-top))] sm:px-5 lg:pt-4">
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
 
                         <div className="relative flex items-center justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-3">
-                                <div className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 text-white shadow-[0_12px_35px_rgba(99,102,241,.28)]">
-                                    <Bot size={22} strokeWidth={2.2} />
-                                    <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-white/20 bg-gradient-to-br from-violet-500 to-cyan-400 text-white shadow-[0_4px_14px_rgba(34,211,238,.25)]">
-                                        <Sparkles size={10} />
+                                <div className="relative grid size-11 shrink-0 place-items-center rounded-[15px] border border-cyan-300/15 bg-[linear-gradient(145deg,#7c3aed,#4f46e5_55%,#0891b2)] text-white shadow-[0_10px_30px_rgba(79,70,229,.22)]">
+                                    <Gamepad2 size={21} strokeWidth={2.15} />
+                                    <span className="absolute -bottom-1 -right-1 grid size-[18px] place-items-center rounded-full border-2 border-[#090d18] bg-cyan-400 text-[#041016]">
+                                        <Sparkles size={9} strokeWidth={2.8} />
                                     </span>
                                 </div>
 
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <h2 className="truncate text-sm font-black text-white">
+                                        <h2 className="truncate text-[13px] font-black tracking-tight text-white sm:text-sm">
                                             {config.title}
                                         </h2>
-                                        <span
-                                            className={`size-2 rounded-full ${
-                                                online === false
-                                                    ? "bg-rose-400"
-                                                    : "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.8)]"
-                                            }`}
-                                        />
+                                        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[8px] font-bold ${
+                                            online === false
+                                                ? "border-rose-400/15 bg-rose-400/5 text-rose-300"
+                                                : "border-emerald-400/15 bg-emerald-400/5 text-emerald-300"
+                                        }`}>
+                                            <span className={`size-1.5 rounded-full ${online === false ? "bg-rose-400" : "bg-emerald-400"}`} />
+                                            {online === false ? "آفلاین" : "آنلاین"}
+                                        </span>
                                     </div>
-                                    <p className="mt-1 truncate text-[10px] text-slate-400">
-                                        {online === false
-                                            ? "موقتاً آفلاین"
-                                            : "دستیار گیمینگ PlayNexus"}
+                                    <p className="mt-0.5 truncate text-[9px] font-medium text-slate-500 sm:text-[10px]">
+                                        PlayNexus Gaming Intelligence
                                     </p>
                                 </div>
                             </div>
@@ -563,19 +564,23 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
                         ref={scrollRef}
                     >
                         {messages.length === 0 ? (
-                            <div className="flex min-h-full flex-col justify-center py-5">
-                                <div className="mx-auto grid size-16 place-items-center rounded-[22px] border border-violet-400/15 bg-gradient-to-br from-violet-500/15 to-cyan-500/10 text-violet-200 shadow-[0_15px_50px_rgba(76,29,149,.18)]">
-                                    <MessageCircleMore size={28} />
+                            <div className="flex min-h-full flex-col justify-center py-6">
+                                <div className="mx-auto flex items-center gap-2 rounded-full border border-white/[.07] bg-white/[.025] px-3 py-1.5 text-[9px] font-bold text-slate-400">
+                                    <ShieldCheck size={12} className="text-cyan-300" />
+                                    مخصوص انتخاب، مقایسه و کشف بازی
+                                </div>
+                                <div className="mx-auto mt-5 grid size-[72px] place-items-center rounded-[24px] border border-violet-400/15 bg-[linear-gradient(145deg,rgba(124,58,237,.18),rgba(6,182,212,.08))] text-violet-200 shadow-[0_20px_60px_rgba(76,29,149,.14)]">
+                                    <Gamepad2 size={31} strokeWidth={1.8} />
                                 </div>
 
-                                <h3 className="mt-5 text-center text-xl font-black tracking-tight text-white">
+                                <h3 className="mt-5 text-center text-[22px] font-black tracking-[-.03em] text-white">
                                     {config.welcome_title}
                                 </h3>
-                                <p className="mx-auto mt-2 max-w-[310px] text-center text-[11px] leading-6 text-slate-400">
+                                <p className="mx-auto mt-2 max-w-[340px] text-center text-[11px] leading-6 text-slate-400">
                                     {config.welcome_text}
                                 </p>
 
-                                <div className="mt-5 grid gap-2">
+                                <div className="mx-auto mt-6 grid w-full max-w-[390px] gap-2">
                                     {QUICK_PROMPTS.map((prompt, index) => (
                                         <button
                                             className="group flex items-center gap-3 rounded-2xl border border-white/[.07] bg-white/[.025] px-3.5 py-3 text-right transition hover:border-violet-400/20 hover:bg-violet-500/[.06]"
@@ -718,8 +723,12 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
                         )}
                     </div>
 
-                    <footer className="border-t border-white/[.07] bg-[#080b16]/90 p-3 pb-[calc(12px+env(safe-area-inset-bottom))] sm:p-4 sm:pb-4">
-                        <div className="flex items-end gap-2 rounded-[20px] border border-white/[.09] bg-white/[.035] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.035)] transition focus-within:border-violet-400/30 focus-within:bg-white/[.05] focus-within:ring-4 focus-within:ring-violet-500/[.06]">
+                    <footer className="border-t border-white/[.07] bg-[#080b14] p-3 pb-[calc(12px+env(safe-area-inset-bottom))] sm:p-4 sm:pb-4">
+                        <div className="mb-2 flex items-center gap-1.5 px-1 text-[8px] font-medium text-slate-600">
+                            <Sparkles size={10} className="text-violet-400" />
+                            سوالت رو طبیعی بپرس؛ لازم نیست اسم دقیق بازی رو بدونی.
+                        </div>
+                        <div className="flex items-end gap-2 rounded-[18px] border border-white/[.09] bg-[#0d1220] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,.035)] transition focus-within:border-cyan-400/25 focus-within:ring-4 focus-within:ring-cyan-500/[.04]">
                             <textarea
                                 className="max-h-28 min-h-11 flex-1 resize-none bg-transparent px-2.5 py-2.5 text-xs leading-6 text-white outline-none placeholder:text-slate-600 disabled:opacity-60"
                                 disabled={busy}
@@ -758,7 +767,7 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
 
             <button
                 aria-label={open ? "بستن Nexus AI" : "باز کردن Nexus AI"}
-                className={`group fixed z-[138] bottom-[calc(86px+env(safe-area-inset-bottom))] right-4 flex items-center gap-2.5 rounded-[20px] border border-white/20 bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 p-1.5 text-white shadow-[0_14px_38px_rgba(79,70,229,.32),0_0_26px_rgba(34,211,238,.10)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_48px_rgba(79,70,229,.42),0_0_34px_rgba(34,211,238,.14)] active:scale-[.97] lg:bottom-6 lg:right-6 lg:rounded-[22px] sm:pl-3.5 ${
+                className={`group fixed z-[138] bottom-[calc(82px+env(safe-area-inset-bottom))] right-3 flex items-center gap-2 rounded-[18px] border border-white/[.10] bg-[#0b1020] p-1.5 text-white shadow-[0_16px_42px_rgba(0,0,0,.38),0_0_0_1px_rgba(124,58,237,.08)] transition-[transform,opacity,border-color] duration-200 hover:border-cyan-300/20 hover:-translate-y-0.5 active:scale-[.97] sm:right-4 sm:pl-3 lg:bottom-5 lg:right-5 lg:rounded-[20px] ${
                     open
                         ? "pointer-events-none translate-y-2 scale-90 opacity-0"
                         : "translate-y-0 scale-100 opacity-100"
@@ -766,10 +775,10 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
                 onClick={() => setOpen(true)}
                 type="button"
             >
-                <span className="relative grid size-11 shrink-0 place-items-center rounded-[15px] bg-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,.16)] backdrop-blur-sm">
-                    <Bot size={22} strokeWidth={2.25} />
-                    <span className="absolute -right-1 -top-1 grid size-[18px] place-items-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm backdrop-blur">
-                        <Sparkles size={10} />
+                <span className="relative grid size-11 shrink-0 place-items-center rounded-[14px] bg-[linear-gradient(145deg,#7c3aed,#4f46e5_55%,#0891b2)] shadow-[inset_0_1px_0_rgba(255,255,255,.16),0_8px_22px_rgba(79,70,229,.22)]">
+                    <Gamepad2 size={21} strokeWidth={2.2} />
+                    <span className="absolute -right-1 -top-1 grid size-[18px] place-items-center rounded-full border-2 border-[#0b1020] bg-cyan-300 text-[#071019]">
+                        <Sparkles size={9} strokeWidth={2.8} />
                     </span>
                     {!open && (
                         <span className="absolute -bottom-0.5 -left-0.5 size-2.5 rounded-full border border-white/70 bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.9)]" />
