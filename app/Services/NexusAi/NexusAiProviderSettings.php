@@ -31,7 +31,7 @@ final class NexusAiProviderSettings
                 'short_label' => 'Workers AI',
                 'description' => 'گزینه رایگان‌محور روی زیرساخت Cloudflare. برای شروع پیشنهاد اصلی PlayNexus است.',
                 'free_tier' => true,
-                'default_enabled' => false,
+                'default_enabled' => true,
                 'default_priority' => 10,
                 'fields' => [
                     ['key' => 'account_id', 'label' => 'Cloudflare Account ID', 'type' => 'text', 'secret' => false],
@@ -45,7 +45,7 @@ final class NexusAiProviderSettings
                 'short_label' => 'Groq',
                 'description' => 'OpenAI-compatible و بسیار سریع؛ برای Free Tier به‌عنوان fallback دوم مناسب است.',
                 'free_tier' => true,
-                'default_enabled' => false,
+                'default_enabled' => true,
                 'default_priority' => 20,
                 'fields' => [
                     ['key' => 'api_key', 'label' => 'Groq API Key', 'type' => 'password', 'secret' => true],
@@ -153,16 +153,37 @@ final class NexusAiProviderSettings
         })->values()->all();
     }
 
-    public function ordered(bool $freeFirst): array
+    public function ordered(bool $freeFirst, bool $autopilot = false): array
     {
+        $autoProviders = [
+            self::CLOUDFLARE_WORKERS_AI,
+            self::GROQ,
+            self::LOCAL_RELAY,
+        ];
+
         $providers = collect(array_keys($this->definitions()))
-            ->filter(fn (string $provider): bool => $this->enabled($provider) && $this->isConfigured($provider))
-            ->map(fn (string $provider): array => [
-                'key' => $provider,
-                'settings' => $this->resolved($provider),
-                'priority' => $this->priority($provider),
-                'free_tier' => (bool) $this->definitions()[$provider]['free_tier'],
-            ]);
+            ->filter(fn (string $provider): bool =>
+                $this->isConfigured($provider)
+                && ($this->enabled($provider) || ($autopilot && in_array($provider, $autoProviders, true)))
+            )
+            ->map(function (string $provider) use ($autopilot): array {
+                $settings = $this->resolved($provider);
+
+                if ($autopilot && $provider === self::CLOUDFLARE_WORKERS_AI) {
+                    $settings['model'] = '@cf/openai/gpt-oss-120b';
+                }
+
+                if ($autopilot && $provider === self::GROQ) {
+                    $settings['model'] = 'openai/gpt-oss-120b';
+                }
+
+                return [
+                    'key' => $provider,
+                    'settings' => $settings,
+                    'priority' => $this->priority($provider),
+                    'free_tier' => (bool) $this->definitions()[$provider]['free_tier'],
+                ];
+            });
 
         return $providers
             ->sortBy(function (array $item) use ($freeFirst): string {
@@ -283,7 +304,7 @@ final class NexusAiProviderSettings
             self::CLOUDFLARE_WORKERS_AI => [
                 'account_id' => (string) config('services.cloudflare_ai.account_id', ''),
                 'api_token' => (string) config('services.cloudflare_ai.api_token', ''),
-                'model' => (string) config('services.cloudflare_ai.model', '@cf/openai/gpt-oss-20b'),
+                'model' => (string) config('services.cloudflare_ai.model', '@cf/openai/gpt-oss-120b'),
                 'gateway_id' => (string) config('services.cloudflare_ai.gateway_id', ''),
             ],
             self::GROQ => [

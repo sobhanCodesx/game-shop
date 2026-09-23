@@ -18,7 +18,7 @@ return [
         'account_id' => env('CLOUDFLARE_AI_ACCOUNT_ID'),
         'api_token' => env('CLOUDFLARE_AI_API_TOKEN'),
         'gateway_id' => env('CLOUDFLARE_AI_GATEWAY_ID'),
-        'model' => env('CLOUDFLARE_AI_MODEL', '@cf/openai/gpt-oss-20b'),
+        'model' => env('CLOUDFLARE_AI_MODEL', '@cf/openai/gpt-oss-120b'),
         'gateway_model' => env('CLOUDFLARE_AI_GATEWAY_MODEL'),
     ],
 

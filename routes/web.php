@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Admin\DeploymentController;
 use App\Http\Controllers\Admin\FeedPostController as AdminFeedPostController;
 use App\Http\Controllers\Admin\HomeSettingsController;
+use App\Http\Controllers\Admin\NexusAiKnowledgeController;
 use App\Http\Controllers\Admin\NexusAiSettingsController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProductMediaController;
@@ -210,6 +211,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::put('settings', [CommerceSettingsController::class, 'update'])->name('settings.update');
     Route::get('nexus-ai', [NexusAiSettingsController::class, 'edit'])->name('nexus-ai.edit');
     Route::put('nexus-ai', [NexusAiSettingsController::class, 'update'])->name('nexus-ai.update');
+    Route::post('nexus-ai/knowledge', [NexusAiKnowledgeController::class, 'store'])->name('nexus-ai.knowledge.store');
+    Route::put('nexus-ai/knowledge/{knowledge}', [NexusAiKnowledgeController::class, 'update'])->name('nexus-ai.knowledge.update');
+    Route::delete('nexus-ai/knowledge/{knowledge}', [NexusAiKnowledgeController::class, 'destroy'])->name('nexus-ai.knowledge.destroy');
     Route::get('sms-providers', [SmsProviderSettingsController::class, 'index'])->name('sms-providers.index');
     Route::put('sms-providers/{provider}', [SmsProviderSettingsController::class, 'update'])
         ->whereIn('provider', ['payamak_panel', 'sms_ir'])
