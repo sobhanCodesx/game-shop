@@ -1,9 +1,0 @@
-{
-  "job_id": "video-retry-graph-20260923-0959b",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query VideoRunContext {\n games(first: 100, offset: 0) { nodes { id name slug status } pageInfo { total first offset hasMore nextOffset } }\n videos(first: 100, offset: 0) { nodes { id title slug status duration publishedAt game { id name slug } playlists { id title slug } } pageInfo { total first offset hasMore nextOffset } }\n collections(first: 100, offset: 0) { nodes { id title slug game { id name slug } } pageInfo { total first offset hasMore nextOffset } }\n}",
-    "variables": {},
-    "operation_name": "VideoRunContext"
-  }
-}
