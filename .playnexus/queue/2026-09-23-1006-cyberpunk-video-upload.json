@@ -1,0 +1,15 @@
+{
+  "job_id": "video-82-upload-20260923",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "video",
+    "id": 82,
+    "slot": "video",
+    "source_url": "https://video.akamai.steamstatic.com/store_trailers/1091500/798578/1b8aa4d59e19e69218c59bf1a6d9d23daedb01ab/1750617889/hls_264_master.m3u8",
+    "name": "cyberpunk-2077-city-of-dreams.mp4",
+    "require_audio": true,
+    "max_duration_seconds": 900,
+    "transcode_max_height": 720,
+    "max_height": 720
+  }
+}
