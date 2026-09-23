@@ -1,0 +1,1 @@
+{"job_id":"feed-relation-fading-echo-20260923-0919","tool":"query_playnexus_graph","arguments":{"query":"query FindFadingEcho($q:String!){ search(query:$q, first:6){ games { id name status releaseDate } content { id type title status publishedAt } } }","variables":{"q":"Fading Echo"},"operation_name":"FindFadingEcho"}}
