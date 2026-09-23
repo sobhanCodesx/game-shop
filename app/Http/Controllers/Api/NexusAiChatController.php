@@ -87,6 +87,9 @@ final class NexusAiChatController extends Controller
 
         return response()->json([
             'answer' => $result['answer'],
+            'provider' => $result['provider'] ?? null,
+            'model' => $result['model'] ?? null,
+            'fallback_count' => (int) ($result['fallback_count'] ?? 0),
             'interaction_id' => $interaction?->id,
             'conversation_id' => $conversationId,
             'remaining_today' => $remaining,
