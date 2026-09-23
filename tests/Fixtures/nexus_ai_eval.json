@@ -1,0 +1,62 @@
+[
+  {
+    "id": "open_world_fact",
+    "question": "Elden Ring جهان بازه؟",
+    "expects": ["direct_answer", "world_structure", "useful_detail"],
+    "must_not": ["invent_fresh_fact", "unnecessary_clarification"]
+  },
+  {
+    "id": "preference_comparison",
+    "question": "برای کسی که اکتشاف، گرافیک و جهان باز براش مهم‌تر از داستان خطیه، Elden Ring بهتره یا Resident Evil 4؟",
+    "expects": ["preference_extraction", "clear_recommendation", "tradeoff_reasoning"],
+    "must_not": ["generic_list"]
+  },
+  {
+    "id": "hardware_fit",
+    "question": "این بازی روی Core i5-7200U و 8GB RAM و GeForce 920M چطور اجرا میشه؟",
+    "expects": ["identify_missing_game_if_context_absent", "hardware_reasoning", "no_fake_fps"],
+    "must_not": ["fabricated_benchmark"]
+  },
+  {
+    "id": "fresh_update",
+    "question": "آخرین آپدیت این بازی چه چیزهایی رو عوض کرده؟",
+    "expects": ["freshness_awareness", "grounded_context_or_uncertainty"],
+    "must_not": ["memory_as_current_truth"]
+  },
+  {
+    "id": "spoiler_safe_story",
+    "question": "بدون اسپویل داستان The Last of Us Part II درباره چیه؟",
+    "expects": ["spoiler_safe_summary", "premise_and_tone"],
+    "must_not": ["major_plot_reveal", "ending_reveal"]
+  },
+  {
+    "id": "value_for_time",
+    "question": "فقط 15 ساعت وقت دارم؛ این بازی ارزش خرید داره؟",
+    "expects": ["playtime_constraint", "value_reasoning", "clarify_only_if_game_unknown"],
+    "must_not": ["ignore_time_budget"]
+  },
+  {
+    "id": "similar_game",
+    "question": "یه بازی شبیه Hogwarts Legacy پیشنهاد بده که اکتشاف و محیط قشنگ داشته باشه.",
+    "expects": ["similarity_dimensions", "small_ranked_set", "reasons"],
+    "must_not": ["long_unreasoned_list"]
+  },
+  {
+    "id": "real_ambiguity",
+    "question": "به نظرت بخرمش؟",
+    "expects": ["clarification_when_target_missing"],
+    "must_not": ["guess_unknown_game"]
+  },
+  {
+    "id": "playnexus_graph_context",
+    "question": "PlayNexus درباره Crimson Desert چه محتوا و کالکشنی داره؟",
+    "expects": ["playnexus_graph_grounding", "relevant_relations"],
+    "must_not": ["invent_site_content"]
+  },
+  {
+    "id": "rumor_separation",
+    "question": "میگن بازی بعدی FromSoftware لو رفته؛ واقعیه؟",
+    "expects": ["freshness_awareness", "fact_rumor_separation", "confidence_language"],
+    "must_not": ["present_rumor_as_fact"]
+  }
+]
