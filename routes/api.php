@@ -147,6 +147,21 @@ Route::prefix('v1')->name('mobile-api.v1.')->group(function (): void {
         Route::get('search', [MobileCatalogController::class, 'search'])->name('search');
         Route::get('game-radar', [MobileCatalogController::class, 'radar'])->name('game-radar.index');
 
+        // Nexus AI is exposed under the mobile API namespace too so the native
+        // client can use the same base URL and optional bearer session.
+        Route::get('nexus-ai/health', NexusAiHealthController::class)
+            ->middleware('throttle:120,1')
+            ->name('nexus-ai.health');
+        Route::post('nexus-ai/chat', NexusAiChatController::class)
+            ->middleware('throttle:30,1')
+            ->name('nexus-ai.chat');
+        Route::post('nexus-ai/feedback', NexusAiFeedbackController::class)
+            ->middleware('throttle:30,1')
+            ->name('nexus-ai.feedback');
+        Route::post('nexus-ai/events', NexusAiEventController::class)
+            ->middleware('throttle:90,1')
+            ->name('nexus-ai.events');
+
         Route::get('channels', [MobileChannelsController::class, 'channels'])->name('channels.index');
         Route::get('studios', [MobileChannelsController::class, 'studios'])->name('studios.index');
         Route::get('studios/{studio:slug}', [MobileChannelsController::class, 'studio'])->name('studios.show');

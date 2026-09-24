@@ -20,6 +20,7 @@ use App\Services\FollowedGameWatchService;
 use App\Services\GameEventService;
 use App\Services\GameRadarService;
 use App\Services\MediaStorage;
+use App\Services\NexusAiSettings;
 use App\Services\ProductPriceService;
 use App\Services\SmartSearchService;
 use App\Services\StorefrontDataService;
@@ -33,8 +34,10 @@ use Illuminate\Support\Facades\Cache;
 
 class MobileCatalogController extends Controller
 {
-    public function meta(): JsonResponse
+    public function meta(NexusAiSettings $nexusAiSettings): JsonResponse
     {
+        $nexusAi = $nexusAiSettings->publicConfig();
+
         return response()->json([
             'api_version' => 'v1',
             'app' => [
@@ -57,7 +60,9 @@ class MobileCatalogController extends Controller
                 'tickets' => true,
                 'push' => true,
                 'google_sign_in' => true,
+                'nexus_ai' => (bool) ($nexusAi['enabled'] && $nexusAi['page_enabled']),
             ],
+            'nexus_ai' => $nexusAi,
         ]);
     }
 
@@ -168,6 +173,42 @@ class MobileCatalogController extends Controller
 
         $nexusLatest = $this->nexusLatest($request, $storefront);
 
+        $latestShort = SocialContent::query()
+            ->published()
+            ->where('type', 'short')
+            ->with(['game:id,name,slug,cover', 'media'])
+            ->latest('published_at')
+            ->latest('id')
+            ->first();
+        $latestExplore = SocialContent::query()
+            ->published()
+            ->whereIn('type', ['post', 'video', 'short'])
+            ->with(['game:id,name,slug,cover', 'media'])
+            ->latest('published_at')
+            ->latest('id')
+            ->first();
+        $latestStoreProduct = Product::query()
+            ->with($relations)
+            ->publiclyVisible()
+            ->latest()
+            ->first();
+        $radarLead = $radarPreview->first();
+
+        $quickPortalThumbnails = [
+            'radar' => is_array($radarLead)
+                ? ($radarLead['banner_url'] ?? $radarLead['cover_url'] ?? null)
+                : null,
+            'shorts' => $latestShort
+                ? ($storefront->content($latestShort)['thumbnail_url'] ?? null)
+                : null,
+            'explore' => $latestExplore
+                ? ($storefront->content($latestExplore)['thumbnail_url'] ?? null)
+                : null,
+            'store' => $latestStoreProduct
+                ? ($storefront->product($latestStoreProduct, $request->user())['cover_url'] ?? null)
+                : null,
+        ];
+
         return response()->json([
             'settings' => $settings,
             'slides' => $slides,
@@ -196,6 +237,7 @@ class MobileCatalogController extends Controller
             'nexus_latest' => $nexusLatest,
             'latest_studios' => $studios,
             'game_radar' => $radarPreview,
+            'quick_portal_thumbnails' => $quickPortalThumbnails,
             'content_sections' => $this->contentSections($request, $prices, $storefront),
             'fresh_content' => $this->freshContent($request, $prices),
             'channels' => $this->homeChannels(),
