@@ -112,6 +112,8 @@ class ChannelController extends Controller
             'videos' => $payload['videos'],
             'playlists' => $payload['playlists'],
             'feed' => $payload['feed'],
+            'products' => $payload['products'],
+            'productsCount' => $payload['products_count'],
             'storeInfo' => $storeInfo,
         ]);
     }

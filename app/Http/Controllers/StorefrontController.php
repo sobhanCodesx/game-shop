@@ -41,7 +41,7 @@ class StorefrontController extends Controller
         $firstProduct = collect($products->items())->first();
         $image = url(data_get($firstProduct, 'cover_url') ?: (string) config('seo.default_image', '/logo.png'));
         $itemListId = $canonical.'#products';
-        $hasFilters = array_intersect(array_keys($request->query()), ['q', 'category', 'sort', 'trade', 'page']) !== [];
+        $hasFilters = array_intersect(array_keys($request->query()), ['q', 'category', 'game', 'sort', 'trade', 'page']) !== [];
 
         return Inertia::render('Shop/Index', [
             ...Seo::page([
@@ -89,7 +89,7 @@ class StorefrontController extends Controller
                 ],
             ]),
             'products' => $products,
-            'filters' => $request->only(['q', 'category', 'sort', 'trade']),
+            'filters' => $request->only(['q', 'category', 'game', 'sort', 'trade']),
             'tradeOnly' => false,
             'pageType' => $isOffers ? 'offers' : 'shop',
         ]);
@@ -482,6 +482,7 @@ class StorefrontController extends Controller
         return Product::query()->publiclyVisible()->with($this->productRelations())
             ->search($request->string('q')->toString() ?: null)
             ->when($request->filled('category'), fn (Builder $query) => $query->whereHas('category', fn ($query) => $query->where('slug', $request->string('category'))))
+            ->when($request->filled('game'), fn (Builder $query) => $query->whereHas('game', fn ($query) => $query->where('slug', $request->string('game'))))
             ->when($request->boolean('trade'), fn (Builder $query) => $query->where('trade_enabled', true))
             ->when($request->string('sort')->toString() === 'popular', fn (Builder $query) => $query->orderByDesc('sold_stock'))
             ->when($request->string('sort')->toString() === 'price_asc', fn (Builder $query) => $query->orderByRaw('COALESCE(discount_price, price) asc'))

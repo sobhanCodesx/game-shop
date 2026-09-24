@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Game;
+use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\User;
 use App\Models\VideoPlaylist;
@@ -102,6 +103,8 @@ final class ChannelPageDataService
     {
         $gameId = (int) data_get($payload, 'channel.id', 0);
         $game = Game::query()->find($gameId);
+        $payload['products'] = [];
+        $payload['products_count'] = 0;
 
         if ($game) {
             $payload['channel']['subscribers_count'] = $game->subscribers()->count();
@@ -109,6 +112,26 @@ final class ChannelPageDataService
             $payload['channel']['is_subscribed'] = (bool) ($user
                 ? $game->subscribers()->whereKey($user->id)->exists()
                 : false);
+
+            $productQuery = Product::query()
+                ->publiclyVisible()
+                ->whereBelongsTo($game);
+
+            $payload['products_count'] = (clone $productQuery)->count();
+            $payload['products'] = $productQuery
+                ->with([
+                    'category:id,name', 'type:id,title', 'game:id,name,developer,publisher',
+                    'platforms:id,name', 'attributeValues.attribute:id,name,slug',
+                    'coverMedia', 'variants:id,product_id,status',
+                ])
+                ->orderByDesc('featured')
+                ->orderByDesc('published_at')
+                ->orderByDesc('id')
+                ->limit(12)
+                ->get()
+                ->map(fn (Product $product) => $this->data->product($product, $user))
+                ->values()
+                ->all();
         }
 
         $videoIds = collect(data_get($payload, 'videos.data', []))

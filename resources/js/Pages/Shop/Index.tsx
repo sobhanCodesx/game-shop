@@ -19,7 +19,7 @@ import type { Paginated, StorefrontProduct } from "../../types";
 interface Props {
     seo?: SeoData;
     products: Paginated<StorefrontProduct>;
-    filters: { q?: string; category?: string; sort?: string; trade?: string };
+    filters: { q?: string; category?: string; game?: string; sort?: string; trade?: string };
     tradeOnly: boolean;
     pageType?: "shop" | "offers";
 }

@@ -31,7 +31,7 @@ final class StudioPageDataService
             )
             : $this->build($studio, $channelsPage, $collectionsPage);
 
-        return $this->withLiveFollowers($payload);
+        return $this->withLiveState($payload);
     }
 
     private function build(Studio $studio, int $channelsPage, int $collectionsPage): array
@@ -95,6 +95,7 @@ final class StudioPageDataService
                 ->whereBelongsTo($studio)
                 ->whereIn('status', ['active', 'published'])
                 ->count(),
+            'store_games_count' => 0,
             'collections_count' => VideoPlaylist::query()
                 ->where(fn ($query) => $query
                     ->where('studio_id', $studio->id)
@@ -106,12 +107,13 @@ final class StudioPageDataService
         return [
             ...$this->seo($studio),
             'studio' => $studioData,
+            'storeGames' => [],
             'channels' => $channels,
             'collections' => $collections,
         ];
     }
 
-    private function withLiveFollowers(array $payload): array
+    private function withLiveState(array $payload): array
     {
         $ids = collect(data_get($payload, 'channels.data', []))
             ->pluck('id')
@@ -119,25 +121,58 @@ final class StudioPageDataService
             ->map(fn ($id) => (int) $id)
             ->values();
 
-        if ($ids->isEmpty()) {
+        if ($ids->isNotEmpty()) {
+            $counts = DB::table('game_subscriptions')
+                ->whereIn('game_id', $ids)
+                ->selectRaw('game_id, COUNT(*) as aggregate')
+                ->groupBy('game_id')
+                ->pluck('aggregate', 'game_id');
+
+            $payload['channels']['data'] = collect($payload['channels']['data'])
+                ->map(function (array $channel) use ($counts): array {
+                    $id = (int) ($channel['id'] ?? 0);
+
+                    return [
+                        ...$channel,
+                        'followers_count' => (int) ($counts[$id] ?? 0),
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
+        $studioId = (int) data_get($payload, 'studio.id', 0);
+        $payload['storeGames'] = [];
+        $payload['studio']['store_games_count'] = 0;
+
+        if (! $studioId) {
             return $payload;
         }
 
-        $counts = DB::table('game_subscriptions')
-            ->whereIn('game_id', $ids)
-            ->selectRaw('game_id, COUNT(*) as aggregate')
-            ->groupBy('game_id')
-            ->pluck('aggregate', 'game_id');
+        $storeGamesQuery = Game::query()
+            ->where('studio_id', $studioId)
+            ->whereIn('status', ['active', 'published'])
+            ->whereHas('products', fn ($query) => $query->publiclyVisible());
 
-        $payload['channels']['data'] = collect($payload['channels']['data'])
-            ->map(function (array $channel) use ($counts): array {
-                $id = (int) ($channel['id'] ?? 0);
-
-                return [
-                    ...$channel,
-                    'followers_count' => (int) ($counts[$id] ?? 0),
-                ];
-            })
+        $payload['studio']['store_games_count'] = (clone $storeGamesQuery)->count();
+        $payload['storeGames'] = $storeGamesQuery
+            ->with('platforms:id,name')
+            ->withCount(['products' => fn ($query) => $query->publiclyVisible()])
+            ->orderByDesc('products_count')
+            ->latest('id')
+            ->limit(12)
+            ->get()
+            ->map(fn (Game $game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'slug' => $game->slug,
+                'url' => route('channels.show', $game->slug, false).'#products',
+                'shop_url' => route('shop.index', ['game' => $game->slug], false),
+                'logo_url' => MediaStorage::url($game->cover),
+                'background_url' => MediaStorage::url($game->background),
+                'products_count' => (int) $game->products_count,
+                'platforms' => $game->platforms->pluck('name')->take(3)->values()->all(),
+            ])
             ->values()
             ->all();
 

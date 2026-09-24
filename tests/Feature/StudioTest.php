@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Game;
+use App\Models\Product;
 use App\Models\Studio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -93,6 +94,73 @@ class StudioTest extends TestCase
             ->component('Home')
             ->has('latestStudios', 10)
             ->where('latestStudios.0.id', $newestStudioId));
+    }
+
+    public function test_channel_page_exposes_only_public_products_for_its_game(): void
+    {
+        $game = Game::factory()->create(['name' => 'Store Game', 'slug' => 'store-game']);
+        $otherGame = Game::factory()->create();
+
+        $visible = Product::factory()->create([
+            'game_id' => $game->id,
+            'title' => 'نسخه قابل خرید',
+            'status' => 'published',
+            'visibility' => 'public',
+        ]);
+        Product::factory()->create([
+            'game_id' => $game->id,
+            'title' => 'نسخه پیش‌نویس',
+            'status' => 'draft',
+            'visibility' => 'public',
+        ]);
+        Product::factory()->create(['game_id' => $otherGame->id]);
+
+        $this->get(route('channels.show', $game))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Channels/Show')
+            ->where('productsCount', 1)
+            ->has('products', 1)
+            ->where('products.0.id', $visible->id)
+            ->where('products.0.title', 'نسخه قابل خرید'));
+
+        $this->get(route('shop.index', ['game' => $game->slug]))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Shop/Index')
+            ->where('filters.game', $game->slug)
+            ->has('products.data', 1)
+            ->where('products.data.0.id', $visible->id));
+    }
+
+    public function test_studio_page_exposes_only_games_that_have_public_products(): void
+    {
+        $studio = Studio::query()->create([
+            'name' => 'Store Studio',
+            'slug' => 'store-studio',
+            'status' => 'active',
+        ]);
+        $forSale = Game::factory()->create([
+            'studio_id' => $studio->id,
+            'name' => 'For Sale',
+            'slug' => 'for-sale',
+        ]);
+        $withoutSale = Game::factory()->create([
+            'studio_id' => $studio->id,
+            'name' => 'No Store Product',
+            'slug' => 'no-store-product',
+        ]);
+
+        Product::factory()->create(['game_id' => $forSale->id]);
+        Product::factory()->create([
+            'game_id' => $withoutSale->id,
+            'status' => 'draft',
+            'visibility' => 'public',
+        ]);
+
+        $this->get(route('studios.show', $studio))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Studios/Show')
+            ->where('studio.store_games_count', 1)
+            ->has('storeGames', 1)
+            ->where('storeGames.0.id', $forSale->id)
+            ->where('storeGames.0.products_count', 1)
+            ->where('storeGames.0.shop_url', route('shop.index', ['game' => $forSale->slug], false)));
     }
 
     public function test_channel_page_exposes_its_related_studio(): void

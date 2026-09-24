@@ -11,10 +11,12 @@ import {
     Radio,
     Radar,
     Store,
+    ShoppingBag,
     Users,
 } from "lucide-react";
 
 import FeedItem from "../../Components/Storefront/Feed/FeedItem";
+import ProductCard from "../../Components/Storefront/Product/ProductCard";
 import Seo, { type SeoData } from "../../Components/Seo";
 import Pagination from "../../Components/Storefront/Shared/Pagination";
 import RichText from "../../Components/Storefront/Shared/RichText";
@@ -24,6 +26,7 @@ import type {
     Paginated,
     SharedPageProps,
     StorefrontContent,
+    StorefrontProduct,
     FeedItemData,
 } from "../../types";
 
@@ -89,6 +92,8 @@ export default function ChannelShow({
     videos,
     playlists,
     feed,
+    products,
+    productsCount,
     storeInfo,
 }: {
     seo: SeoData;
@@ -96,6 +101,8 @@ export default function ChannelShow({
     videos: Paginated<StorefrontContent>;
     playlists: Playlist[];
     feed: FeedItemData[];
+    products: StorefrontProduct[];
+    productsCount: number;
     storeInfo: StoreInfo | null;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
@@ -370,11 +377,19 @@ export default function ChannelShow({
                                 فروشگاه‌ها
                             </a>
                         )}
+                        {products.length > 0 && (
+                            <a
+                                className="shrink-0 border-b-2 border-indigo-500 py-4"
+                                href="#products"
+                            >
+                                خرید بازی
+                            </a>
+                        )}
                         {feed.length > 0 && (
-                            <a className="shrink-0 border-b-2 border-indigo-500 py-4" href="#feed">فید کانال</a>
+                            <a className={`shrink-0 py-4 ${products.length ? "text-[var(--store-muted)] transition hover:text-[var(--store-text)]" : "border-b-2 border-indigo-500"}`} href="#feed">فید کانال</a>
                         )}
                         <a
-                            className={`shrink-0 py-4 ${feed.length ? "text-[var(--store-muted)] transition hover:text-[var(--store-text)]" : "border-b-2 border-indigo-500"}`}
+                            className={`shrink-0 py-4 ${feed.length || products.length ? "text-[var(--store-muted)] transition hover:text-[var(--store-text)]" : "border-b-2 border-indigo-500"}`}
                             href="#videos"
                         >
                             ویدیوها
@@ -394,6 +409,54 @@ export default function ChannelShow({
                             درباره
                         </a>
                     </nav>
+
+                    {products.length > 0 && (
+                        <section
+                            className="pn-deferred-zone relative mt-6 scroll-mt-24 overflow-hidden rounded-[28px] border border-indigo-500/20 bg-[radial-gradient(circle_at_100%_0%,rgba(99,102,241,.18),transparent_34%),radial-gradient(circle_at_0%_100%,rgba(168,85,247,.10),transparent_32%),var(--store-panel)] p-4 shadow-xl shadow-indigo-950/10 sm:p-6"
+                            id="products"
+                        >
+                            <div className="pointer-events-none absolute -left-16 -top-20 size-52 rounded-full bg-violet-500/10 blur-3xl" />
+                            <div className="relative mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                                <div className="flex items-start gap-3">
+                                    <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-indigo-400/20 bg-indigo-500/10 text-indigo-400 shadow-lg shadow-indigo-500/10">
+                                        <ShoppingBag size={21} />
+                                    </span>
+                                    <div>
+                                        <p className="text-[10px] font-black tracking-[0.18em] text-indigo-400">
+                                            PLAYNEXUS STORE
+                                        </p>
+                                        <h2 className="mt-1 text-xl font-black sm:text-2xl">
+                                            خرید {channel.name}
+                                        </h2>
+                                        <p className="mt-1.5 max-w-2xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm">
+                                            نسخه‌ها و گزینه‌های موجود این بازی را با قیمت و موجودی به‌روز ببین.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 self-start sm:self-auto">
+                                    <span className="rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-3 py-1.5 text-[11px] font-black text-[var(--store-muted)]">
+                                        {productsCount.toLocaleString("fa-IR")} محصول
+                                    </span>
+                                    <Link
+                                        className="rounded-full border border-indigo-400/20 bg-indigo-500/10 px-3 py-1.5 text-[11px] font-black text-indigo-400 transition hover:border-indigo-400/40 hover:bg-indigo-500/15"
+                                        href={`/shop?game=${encodeURIComponent(channel.slug)}`}
+                                    >
+                                        مشاهده همه
+                                    </Link>
+                                </div>
+                            </div>
+                            <div className="relative flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:pb-0 lg:grid-cols-4 xl:grid-cols-5">
+                                {products.map((product) => (
+                                    <div
+                                        className="w-[68vw] max-w-[250px] shrink-0 snap-start sm:w-auto sm:max-w-none"
+                                        key={product.id}
+                                    >
+                                        <ProductCard product={product} />
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
 
                     {feed.length > 0 && (
                         <section className="pn-deferred-zone scroll-mt-24 py-7 sm:py-9" id="feed">
