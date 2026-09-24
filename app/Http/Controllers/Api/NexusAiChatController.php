@@ -70,7 +70,9 @@ final class NexusAiChatController extends Controller
         }
 
         $latencyMs = (int) round((hrtime(true) - $startedAt) / 1_000_000);
-        $remaining = $usage->consume($inspection);
+        $remaining = ($result['consume_usage'] ?? true)
+            ? $usage->consume($inspection)
+            : ($inspection['remaining'] ?? null);
         $interaction = null;
 
         if ((bool) ($settings->all()['nexus_ai_collect_analytics'] ?? true)) {
@@ -91,6 +93,10 @@ final class NexusAiChatController extends Controller
             'model' => $result['model'] ?? null,
             'intent' => $result['intent'] ?? null,
             'fallback_count' => (int) ($result['fallback_count'] ?? 0),
+            'freshness_required' => (bool) ($result['freshness_required'] ?? false),
+            'freshness_verified' => (bool) ($result['freshness_verified'] ?? false),
+            'web_search_used' => (bool) ($result['web_search_used'] ?? false),
+            'web_search_model' => $result['web_search_model'] ?? null,
             'interaction_id' => $interaction?->id,
             'conversation_id' => $conversationId,
             'remaining_today' => $remaining,

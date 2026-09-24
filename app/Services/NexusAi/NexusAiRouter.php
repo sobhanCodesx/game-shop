@@ -18,9 +18,9 @@ final class NexusAiRouter
         private readonly NexusAiContextService $context,
         private readonly NexusAiKnowledgeService $knowledge,
         private readonly NexusAiIntentClassifier $intent,
+        private readonly NexusAiLiveWebSearchService $liveSearch,
         private readonly NexusAiSettings $settings,
-    ) {
-    }
+    ) {}
 
     public function chat(string $message, array $history): array
     {
@@ -36,7 +36,35 @@ final class NexusAiRouter
         $contextTerms = is_array($contextResult['terms'] ?? null) ? $contextResult['terms'] : [];
         $knowledge = $this->knowledge->promptContext();
         $intent = $this->intent->classify($message);
-        $messages = $this->messages($message, $history, $liveContext, $knowledge, $config, $intent);
+        $freshness = $this->liveSearch->resolve($message, $intent);
+
+        if (($freshness['required'] ?? false) && ! ($freshness['verified'] ?? false)) {
+            return [
+                'answer' => $this->liveSearch->unavailableAnswer($message),
+                'provider' => 'freshness_guard',
+                'model' => $freshness['model'] ?? null,
+                'intent' => $intent,
+                'context_terms' => $contextTerms,
+                'context_chars' => mb_strlen($liveContext) + mb_strlen($knowledge),
+                'fallback_count' => 0,
+                'freshness_required' => true,
+                'freshness_verified' => false,
+                'web_search_used' => true,
+                'web_search_error' => $freshness['error'] ?? 'unknown',
+                'consume_usage' => false,
+            ];
+        }
+
+        $webContext = (string) ($freshness['context'] ?? '');
+        $messages = $this->messages(
+            $message,
+            $history,
+            $liveContext,
+            $knowledge,
+            $webContext,
+            $config,
+            $intent,
+        );
         $attempted = [];
 
         foreach ($this->providers->ordered($freeFirst, $autopilot) as $provider) {
@@ -66,8 +94,13 @@ final class NexusAiRouter
                     'model' => $provider['settings']['model'] ?? null,
                     'intent' => $intent,
                     'context_terms' => $contextTerms,
-                    'context_chars' => mb_strlen($liveContext) + mb_strlen($knowledge),
+                    'context_chars' => mb_strlen($liveContext) + mb_strlen($knowledge) + mb_strlen($webContext),
                     'fallback_count' => max(0, count($attempted) - 1),
+                    'freshness_required' => (bool) ($freshness['required'] ?? false),
+                    'freshness_verified' => (bool) ($freshness['verified'] ?? false),
+                    'web_search_used' => (bool) ($freshness['required'] ?? false),
+                    'web_search_model' => $freshness['model'] ?? null,
+                    'web_sources' => $freshness['sources'] ?? [],
                 ];
             } catch (NexusAiProviderException $exception) {
                 $this->coolDown($key, $exception);
@@ -116,6 +149,7 @@ final class NexusAiRouter
         array $history,
         string $context,
         string $knowledge,
+        string $webContext,
         array $config,
         string $intent,
     ): array {
@@ -156,12 +190,21 @@ KNOWLEDGE ROUTING — CRITICAL
 - If a technical detail is not needed to answer the user's request, leave it out rather than padding the answer.
 - Avoid major story spoilers unless the user explicitly asks for them.
 
+FRESHNESS — CRITICAL
+- Current date is `CURRENT_DATE`. Never assume your training cutoff is current.
+- If LIVE WEB RESEARCH is present, it is the authoritative source for facts that can change over time. Never override it with older model memory.
+- For release dates, delays, patches, prices, availability, platform support, subscriptions, server status, player counts, current system requirements, current performance modes, roadmaps and recent news, use the live research when provided.
+- If live research does not verify a changing fact, explicitly say that detail is not verified. Do not fill the gap from memory.
+- Never present an old date, old roadmap, old price or old status as current merely because you remember it.
+
 WRITING
 - Prefer useful, concrete answers over filler.
 - Keep paragraphs short and readable on mobile.
 - Use clean Markdown for comparisons, builds, steps and short lists when it genuinely improves readability.
 - Do not repeat the user's question back to them.
 PROMPT;
+
+        $system = str_replace('CURRENT_DATE', now()->toDateString(), $system);
 
         if ($intent === 'recommendation') {
             $system .= "\nCURRENT TASK IS A GAME RECOMMENDATION. Give at least one concrete game recommendation immediately. Do not ask a follow-up question before giving the recommendation. Use the constraints already present in the user's message and make a best-effort pick. You may optionally end with one short refinement question after the recommendation if it would improve a second round.";
@@ -186,6 +229,10 @@ PROMPT;
 
         if ($context !== '') {
             $system .= "\n\n".$context;
+        }
+
+        if ($webContext !== '') {
+            $system .= "\n\nLIVE WEB RESEARCH — AUTHORITATIVE FOR CURRENT FACTS:\n".$webContext;
         }
 
         $messages = [['role' => 'system', 'content' => $system]];

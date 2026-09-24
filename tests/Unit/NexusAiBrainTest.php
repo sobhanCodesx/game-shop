@@ -4,13 +4,15 @@ namespace Tests\Unit;
 
 use App\Services\NexusAi\NexusAiIdentity;
 use App\Services\NexusAi\NexusAiIntentClassifier;
+use App\Services\NexusAi\NexusAiLiveWebSearchService;
+use App\Services\NexusAi\NexusAiProviderSettings;
 use Tests\TestCase;
 
 class NexusAiBrainTest extends TestCase
 {
     public function test_it_classifies_common_gaming_intents(): void
     {
-        $classifier = new NexusAiIntentClassifier();
+        $classifier = new NexusAiIntentClassifier;
 
         $this->assertSame('recommendation', $classifier->classify('یه بازی شبیه Hogwarts Legacy معرفی کن'));
         $this->assertSame('recommendation', $classifier->classify('یه بازی جهان باز خفن برای PS5 میخوام، اتمسفر و گرافیک برام مهمه'));
@@ -21,11 +23,26 @@ class NexusAiBrainTest extends TestCase
         $this->assertSame('performance', $classifier->classify('روی PS5 چند FPS اجرا میشه؟'));
     }
 
+    public function test_live_search_is_required_for_time_sensitive_gaming_facts(): void
+    {
+        $service = new NexusAiLiveWebSearchService(app(NexusAiProviderSettings::class));
+
+        $this->assertTrue($service->shouldSearch('تاریخ انتشار GTA VI کیه؟', 'release'));
+        $this->assertTrue($service->shouldSearch('آخرین آپدیت Elden Ring چی بوده؟', 'news'));
+        $this->assertTrue($service->shouldSearch('الان قیمت این بازی چنده؟', 'purchase_intent'));
+        $this->assertTrue($service->shouldSearch('این بازی روی PS5 میاد؟', 'platform'));
+        $this->assertTrue($service->shouldSearch('بعد از پچ جدید روی PS5 چند FPS میده؟', 'performance'));
+        $this->assertTrue($service->shouldSearch('GTA VI چند روز مونده؟', 'general'));
+
+        $this->assertFalse($service->shouldSearch('لور Ranni رو بدون اسپویل بگو', 'story_lore'));
+        $this->assertFalse($service->shouldSearch('قیمت این بازی توی PlayNexus چنده؟', 'purchase_intent'));
+    }
+
     public function test_visitor_identity_is_stable_and_does_not_store_raw_identifier(): void
     {
         config()->set('app.key', 'base64:test-secret-key');
 
-        $identity = new NexusAiIdentity();
+        $identity = new NexusAiIdentity;
         $visitorId = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
         $first = $identity->visitorHash($visitorId);
