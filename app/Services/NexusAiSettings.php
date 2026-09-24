@@ -13,7 +13,7 @@ class NexusAiSettings
     public const DEFAULTS = [
         'nexus_ai_enabled' => true,
         'nexus_ai_page_enabled' => true,
-        'nexus_ai_show_in_nav' => false,
+        'nexus_ai_show_in_nav' => true,
         'nexus_ai_title' => 'Nexus AI',
         'nexus_ai_description' => 'دستیار گیمینگ PlayNexus برای سؤال درباره بازی‌ها، اصطلاحات، راهنما و انتخاب بازی.',
         'nexus_ai_nav_label' => 'Nexus AI',

@@ -490,6 +490,36 @@ export default function NexusAI({
                                     }
                                 />
 
+                                <Toggle
+                                    checked={form.data.nexus_ai_show_in_nav}
+                                    description="در اپ اندروید، Nexus AI جای Game Radar را در منوی پایین می‌گیرد. با خاموش کردن این گزینه یا خود Nexus AI، Game Radar خودکار برمی‌گردد."
+                                    label="نمایش Nexus AI در منوی اپ اندروید"
+                                    onChange={(value) =>
+                                        form.setData(
+                                            "nexus_ai_show_in_nav",
+                                            value,
+                                        )
+                                    }
+                                />
+
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-bold text-slate-300">
+                                        نام Nexus AI در منوی اپ
+                                    </span>
+                                    <Input
+                                        value={form.data.nexus_ai_nav_label}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                "nexus_ai_nav_label",
+                                                event.target.value,
+                                            )
+                                        }
+                                    />
+                                    <small className="mt-1.5 block text-[10px] leading-5 text-slate-500">
+                                        این عنوان فقط وقتی Nexus AI در منوی اپ فعال باشد نمایش داده می‌شود.
+                                    </small>
+                                </label>
+
                                 <div>
                                     <span className="mb-2 block text-xs font-bold text-slate-300">
                                         میزان جزئیات پاسخ
@@ -1247,17 +1277,6 @@ export default function NexusAI({
                                         form.setData(
                                             "nexus_ai_welcome_text",
                                             event.target.value,
-                                        )
-                                    }
-                                />
-                                <Toggle
-                                    checked={form.data.nexus_ai_show_in_nav}
-                                    description="لینک Nexus AI در منوی اصلی هم دیده شود."
-                                    label="نمایش در منو"
-                                    onChange={(value) =>
-                                        form.setData(
-                                            "nexus_ai_show_in_nav",
-                                            value,
                                         )
                                     }
                                 />
