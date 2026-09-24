@@ -97,6 +97,7 @@ final class NexusAiChatController extends Controller
             'freshness_verified' => (bool) ($result['freshness_verified'] ?? false),
             'web_search_used' => (bool) ($result['web_search_used'] ?? false),
             'web_search_model' => $result['web_search_model'] ?? null,
+            'web_search_error' => $result['web_search_error'] ?? null,
             'interaction_id' => $interaction?->id,
             'conversation_id' => $conversationId,
             'remaining_today' => $remaining,
