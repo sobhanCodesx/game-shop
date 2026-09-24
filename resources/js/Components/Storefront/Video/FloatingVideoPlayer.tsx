@@ -21,6 +21,7 @@ import {
     saveVideoProgress,
     useVideoProgress,
 } from "../../../lib/videoProgress";
+import { trackProductEvent } from "../../../lib/productAnalytics";
 import { useVideoAmbientColors } from "./useVideoAmbientColors";
 
 const NEON_PLAYBACK_SECONDS = 10;
@@ -46,6 +47,7 @@ export default function FloatingVideoPlayer({
     const dragRef = useRef({ pointerX: 0, pointerY: 0, x: 0, y: 0 });
     const resumeAppliedRef = useRef(false);
     const lastSavedSecondRef = useRef(-1);
+    const analyticsStartedRef = useRef(false);
     const neonPlaybackRef = useRef({
         accumulated: 0,
         lastMediaTime: null as number | null,
@@ -71,6 +73,7 @@ export default function FloatingVideoPlayer({
     useEffect(() => {
         resumeAppliedRef.current = false;
         lastSavedSecondRef.current = -1;
+        analyticsStartedRef.current = false;
         neonPlaybackRef.current = {
             accumulated: 0,
             lastMediaTime: null,
@@ -297,6 +300,11 @@ export default function FloatingVideoPlayer({
                                 beginNeonFade();
                             }
                             captureProgress(true, true);
+                            trackProductEvent("video_complete", {
+                                video_id: content.id,
+                                video_title: content.title,
+                                duration_seconds: content.duration,
+                            });
                         }}
                         onError={() => {
                             neonPlaybackRef.current.lastMediaTime = null;
@@ -318,6 +326,15 @@ export default function FloatingVideoPlayer({
                         onPlay={() => {
                             setHasStarted(true);
                             setIsClosed(false);
+
+                            if (!analyticsStartedRef.current) {
+                                analyticsStartedRef.current = true;
+                                trackProductEvent("video_play", {
+                                    video_id: content.id,
+                                    video_title: content.title,
+                                    duration_seconds: content.duration,
+                                });
+                            }
 
                             if (!neonPlaybackRef.current.fadeStarted) {
                                 neonPlaybackRef.current.seeking = false;

@@ -55,6 +55,11 @@ return [
         'host' => env('POSTHOG_HOST', 'https://us.i.posthog.com'),
     ],
 
+    'amplitude' => [
+        // Amplitude browser API keys are public project identifiers, not secrets.
+        'api_key' => env('AMPLITUDE_API_KEY'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

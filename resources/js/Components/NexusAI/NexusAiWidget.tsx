@@ -21,6 +21,7 @@ import {
     useState,
     type KeyboardEvent,
 } from "react";
+import { trackProductEvent } from "../../lib/productAnalytics";
 
 type NexusAiConfig = {
     enabled: boolean;
@@ -281,6 +282,11 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
 
     useEffect(() => {
         if (!open) return;
+
+        trackProductEvent("ai_chat_open", {
+            source:
+                window.location.pathname === "/nexus-ai" ? "page" : "widget",
+        });
         window.setTimeout(() => inputRef.current?.focus(), 120);
     }, [open]);
 
@@ -398,6 +404,13 @@ export default function NexusAiWidget({ config }: { config: NexusAiConfig }) {
         setInput("");
         setBusy(true);
         setMessages((current) => [...current, { role: "user", content: text }]);
+        trackProductEvent("ai_message_sent", {
+            source:
+                window.location.pathname === "/nexus-ai" ? "page" : "widget",
+            message_length: text.length,
+            is_followup: history.some((item) => item.role === "assistant"),
+            history_messages: history.length,
+        });
 
         try {
             const response = await fetch("/api/nexus-ai/chat", {

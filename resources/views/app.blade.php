@@ -92,6 +92,13 @@
         <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
         <link rel="apple-touch-icon" href="{{ asset('logo.png') }}">
 
+        <script>
+            window.__PLAYNEXUS_ANALYTICS__ = {
+                amplitudeApiKey: @json(config('services.amplitude.api_key')),
+                environment: @json(app()->environment()),
+            };
+        </script>
+
         @viteReactRefresh
         @vite('resources/js/app.tsx')
         @inertiaHead
@@ -131,6 +138,7 @@
                     app_surface: 'playnexus-web',
                     environment: 'production',
                 });
+                window.dispatchEvent(new Event('playnexus:posthog-ready'));
                     };
 
                     const schedulePostHog = () => {

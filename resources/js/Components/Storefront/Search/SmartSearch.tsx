@@ -18,6 +18,7 @@ import {
     type FormEvent,
     type KeyboardEvent,
 } from "react";
+import { trackSearch } from "../../../lib/productAnalytics";
 
 export interface SearchSuggestion {
     id: string;
@@ -120,6 +121,16 @@ export default function SmartSearch({
     }, [query]);
 
     const navigate = (url: string) => {
+        const matchedSuggestion = suggestions.find(
+            (suggestion) => suggestion.url === url,
+        );
+        trackSearch(query, {
+            source: "smart_search",
+            destination_type:
+                matchedSuggestion?.kind ??
+                (url.startsWith("/search") ? "results_page" : "unknown"),
+        });
+
         setOpen(false);
         onNavigate?.();
         router.visit(url);

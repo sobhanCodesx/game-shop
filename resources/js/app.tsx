@@ -18,6 +18,12 @@ import {
     notifyNativeAuthState,
     notifyNativeNavigation,
 } from "./lib/nativeBridge";
+import {
+    initializeProductAnalytics,
+    setProductAnalyticsUser,
+    trackProductEvent,
+    trackProductPageView,
+} from "./lib/productAnalytics";
 
 if ("serviceWorker" in navigator) {
     if (import.meta.env.PROD) {
@@ -171,6 +177,7 @@ const resolveInertiaPage = createInertiaPageResolver(
 let currentNativeUserId: number | null = null;
 let currentNativeUrl = window.location.pathname + window.location.search;
 let nativeSyncTimers: number[] = [];
+let productAnalyticsBootstrapped = false;
 
 const syncNativeBridge = (): void => {
     notifyNativeAuthState(currentNativeUserId);
@@ -206,7 +213,22 @@ document.addEventListener("visibilitychange", () => {
 
 router.on("navigate", (event) => {
     const pageProps = event.detail.page.props as NativePageProps;
-    updateNativeBridge(pageProps.auth?.user?.id ?? null, event.detail.page.url);
+    const nextUserId = pageProps.auth?.user?.id ?? null;
+    const previousUserId = currentNativeUserId;
+
+    updateNativeBridge(nextUserId, event.detail.page.url);
+
+    if (productAnalyticsBootstrapped) {
+        setProductAnalyticsUser(nextUserId);
+
+        if (previousUserId === null && nextUserId !== null) {
+            trackProductEvent("login", {
+                auth_surface: "web",
+            });
+        }
+
+        trackProductPageView(event.detail.page.url);
+    }
 });
 
 createInertiaApp({
@@ -215,10 +237,12 @@ createInertiaApp({
     resolve: resolveInertiaPage,
     setup({ el, App, props }) {
         const pageProps = props.initialPage.props as NativePageProps;
-        updateNativeBridge(
-            pageProps.auth?.user?.id ?? null,
-            props.initialPage.url,
-        );
+        const initialUserId = pageProps.auth?.user?.id ?? null;
+
+        updateNativeBridge(initialUserId, props.initialPage.url);
+        initializeProductAnalytics(initialUserId);
+        trackProductPageView(props.initialPage.url);
+        productAnalyticsBootstrapped = true;
 
         const application = (
             <>
