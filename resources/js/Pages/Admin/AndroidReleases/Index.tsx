@@ -319,7 +319,7 @@ export default function AndroidReleaseIndex({
         >
             <Head title="ریلیز نسخه اندروید" />
 
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+            <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div>
                     <strong className="block text-sm text-emerald-300">
                         صفحه عمومی اندروید آماده مدیریت است
@@ -328,8 +328,8 @@ export default function AndroidReleaseIndex({
                         محتوای تبلیغاتی، مدیا، SEO و نسخه‌ها در یک پنل
                     </span>
                 </div>
-                <a href="/android" target="_blank" rel="noreferrer">
-                    <Button size="sm" variant="secondary">
+                <a className="w-full sm:w-auto" href="/android" target="_blank" rel="noreferrer">
+                    <Button className="w-full sm:w-auto" size="sm" variant="secondary">
                         <ExternalLink size={15} />
                         مشاهده /android
                     </Button>
@@ -512,7 +512,7 @@ export default function AndroidReleaseIndex({
                 variant="secondary"
             >
                 <Card.Content className="space-y-5 p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="font-black text-white">
                                 محتوای لندینگ /android
@@ -522,6 +522,7 @@ export default function AndroidReleaseIndex({
                             </p>
                         </div>
                         <Button
+                            className="w-full sm:w-auto"
                             isDisabled={pageBusy}
                             onPress={savePage}
                             variant="primary"
@@ -706,6 +707,7 @@ export default function AndroidReleaseIndex({
                             />
                         </div>
                         <Button
+                            className="w-full lg:w-auto"
                             isDisabled={!mediaFile || mediaBusy}
                             onPress={uploadMedia}
                             variant="primary"
@@ -822,7 +824,88 @@ export default function AndroidReleaseIndex({
                         </div>
                         <FileArchive className="text-slate-600" size={21} />
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className="space-y-3 p-4 md:hidden">
+                        {releases.map((release) => (
+                            <article
+                                className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4"
+                                key={release.id}
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <strong className="text-base text-white">
+                                                v{release.version}
+                                            </strong>
+                                            {release.is_active && (
+                                                <Chip color="success" size="sm">
+                                                    فعال
+                                                </Chip>
+                                            )}
+                                        </div>
+                                        <p className="mt-1 text-[11px] text-slate-500">
+                                            Build{" "}
+                                            {release.version_code.toLocaleString("fa-IR")}{" "}
+                                            • {formatBytes(release.file_size)}
+                                        </p>
+                                    </div>
+                                    <a
+                                        aria-label={"دانلود نسخه " + release.version}
+                                        className="grid size-10 shrink-0 place-items-center rounded-xl border border-slate-800 text-cyan-400"
+                                        href={release.download_url}
+                                    >
+                                        <Download size={16} />
+                                    </a>
+                                </div>
+
+                                <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
+                                    <div className="rounded-xl bg-slate-900/70 p-3">
+                                        <span className="block text-slate-600">منتشرکننده</span>
+                                        <strong className="mt-1 block truncate text-slate-300">
+                                            {release.released_by_name ?? "—"}
+                                        </strong>
+                                    </div>
+                                    <div className="rounded-xl bg-slate-900/70 p-3">
+                                        <span className="block text-slate-600">زمان انتشار</span>
+                                        <strong className="mt-1 block text-slate-300">
+                                            {release.released_at
+                                                ? new Date(release.released_at).toLocaleDateString("fa-IR")
+                                                : "—"}
+                                        </strong>
+                                    </div>
+                                </div>
+
+                                <p
+                                    className="mt-3 truncate rounded-xl bg-slate-900/50 p-3 text-[11px] text-slate-400"
+                                    dir="ltr"
+                                    title={release.file_name}
+                                >
+                                    {release.file_name}
+                                </p>
+
+                                {release.release_notes && (
+                                    <p className="mt-3 line-clamp-3 text-xs leading-6 text-slate-500">
+                                        {release.release_notes}
+                                    </p>
+                                )}
+
+                                <a
+                                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-3 py-2.5 text-xs font-black text-cyan-300"
+                                    href={release.download_url}
+                                >
+                                    <Download size={15} />
+                                    دانلود APK
+                                </a>
+                            </article>
+                        ))}
+
+                        {releases.length === 0 && (
+                            <div className="rounded-2xl border border-dashed border-slate-800 p-8 text-center text-xs text-slate-500">
+                                هنوز APK منتشر نشده است.
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="hidden overflow-x-auto md:block">
                         <table className="w-full min-w-[920px] text-right text-sm">
                             <thead className="bg-slate-950/40 text-xs text-slate-500">
                                 <tr>

@@ -129,25 +129,25 @@ export default function AndroidAppIndex({
                         <div className="absolute -bottom-32 left-1/4 size-[32rem] rounded-full bg-indigo-500/10 blur-[120px]" />
                     </div>
 
-                    <div className="relative mx-auto grid min-h-[720px] max-w-[1500px] items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.03fr_.97fr] lg:px-10 lg:py-20">
+                    <div className="relative mx-auto grid max-w-[1500px] items-center gap-8 px-4 py-8 sm:gap-10 sm:px-6 sm:py-12 lg:min-h-[720px] lg:grid-cols-[1.03fr_.97fr] lg:gap-12 lg:px-10 lg:py-20">
                         <div>
                             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[11px] font-black tracking-[.14em] text-emerald-400">
                                 <Sparkles size={13} />
                                 {page.eyebrow}
                             </div>
 
-                            <h1 className="max-w-4xl text-4xl font-black leading-[1.25] tracking-tight sm:text-5xl lg:text-6xl">
+                            <h1 className="max-w-4xl text-3xl font-black leading-[1.35] tracking-tight sm:text-5xl sm:leading-[1.25] lg:text-6xl">
                                 {page.hero_title}
                             </h1>
 
-                            <p className="mt-6 max-w-2xl text-sm leading-8 text-[var(--store-muted)] sm:text-base">
+                            <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--store-muted)] sm:mt-6 sm:text-base sm:leading-8">
                                 {page.hero_description}
                             </p>
 
-                            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                            <div className="mt-6 grid gap-3 sm:mt-8 sm:flex sm:items-center">
                                 {latest ? (
                                     <a
-                                        className="group inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-emerald-400 px-6 py-3 text-sm font-black text-slate-950 shadow-xl shadow-emerald-950/20 transition hover:-translate-y-0.5 hover:bg-emerald-300"
+                                        className="group inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-black text-slate-950 shadow-xl shadow-emerald-950/20 transition hover:-translate-y-0.5 hover:bg-emerald-300 sm:w-auto sm:px-6"
                                         href={latest.download_url}
                                     >
                                         <span className="grid size-9 place-items-center rounded-xl bg-slate-950 text-white">
@@ -170,7 +170,7 @@ export default function AndroidAppIndex({
                                 )}
 
                                 <a
-                                    className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] px-5 text-sm font-black transition hover:border-emerald-400/30 hover:text-emerald-400"
+                                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] px-5 text-sm font-black transition hover:border-emerald-400/30 hover:text-emerald-400 sm:min-h-14 sm:w-auto"
                                     href="#versions"
                                 >
                                     <History size={17} />
@@ -179,7 +179,7 @@ export default function AndroidAppIndex({
                             </div>
 
                             {latest && (
-                                <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--store-muted)]">
+                                <div className="mt-5 grid grid-cols-2 gap-2 text-[11px] text-[var(--store-muted)] sm:mt-6 sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-2 sm:text-xs">
                                     <span className="inline-flex items-center gap-1.5">
                                         <ShieldCheck
                                             className="text-emerald-400"
@@ -201,9 +201,9 @@ export default function AndroidAppIndex({
                             )}
                         </div>
 
-                        <div className="relative mx-auto w-full max-w-[620px]">
+                        <div className="relative mx-auto w-full max-w-[420px] sm:max-w-[520px] lg:max-w-[620px]">
                             <div className="absolute -inset-6 rounded-[3rem] bg-gradient-to-br from-emerald-500/10 via-transparent to-indigo-500/10 blur-2xl" />
-                            <div className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-slate-950 p-3 shadow-2xl shadow-black/30">
+                            <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950 p-2 shadow-2xl shadow-black/30 sm:rounded-[2.2rem] sm:p-3">
                                 {heroMedia?.url ? (
                                     heroMedia.type === "video" ? (
                                         <div className="relative aspect-[4/5] overflow-hidden rounded-[1.7rem] bg-black">
@@ -254,11 +254,11 @@ export default function AndroidAppIndex({
                     </div>
                 </section>
 
-                <section className="pn-deferred-zone mx-auto max-w-[1500px] px-4 py-14 sm:px-6 lg:px-10 lg:py-20">
-                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                <section className="pn-deferred-zone mx-auto max-w-[1500px] px-4 py-10 sm:px-6 sm:py-14 lg:px-10 lg:py-20">
+                    <div className="grid gap-3 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
                         {features.map(({ icon: Icon, title, description }) => (
                             <article
-                                className="rounded-[1.7rem] border border-[var(--store-border)] bg-[var(--store-surface)] p-5 transition hover:-translate-y-1 hover:border-emerald-400/20"
+                                className="rounded-[1.45rem] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 transition hover:-translate-y-1 hover:border-emerald-400/20 sm:rounded-[1.7rem] sm:p-5"
                                 key={title}
                             >
                                 <div className="grid size-11 place-items-center rounded-2xl bg-emerald-400/10 text-emerald-400">
@@ -277,7 +277,7 @@ export default function AndroidAppIndex({
 
                 {page.media.length > 0 && (
                     <section className="pn-deferred-zone border-y border-[var(--store-border)] bg-[var(--store-surface)]/40">
-                        <div className="mx-auto max-w-[1500px] px-4 py-14 sm:px-6 lg:px-10 lg:py-20">
+                        <div className="mx-auto max-w-[1500px] px-4 py-10 sm:px-6 sm:py-14 lg:px-10 lg:py-20">
                             <div className="max-w-3xl">
                                 <span className="text-xs font-black tracking-[.12em] text-emerald-400">
                                     APP PREVIEW
@@ -290,10 +290,10 @@ export default function AndroidAppIndex({
                                 </p>
                             </div>
 
-                            <div className="mt-8 flex snap-x gap-4 overflow-x-auto pb-4">
+                            <div className="-mx-4 mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:mt-8 sm:gap-4 sm:px-0 sm:pb-4">
                                 {page.media.map((item) => (
                                     <figure
-                                        className="min-w-[78vw] snap-center overflow-hidden rounded-[1.8rem] border border-[var(--store-border)] bg-slate-950 sm:min-w-[420px] lg:min-w-[520px]"
+                                        className="min-w-[86vw] max-w-[420px] snap-center overflow-hidden rounded-[1.45rem] border border-[var(--store-border)] bg-slate-950 sm:min-w-[420px] sm:rounded-[1.8rem] lg:min-w-[520px] lg:max-w-none"
                                         key={item.id}
                                     >
                                         {item.type === "video" ? (
@@ -331,10 +331,10 @@ export default function AndroidAppIndex({
                 )}
 
                 <section
-                    className="pn-deferred-zone mx-auto max-w-[1500px] px-4 py-14 sm:px-6 lg:px-10 lg:py-20"
+                    className="pn-deferred-zone mx-auto max-w-[1500px] px-4 py-10 sm:px-6 sm:py-14 lg:px-10 lg:py-20"
                     id="versions"
                 >
-                    <div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr]">
+                    <div className="grid gap-7 lg:grid-cols-[.8fr_1.2fr] lg:gap-10">
                         <div>
                             <span className="text-xs font-black tracking-[.12em] text-indigo-400">
                                 RELEASE HISTORY
@@ -364,7 +364,7 @@ export default function AndroidAppIndex({
                                 </p>
                                 {latest?.checksum_sha256 && (
                                     <code
-                                        className="mt-3 block overflow-hidden text-ellipsis whitespace-nowrap rounded-xl bg-black/20 p-3 text-[10px]"
+                                        className="mt-3 block break-all rounded-xl bg-black/20 p-3 text-[10px] leading-5 sm:overflow-hidden sm:text-ellipsis sm:whitespace-nowrap"
                                         dir="ltr"
                                         title={latest.checksum_sha256}
                                     >
@@ -377,10 +377,10 @@ export default function AndroidAppIndex({
                         <div className="space-y-3">
                             {releases.map((release) => (
                                 <article
-                                    className="rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5"
+                                    className="rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:p-5"
                                     key={release.id}
                                 >
-                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
                                         <div className="flex items-center gap-3">
                                             <div
                                                 className={
@@ -424,7 +424,7 @@ export default function AndroidAppIndex({
                                                 "دانلود نسخه " +
                                                 release.version
                                             }
-                                            className="inline-flex items-center gap-2 rounded-xl border border-[var(--store-border)] px-3 py-2 text-xs font-black transition hover:border-emerald-400/30 hover:text-emerald-400"
+                                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--store-border)] px-3 py-2.5 text-xs font-black transition hover:border-emerald-400/30 hover:text-emerald-400 sm:w-auto sm:py-2"
                                             href={release.download_url}
                                         >
                                             <Download size={14} />
@@ -449,7 +449,7 @@ export default function AndroidAppIndex({
                 </section>
 
                 <section className="pn-deferred-zone border-t border-[var(--store-border)] bg-slate-950 text-white">
-                    <div className="mx-auto grid max-w-[1500px] gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center lg:px-10 lg:py-16">
+                    <div className="mx-auto grid max-w-[1500px] gap-6 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[1fr_auto] lg:items-center lg:gap-8 lg:px-10 lg:py-16">
                         <div>
                             <div className="inline-flex items-center gap-2 text-xs font-black text-emerald-300">
                                 <Gamepad2 size={15} />
@@ -467,7 +467,7 @@ export default function AndroidAppIndex({
 
                         {latest && (
                             <a
-                                className="inline-flex min-h-14 items-center justify-center gap-3 rounded-2xl bg-white px-6 text-sm font-black text-slate-950 transition hover:bg-emerald-300"
+                                className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-6 text-sm font-black text-slate-950 transition hover:bg-emerald-300 lg:w-auto"
                                 href={latest.download_url}
                             >
                                 <Download size={18} />
