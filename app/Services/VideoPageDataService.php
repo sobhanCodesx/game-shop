@@ -289,9 +289,15 @@ final class VideoPageDataService
                         'name' => $content->title,
                         'description' => $description,
                         'url' => $canonical,
+                        'mainEntityOfPage' => $canonical,
                         'uploadDate' => $content->published_at?->toISOString(),
+                        'dateModified' => $content->updated_at?->toISOString(),
                         'inLanguage' => $locale,
                         'publisher' => ['@id' => $organizationId],
+                        'potentialAction' => [
+                            '@type' => 'WatchAction',
+                            'target' => $canonical,
+                        ],
                         'interactionStatistic' => [
                             '@type' => 'InteractionCounter',
                             'interactionType' => ['@type' => 'WatchAction'],

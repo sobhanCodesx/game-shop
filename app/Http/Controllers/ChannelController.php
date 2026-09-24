@@ -6,12 +6,10 @@ use App\Models\Game;
 use App\Models\SocialContent;
 use App\Models\VideoPlaylist;
 use App\Services\ChannelPageDataService;
-use App\Services\FeedService;
 use App\Services\FollowedGameWatchService;
 use App\Services\GameRadarService;
 use App\Services\MediaStorage;
 use App\Services\PlaylistPageDataService;
-use App\Services\StorefrontDataService;
 use App\Support\RichText;
 use App\Support\Seo;
 use Illuminate\Http\Request;
@@ -35,9 +33,14 @@ class ChannelController extends Controller
         $channel['watch'] = $watch->status($game, (bool) $channel['is_subscribed']);
 
         $storeInfo = $radar->storeDataForGame($game);
-        $canonical = route('channels.show', $game->slug);
+        $pageNumber = max(1, $request->integer('page', 1));
+        $canonical = $pageNumber > 1
+            ? route('channels.show', ['game' => $game->slug, 'page' => $pageNumber])
+            : route('channels.show', $game->slug);
         $description = Str::limit(
-            $channel['description'] ?: "ویدیوها، کالکشن‌ها و تازه‌ترین محتوای {$game->name} در PlayNexus.",
+            $pageNumber > 1
+                ? "صفحه {$pageNumber} کانال {$game->name}؛ ویدیوها، کالکشن‌ها و تازه‌ترین محتوای این بازی در PlayNexus."
+                : ($channel['description'] ?: "ویدیوها، کالکشن‌ها و تازه‌ترین محتوای {$game->name} در PlayNexus."),
             160,
             '…',
         );
@@ -45,10 +48,12 @@ class ChannelController extends Controller
 
         return Inertia::render('Channels/Show', [
             ...Seo::page([
-                'title' => "کانال {$game->name}",
+                'title' => $pageNumber > 1 ? "کانال {$game->name} - صفحه {$pageNumber}" : "کانال {$game->name}",
                 'description' => $description,
                 'canonical' => $canonical,
-                'robots' => 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+                'robots' => $pageNumber === 1 || collect(data_get($payload, 'videos.data', []))->isNotEmpty()
+                    ? 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+                    : 'noindex, follow',
                 'type' => 'profile',
                 'image' => $image,
                 'imageAlt' => "کانال {$game->name}",
@@ -87,6 +92,18 @@ class ChannelController extends Controller
                                     : ['@type' => 'ListItem', 'position' => 2, 'name' => 'ویدیوها', 'item' => route('videos.index')],
                                 ['@type' => 'ListItem', 'position' => 3, 'name' => $game->name, 'item' => $canonical],
                             ],
+                        ],
+                        [
+                            '@type' => 'ItemList',
+                            '@id' => $canonical.'#videos',
+                            'name' => $pageNumber > 1 ? "ویدیوهای {$game->name} - صفحه {$pageNumber}" : "ویدیوهای {$game->name}",
+                            'numberOfItems' => count(data_get($payload, 'videos.data', [])),
+                            'itemListElement' => collect(data_get($payload, 'videos.data', []))->values()->map(fn (array $video, int $index) => [
+                                '@type' => 'ListItem',
+                                'position' => $index + 1,
+                                'name' => $video['title'],
+                                'url' => url($video['url']),
+                            ])->all(),
                         ],
                     ],
                 ],

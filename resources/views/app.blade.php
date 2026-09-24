@@ -154,6 +154,31 @@
         @endif
     </head>
     <body class="antialiased">
+        @if (request()->is('videos/*') && filled(data_get($page, 'props.seo.video.url')))
+            <noscript>
+                <main style="max-width: 1120px; margin: 0 auto; padding: 24px; color: #f8fafc;">
+                    <article>
+                        <video
+                            controls
+                            playsinline
+                            preload="metadata"
+                            poster="{{ data_get($page, 'props.content.thumbnail_url') }}"
+                            style="display: block; width: 100%; height: auto; border-radius: 24px; background: #000;"
+                            title="{{ data_get($page, 'props.content.title') }}"
+                        >
+                            <source
+                                src="{{ data_get($page, 'props.seo.video.url') }}"
+                                @if (filled(data_get($page, 'props.seo.video.type'))) type="{{ data_get($page, 'props.seo.video.type') }}" @endif
+                            >
+                        </video>
+                        <h1 style="margin-top: 20px; font-size: 1.5rem;">{{ data_get($page, 'props.content.title') }}</h1>
+                        @if (filled(data_get($page, 'props.content.excerpt')))
+                            <p style="line-height: 2;">{{ data_get($page, 'props.content.excerpt') }}</p>
+                        @endif
+                    </article>
+                </main>
+            </noscript>
+        @endif
         @inertia
     </body>
 </html>

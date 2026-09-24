@@ -6,8 +6,8 @@ use App\Models\Category;
 use App\Models\Game;
 use App\Models\HomeSetting;
 use App\Models\SocialContent;
-use App\Models\User;
 use App\Models\Studio;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -202,5 +202,98 @@ class SearchPerformanceSeoTest extends TestCase
                     'seo.description',
                     fn (string $description) => mb_strlen($description) <= 149,
                 ));
+    }
+
+    public function test_video_watch_page_exposes_server_fallback_and_enriched_video_schema(): void
+    {
+        $game = Game::factory()->create([
+            'name' => 'SEO Test Game',
+            'slug' => 'seo-test-game',
+            'status' => 'active',
+        ]);
+        $video = SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'video',
+            'title' => 'ویدیوی تست ایندکس',
+            'slug' => 'video-indexing-test',
+            'excerpt' => 'توضیح اختصاصی برای صفحه تماشای ویدیو.',
+            'thumbnail' => 'videos/thumbnails/indexing-test.webp',
+            'video_path' => 'videos/indexing-test.mp4',
+            'video_mime' => 'video/mp4',
+            'duration' => 125,
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+        $canonical = route('content.show', ['type' => 'videos', 'content' => $video->slug]);
+
+        $response = $this->get($canonical);
+
+        $response->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Content/Show')
+                ->where('seo.canonical', $canonical)
+                ->where('seo.video.url', 'http://localhost/storage/videos/indexing-test.mp4')
+                ->where('seo.structuredData.@graph.1.mainEntityOfPage', $canonical)
+                ->where('seo.structuredData.@graph.1.potentialAction.@type', 'WatchAction')
+                ->where('seo.structuredData.@graph.1.potentialAction.target', $canonical)
+                ->where('seo.structuredData.@graph.1.dateModified', fn ($value) => filled($value)));
+
+        $response
+            ->assertSee('<noscript>', false)
+            ->assertSee('src="http://localhost/storage/videos/indexing-test.mp4"', false)
+            ->assertSee('poster="http://localhost/storage/videos/thumbnails/indexing-test.webp"', false);
+    }
+
+    public function test_video_listing_pagination_has_self_canonical_and_stays_indexable(): void
+    {
+        for ($index = 1; $index <= 19; $index++) {
+            SocialContent::query()->create([
+                'type' => 'video',
+                'title' => "ویدیوی صفحه بندی {$index}",
+                'slug' => "paginated-video-{$index}",
+                'status' => 'published',
+                'published_at' => now()->subMinutes($index),
+            ]);
+        }
+
+        $canonical = route('videos.index', ['page' => 2]);
+
+        $this->get($canonical)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('seo.canonical', $canonical)
+                ->where('seo.robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1')
+                ->where('seo.structuredData.@graph.0.url', $canonical)
+                ->where('seo.title', 'ویدیوهای گیمینگ؛ صفحه 2 - پلی نکسوس'));
+    }
+
+    public function test_channel_pagination_has_self_canonical_and_video_item_list(): void
+    {
+        $game = Game::factory()->create([
+            'name' => 'Paged Game',
+            'slug' => 'paged-game',
+            'status' => 'active',
+        ]);
+
+        for ($index = 1; $index <= 19; $index++) {
+            SocialContent::query()->create([
+                'game_id' => $game->id,
+                'type' => 'video',
+                'title' => "ویدیوی کانال {$index}",
+                'slug' => "channel-video-{$index}",
+                'status' => 'published',
+                'published_at' => now()->subMinutes($index),
+            ]);
+        }
+
+        $canonical = route('channels.show', ['game' => $game->slug, 'page' => 2]);
+
+        $this->get($canonical)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('seo.canonical', $canonical)
+                ->where('seo.structuredData.@graph.2.@type', 'ItemList')
+                ->where('seo.structuredData.@graph.2.numberOfItems', 1)
+                ->where('seo.structuredData.@graph.2.itemListElement.0.url', 'http://localhost/videos/channel-video-19'));
     }
 }

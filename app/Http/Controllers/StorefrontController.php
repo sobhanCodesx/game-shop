@@ -382,16 +382,25 @@ class StorefrontController extends Controller
         $videos = SocialContent::query()->published()->where('type', 'video')
             ->with(['game:id,name,slug,cover', 'media'])
             ->latest('published_at')->paginate(18)->through(fn ($item) => $data->content($item));
-        $canonical = route('videos.index');
-        $description = 'تماشای تازه‌ترین تریلرها، گیم‌پلی‌ها، بررسی‌ها و ویدیوهای دنیای بازی در PlayNexus.';
+        $pageNumber = max(1, $request->integer('page', 1));
+        $canonical = $pageNumber > 1
+            ? route('videos.index', ['page' => $pageNumber])
+            : route('videos.index');
+        $description = $pageNumber > 1
+            ? "صفحه {$pageNumber} ویدیوهای گیمینگ PlayNexus؛ تریلرها، گیم‌پلی‌ها، بررسی‌ها و ویدیوهای تازه دنیای بازی."
+            : 'تماشای تازه‌ترین تریلرها، گیم‌پلی‌ها، بررسی‌ها و ویدیوهای دنیای بازی در PlayNexus.';
         $firstVideo = collect($videos->items())->first();
 
         return Inertia::render('Videos/Index', [
             ...Seo::page([
-                'title' => 'ویدیوهای گیمینگ؛ تریلر، گیم‌پلی و بررسی',
+                'title' => $pageNumber > 1
+                    ? "ویدیوهای گیمینگ؛ صفحه {$pageNumber}"
+                    : 'ویدیوهای گیمینگ؛ تریلر، گیم‌پلی و بررسی',
                 'description' => $description,
                 'canonical' => $canonical,
-                'robots' => $request->filled('page') ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+                'robots' => $videos->isNotEmpty()
+                    ? 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+                    : 'noindex, follow',
                 'type' => 'website',
                 'image' => url(data_get($firstVideo, 'thumbnail_url') ?: (string) config('seo.default_image', '/logo.png')),
                 'imageAlt' => data_get($firstVideo, 'title') ?: 'ویدیوهای گیمینگ PlayNexus',
@@ -400,7 +409,7 @@ class StorefrontController extends Controller
                     '@graph' => [
                         [
                             '@type' => 'CollectionPage',
-                            'name' => 'مرکز ویدیوهای گیمینگ',
+                            'name' => $pageNumber > 1 ? "مرکز ویدیوهای گیمینگ - صفحه {$pageNumber}" : 'مرکز ویدیوهای گیمینگ',
                             'url' => $canonical,
                             'description' => $description,
                         ],
