@@ -30,6 +30,7 @@ import {
     resolveHomeTemplateRuntime,
     type HomeTemplateContentItem,
 } from "../Components/Home/Templates/HomeTemplateRegistry";
+import NexusFocusHome from "../Components/Home/Templates/NexusFocus/NexusFocusHome";
 import StorefrontNavigation from "../Components/Storefront/Navigation/StorefrontNavigation";
 import type { NavigationCategory } from "../Components/Storefront/Navigation/types";
 import { useStorefrontTheme } from "../Components/Storefront/Navigation/useStorefrontTheme";
@@ -3271,6 +3272,7 @@ export default function Home({
         homeExperience.effective_template,
     );
     const usesTemplateHero = templateRuntime.usesTemplateHero;
+    const usesFullPageTemplate = templateRuntime.usesFullPageTemplate;
     const templateContent = useMemo<HomeTemplateContentItem[]>(() => {
         const items: HomeTemplateContentItem[] = [];
         const seen = new Set<string>();
@@ -3370,6 +3372,29 @@ export default function Home({
                 freshContentAt={storefront.fresh_content_at}
             />
             <main>
+                {usesFullPageTemplate ? (
+                    <NexusFocusHome
+                        categories={categories}
+                        heading={seo.heading}
+                        channels={previewChannels}
+                        feed={previewLatestFeed}
+                        freshContent={previewFreshContent}
+                        newsletter={{
+                            enabled: settings.newsletter_enabled,
+                            title: settings.newsletter_title,
+                            description: settings.newsletter_description,
+                        }}
+                        personalizedHome={personalizedHome}
+                        products={[
+                            ...heroFeaturedProducts,
+                            ...heroLatestProducts,
+                        ]}
+                        radar={previewGameRadar}
+                        slides={slides}
+                        studios={previewLatestStudios}
+                    />
+                ) : (
+                    <>
                 {usesTemplateHero && (
                     <>
                         <HomeTemplateHero
@@ -3785,6 +3810,8 @@ export default function Home({
                         description={settings.newsletter_description}
                         title={settings.newsletter_title}
                     />
+                )}
+                    </>
                 )}
             </main>
             <NexusAiWidget config={storefront.nexus_ai} />

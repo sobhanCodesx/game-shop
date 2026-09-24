@@ -39,11 +39,15 @@ class HomeController extends Controller
             ? $request->string('preview_home_template')->toString()
             : '';
         $templateConfig = config("home-experience.templates.{$previewTemplate}");
+        $isAdminPreviewRequest = $request->boolean('admin_template_preview');
         $isAdminTemplatePreview = false;
         if (
             $previewTemplate !== ''
             && is_array($templateConfig)
-            && (bool) ($templateConfig['available'] ?? false)
+            && (
+                (bool) ($templateConfig['available'] ?? false)
+                || ($isAdminPreviewRequest && (bool) ($templateConfig['previewable'] ?? false))
+            )
         ) {
             $homeExperienceState = [
                 ...$homeExperienceState,
@@ -51,7 +55,7 @@ class HomeController extends Controller
                 'focus' => $templateConfig['focus'] ?? 'balanced',
                 'source' => 'preview',
             ];
-            $isAdminTemplatePreview = $request->boolean('admin_template_preview');
+            $isAdminTemplatePreview = $isAdminPreviewRequest;
         }
 
         $limit = (int) $settings['products_limit'];
@@ -61,16 +65,17 @@ class HomeController extends Controller
         $freshCutoff = now()->subDays(14);
         $cardRelations = ['category:id,name', 'type:id,title', 'game:id,name,developer,publisher', 'platforms:id,name', 'attributeValues.attribute:id,name,slug', 'coverMedia', 'variants:id,product_id,status'];
         $productMap = fn (Product $product) => $storefront->product($product, $request->user());
-        $radarItems = $isAdminTemplatePreview
-            ? collect()
-            : collect($radar->linkedSnapshot()['items'] ?? []);
+        $loadPublicPreviewData = ! $isAdminTemplatePreview || $previewTemplate === 'nexus_focus';
+        $radarItems = $loadPublicPreviewData
+            ? collect($radar->linkedSnapshot()['items'] ?? [])
+            : collect();
         $personalizedHome = $isAdminTemplatePreview
             ? null
             : $this->personalizedHome($request, $feed, $relevance, $gameEvents, $watch, $radarItems);
 
-        $latestStudios = $isAdminTemplatePreview
-            ? collect()
-            : $homePublic->latestStudios();
+        $latestStudios = $loadPublicPreviewData
+            ? $homePublic->latestStudios()
+            : collect();
 
         $slides = $homePublic->slides();
 
@@ -80,9 +85,9 @@ class HomeController extends Controller
         $logo = url((string) config('seo.default_image', '/logo.png'));
         $socialImage = url((string) ($slides->first()['desktop_image_url'] ?? $logo));
         $socialImageAlt = (string) ($slides->first()['alt'] ?? $slides->first()['title'] ?? "لوگوی {$siteName}");
-        $usesTemplateHero = in_array(
+        $usesEagerProducts = in_array(
             (string) ($homeExperienceState['effective_template'] ?? 'default'),
-            ['dual_spotlight', 'storefront'],
+            ['dual_spotlight', 'storefront', 'nexus_focus'],
             true,
         );
 
@@ -101,9 +106,9 @@ class HomeController extends Controller
             return $ps5->concat($xbox)->unique('id')->take(3)->values();
         })();
 
-        $previewLatestFeed = $isAdminTemplatePreview
-            ? collect()
-            : collect($feed->latestImportantPreview($request, 3));
+        $previewLatestFeed = $loadPublicPreviewData
+            ? collect($feed->latestImportantPreview($request, 3))
+            : collect();
 
         $homePreview = [
             'latestStudios' => $latestStudios->take(3)->values(),
@@ -113,10 +118,10 @@ class HomeController extends Controller
             'latestProducts' => $previewProducts,
         ];
 
-        $heroFeaturedProducts = $usesTemplateHero
+        $heroFeaturedProducts = $usesEagerProducts
             ? Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap)
             : collect();
-        $heroLatestProducts = $usesTemplateHero
+        $heroLatestProducts = $usesEagerProducts
             ? Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap)
             : collect();
 
@@ -201,10 +206,10 @@ class HomeController extends Controller
             })()),
             'settings' => $settings,
             'slides' => $slides,
-            'featuredProducts' => $usesTemplateHero
+            'featuredProducts' => $usesEagerProducts
                 ? $heroFeaturedProducts
                 : Inertia::optional(fn () => Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap)),
-            'latestProducts' => $usesTemplateHero
+            'latestProducts' => $usesEagerProducts
                 ? $heroLatestProducts
                 : Inertia::optional(fn () => Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap)),
             'contentSections' => Inertia::optional(fn () => HomeSection::query()->where('is_active', true)->orderBy('sort_order')->get()->map(function (HomeSection $section) use ($request, $prices, $storefront, $cardRelations) {

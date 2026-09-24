@@ -106,6 +106,7 @@ interface HomeTemplate {
     focus: "balanced" | "products" | "content";
     description: string;
     available: boolean;
+    previewable?: boolean;
 }
 
 interface Props {
@@ -139,6 +140,33 @@ function TemplateMiniPreview({
             : focus === "content"
               ? "bg-fuchsia-500/80"
               : "bg-indigo-500/80";
+
+    if (templateKey === "nexus_focus") {
+        return (
+            <span
+                aria-hidden="true"
+                className="mb-4 grid h-24 grid-rows-[1.4fr_.45fr_.8fr] gap-1.5 rounded-xl border border-slate-800 bg-slate-950/70 p-2"
+            >
+                <span className="grid grid-cols-[1.8fr_.7fr] gap-1.5">
+                    <span className="rounded-md bg-gradient-to-br from-indigo-500/80 to-cyan-500/65" />
+                    <span className="grid gap-1">
+                        <span className={block} />
+                        <span className={block} />
+                    </span>
+                </span>
+                <span className="grid grid-cols-4 gap-1">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                        <span className={block} key={index} />
+                    ))}
+                </span>
+                <span className="grid grid-cols-3 gap-1">
+                    <span className="rounded-md bg-indigo-500/45" />
+                    <span className={block} />
+                    <span className={block} />
+                </span>
+            </span>
+        );
+    }
 
     if (templateKey === "dual_spotlight") {
         return (
@@ -443,7 +471,7 @@ export default function Edit({
                 ? homeTemplates.find(
                       (template) =>
                           template.key === previewTemplateKey &&
-                          template.available,
+                          (template.available || template.previewable),
                   ) ?? null
                 : null,
         [homeTemplates, previewTemplateKey],
@@ -1332,7 +1360,7 @@ export default function Edit({
 
                                 return (
                                     <article
-                                        className={`rounded-2xl border p-4 text-right transition ${selected ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-950/20" : "border-slate-800 bg-slate-950/50"} ${template.available ? "hover:border-indigo-500/60" : "opacity-60"}`}
+                                        className={`rounded-2xl border p-4 text-right transition ${selected ? "border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-950/20" : "border-slate-800 bg-slate-950/50"} ${template.available || template.previewable ? "hover:border-indigo-500/60" : "opacity-60"}`}
                                         key={template.key}
                                     >
                                         <button
@@ -1378,7 +1406,9 @@ export default function Edit({
                                                           ? "فعال روی سایت"
                                                           : template.available
                                                             ? "آماده"
-                                                            : "در حال ساخت"}
+                                                            : template.previewable
+                                                              ? "پیش‌نمایش"
+                                                              : "در حال ساخت"}
                                                 </Chip>
                                             </span>
                                             <p className="mt-3 text-xs leading-6 text-slate-400">
@@ -1396,7 +1426,10 @@ export default function Edit({
                                                 پیش‌نمایش فقط در صورت درخواست بارگذاری می‌شود.
                                             </span>
                                             <Button
-                                                isDisabled={!template.available}
+                                                isDisabled={
+                                                    !template.available &&
+                                                    !template.previewable
+                                                }
                                                 onPress={() =>
                                                     setPreviewTemplateKey(
                                                         template.key,

@@ -95,6 +95,32 @@ class HomeExperienceTest extends TestCase
         );
     }
 
+    public function test_admin_can_preview_nexus_focus_while_it_remains_unavailable(): void
+    {
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            ['content' => ['home_template' => 'default']],
+        );
+        app(HomeExperienceService::class)->invalidate();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->get('/?preview_home_template=nexus_focus&admin_template_preview=1')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('homeExperience.system_template', 'default')
+                ->where('homeExperience.effective_template', 'nexus_focus')
+                ->where('homeExperience.source', 'preview'));
+
+        $this->assertFalse(
+            (bool) config('home-experience.templates.nexus_focus.available'),
+        );
+        $this->assertSame(
+            'default',
+            HomeSetting::query()->findOrFail(1)->content['home_template'],
+        );
+    }
+
     public function test_guest_cannot_override_home_template_with_preview_query(): void
     {
         HomeSetting::query()->create([
