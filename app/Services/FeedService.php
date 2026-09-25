@@ -126,6 +126,23 @@ class FeedService
         return $this->mapItems($contents, $request->user());
     }
 
+    public function latestPreview(int $limit = 8): array
+    {
+        $limit = max(1, min(24, $limit));
+
+        return Cache::remember(
+            'playnexus:home-feed-latest-preview:v1:'.$limit,
+            now()->addSeconds(45),
+            fn (): array => $this->mapHomePreviewItems(
+                $this->homeFeedQuery()
+                    ->latest('published_at')
+                    ->latest('id')
+                    ->limit($limit)
+                    ->get(),
+            ),
+        );
+    }
+
     public function latestImportantPreview(Request $request, int $limit = 8): array
     {
         $limit = max(1, min(24, $limit));

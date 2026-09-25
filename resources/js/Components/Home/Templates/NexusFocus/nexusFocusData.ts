@@ -6,7 +6,7 @@ import type {
     NexusGameItem,
     NexusPulseItem,
     NexusRadarSignal,
-    NexusSpotlightItem,
+    NexusLatestSlideItem,
 } from "./types";
 
 const feedBadgeLabel: Record<string, string> = {
@@ -68,102 +68,115 @@ const publicPulse = (input: NexusFocusInput): NexusPulseItem[] => [
         })),
 ];
 
-const buildSpotlight = (input: NexusFocusInput): NexusSpotlightItem[] => {
-    const items: NexusSpotlightItem[] = [];
+const buildLatestSlides = (input: NexusFocusInput): NexusLatestSlideItem[] => {
+    const items: NexusLatestSlideItem[] = [];
 
-    input.personalizedHome?.events.forEach((event) => {
-        if (!["critical", "high"].includes(event.priority)) return;
-        items.push({
-            key: `event-${event.id}`,
-            title: event.title,
-            eyebrow: event.type_label || "NEXUS SIGNAL",
-            description: event.reason || event.summary,
-            href: event.url,
-            image: event.game?.image_url ?? event.game?.cover_url ?? null,
-            kind: "event",
-            score: event.priority === "critical" ? 100 : 95,
-        });
-    });
-
-    input.slides.forEach((slide, index) => {
-        const title = (slide.title || slide.alt || "").trim();
-        const description = (slide.description || slide.alt || "").trim();
-        const hasUsefulContext =
-            title.length >= 8 || description.length >= 24;
-
-        items.push({
-            key: `campaign-${slide.id}`,
-            title: title || "PlayNexus",
-            eyebrow: slide.eyebrow || "PLAYNEXUS",
-            description: description || null,
-            href: slide.button_url || "/",
-            image: slide.desktop_image_url,
-            mobileImage: slide.mobile_image_url,
-            kind: "campaign",
-            score: (hasUsefulContext ? 86 : 58) - index,
-        });
-    });
-
-    input.personalizedHome?.videos.forEach((item, index) => {
-        items.push({
-            key: `personal-video-${item.id}`,
-            title: item.title,
-            eyebrow: item.relevance.signal_label || "برای تو",
-            description: item.relevance.reason,
-            href: item.url,
-            image: feedImage(item),
-            kind: "video",
-            score: 83 - index,
-        });
-    });
-
-    input.feed.forEach((item, index) => {
+    input.latestArrivalsFeed.forEach((item) => {
         items.push({
             key: `feed-${item.id}`,
             title: item.title,
-            eyebrow: feedBadgeLabel[item.badge ?? ""] ?? "تازه مهم",
-            description: item.author.name,
+            eyebrow:
+                feedBadgeLabel[item.badge ?? ""] ??
+                (item.type === "video" ? "ویدیوی تازه" : "تازه در فید"),
+            description:
+                item.type === "video"
+                    ? "ویدیوی تازه منتشرشده در PlayNexus"
+                    : item.author.name || "محتوای تازه در PlayNexus",
             href: item.url,
             image: feedImage(item),
             kind: item.type === "video" ? "video" : "feed",
-            score: 76 - index,
+            publishedAt: item.created_at,
         });
     });
 
-    input.freshContent
-        .filter((item) => item.type === "video")
-        .forEach((item, index) => {
-            items.push({
-                key: item.key,
-                title: item.title,
-                eyebrow: item.eyebrow || "ویدیوی تازه",
-                description: "تازه در PlayNexus",
-                href: item.url,
-                image: item.image_url,
-                kind: "video",
-                score: 70 - index,
-            });
-        });
-
-    input.products.slice(0, 2).forEach((product, index) => {
+    input.freshContent.forEach((item) => {
         items.push({
-            key: `product-${product.id}`,
+            key: item.key,
+            title: item.title,
+            eyebrow:
+                item.type === "video"
+                    ? "ویدیوی تازه"
+                    : item.eyebrow || "محصول تازه",
+            description:
+                item.type === "video"
+                    ? "تازه منتشرشده در PlayNexus"
+                    : item.eyebrow || "تازه وارد فروشگاه",
+            href: item.url,
+            image: item.image_url,
+            kind: item.type,
+            publishedAt: item.published_at,
+        });
+    });
+
+    input.latestProducts.forEach((product) => {
+        items.push({
+            key: `latest-product-${product.id}`,
             title: product.title,
-            eyebrow: product.badge || "منتخب فروشگاه",
-            description: product.category,
+            eyebrow: "محصول تازه",
+            description: product.category || "تازه وارد فروشگاه PlayNexus",
             href: product.url,
             image: product.cover_url,
             kind: "product",
-            score: 50 - index,
+            publishedAt: product.published_at ?? null,
         });
     });
 
-    return uniqueBy(
-        items
-            .filter((item) => Boolean(item.image))
-            .sort((a, b) => b.score - a.score),
+    input.channels.forEach((game) => {
+        items.push({
+            key: `latest-game-${game.id}`,
+            title: game.name,
+            eyebrow: "بازی تازه",
+            description:
+                game.videos_count > 0
+                    ? `${game.videos_count.toLocaleString("fa-IR")} ویدیو در صفحه بازی`
+                    : "تازه وارد دنیای بازی‌های PlayNexus",
+            href: game.url,
+            image: game.image_url,
+            kind: "game",
+            publishedAt: game.created_at ?? null,
+        });
+    });
+
+    input.studios.forEach((studio) => {
+        items.push({
+            key: `latest-studio-${studio.id}`,
+            title: studio.name,
+            eyebrow: "استودیوی تازه",
+            description:
+                studio.channels_count > 0
+                    ? `${studio.channels_count.toLocaleString("fa-IR")} بازی و کانال`
+                    : "تازه به PlayNexus اضافه شده",
+            href: studio.url,
+            image: studio.background_url ?? studio.logo_url,
+            kind: "studio",
+            publishedAt: studio.created_at ?? null,
+        });
+    });
+
+    const latest = uniqueBy(
+        items.filter((item) => Boolean(item.publishedAt)),
         (item) => item.href,
-    ).slice(0, 3);
+    )
+        .sort(
+            (a, b) =>
+                Date.parse(b.publishedAt ?? "") -
+                Date.parse(a.publishedAt ?? ""),
+        )
+        .slice(0, 6);
+
+    if (latest.length > 0) return latest;
+
+    return input.slides.slice(0, 4).map((slide) => ({
+        key: `campaign-${slide.id}`,
+        title: (slide.title || slide.alt || "PlayNexus").trim(),
+        eyebrow: slide.eyebrow || "PLAYNEXUS",
+        description: (slide.description || slide.alt || "").trim() || null,
+        href: slide.button_url || "/",
+        image: slide.desktop_image_url,
+        mobileImage: slide.mobile_image_url,
+        kind: "campaign",
+        publishedAt: null,
+    }));
 };
 
 const buildPulse = (
@@ -349,9 +362,9 @@ export function buildNexusFocusModel(input: NexusFocusInput): NexusFocusModel {
         String(product.id),
     ).slice(0, 8);
 
-    const spotlight = buildSpotlight(input);
-    const spotlightHrefs = new Set(spotlight.map((item) => item.href));
-    const usedContentHrefs = new Set(spotlightHrefs);
+    const latestSlides = buildLatestSlides(input);
+    const latestSlideHrefs = new Set(latestSlides.map((item) => item.href));
+    const usedContentHrefs = new Set(latestSlideHrefs);
 
     const videoCandidates = [
         ...(input.personalizedHome?.videos ?? []),
@@ -375,7 +388,7 @@ export function buildNexusFocusModel(input: NexusFocusInput): NexusFocusModel {
     const storyFallbacks = uniqueBy(
         input.feed.filter(
             (item) =>
-                !spotlightHrefs.has(item.url) &&
+                !latestSlideHrefs.has(item.url) &&
                 !uniqueStories.some((story) => story.url === item.url),
         ),
         (item) => item.url,
@@ -384,7 +397,7 @@ export function buildNexusFocusModel(input: NexusFocusInput): NexusFocusModel {
     stories.forEach((item) => usedContentHrefs.add(item.url));
 
     return {
-        spotlight,
+        latestSlides,
         pulse,
         games: buildGames(input),
         products,

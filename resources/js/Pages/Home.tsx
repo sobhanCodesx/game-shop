@@ -93,9 +93,11 @@ interface HomePreviewProduct {
     url: string;
     category: string | null;
     cover_url: string | null;
+    published_at?: string | null;
 }
 
 interface HomePreviewData {
+    latestArrivalsFeed: HomeFeedPreviewItem[];
     latestStudios: StudioItem[];
     gameRadar: GameRadarItem[];
     channels: ChannelItem[];
@@ -263,6 +265,7 @@ interface ChannelItem {
     image_url: string | null;
     videos_count: number;
     subscribers_count: number;
+    created_at?: string | null;
 }
 interface StudioItem {
     id: number;
@@ -3231,6 +3234,7 @@ export default function Home({
     const { theme, toggleTheme } = useStorefrontTheme();
     const categories = storefront.categories.slice(0, 8);
     const previewLatestFeed = latestFeed;
+    const previewLatestArrivalsFeed = homePreview.latestArrivalsFeed ?? [];
     const previewLatestStudios = homePreview.latestStudios ?? [];
     const previewGameRadar = homePreview.gameRadar ?? [];
     const previewChannels = homePreview.channels ?? [];
@@ -3385,6 +3389,8 @@ export default function Home({
                             description: settings.newsletter_description,
                         }}
                         personalizedHome={personalizedHome}
+                        latestArrivalsFeed={previewLatestArrivalsFeed}
+                        latestProducts={previewLatestProducts}
                         products={[
                             ...heroFeaturedProducts,
                             ...heroLatestProducts,

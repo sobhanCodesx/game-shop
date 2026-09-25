@@ -90,6 +90,7 @@ final class HomePublicCacheService
                     'url' => route('products.show', $product->slug, false),
                     'category' => $product->category?->name,
                     'cover_url' => MediaStorage::url($product->coverMedia?->path),
+                    'published_at' => ($product->published_at ?? $product->created_at)?->toISOString(),
                 ])
                 ->values()
                 ->all(),
@@ -108,7 +109,7 @@ final class HomePublicCacheService
                 ->latest()
                 ->latest('id')
                 ->limit(3)
-                ->get(['id', 'name', 'slug', 'cover'])
+                ->get(['id', 'name', 'slug', 'cover', 'created_at'])
                 ->map(fn (Game $game) => [
                     'id' => $game->id,
                     'name' => $game->name,
@@ -117,6 +118,7 @@ final class HomePublicCacheService
                     'image_url' => MediaStorage::url($game->cover),
                     'videos_count' => (int) $game->videos_count,
                     'subscribers_count' => 0,
+                    'created_at' => $game->created_at?->toISOString(),
                 ])
                 ->values()
                 ->all(),

@@ -112,8 +112,13 @@ class HomeController extends Controller
         $previewLatestFeed = $loadPublicPreviewData
             ? collect($feed->latestImportantPreview($request, $previewFeedLimit))
             : collect();
+        $previewLatestArrivalsFeed =
+            (string) ($homeExperienceState['effective_template'] ?? 'default') === 'nexus_focus'
+                ? collect($feed->latestPreview(12))
+                : collect();
 
         $homePreview = [
+            'latestArrivalsFeed' => $previewLatestArrivalsFeed,
             'latestStudios' => $latestStudios->take(3)->values(),
             'gameRadar' => $previewRadar,
             'channels' => $previewChannels,

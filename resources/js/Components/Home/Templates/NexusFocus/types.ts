@@ -41,6 +41,7 @@ export interface NexusFocusChannel {
     url: string;
     image_url: string | null;
     videos_count: number;
+    created_at?: string | null;
 }
 
 export interface NexusFocusStudio {
@@ -50,6 +51,16 @@ export interface NexusFocusStudio {
     logo_url: string | null;
     background_url: string | null;
     channels_count: number;
+    created_at?: string | null;
+}
+
+export interface NexusFocusLatestProduct {
+    id: number;
+    title: string;
+    url: string;
+    category: string | null;
+    cover_url: string | null;
+    published_at?: string | null;
 }
 
 export interface NexusFocusRadarItem {
@@ -121,11 +132,13 @@ export interface NexusFocusInput {
     heading: string;
     slides: NexusFocusSlide[];
     feed: NexusFocusFeedItem[];
+    latestArrivalsFeed: NexusFocusFeedItem[];
     freshContent: NexusFocusFreshItem[];
     channels: NexusFocusChannel[];
     studios: NexusFocusStudio[];
     radar: NexusFocusRadarItem[];
     products: StorefrontProduct[];
+    latestProducts: NexusFocusLatestProduct[];
     categories: NavigationCategory[];
     personalizedHome: NexusFocusPersonalizedHome | null;
     newsletter: {
@@ -135,7 +148,7 @@ export interface NexusFocusInput {
     };
 }
 
-export interface NexusSpotlightItem {
+export interface NexusLatestSlideItem {
     key: string;
     title: string;
     eyebrow: string;
@@ -143,8 +156,8 @@ export interface NexusSpotlightItem {
     href: string;
     image: string | null;
     mobileImage?: string | null;
-    kind: "event" | "campaign" | "feed" | "video" | "product";
-    score: number;
+    kind: "campaign" | "feed" | "video" | "product" | "game" | "studio";
+    publishedAt: string | null;
 }
 
 export interface NexusPulseItem {
@@ -188,7 +201,7 @@ export interface NexusExploreItem {
 }
 
 export interface NexusFocusModel {
-    spotlight: NexusSpotlightItem[];
+    latestSlides: NexusLatestSlideItem[];
     pulse: NexusPulseItem[];
     games: NexusGameItem[];
     products: StorefrontProduct[];
