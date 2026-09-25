@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Admin\HomeSettingsController;
 use App\Models\HomeSetting;
 use App\Models\Product;
 use App\Models\User;
@@ -16,13 +17,13 @@ class HomeExperienceTest extends TestCase
 
     public function test_home_settings_are_cached_until_explicitly_invalidated(): void
     {
-        HomeSetting::query()->create([
-            'id' => 1,
-            'content' => [
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            ['content' => [
                 'home_template' => 'default',
                 'featured_products_title' => 'نسخه اول',
-            ],
-        ]);
+            ]],
+        );
 
         $service = app(HomeExperienceService::class);
 
@@ -56,10 +57,10 @@ class HomeExperienceTest extends TestCase
 
     public function test_dual_spotlight_is_an_available_system_template(): void
     {
-        HomeSetting::query()->create([
-            'id' => 1,
-            'content' => ['home_template' => 'dual_spotlight'],
-        ]);
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            ['content' => ['home_template' => 'dual_spotlight']],
+        );
         app(HomeExperienceService::class)->invalidate();
 
         $this->get('/')
@@ -74,10 +75,10 @@ class HomeExperienceTest extends TestCase
 
     public function test_admin_can_preview_an_available_template_without_persisting_it(): void
     {
-        HomeSetting::query()->create([
-            'id' => 1,
-            'content' => ['home_template' => 'default'],
-        ]);
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            ['content' => ['home_template' => 'default']],
+        );
         app(HomeExperienceService::class)->invalidate();
         $admin = User::factory()->create(['is_admin' => true]);
 
@@ -95,12 +96,86 @@ class HomeExperienceTest extends TestCase
         );
     }
 
+    public function test_admin_can_preview_nexus_focus_without_persisting_it(): void
+    {
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            ['content' => ['home_template' => 'default']],
+        );
+        app(HomeExperienceService::class)->invalidate();
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->get('/?preview_home_template=nexus_focus&admin_template_preview=1')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('homeExperience.system_template', 'default')
+                ->where('homeExperience.effective_template', 'nexus_focus')
+                ->where('homeExperience.source', 'preview'));
+
+        $this->assertTrue(
+            (bool) config('home-experience.templates.nexus_focus.available'),
+        );
+        $this->assertSame(
+            'default',
+            HomeSetting::query()->findOrFail(1)->content['home_template'],
+        );
+    }
+
+    public function test_admin_can_activate_nexus_focus_for_the_public_home(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+            'role' => 'super-admin',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/home', [
+                'settings' => [
+                    ...HomeSettingsController::DEFAULTS,
+                    'home_template' => 'nexus_focus',
+                ],
+                'slides' => [],
+                'sections' => [],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(
+            'nexus_focus',
+            HomeSetting::query()->findOrFail(1)->content['home_template'],
+        );
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('homeExperience.system_template', 'nexus_focus')
+                ->where('homeExperience.effective_template', 'nexus_focus')
+                ->where('homeExperience.source', 'system'));
+    }
+
+    public function test_nexus_focus_global_activation_cannot_be_overridden_by_user_template_preference(): void
+    {
+        $user = User::factory()->create([
+            'home_focus_preference' => 'products',
+        ]);
+
+        $state = app(HomeExperienceService::class)->resolve([
+            'home_template' => 'nexus_focus',
+        ], $user);
+
+        $this->assertSame('nexus_focus', $state['system_template']);
+        $this->assertSame('nexus_focus', $state['effective_template']);
+        $this->assertSame('balanced', $state['focus']);
+        $this->assertSame('system', $state['source']);
+    }
+
     public function test_guest_cannot_override_home_template_with_preview_query(): void
     {
-        HomeSetting::query()->create([
-            'id' => 1,
-            'content' => ['home_template' => 'default'],
-        ]);
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            ['content' => ['home_template' => 'default']],
+        );
         app(HomeExperienceService::class)->invalidate();
 
         $this->get('/?preview_home_template=storefront')
@@ -112,13 +187,13 @@ class HomeExperienceTest extends TestCase
 
     public function test_storefront_loads_more_products_than_the_default_home_limit(): void
     {
-        HomeSetting::query()->create([
-            'id' => 1,
-            'content' => [
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            ['content' => [
                 'home_template' => 'storefront',
                 'products_limit' => 8,
-            ],
-        ]);
+            ]],
+        );
         Product::factory()->count(13)->create();
         app(HomeExperienceService::class)->invalidate();
 
@@ -161,10 +236,10 @@ class HomeExperienceTest extends TestCase
 
     public function test_storefront_is_an_available_system_template(): void
     {
-        HomeSetting::query()->create([
-            'id' => 1,
-            'content' => ['home_template' => 'storefront'],
-        ]);
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            ['content' => ['home_template' => 'storefront']],
+        );
         app(HomeExperienceService::class)->invalidate();
 
         $this->get('/')

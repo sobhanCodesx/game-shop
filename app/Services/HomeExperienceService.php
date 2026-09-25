@@ -45,9 +45,13 @@ class HomeExperienceService
 
         $effectiveTemplate = $systemTemplate;
         $source = 'system';
+        $systemTemplateLocksUserOverride = (bool) (
+            $templates[$systemTemplate]['lock_user_override'] ?? false
+        );
 
         if (
-            $preferredTemplate
+            ! $systemTemplateLocksUserOverride
+            && $preferredTemplate
             && ($templates[$preferredTemplate]['available'] ?? false)
         ) {
             $effectiveTemplate = $preferredTemplate;

@@ -42,6 +42,14 @@ return [
             'description' => 'برای کاتالوگ بزرگ؛ محصول، دسته‌بندی و پیشنهاد خرید در اولویت، با حفظ Nexus Pulse محتوایی.',
             'available' => true,
         ],
+        'nexus_focus' => [
+            'label' => 'Nexus Focus',
+            'focus' => 'balanced',
+            'description' => 'قالب نسل بعدی PlayNexus با Spotlight، Pulse، Games، Store، Media، Radar و Explore در یک سلسله‌مراتب ساده.',
+            'available' => true,
+            'previewable' => true,
+            'lock_user_override' => true,
+        ],
         'editorial' => [
             'label' => 'Editorial',
             'focus' => 'content',

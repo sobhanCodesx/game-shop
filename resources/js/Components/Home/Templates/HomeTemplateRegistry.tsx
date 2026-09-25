@@ -15,6 +15,7 @@ type CampaignPlacement = "legacy" | "after_template";
 
 export interface HomeTemplateRuntime {
     usesTemplateHero: boolean;
+    usesFullPageTemplate: boolean;
     productRailDensity: ProductRailDensity;
     featuredPlacement: TemplatePlacement;
     latestPlacement: TemplatePlacement;
@@ -38,6 +39,7 @@ type TemplateHero = ComponentType<HomeTemplateHeroProps>;
 const runtimeRegistry: Record<string, HomeTemplateRuntime> = {
     default: {
         usesTemplateHero: false,
+        usesFullPageTemplate: false,
         productRailDensity: "regular",
         featuredPlacement: "default",
         latestPlacement: "default",
@@ -49,6 +51,7 @@ const runtimeRegistry: Record<string, HomeTemplateRuntime> = {
     },
     dual_spotlight: {
         usesTemplateHero: true,
+        usesFullPageTemplate: false,
         productRailDensity: "regular",
         featuredPlacement: "template_top",
         latestPlacement: "after_fresh",
@@ -60,6 +63,7 @@ const runtimeRegistry: Record<string, HomeTemplateRuntime> = {
     },
     storefront: {
         usesTemplateHero: true,
+        usesFullPageTemplate: false,
         productRailDensity: "dense",
         featuredPlacement: "template_top",
         latestPlacement: "template_top",
@@ -67,6 +71,18 @@ const runtimeRegistry: Record<string, HomeTemplateRuntime> = {
         featuredEyebrow: "FEATURED SHELF",
         featuredLinkLabel: "مشاهده همه",
         latestEyebrow: "JUST LANDED",
+        latestLinkLabel: "فروشگاه کامل",
+    },
+    nexus_focus: {
+        usesTemplateHero: false,
+        usesFullPageTemplate: true,
+        productRailDensity: "regular",
+        featuredPlacement: "none",
+        latestPlacement: "none",
+        campaignPlacement: "legacy",
+        featuredEyebrow: "NEXUS STORE",
+        featuredLinkLabel: "فروشگاه کامل",
+        latestEyebrow: "FRESH IN STORE",
         latestLinkLabel: "فروشگاه کامل",
     },
 };
