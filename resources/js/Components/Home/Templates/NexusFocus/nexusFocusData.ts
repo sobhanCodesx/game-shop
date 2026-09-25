@@ -83,7 +83,10 @@ const buildLatestSlides = (input: NexusFocusInput): NexusLatestSlideItem[] => {
                     ? "ویدیوی تازه منتشرشده در PlayNexus"
                     : item.author.name || "محتوای تازه در PlayNexus",
             href: item.url,
-            image: feedImage(item),
+            image:
+                feedImage(item) ??
+                item.game?.image_url ??
+                (item.author.url ? item.author.avatar_url : null),
             kind: item.type === "video" ? "video" : "feed",
             publishedAt: item.created_at,
         });

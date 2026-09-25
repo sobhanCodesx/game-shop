@@ -354,24 +354,31 @@ export default function NexusLatestSlider({
                     <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-3 border-t border-white/[0.07] bg-black/55 px-4 py-3 sm:px-6">
                         <div
                             aria-label="انتخاب اسلاید"
-                            className="flex min-w-0 flex-1 items-center gap-1.5"
-                            role="tablist"
+                            className="flex min-w-0 flex-1 items-center gap-0.5"
+                            role="group"
                         >
-                            {items.map((item, index) => (
-                                <button
-                                    aria-label={`نمایش اسلاید ${index + 1}: ${item.title}`}
-                                    aria-selected={index === activeIndex}
-                                    className={`h-1.5 rounded-full transition-[width,background-color] duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300 ${
-                                        index === activeIndex
-                                            ? "w-10 bg-cyan-300"
-                                            : "w-3 bg-white/20 hover:bg-white/40"
-                                    }`}
-                                    key={item.key}
-                                    onClick={() => goTo(index)}
-                                    role="tab"
-                                    type="button"
-                                />
-                            ))}
+                            {items.map((item, index) => {
+                                const active = index === activeIndex;
+
+                                return (
+                                    <button
+                                        aria-label={`نمایش اسلاید ${index + 1}: ${item.title}`}
+                                        aria-pressed={active}
+                                        className="grid h-11 w-7 shrink-0 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-cyan-300"
+                                        key={item.key}
+                                        onClick={() => goTo(index)}
+                                        type="button"
+                                    >
+                                        <span
+                                            className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ${
+                                                active
+                                                    ? "w-6 bg-cyan-300"
+                                                    : "w-3 bg-white/20 hover:bg-white/40"
+                                            }`}
+                                        />
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         <div className="flex shrink-0 items-center gap-2">

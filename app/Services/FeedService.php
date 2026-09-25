@@ -573,6 +573,11 @@ class FeedService
                 ? route('content.show', ['type' => 'videos', 'content' => $content->slug], false)
                 : route('posts.show', $content->slug, false),
             'created_at' => $content->published_at?->toISOString(),
+            'game' => $content->game ? [
+                'name' => $content->game->name,
+                'url' => route('channels.show', $content->game->slug, false),
+                'image_url' => MediaStorage::url($content->game->cover),
+            ] : null,
             'media' => $media,
             'author' => [
                 'name' => $authorName,
