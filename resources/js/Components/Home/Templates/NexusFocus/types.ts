@@ -20,6 +20,11 @@ export interface NexusFocusFeedItem {
     badge: string | null;
     url: string;
     created_at: string | null;
+    game?: {
+        name: string;
+        url: string;
+        image_url: string | null;
+    } | null;
     media: FeedItemData["media"];
     author: FeedItemData["author"];
 }
