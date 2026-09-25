@@ -227,7 +227,10 @@ class HomeSettingsTest extends TestCase
                 ->where('homeTemplates.1.available', true)
                 ->where('homeTemplates.2.key', 'storefront')
                 ->where('homeTemplates.2.available', true)
-                ->has('homeTemplates', 6));
+                ->where('homeTemplates.3.key', 'nexus_focus')
+                ->where('homeTemplates.3.available', true)
+                ->where('homeTemplates.3.lock_user_override', true)
+                ->has('homeTemplates', 7));
     }
 
     public function test_admin_can_activate_dual_spotlight_template(): void
@@ -247,6 +250,31 @@ class HomeSettingsTest extends TestCase
 
         $this->assertSame(
             'dual_spotlight',
+            HomeSetting::query()->firstOrFail()->content['home_template'],
+        );
+    }
+
+    public function test_admin_can_activate_nexus_focus_template(): void
+    {
+        $admin = User::factory()->create([
+            'is_admin' => true,
+            'role' => 'super-admin',
+            'status' => 'active',
+        ]);
+        $settings = $this->settings();
+        $settings['home_template'] = 'nexus_focus';
+
+        $this->actingAs($admin)
+            ->post('/admin/home', [
+                'settings' => $settings,
+                'slides' => [],
+                'sections' => [],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success');
+
+        $this->assertSame(
+            'nexus_focus',
             HomeSetting::query()->firstOrFail()->content['home_template'],
         );
     }

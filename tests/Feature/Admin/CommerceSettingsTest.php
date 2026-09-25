@@ -15,16 +15,16 @@ class CommerceSettingsTest extends TestCase
     public function test_commerce_update_preserves_home_settings_and_invalidates_home_cache(): void
     {
         $admin = User::factory()->create(['is_admin' => true, 'role' => 'super-admin', 'status' => 'active']);
-        HomeSetting::query()->create([
-            'id' => 1,
-            'content' => [
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            ['content' => [
                 'home_template' => 'storefront',
                 'featured_products_title' => 'ویژه‌های تست',
                 'delivery_fee' => 10_000,
                 'pickup_address' => 'آدرس قبلی',
                 'cashback_percent' => 2,
-            ],
-        ]);
+            ]],
+        );
 
         $homeExperience = app(HomeExperienceService::class);
         $this->assertSame(10_000, $homeExperience->settings()['delivery_fee']);
@@ -59,13 +59,13 @@ class CommerceSettingsTest extends TestCase
                 'delivery_fee' => 999_999,
             ],
         ]);
-        HomeSetting::query()->create([
-            'id' => 1,
-            'content' => [
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            ['content' => [
                 'home_template' => 'storefront',
                 'delivery_fee' => 42_000,
-            ],
-        ]);
+            ]],
+        );
 
         $this->assertSame(
             'storefront',
