@@ -12,13 +12,9 @@ import type { NexusFocusInput } from "./types";
 
 export default function NexusFocusHome(props: NexusFocusInput) {
     const model = buildNexusFocusModel(props);
-    const personalized = Boolean(
-        props.personalizedHome &&
-        (props.personalizedHome.followed_games.length > 0 ||
-            props.personalizedHome.events.length > 0 ||
-            props.personalizedHome.feed.length > 0 ||
-            props.personalizedHome.videos.length > 0),
-    );
+    // Personal ranking is intentionally deferred until PlayNexus has enough
+    // behavioral signal to make it useful rather than noisy.
+    const personalized = false;
 
     return (
         <div className="pb-5 sm:pb-8">

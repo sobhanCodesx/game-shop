@@ -1,13 +1,23 @@
 import { Link } from "@inertiajs/react";
-import { ArrowUpLeft, Gamepad2, Play } from "lucide-react";
+import {
+    ArrowUpLeft,
+    ChevronLeft,
+    ChevronRight,
+    Gamepad2,
+    Pause,
+    Play,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { NexusSpotlightItem } from "../types";
+
+const AUTO_ADVANCE_MS = 6200;
 
 const kindLabel: Record<NexusSpotlightItem["kind"], string> = {
     event: "تغییر مهم",
     campaign: "پیشنهاد PlayNexus",
-    feed: "خبر و محتوا",
-    video: "ویدیوی منتخب",
+    feed: "تازه در PlayNexus",
+    video: "ویدیوی تازه",
     product: "منتخب فروشگاه",
 };
 
@@ -19,37 +29,23 @@ const actionLabel: Record<NexusSpotlightItem["kind"], string> = {
     product: "مشاهده محصول",
 };
 
-function SignalCard({ item }: { item: NexusSpotlightItem }) {
+function SliderButton({
+    direction,
+    onClick,
+}: {
+    direction: "previous" | "next";
+    onClick: () => void;
+}) {
+    const previous = direction === "previous";
     return (
-        <Link
-            className="group relative min-h-[152px] overflow-hidden rounded-[20px] border border-white/10 bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 lg:min-h-0"
-            href={item.href}
+        <button
+            aria-label={previous ? "مورد قبلی" : "مورد بعدی"}
+            className={`absolute top-1/2 z-30 hidden size-11 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/45 text-white shadow-xl transition hover:scale-105 hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300 sm:grid ${previous ? "right-4" : "left-4"}`}
+            onClick={onClick}
+            type="button"
         >
-            <span className="absolute inset-0 grid place-items-center text-indigo-300/70">
-                <Gamepad2 size={36} />
-            </span>
-            {item.image && (
-                <img
-                    alt=""
-                    className="absolute inset-0 size-full object-cover opacity-75 transition duration-300 group-hover:scale-[1.025]"
-                    decoding="async"
-                    loading="lazy"
-                    onError={(event) => {
-                        event.currentTarget.style.display = "none";
-                    }}
-                    src={item.image}
-                />
-            )}
-            <span className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
-            <span className="absolute inset-x-0 bottom-0 p-3.5 text-white sm:p-4">
-                <small className="text-[9px] font-black tracking-[.12em] text-cyan-200/80">
-                    {kindLabel[item.kind]}
-                </small>
-                <strong className="mt-1 block line-clamp-2 text-sm font-black leading-6">
-                    {item.title}
-                </strong>
-            </span>
-        </Link>
+            {previous ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        </button>
     );
 }
 
@@ -58,10 +54,32 @@ export default function NexusSpotlight({
 }: {
     items: NexusSpotlightItem[];
 }) {
-    const main = items[0];
-    const signals = items.slice(1, 3);
+    const [active, setActive] = useState(0);
+    const [paused, setPaused] = useState(false);
+    const [hovered, setHovered] = useState(false);
+    const touchStartX = useRef<number | null>(null);
+    const count = items.length;
+    const current = items[active] ?? items[0];
 
-    if (!main) {
+    const go = useCallback(
+        (step: number) => {
+            if (count < 2) return;
+            setActive((index) => (index + step + count) % count);
+        },
+        [count],
+    );
+
+    useEffect(() => {
+        if (count < 2 || paused || hovered) return;
+        const timer = window.setInterval(() => go(1), AUTO_ADVANCE_MS);
+        return () => window.clearInterval(timer);
+    }, [count, go, hovered, paused]);
+
+    useEffect(() => {
+        if (active >= count && count > 0) setActive(0);
+    }, [active, count]);
+
+    if (!current) {
         return (
             <section className="mx-auto max-w-[1460px] px-3 pt-3 sm:px-5 sm:pt-5">
                 <div className="grid min-h-[360px] place-items-center rounded-[24px] border border-indigo-500/20 bg-[radial-gradient(circle_at_top,#1e1b4b,#020617_68%)] text-center text-white">
@@ -71,12 +89,8 @@ export default function NexusSpotlight({
                             size={52}
                         />
                         <h2 className="mt-5 text-2xl font-black sm:text-4xl">
-                            دنیای گیمینگ تو از اینجا شروع می‌شود
+                            تازه‌های PlayNexus اینجا ظاهر می‌شوند
                         </h2>
-                        <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-white/55">
-                            بازی‌ها، محتوا، فروشگاه و سیگنال‌های مهم دنیای گیم
-                            در یک نقطه.
-                        </p>
                     </div>
                 </div>
             </section>
@@ -85,75 +99,150 @@ export default function NexusSpotlight({
 
     return (
         <section
-            aria-label="مهم‌ترین اتفاق PlayNexus"
+            aria-label="تازه‌ترین‌های PlayNexus"
+            aria-roledescription="carousel"
             className="mx-auto max-w-[1460px] px-3 pt-3 sm:px-5 sm:pt-5"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            onTouchEnd={(event) => {
+                if (touchStartX.current === null) return;
+                const delta =
+                    event.changedTouches[0].clientX - touchStartX.current;
+                touchStartX.current = null;
+                if (Math.abs(delta) < 44) return;
+                go(delta > 0 ? -1 : 1);
+            }}
+            onTouchStart={(event) => {
+                touchStartX.current = event.touches[0].clientX;
+            }}
         >
-            <div className="grid gap-2.5 lg:min-h-[500px] lg:grid-cols-12 lg:gap-4">
-                <Link
-                    className="group relative min-h-[420px] overflow-hidden rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] shadow-[0_30px_90px_-54px_rgba(79,70,229,.8)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 sm:min-h-[470px] lg:col-span-8 lg:min-h-0"
-                    href={main.href}
-                >
-                    <span className="absolute inset-0 grid place-items-center text-indigo-300/55">
-                        <Gamepad2 size={64} />
-                    </span>
-                    {main.image && (
-                        <picture className="absolute inset-0 block size-full">
-                            {main.mobileImage && (
-                                <source
-                                    media="(max-width: 640px)"
-                                    srcSet={main.mobileImage}
-                                />
-                            )}
+            <div className="group relative min-h-[430px] overflow-hidden rounded-[26px] border border-white/10 bg-slate-950 shadow-[0_30px_90px_-54px_rgba(79,70,229,.8)] sm:min-h-[500px] lg:min-h-[540px]">
+                {items.map((item, index) => (
+                    <div
+                        aria-hidden={index !== active}
+                        className={
+                            "absolute inset-0 transition-opacity duration-500 motion-reduce:transition-none " +
+                            (index === active
+                                ? "z-10 opacity-100"
+                                : "pointer-events-none opacity-0")
+                        }
+                        key={item.key}
+                    >
+                        <span className="absolute inset-0 grid place-items-center text-indigo-300/50">
+                            <Gamepad2 size={64} />
+                        </span>
+                        {item.image && (
                             <img
                                 alt=""
-                                className="size-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                                className="absolute inset-0 size-full object-cover"
                                 decoding="async"
-                                fetchPriority="high"
-                                loading="eager"
+                                fetchPriority={index === 0 ? "high" : "auto"}
+                                loading={index === 0 ? "eager" : "lazy"}
                                 onError={(event) => {
                                     event.currentTarget.style.display = "none";
                                 }}
-                                src={main.image}
+                                src={item.image}
                             />
-                        </picture>
-                    )}
-
-                    <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.03)_20%,rgba(2,6,23,.40)_58%,rgba(2,6,23,.96)_100%)] sm:bg-[linear-gradient(90deg,rgba(2,6,23,.94)_0%,rgba(2,6,23,.62)_42%,rgba(2,6,23,.10)_76%)]" />
-
-                    <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[9px] font-black text-white/80 backdrop-blur-sm sm:right-5 sm:top-5 sm:text-[10px]">
-                        <span className="text-cyan-200">PLAYNEXUS</span>
-                        <span aria-hidden="true">•</span>
-                        <span>همه‌چیز درباره بازی، یکجا</span>
-                    </span>
-
-                    <span className="absolute inset-x-0 bottom-0 p-5 text-white sm:inset-y-0 sm:right-0 sm:flex sm:max-w-[640px] sm:flex-col sm:justify-end sm:p-8 lg:p-10">
-                        <span className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[10px] font-black tracking-[.14em] text-cyan-100 backdrop-blur-sm">
-                            {main.kind === "video" ? (
-                                <Play size={12} fill="currentColor" />
-                            ) : null}
-                            {main.eyebrow || kindLabel[main.kind]}
-                        </span>
-                        <h2 className="max-w-2xl text-[28px] font-black leading-[1.38] sm:text-[42px] lg:text-[46px]">
-                            {main.title}
-                        </h2>
-                        {main.description && (
-                            <p className="mt-3 line-clamp-2 max-w-xl text-sm leading-7 text-white/62 sm:text-base">
-                                {main.description}
-                            </p>
                         )}
-                        <span className="mt-5 inline-flex min-h-12 w-fit items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-slate-950 transition group-hover:-translate-y-0.5">
-                            {actionLabel[main.kind]}
-                            <ArrowUpLeft size={17} />
-                        </span>
-                    </span>
-                </Link>
+                        <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.06)_18%,rgba(2,6,23,.45)_56%,rgba(2,6,23,.97)_100%)] sm:bg-[linear-gradient(90deg,rgba(2,6,23,.96)_0%,rgba(2,6,23,.70)_42%,rgba(2,6,23,.12)_78%)]" />
 
-                {signals.length > 0 && (
-                    <div className="hidden gap-2.5 sm:grid sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1 lg:grid-rows-2 lg:gap-4">
-                        {signals.map((item) => (
-                            <SignalCard item={item} key={item.key} />
-                        ))}
+                        <Link
+                            aria-label={"مشاهده " + item.title}
+                            className="absolute inset-0 z-10 focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-cyan-300"
+                            href={item.href}
+                            tabIndex={index === active ? 0 : -1}
+                        />
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-5 text-white sm:inset-y-0 sm:right-0 sm:flex sm:max-w-[660px] sm:flex-col sm:justify-end sm:p-9 lg:p-11">
+                            <span className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[10px] font-black tracking-[.12em] text-cyan-100">
+                                {item.kind === "video" && (
+                                    <Play size={12} fill="currentColor" />
+                                )}
+                                {item.eyebrow || kindLabel[item.kind]}
+                            </span>
+                            <h2 className="max-w-2xl text-[28px] font-black leading-[1.38] sm:text-[42px] lg:text-[48px]">
+                                {item.title}
+                            </h2>
+                            {item.description && (
+                                <p className="mt-3 line-clamp-2 max-w-xl text-sm leading-7 text-white/65 sm:text-base">
+                                    {item.description}
+                                </p>
+                            )}
+                            <span className="mt-5 inline-flex min-h-12 w-fit items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-slate-950">
+                                {actionLabel[item.kind]}{" "}
+                                <ArrowUpLeft size={17} />
+                            </span>
+                        </div>
                     </div>
+                ))}
+
+                {count > 1 && (
+                    <>
+                        <SliderButton
+                            direction="previous"
+                            onClick={() => {
+                                setPaused(true);
+                                go(-1);
+                            }}
+                        />
+                        <SliderButton
+                            direction="next"
+                            onClick={() => {
+                                setPaused(true);
+                                go(1);
+                            }}
+                        />
+                        <div className="absolute inset-x-0 bottom-3 z-30 flex justify-center sm:bottom-5">
+                            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/50 p-1.5 shadow-lg">
+                                <button
+                                    aria-label={
+                                        paused
+                                            ? "ادامه پخش خودکار"
+                                            : "توقف پخش خودکار"
+                                    }
+                                    className="grid size-8 place-items-center rounded-full text-white/75 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                                    onClick={() => setPaused((value) => !value)}
+                                    type="button"
+                                >
+                                    {paused ? (
+                                        <Play size={12} />
+                                    ) : (
+                                        <Pause size={12} />
+                                    )}
+                                </button>
+                                {items.map((item, index) => (
+                                    <button
+                                        aria-current={
+                                            index === active
+                                                ? "true"
+                                                : undefined
+                                        }
+                                        aria-label={
+                                            "نمایش مورد " +
+                                            (index + 1) +
+                                            ": " +
+                                            item.title
+                                        }
+                                        className="grid min-h-8 min-w-8 place-items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+                                        key={item.key}
+                                        onClick={() => {
+                                            setPaused(true);
+                                            setActive(index);
+                                        }}
+                                        type="button"
+                                    >
+                                        <span
+                                            className={
+                                                "h-1.5 rounded-full transition-[width,background-color] duration-300 " +
+                                                (index === active
+                                                    ? "w-7 bg-cyan-300"
+                                                    : "w-2 bg-white/30")
+                                            }
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </>
                 )}
             </div>
         </section>
