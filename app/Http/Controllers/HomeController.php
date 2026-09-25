@@ -106,8 +106,11 @@ class HomeController extends Controller
             return $ps5->concat($xbox)->unique('id')->take(3)->values();
         })();
 
+        $previewFeedLimit = (string) ($homeExperienceState['effective_template'] ?? 'default') === 'nexus_focus'
+            ? 10
+            : 3;
         $previewLatestFeed = $loadPublicPreviewData
-            ? collect($feed->latestImportantPreview($request, 3))
+            ? collect($feed->latestImportantPreview($request, $previewFeedLimit))
             : collect();
 
         $homePreview = [

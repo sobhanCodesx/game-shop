@@ -86,16 +86,21 @@ const buildSpotlight = (input: NexusFocusInput): NexusSpotlightItem[] => {
     });
 
     input.slides.forEach((slide, index) => {
+        const title = (slide.title || slide.alt || "").trim();
+        const description = (slide.description || slide.alt || "").trim();
+        const hasUsefulContext =
+            title.length >= 8 || description.length >= 24;
+
         items.push({
             key: `campaign-${slide.id}`,
-            title: slide.title || slide.alt || "PlayNexus",
+            title: title || "PlayNexus",
             eyebrow: slide.eyebrow || "PLAYNEXUS",
-            description: slide.description || slide.alt,
+            description: description || null,
             href: slide.button_url || "/",
             image: slide.desktop_image_url,
             mobileImage: slide.mobile_image_url,
             kind: "campaign",
-            score: 86 - index,
+            score: (hasUsefulContext ? 86 : 58) - index,
         });
     });
 
@@ -345,7 +350,8 @@ export function buildNexusFocusModel(input: NexusFocusInput): NexusFocusModel {
     ).slice(0, 8);
 
     const spotlight = buildSpotlight(input);
-    const usedContentHrefs = new Set(spotlight.map((item) => item.href));
+    const spotlightHrefs = new Set(spotlight.map((item) => item.href));
+    const usedContentHrefs = new Set(spotlightHrefs);
 
     const videoCandidates = [
         ...(input.personalizedHome?.videos ?? []),
@@ -362,10 +368,19 @@ export function buildNexusFocusModel(input: NexusFocusInput): NexusFocusModel {
 
     if (featuredVideo) usedContentHrefs.add(featuredVideo.url);
 
-    const stories = uniqueBy(
+    const uniqueStories = uniqueBy(
         input.feed.filter((item) => !usedContentHrefs.has(item.url)),
         (item) => item.url,
-    ).slice(0, 3);
+    );
+    const storyFallbacks = uniqueBy(
+        input.feed.filter(
+            (item) =>
+                !spotlightHrefs.has(item.url) &&
+                !uniqueStories.some((story) => story.url === item.url),
+        ),
+        (item) => item.url,
+    );
+    const stories = [...uniqueStories, ...storyFallbacks].slice(0, 3);
     stories.forEach((item) => usedContentHrefs.add(item.url));
 
     return {

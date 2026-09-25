@@ -21,7 +21,43 @@ export default function NexusRadar({
 }: {
     signals: NexusRadarSignal[];
 }) {
-    if (!signals.length) return null;
+    if (!signals.length) {
+        return (
+            <section className="mx-auto max-w-[1360px] px-3 pt-14 sm:px-5 sm:pt-20">
+                <SectionHeader
+                    actionLabel="باز کردن Game Radar"
+                    description="تاریخ انتشار، قیمت، وضعیت فروشگاه و تغییرات مهم بازی‌ها را سریع ببین."
+                    eyebrow="GAME RADAR"
+                    href="/game-radar"
+                    title="تغییرات مهم بازی‌ها"
+                />
+                <Link
+                    className="group flex min-h-[190px] items-center justify-between gap-5 overflow-hidden rounded-[24px] border border-cyan-500/15 bg-[linear-gradient(145deg,#050914,#081225_56%,#10143b)] p-5 text-white shadow-[0_28px_90px_-64px_rgba(34,211,238,.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300 sm:min-h-[220px] sm:p-7"
+                    href="/game-radar"
+                >
+                    <div className="max-w-2xl">
+                        <span className="grid size-11 place-items-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-200">
+                            <Radar size={20} />
+                        </span>
+                        <h3 className="mt-4 text-lg font-black sm:text-2xl">
+                            Radar آماده رصد تغییر بعدی است
+                        </h3>
+                        <p className="mt-2 max-w-xl text-xs leading-6 text-white/50 sm:text-sm sm:leading-7">
+                            وقتی قیمت، تاریخ انتشار یا وضعیت یک بازی تغییر کند، اینجا به‌صورت سیگنال قابل‌فهم نمایش داده می‌شود.
+                        </p>
+                        <span className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-xs font-black text-cyan-200">
+                            دیدن Game Radar
+                            <ArrowUpLeft size={14} />
+                        </span>
+                    </div>
+                    <Radar
+                        className="hidden shrink-0 text-cyan-200/10 transition group-hover:text-cyan-200/20 sm:block"
+                        size={140}
+                    />
+                </Link>
+            </section>
+        );
+    }
 
     return (
         <section className="mx-auto max-w-[1360px] px-3 pt-14 sm:px-5 sm:pt-20">
