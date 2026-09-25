@@ -45,15 +45,21 @@ export default function NexusPulse({
             <div className="overflow-hidden rounded-[24px] border border-indigo-500/15 bg-[linear-gradient(145deg,rgba(8,13,27,.98),rgba(15,23,42,.96),rgba(30,27,75,.74))] p-3 text-white shadow-[0_26px_90px_-64px_rgba(99,102,241,.9)] sm:p-4">
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,.65fr)]">
                     <Link
-                        className="group relative min-h-[250px] overflow-hidden rounded-[20px] border border-white/10 bg-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300 sm:min-h-[310px]"
+                        className="group relative min-h-[250px] overflow-hidden rounded-[20px] border border-white/10 bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300 sm:min-h-[310px]"
                         href={feature.href}
                     >
+                        <span className="absolute inset-0 grid place-items-center text-indigo-300/55">
+                            <Sparkles size={44} />
+                        </span>
                         {feature.image && (
                             <img
                                 alt=""
                                 className="absolute inset-0 size-full object-cover opacity-75 transition duration-300 group-hover:scale-[1.025]"
                                 decoding="async"
                                 loading="lazy"
+                                onError={(event) => {
+                                    event.currentTarget.style.display = "none";
+                                }}
                                 src={feature.image}
                             />
                         )}
@@ -89,19 +95,22 @@ export default function NexusPulse({
                                 href={item.href}
                                 key={item.key}
                             >
-                                <span className="relative aspect-square overflow-hidden rounded-[14px] bg-slate-900">
-                                    {item.image ? (
+                                <span className="relative aspect-square overflow-hidden rounded-[14px] bg-[radial-gradient(circle_at_top,#312e81,#0f172a_75%)]">
+                                    <span className="absolute inset-0 grid place-items-center text-indigo-300/70">
+                                        <Sparkles size={22} />
+                                    </span>
+                                    {item.image && (
                                         <img
                                             alt=""
-                                            className="size-full object-cover transition duration-300 group-hover:scale-[1.04]"
+                                            className="relative size-full object-cover transition duration-300 group-hover:scale-[1.04]"
                                             decoding="async"
                                             loading="lazy"
+                                            onError={(event) => {
+                                                event.currentTarget.style.display =
+                                                    "none";
+                                            }}
                                             src={item.image}
                                         />
-                                    ) : (
-                                        <span className="grid size-full place-items-center text-indigo-300">
-                                            <Sparkles size={22} />
-                                        </span>
                                     )}
                                 </span>
                                 <span className="min-w-0 py-1">

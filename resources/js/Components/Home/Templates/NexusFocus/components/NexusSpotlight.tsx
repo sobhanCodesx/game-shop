@@ -22,21 +22,23 @@ const actionLabel: Record<NexusSpotlightItem["kind"], string> = {
 function SignalCard({ item }: { item: NexusSpotlightItem }) {
     return (
         <Link
-            className="group relative min-h-[152px] overflow-hidden rounded-[20px] border border-white/10 bg-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 lg:min-h-0"
+            className="group relative min-h-[152px] overflow-hidden rounded-[20px] border border-white/10 bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 lg:min-h-0"
             href={item.href}
         >
-            {item.image ? (
+            <span className="absolute inset-0 grid place-items-center text-indigo-300/70">
+                <Gamepad2 size={36} />
+            </span>
+            {item.image && (
                 <img
                     alt=""
                     className="absolute inset-0 size-full object-cover opacity-75 transition duration-300 group-hover:scale-[1.025]"
                     decoding="async"
                     loading="lazy"
+                    onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                    }}
                     src={item.image}
                 />
-            ) : (
-                <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] text-indigo-300">
-                    <Gamepad2 size={36} />
-                </span>
             )}
             <span className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
             <span className="absolute inset-x-0 bottom-0 p-3.5 text-white sm:p-4">
@@ -88,10 +90,13 @@ export default function NexusSpotlight({
         >
             <div className="grid gap-2.5 lg:min-h-[500px] lg:grid-cols-12 lg:gap-4">
                 <Link
-                    className="group relative min-h-[420px] overflow-hidden rounded-[24px] border border-white/10 bg-slate-950 shadow-[0_30px_90px_-54px_rgba(79,70,229,.8)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 sm:min-h-[470px] lg:col-span-8 lg:min-h-0"
+                    className="group relative min-h-[420px] overflow-hidden rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] shadow-[0_30px_90px_-54px_rgba(79,70,229,.8)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 sm:min-h-[470px] lg:col-span-8 lg:min-h-0"
                     href={main.href}
                 >
-                    {main.image ? (
+                    <span className="absolute inset-0 grid place-items-center text-indigo-300/55">
+                        <Gamepad2 size={64} />
+                    </span>
+                    {main.image && (
                         <picture className="absolute inset-0 block size-full">
                             {main.mobileImage && (
                                 <source
@@ -105,13 +110,12 @@ export default function NexusSpotlight({
                                 decoding="async"
                                 fetchPriority="high"
                                 loading="eager"
+                                onError={(event) => {
+                                    event.currentTarget.style.display = "none";
+                                }}
                                 src={main.image}
                             />
                         </picture>
-                    ) : (
-                        <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#020617_70%)] text-indigo-300">
-                            <Gamepad2 size={64} />
-                        </span>
                     )}
 
                     <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,.03)_20%,rgba(2,6,23,.40)_58%,rgba(2,6,23,.96)_100%)] sm:bg-[linear-gradient(90deg,rgba(2,6,23,.94)_0%,rgba(2,6,23,.62)_42%,rgba(2,6,23,.10)_76%)]" />

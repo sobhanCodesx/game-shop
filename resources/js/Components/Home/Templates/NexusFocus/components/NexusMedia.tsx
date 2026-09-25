@@ -36,19 +36,21 @@ function Story({ item }: { item: NexusFocusFeedItem }) {
             className="group grid min-h-[102px] grid-cols-[96px_minmax(0,1fr)] gap-3 rounded-[18px] border border-[var(--store-border)] bg-[var(--store-surface)] p-2.5 transition hover:border-indigo-500/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 sm:grid-cols-[116px_minmax(0,1fr)]"
             href={item.url}
         >
-            <span className="relative overflow-hidden rounded-[13px] bg-[var(--store-surface-strong)]">
-                {image ? (
+            <span className="relative overflow-hidden rounded-[13px] bg-[radial-gradient(circle_at_top,#312e81,var(--store-surface-strong)_75%)]">
+                <span className="absolute inset-0 grid place-items-center text-indigo-400/70">
+                    <Play size={22} />
+                </span>
+                {image && (
                     <img
                         alt=""
-                        className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                        className="relative size-full object-cover transition duration-300 group-hover:scale-[1.03]"
                         decoding="async"
                         loading="lazy"
+                        onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                        }}
                         src={image}
                     />
-                ) : (
-                    <span className="grid size-full place-items-center text-indigo-400">
-                        <Play size={22} />
-                    </span>
                 )}
             </span>
             <span className="min-w-0 py-1">
@@ -91,15 +93,21 @@ export default function NexusMedia({
             <div className="grid gap-3 lg:grid-cols-12 lg:gap-4">
                 {featuredVideo && (
                     <Link
-                        className="group relative min-h-[300px] overflow-hidden rounded-[22px] border border-[var(--store-border)] bg-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 sm:min-h-[390px] lg:col-span-7"
+                        className="group relative min-h-[300px] overflow-hidden rounded-[22px] border border-[var(--store-border)] bg-[radial-gradient(circle_at_top,#312e81,#020617_72%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 sm:min-h-[390px] lg:col-span-7"
                         href={featuredVideo.url}
                     >
+                        <span className="absolute inset-0 grid place-items-center text-indigo-300/50">
+                            <Play size={54} />
+                        </span>
                         {image && (
                             <img
                                 alt=""
                                 className="absolute inset-0 size-full object-cover transition duration-300 group-hover:scale-[1.025]"
                                 decoding="async"
                                 loading="lazy"
+                                onError={(event) => {
+                                    event.currentTarget.style.display = "none";
+                                }}
                                 src={image}
                             />
                         )}

@@ -37,22 +37,25 @@ export default function NexusExplore({ items }: { items: NexusExploreItem[] }) {
                             href={item.href}
                             key={item.key}
                         >
-                            {item.image ? (
+                            <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#0f172a_70%)] text-indigo-300/70">
+                                {item.kind === "studio" ? (
+                                    <Factory size={42} />
+                                ) : (
+                                    <Gamepad2 size={42} />
+                                )}
+                            </span>
+                            {item.image && (
                                 <img
                                     alt=""
                                     className="absolute inset-0 size-full object-cover transition duration-300 group-hover:scale-[1.025]"
                                     decoding="async"
                                     loading="lazy"
+                                    onError={(event) => {
+                                        event.currentTarget.style.display =
+                                            "none";
+                                    }}
                                     src={item.image}
                                 />
-                            ) : (
-                                <span className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#312e81,#0f172a_70%)] text-indigo-300">
-                                    {item.kind === "studio" ? (
-                                        <Factory size={42} />
-                                    ) : (
-                                        <Gamepad2 size={42} />
-                                    )}
-                                </span>
                             )}
                             <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
                             <span className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5">

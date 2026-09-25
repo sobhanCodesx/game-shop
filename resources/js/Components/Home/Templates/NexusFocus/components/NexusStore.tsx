@@ -42,19 +42,21 @@ function HomeProductCard({ product }: { product: StorefrontProduct }) {
             href={product.url}
         >
             <article className="h-full overflow-hidden rounded-[18px] border border-[var(--store-border)] bg-[var(--store-surface)] transition duration-200 hover:-translate-y-0.5 hover:border-indigo-500/45">
-                <div className="relative aspect-[4/5] overflow-hidden bg-[var(--store-surface-strong)]">
-                    {product.cover_url ? (
+                <div className="relative aspect-[4/5] overflow-hidden bg-[radial-gradient(circle_at_top,#1e1b4b,var(--store-surface-strong)_72%)]">
+                    <span className="absolute inset-0 grid place-items-center text-indigo-400/70">
+                        <Gamepad2 size={42} />
+                    </span>
+                    {product.cover_url && (
                         <img
                             alt={product.cover_alt}
-                            className="size-full object-cover transition duration-300 group-hover:scale-[1.025]"
+                            className="relative size-full object-cover transition duration-300 group-hover:scale-[1.025]"
                             decoding="async"
                             loading="lazy"
+                            onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                            }}
                             src={product.cover_url}
                         />
-                    ) : (
-                        <span className="grid size-full place-items-center text-indigo-400">
-                            <Gamepad2 size={42} />
-                        </span>
                     )}
                     <span className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 to-transparent" />
                     <div className="absolute right-2.5 top-2.5 flex max-w-[75%] flex-col items-start gap-1.5">
@@ -126,9 +128,9 @@ export default function NexusStore({
             <div
                 className={`-mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-3 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-5 sm:px-5 lg:mx-0 lg:grid lg:overflow-visible lg:px-0 ${desktopColumns}`}
             >
-                {visibleProducts.map((product) => (
+                {visibleProducts.map((product, index) => (
                     <div
-                        className="w-[44vw] min-w-[160px] max-w-[230px] shrink-0 snap-start sm:w-[230px] lg:w-auto lg:max-w-none"
+                        className={`w-[44vw] min-w-[160px] max-w-[230px] shrink-0 snap-start sm:w-[230px] lg:w-auto lg:max-w-none ${index === 4 ? "lg:hidden xl:block" : ""}`}
                         key={product.id}
                     >
                         <HomeProductCard product={product} />

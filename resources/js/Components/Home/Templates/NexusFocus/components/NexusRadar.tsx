@@ -43,7 +43,8 @@ export default function NexusRadar({
                             Radar آماده رصد تغییر بعدی است
                         </h3>
                         <p className="mt-2 max-w-xl text-xs leading-6 text-white/50 sm:text-sm sm:leading-7">
-                            وقتی قیمت، تاریخ انتشار یا وضعیت یک بازی تغییر کند، اینجا به‌صورت سیگنال قابل‌فهم نمایش داده می‌شود.
+                            وقتی قیمت، تاریخ انتشار یا وضعیت یک بازی تغییر کند،
+                            اینجا به‌صورت سیگنال قابل‌فهم نمایش داده می‌شود.
                         </p>
                         <span className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-xs font-black text-cyan-200">
                             دیدن Game Radar
@@ -113,15 +114,21 @@ export default function NexusRadar({
                     </div>
 
                     <Link
-                        className="group relative hidden min-h-[260px] overflow-hidden rounded-[20px] border border-white/10 bg-slate-950 lg:block"
+                        className="group relative hidden min-h-[260px] overflow-hidden rounded-[20px] border border-white/10 bg-[radial-gradient(circle_at_top,#164e63,#020617_72%)] lg:block"
                         href={signals[0].href}
                     >
+                        <span className="absolute inset-0 grid place-items-center text-cyan-200/20">
+                            <Radar size={74} />
+                        </span>
                         {signals[0].image && (
                             <img
                                 alt=""
                                 className="absolute inset-0 size-full object-cover opacity-70 transition duration-300 group-hover:scale-[1.025]"
                                 decoding="async"
                                 loading="lazy"
+                                onError={(event) => {
+                                    event.currentTarget.style.display = "none";
+                                }}
                                 src={signals[0].image}
                             />
                         )}
