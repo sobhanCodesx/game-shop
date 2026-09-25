@@ -107,6 +107,7 @@ interface HomeTemplate {
     description: string;
     available: boolean;
     previewable?: boolean;
+    lock_user_override?: boolean;
 }
 
 interface Props {
@@ -1340,7 +1341,7 @@ export default function Edit({
                                 <div>
                                     <Card.Title>قالب صفحه اصلی</Card.Title>
                                     <Card.Description>
-                                        قالب فعلی همیشه fallback امن است. قالب‌های جدید بعد از تکمیل نسخه موبایل و دسکتاپ قابل انتخاب می‌شوند.
+                                        تغییر قالب فقط بعد از ذخیره توسط ادمین روی سایت عمومی اعمال می‌شود. انتخاب داخل این صفحه تا قبل از ذخیره هیچ تغییری برای کاربران ایجاد نمی‌کند.
                                     </Card.Description>
                                 </div>
                             </div>
@@ -1416,7 +1417,12 @@ export default function Edit({
                                             </p>
                                             {selected && !persisted && (
                                                 <p className="mt-2 text-[10px] font-bold text-amber-300">
-                                                    این انتخاب هنوز ذخیره نشده و فقط در پیش‌نمایش دیده می‌شود.
+                                                    این انتخاب هنوز ذخیره نشده است؛ بعد از «ذخیره تغییرات» برای کاربران فعال می‌شود.
+                                                </p>
+                                            )}
+                                            {persisted && template.lock_user_override && (
+                                                <p className="mt-2 text-[10px] font-bold text-emerald-300">
+                                                    این قالب در حال حاضر برای همه کاربران فعال است و preference کاربر آن را عوض نمی‌کند.
                                                 </p>
                                             )}
                                         </button>

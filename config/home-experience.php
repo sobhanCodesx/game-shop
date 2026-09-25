@@ -46,8 +46,9 @@ return [
             'label' => 'Nexus Focus',
             'focus' => 'balanced',
             'description' => 'قالب نسل بعدی PlayNexus با Spotlight، Pulse، Games، Store، Media، Radar و Explore در یک سلسله‌مراتب ساده.',
-            'available' => false,
+            'available' => true,
             'previewable' => true,
+            'lock_user_override' => true,
         ],
         'editorial' => [
             'label' => 'Editorial',

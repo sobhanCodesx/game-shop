@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Admin\HomeSettingsController;
 use App\Models\HomeSetting;
 use App\Models\Product;
 use App\Models\User;
@@ -95,7 +96,7 @@ class HomeExperienceTest extends TestCase
         );
     }
 
-    public function test_admin_can_preview_nexus_focus_while_it_remains_unavailable(): void
+    public function test_admin_can_preview_nexus_focus_without_persisting_it(): void
     {
         HomeSetting::query()->updateOrCreate(
             ['id' => 1],
@@ -112,13 +113,57 @@ class HomeExperienceTest extends TestCase
                 ->where('homeExperience.effective_template', 'nexus_focus')
                 ->where('homeExperience.source', 'preview'));
 
-        $this->assertFalse(
+        $this->assertTrue(
             (bool) config('home-experience.templates.nexus_focus.available'),
         );
         $this->assertSame(
             'default',
             HomeSetting::query()->findOrFail(1)->content['home_template'],
         );
+    }
+
+    public function test_admin_can_activate_nexus_focus_for_the_public_home(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->post('/admin/home', [
+                'settings' => [
+                    ...HomeSettingsController::DEFAULTS,
+                    'home_template' => 'nexus_focus',
+                ],
+                'slides' => [],
+                'sections' => [],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(
+            'nexus_focus',
+            HomeSetting::query()->findOrFail(1)->content['home_template'],
+        );
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('homeExperience.system_template', 'nexus_focus')
+                ->where('homeExperience.effective_template', 'nexus_focus')
+                ->where('homeExperience.source', 'system'));
+    }
+
+    public function test_nexus_focus_global_activation_cannot_be_overridden_by_user_template_preference(): void
+    {
+        $user = User::factory()->create([
+            'home_focus_preference' => 'products',
+        ]);
+
+        $state = app(HomeExperienceService::class)->resolve([
+            'home_template' => 'nexus_focus',
+        ], $user);
+
+        $this->assertSame('nexus_focus', $state['system_template']);
+        $this->assertSame('nexus_focus', $state['effective_template']);
+        $this->assertSame('balanced', $state['focus']);
+        $this->assertSame('system', $state['source']);
     }
 
     public function test_guest_cannot_override_home_template_with_preview_query(): void
