@@ -69,101 +69,25 @@ const publicPulse = (input: NexusFocusInput): NexusPulseItem[] => [
 ];
 
 const buildSpotlight = (input: NexusFocusInput): NexusSpotlightItem[] => {
-    const items: NexusSpotlightItem[] = [];
-
-    input.personalizedHome?.events.forEach((event) => {
-        if (!["critical", "high"].includes(event.priority)) return;
-        items.push({
-            key: `event-${event.id}`,
-            title: event.title,
-            eyebrow: event.type_label || "NEXUS SIGNAL",
-            description: event.reason || event.summary,
-            href: event.url,
-            image: event.game?.image_url ?? event.game?.cover_url ?? null,
-            kind: "event",
-            score: event.priority === "critical" ? 100 : 95,
-        });
-    });
-
-    input.slides.forEach((slide, index) => {
-        const title = (slide.title || slide.alt || "").trim();
-        const description = (slide.description || slide.alt || "").trim();
-        const hasUsefulContext =
-            title.length >= 8 || description.length >= 24;
-
-        items.push({
-            key: `campaign-${slide.id}`,
-            title: title || "PlayNexus",
-            eyebrow: slide.eyebrow || "PLAYNEXUS",
-            description: description || null,
-            href: slide.button_url || "/",
-            image: slide.desktop_image_url,
-            mobileImage: slide.mobile_image_url,
-            kind: "campaign",
-            score: (hasUsefulContext ? 86 : 58) - index,
-        });
-    });
-
-    input.personalizedHome?.videos.forEach((item, index) => {
-        items.push({
-            key: `personal-video-${item.id}`,
-            title: item.title,
-            eyebrow: item.relevance.signal_label || "برای تو",
-            description: item.relevance.reason,
-            href: item.url,
-            image: feedImage(item),
-            kind: "video",
-            score: 83 - index,
-        });
-    });
-
-    input.feed.forEach((item, index) => {
-        items.push({
-            key: `feed-${item.id}`,
-            title: item.title,
-            eyebrow: feedBadgeLabel[item.badge ?? ""] ?? "تازه مهم",
-            description: item.author.name,
-            href: item.url,
-            image: feedImage(item),
-            kind: item.type === "video" ? "video" : "feed",
-            score: 76 - index,
-        });
-    });
-
-    input.freshContent
-        .filter((item) => item.type === "video")
-        .forEach((item, index) => {
-            items.push({
-                key: item.key,
-                title: item.title,
-                eyebrow: item.eyebrow || "ویدیوی تازه",
-                description: "تازه در PlayNexus",
-                href: item.url,
-                image: item.image_url,
-                kind: "video",
-                score: 70 - index,
-            });
-        });
-
-    input.products.slice(0, 2).forEach((product, index) => {
-        items.push({
-            key: `product-${product.id}`,
-            title: product.title,
-            eyebrow: product.badge || "منتخب فروشگاه",
-            description: product.category,
-            href: product.url,
-            image: product.cover_url,
-            kind: "product",
-            score: 50 - index,
-        });
-    });
+    const latest = input.feed.map((item, index) => ({
+        key: `latest-${item.id}`,
+        title: item.title,
+        eyebrow:
+            feedBadgeLabel[item.badge ?? ""] ??
+            (item.type === "video"
+                ? "\u0648\u06cc\u062f\u06cc\u0648\u06cc \u062a\u0627\u0632\u0647"
+                : "\u062a\u0627\u0632\u0647 \u062f\u0631 PlayNexus"),
+        description: item.author.name || "PlayNexus",
+        href: item.url,
+        image: feedImage(item),
+        kind: item.type === "video" ? ("video" as const) : ("feed" as const),
+        score: 100 - index,
+    }));
 
     return uniqueBy(
-        items
-            .filter((item) => Boolean(item.image))
-            .sort((a, b) => b.score - a.score),
+        latest.filter((item) => Boolean(item.image)),
         (item) => item.href,
-    ).slice(0, 3);
+    ).slice(0, 6);
 };
 
 const buildPulse = (
