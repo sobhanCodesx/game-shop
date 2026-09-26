@@ -82,7 +82,7 @@ class SitemapController extends Controller
     private function urls(string $type): iterable
     {
         if ($type === 'static') {
-            foreach (['home', 'android.app', 'shop.index', 'exchange-products.index', 'discover', 'game-radar.index', 'offers.index', 'videos.index', 'studios.index'] as $routeName) {
+            foreach (['home', 'android.app', 'shop.index', 'exchange-products.index', 'discover', 'game-radar.index', 'offers.index', 'videos.index', 'channels.index', 'studios.index'] as $routeName) {
                 yield ['loc' => route($routeName)];
             }
 

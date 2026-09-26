@@ -19,6 +19,84 @@ use Inertia\Response;
 
 class ChannelController extends Controller
 {
+    public function index(Request $request): Response
+    {
+        $queryText = trim($request->string('q')->toString());
+
+        $games = Game::query()
+            ->whereIn('status', ['active', 'published'])
+            ->with('studio:id,name,slug')
+            ->withCount(['videos' => fn ($query) => $query->published()])
+            ->when($queryText !== '', fn ($query) => $query->where(function ($nested) use ($queryText): void {
+                $nested->where('name', 'like', "%{$queryText}%")
+                    ->orWhere('developer', 'like', "%{$queryText}%")
+                    ->orWhere('publisher', 'like', "%{$queryText}%");
+            }))
+            ->latest()
+            ->latest('id')
+            ->paginate(24)
+            ->withQueryString()
+            ->through(fn (Game $game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'url' => route('channels.show', $game->slug, false),
+                'cover_url' => MediaStorage::url($game->cover),
+                'background_url' => MediaStorage::url($game->background),
+                'studio_name' => $game->studio?->name,
+                'developer' => $game->developer,
+                'publisher' => $game->publisher,
+                'release_date' => $game->release_date?->toDateString(),
+                'videos_count' => (int) $game->videos_count,
+            ]);
+
+        $pageNumber = max(1, $games->currentPage());
+        $canonical = $pageNumber > 1
+            ? route('channels.index', ['page' => $pageNumber])
+            : route('channels.index');
+        $description = 'همه بازی‌های PlayNexus را یک‌جا ببین؛ وارد کانال هر بازی شو و ویدیوها، فیدها، کالکشن‌ها و محصولات مرتبط را دنبال کن.';
+        $firstGame = collect($games->items())->first();
+        $image = url(data_get($firstGame, 'background_url') ?: data_get($firstGame, 'cover_url') ?: (string) config('seo.default_image', '/logo.png'));
+
+        return Inertia::render('Channels/Index', [
+            ...Seo::page([
+                'title' => $pageNumber > 1 ? "همه بازی‌ها - صفحه {$pageNumber}" : 'همه بازی‌های PlayNexus',
+                'description' => $description,
+                'canonical' => $canonical,
+                'robots' => $queryText === ''
+                    ? 'index, follow, max-image-preview:large, max-snippet:-1'
+                    : 'noindex, follow',
+                'type' => 'website',
+                'image' => $image,
+                'imageAlt' => 'بازی‌های PlayNexus',
+                'structuredData' => [
+                    '@context' => 'https://schema.org',
+                    '@graph' => [
+                        [
+                            '@type' => 'CollectionPage',
+                            '@id' => $canonical.'#games',
+                            'name' => 'همه بازی‌های PlayNexus',
+                            'url' => $canonical,
+                            'description' => $description,
+                        ],
+                        [
+                            '@type' => 'ItemList',
+                            '@id' => $canonical.'#list',
+                            'numberOfItems' => count($games->items()),
+                            'itemListElement' => collect($games->items())->values()->map(fn (array $game, int $index) => [
+                                '@type' => 'ListItem',
+                                'position' => $index + 1,
+                                'name' => $game['name'],
+                                'url' => url($game['url']),
+                            ])->all(),
+                        ],
+                    ],
+                ],
+            ]),
+            'games' => $games,
+            'filters' => ['q' => $queryText],
+        ]);
+    }
+
     public function show(
         Request $request,
         Game $game,

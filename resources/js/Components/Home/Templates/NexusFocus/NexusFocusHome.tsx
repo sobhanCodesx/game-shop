@@ -6,6 +6,7 @@ import NexusMedia from "./components/NexusMedia";
 import NexusPulse from "./components/NexusPulse";
 import NexusQuickPaths from "./components/NexusQuickPaths";
 import NexusRadar from "./components/NexusRadar";
+import NexusLatestGames from "./components/NexusLatestGames";
 import NexusLatestSlider from "./components/NexusLatestSlider";
 import NexusStore from "./components/NexusStore";
 import type { NexusFocusInput } from "./types";
@@ -26,6 +27,7 @@ export default function NexusFocusHome(props: NexusFocusInput) {
             <NexusLatestSlider items={model.latestSlides} />
             <NexusQuickPaths />
             <NexusPulse items={model.pulse} personalized={personalized} />
+            <NexusLatestGames items={props.latestGames} />
             <NexusGames items={model.games} />
             <NexusMedia
                 featuredVideo={model.featuredVideo}

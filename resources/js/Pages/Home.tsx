@@ -99,6 +99,7 @@ interface HomePreviewProduct {
 interface HomePreviewData {
     latestArrivalsFeed: HomeFeedPreviewItem[];
     latestStudios: StudioItem[];
+    latestGames: LatestGameItem[];
     gameRadar: GameRadarItem[];
     channels: ChannelItem[];
     freshContent: FreshItem[];
@@ -266,6 +267,17 @@ interface ChannelItem {
     videos_count: number;
     subscribers_count: number;
     created_at?: string | null;
+}
+interface LatestGameItem {
+    id: number;
+    name: string;
+    url: string;
+    cover_url: string | null;
+    background_url: string | null;
+    studio_name: string | null;
+    videos_count: number;
+    release_date: string | null;
+    created_at: string | null;
 }
 interface StudioItem {
     id: number;
@@ -3236,6 +3248,7 @@ export default function Home({
     const previewLatestFeed = latestFeed;
     const previewLatestArrivalsFeed = homePreview.latestArrivalsFeed ?? [];
     const previewLatestStudios = homePreview.latestStudios ?? [];
+    const previewLatestGames = homePreview.latestGames ?? [];
     const previewGameRadar = homePreview.gameRadar ?? [];
     const previewChannels = homePreview.channels ?? [];
     const previewFreshContent = homePreview.freshContent ?? [];
@@ -3391,6 +3404,7 @@ export default function Home({
                         personalizedHome={personalizedHome}
                         latestArrivalsFeed={previewLatestArrivalsFeed}
                         latestProducts={previewLatestProducts}
+                        latestGames={previewLatestGames}
                         products={[
                             ...heroFeaturedProducts,
                             ...heroLatestProducts,

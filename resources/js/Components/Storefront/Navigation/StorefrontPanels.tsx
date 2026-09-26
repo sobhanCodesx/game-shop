@@ -17,9 +17,9 @@ import {
     Tags,
     X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 
-import SmartSearch from "../Search/SmartSearch";
+const SmartSearch = lazy(() => import("../Search/SmartSearch"));
 import type { SharedPageProps } from "../../../types";
 import type { NavigationCategory, StorefrontNavigationProps } from "./types";
 
@@ -124,7 +124,7 @@ export default function StorefrontPanels({
         if (!panel) setCategoryPath([]);
     }, [panel]);
     useEffect(() => {
-        if (!panel) return;
+        if (!panel || panel === "menu") return;
 
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = "hidden";
@@ -161,7 +161,7 @@ export default function StorefrontPanels({
             >
                 <button
                     aria-label="بستن منوی اصلی"
-                    className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
+                    className="mobile-menu-backdrop absolute inset-0 touch-none bg-slate-950/70"
                     onClick={onClose}
                     type="button"
                 />
@@ -543,11 +543,20 @@ export default function StorefrontPanels({
                     )}
                     {panel === "search" && (
                         <div className="h-full">
-                            <SmartSearch
-                                autoFocus
-                                className="search-panel-smart-search"
-                                onNavigate={onClose}
-                            />
+                            <Suspense
+                                fallback={
+                                    <div
+                                        aria-hidden="true"
+                                        className="h-14 rounded-2xl bg-[var(--store-surface)]"
+                                    />
+                                }
+                            >
+                                <SmartSearch
+                                    autoFocus
+                                    className="search-panel-smart-search"
+                                    onNavigate={onClose}
+                                />
+                            </Suspense>
                             <div className="mt-5 grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-[var(--store-muted)]">
                                 <span className="rounded-xl bg-[var(--store-surface)] px-2 py-2.5">
                                     جستجوی غلط املایی

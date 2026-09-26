@@ -52,6 +52,40 @@ final class HomePublicCacheService
         ));
     }
 
+    public function latestGames(): Collection
+    {
+        if (! Schema::hasTable('games')) {
+            return collect();
+        }
+
+        return collect($this->cache->remember(
+            'home',
+            'latest-games',
+            fn () => Game::query()
+                ->whereIn('status', ['active', 'published'])
+                ->with('studio:id,name,slug')
+                ->withCount(['videos' => fn ($query) => $query->published()])
+                ->latest()
+                ->latest('id')
+                ->limit(10)
+                ->get(['id', 'studio_id', 'name', 'slug', 'cover', 'background', 'release_date', 'created_at'])
+                ->map(fn (Game $game) => [
+                    'id' => $game->id,
+                    'name' => $game->name,
+                    'url' => route('channels.show', $game->slug, false),
+                    'cover_url' => MediaStorage::url($game->cover),
+                    'background_url' => MediaStorage::url($game->background),
+                    'studio_name' => $game->studio?->name,
+                    'videos_count' => (int) $game->videos_count,
+                    'release_date' => $game->release_date?->toDateString(),
+                    'created_at' => $game->created_at?->toISOString(),
+                ])
+                ->values()
+                ->all(),
+            600,
+        ));
+    }
+
     public function slides(): Collection
     {
         return collect($this->cache->remember(

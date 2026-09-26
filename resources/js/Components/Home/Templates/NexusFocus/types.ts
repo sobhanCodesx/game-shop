@@ -59,6 +59,18 @@ export interface NexusFocusStudio {
     created_at?: string | null;
 }
 
+export interface NexusFocusLatestGame {
+    id: number;
+    name: string;
+    url: string;
+    cover_url: string | null;
+    background_url: string | null;
+    studio_name: string | null;
+    videos_count: number;
+    release_date: string | null;
+    created_at: string | null;
+}
+
 export interface NexusFocusLatestProduct {
     id: number;
     title: string;
@@ -141,6 +153,7 @@ export interface NexusFocusInput {
     freshContent: NexusFocusFreshItem[];
     channels: NexusFocusChannel[];
     studios: NexusFocusStudio[];
+    latestGames: NexusFocusLatestGame[];
     radar: NexusFocusRadarItem[];
     products: StorefrontProduct[];
     latestProducts: NexusFocusLatestProduct[];

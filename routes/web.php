@@ -143,6 +143,7 @@ Route::get('offers', [StorefrontController::class, 'shop'])->defaults('sort', 'l
 Route::get('videos', [StorefrontController::class, 'videos'])->name('videos.index');
 Route::get('studios', [StudioController::class, 'index'])->name('studios.index');
 Route::get('studios/{studio:slug}', [StudioController::class, 'show'])->name('studios.show');
+Route::get('channels', [ChannelController::class, 'index'])->name('channels.index');
 Route::get('channels/{game:slug}', [ChannelController::class, 'show'])->name('channels.show');
 Route::get('channels/{game:slug}/playlists/{playlist:slug}', [ChannelController::class, 'playlist'])->name('channels.playlists.show');
 Route::get('collections/{playlist:slug}', [ChannelController::class, 'collection'])->name('collections.show');

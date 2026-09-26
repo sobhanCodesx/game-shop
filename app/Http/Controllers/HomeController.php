@@ -76,6 +76,9 @@ class HomeController extends Controller
         $latestStudios = $loadPublicPreviewData
             ? $homePublic->latestStudios()
             : collect();
+        $latestGames = $loadPublicPreviewData
+            ? $homePublic->latestGames()
+            : collect();
 
         $slides = $homePublic->slides();
 
@@ -120,6 +123,7 @@ class HomeController extends Controller
         $homePreview = [
             'latestArrivalsFeed' => $previewLatestArrivalsFeed,
             'latestStudios' => $latestStudios->take(3)->values(),
+            'latestGames' => $latestGames,
             'gameRadar' => $previewRadar,
             'channels' => $previewChannels,
             'freshContent' => $previewVideos,

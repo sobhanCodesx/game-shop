@@ -1,11 +1,9 @@
 import { Link } from "@inertiajs/react";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import DesktopNavigation from "./DesktopNavigation";
 import MobileNavigation from "./MobileNavigation";
-import type { StorefrontPanel } from "./StorefrontPanels";
-
-const StorefrontPanels = lazy(() => import("./StorefrontPanels"));
+import StorefrontPanels, { type StorefrontPanel } from "./StorefrontPanels";
 import StorefrontStories from "./StorefrontStories";
 import type { StorefrontNavigationProps, StorefrontTheme } from "./types";
 
@@ -86,14 +84,12 @@ export default function StorefrontNavigation({
             </div>
             <StorefrontStories stories={stories} />
             {panel && (
-                <Suspense fallback={null}>
-                    <StorefrontPanels
-                        categories={categories}
-                        onClose={closePanel}
-                        panel={panel}
-                        user={user}
-                    />
-                </Suspense>
+                <StorefrontPanels
+                    categories={categories}
+                    onClose={closePanel}
+                    panel={panel}
+                    user={user}
+                />
             )}
         </>
     );
