@@ -172,7 +172,6 @@ installPublicScrollPerformanceMode();
 
 const resolveInertiaPage = createInertiaPageResolver(
     import.meta.glob("./Pages/**/*.tsx") as InertiaPageModules,
-    import.meta.glob("../../Modules/*/Template/Pages/**/*.tsx") as InertiaPageModules,
 );
 
 let currentNativeUserId: number | null = null;

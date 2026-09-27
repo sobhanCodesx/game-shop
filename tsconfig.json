@@ -5,11 +5,7 @@
         "forceConsistentCasingInFileNames": true,
         "isolatedModules": true,
         "jsx": "react-jsx",
-        "lib": [
-            "DOM",
-            "DOM.Iterable",
-            "ESNext"
-        ],
+        "lib": ["DOM", "DOM.Iterable", "ESNext"],
         "module": "ESNext",
         "moduleResolution": "Bundler",
         "noEmit": true,
@@ -17,15 +13,7 @@
         "skipLibCheck": true,
         "strict": true,
         "target": "ESNext",
-        "types": [
-            "vite/client",
-            "node"
-        ]
+        "types": ["vite/client", "node"]
     },
-    "include": [
-        "resources/js/**/*.ts",
-        "resources/js/**/*.tsx",
-        "Modules/**/*.ts",
-        "Modules/**/*.tsx"
-    ]
+    "include": ["resources/js/**/*.ts", "resources/js/**/*.tsx"]
 }

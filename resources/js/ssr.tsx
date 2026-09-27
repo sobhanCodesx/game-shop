@@ -19,12 +19,6 @@ const resolveInertiaPage = createInertiaPageResolver(
     import.meta.glob(
         ["./Pages/**/*.tsx", "!./Pages/Admin/**/*.tsx"],
     ) as InertiaPageModules,
-    import.meta.glob(
-        [
-            "../../Modules/*/Template/Pages/**/*.tsx",
-            "!../../Modules/*/Template/Pages/Admin/**/*.tsx",
-        ],
-    ) as InertiaPageModules,
 );
 
 installPassengerBasePathSupport();
