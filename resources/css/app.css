@@ -9,6 +9,7 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../**/*.blade.php';
 @source '../**/*.{js,ts,jsx,tsx}';
+@source '../../Modules/**/*.{js,ts,jsx,tsx}';
 
 @theme {
     --font-sans: "Vazirmatn Variable", ui-sans-serif, system-ui, sans-serif;
