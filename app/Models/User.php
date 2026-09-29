@@ -80,25 +80,57 @@ class User extends Authenticatable
             return true;
         }
 
+        if ($this->relationLoaded('roles')) {
+            return $this->roles->contains('slug', 'super-admin');
+        }
+
         return $this->roles()->where('slug', 'super-admin')->exists();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function effectivePermissionSlugs(): array
+    {
+        if ($this->isSuperAdmin()) {
+            return array_keys(config('admin-access.permissions', []));
+        }
+
+        $this->loadMissing([
+            'permissions:id,slug',
+            'roles.permissions:id,slug',
+        ]);
+
+        $granted = $this->permissions
+            ->pluck('slug')
+            ->merge($this->roles->flatMap(fn (Role $role) => $role->permissions->pluck('slug')))
+            ->filter()
+            ->unique()
+            ->values();
+
+        return collect(array_keys(config('admin-access.permissions', [])))
+            ->filter(function (string $permission) use ($granted): bool {
+                if ($granted->contains($permission)) {
+                    return true;
+                }
+
+                $aliases = config("admin-access.permission_aliases.{$permission}", []);
+                if (collect($aliases)->contains(fn (string $alias) => $granted->contains($alias))) {
+                    return true;
+                }
+
+                $requiredAliases = config("admin-access.permission_all_aliases.{$permission}", []);
+
+                return $requiredAliases !== []
+                    && collect($requiredAliases)->every(fn (string $alias) => $granted->contains($alias));
+            })
+            ->values()
+            ->all();
     }
 
     public function hasPermission(string $permission): bool
     {
-        if ($this->isSuperAdmin()) {
-            return true;
-        }
-
-        $aliases = config("admin-access.permission_aliases.{$permission}", []);
-        $candidates = array_values(array_unique([$permission, ...$aliases]));
-
-        if ($this->permissions()->whereIn('slug', $candidates)->exists()) {
-            return true;
-        }
-
-        return $this->roles()
-            ->whereHas('permissions', fn ($query) => $query->whereIn('slug', $candidates))
-            ->exists();
+        return in_array($permission, $this->effectivePermissionSlugs(), true);
     }
 
     public function canAccessAdminPanel(): bool
@@ -107,12 +139,7 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($this->isSuperAdmin()) {
-            return true;
-        }
-
-        return $this->permissions()->exists()
-            || $this->roles()->whereHas('permissions')->exists();
+        return $this->isSuperAdmin() || $this->effectivePermissionSlugs() !== [];
     }
 
     public function addresses(): HasMany
