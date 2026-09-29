@@ -91,7 +91,7 @@ class UserManagementTest extends TestCase
 
     public function test_non_super_admin_cannot_impersonate_admin_account(): void
     {
-        $actor = User::factory()->create(['is_admin' => true]);
+        $actor = User::factory()->create(['is_admin' => true, 'status' => 'active']);
         $impersonate = Permission::query()->where('slug', 'users.impersonate')->firstOrFail();
         $actor->permissions()->attach($impersonate);
 
@@ -111,7 +111,7 @@ class UserManagementTest extends TestCase
 
     public function test_non_super_admin_cannot_grant_a_role_above_their_own_permissions(): void
     {
-        $actor = User::factory()->create(['is_admin' => true]);
+        $actor = User::factory()->create(['is_admin' => true, 'status' => 'active']);
         $usersManage = Permission::query()->where('slug', 'users.manage')->firstOrFail();
         $actor->permissions()->attach($usersManage);
         $target = User::factory()->create();
