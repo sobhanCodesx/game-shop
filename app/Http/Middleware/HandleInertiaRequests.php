@@ -136,18 +136,31 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => fn () => $request->user() ? [
-                    ...$request->user()->only([
-                        'id',
-                        'name',
-                        'email',
-                        'avatar',
-                        'role',
-                        'is_admin',
-                    ]),
-                    'avatar_url' => MediaStorage::url($request->user()->avatar),
-                    'has_password' => filled($request->user()->getAuthPassword()),
-                ] : null,
+                'user' => function () use ($request): ?array {
+                    $user = $request->user();
+                    if (! $user) {
+                        return null;
+                    }
+
+                    $canAccessAdmin = $user->canAccessAdminPanel();
+
+                    return [
+                        ...$user->only([
+                            'id',
+                            'name',
+                            'email',
+                            'avatar',
+                            'role',
+                            'is_admin',
+                        ]),
+                        'avatar_url' => MediaStorage::url($user->avatar),
+                        'has_password' => filled($user->getAuthPassword()),
+                        'is_super_admin' => $canAccessAdmin && $user->isSuperAdmin(),
+                        'admin_permissions' => $canAccessAdmin
+                            ? $user->effectivePermissionSlugs()
+                            : [],
+                    ];
+                },
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
@@ -170,7 +183,7 @@ class HandleInertiaRequests extends Middleware
                     ->values(),
             ] : null,
             'cart' => fn () => ['item_count' => collect($request->session()->get('cart', []))->sum(fn ($item) => (int) ($item['quantity'] ?? 0))],
-            'admin' => fn () => $request->user()?->is_admin ? ['pending_orders_count' => Order::query()->where('status', 'pending')->count(), 'open_tickets_count' => Ticket::query()->where('status', 'pending')->count()] : null,
+            'admin' => fn () => $request->user()?->canAccessAdminPanel() ? ['pending_orders_count' => Order::query()->where('status', 'pending')->count(), 'open_tickets_count' => Ticket::query()->where('status', 'pending')->count()] : null,
             'impersonation' => fn () => $request->session()->has('impersonator_id') ? [
                 'active' => true,
                 'admin_name' => User::query()->whereKey($request->session()->get('impersonator_id'))->value('name'),
