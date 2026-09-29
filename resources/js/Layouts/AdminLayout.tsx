@@ -47,20 +47,22 @@ export default function AdminLayout({
     const currentPath = normalizePath(rawPath);
     const currentQueryString = rawQuery.split("#")[0];
     const currentQuery = new URLSearchParams(currentQueryString);
-    const isSuperAdmin = auth.user?.role === "super-admin";
+    const isSuperAdmin = Boolean(auth.user?.is_super_admin);
+    const adminPermissions = new Set(auth.user?.admin_permissions ?? []);
     const roleLabel = isSuperAdmin ? "مدیر کل سیستم" : "مدیر پنل";
+    const canSeeNavigationLink = (item: NavigationLink) =>
+        (!item.superAdminOnly || isSuperAdmin) &&
+        (!item.permission || isSuperAdmin || adminPermissions.has(item.permission));
 
     const visibleNavigation = adminNavigation.reduce<NavigationEntry[]>(
         (items, entry) => {
             if (entry.type === "link") {
-                if (entry.superAdminOnly && !isSuperAdmin) return items;
+                if (!canSeeNavigationLink(entry)) return items;
                 items.push(entry);
                 return items;
             }
 
-            const children = entry.children.filter(
-                (item) => !item.superAdminOnly || isSuperAdmin,
-            );
+            const children = entry.children.filter(canSeeNavigationLink);
             if (children.length) items.push({ ...entry, children });
             return items;
         },
