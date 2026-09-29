@@ -114,12 +114,12 @@ class User extends Authenticatable
                     return true;
                 }
 
-                $aliases = config("admin-access.permission_aliases.{$permission}", []);
+                $aliases = config('admin-access.permission_aliases', [])[$permission] ?? [];
                 if (collect($aliases)->contains(fn (string $alias) => $granted->contains($alias))) {
                     return true;
                 }
 
-                $requiredAliases = config("admin-access.permission_all_aliases.{$permission}", []);
+                $requiredAliases = config('admin-access.permission_all_aliases', [])[$permission] ?? [];
 
                 return $requiredAliases !== []
                     && collect($requiredAliases)->every(fn (string $alias) => $granted->contains($alias));
