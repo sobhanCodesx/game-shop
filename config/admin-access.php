@@ -28,13 +28,23 @@ return [
 
     'permission_aliases' => [
         'users.manage' => ['user.manage'],
-        'catalog.manage' => ['product.view', 'product.create', 'product.update', 'product.delete'],
-        'orders.manage' => ['order.manage', 'order.view'],
+        'orders.manage' => ['order.manage'],
         'payments.manage' => ['payment.manage'],
         'trades.manage' => ['trade.review'],
-        'content.manage' => ['content.moderate'],
-        'support.manage' => ['support.manage'],
-        'settings.manage' => ['settings.manage'],
+        'moderation.manage' => ['content.moderate'],
+    ],
+
+    'permission_all_aliases' => [
+        'catalog.manage' => ['product.create', 'product.update', 'product.delete'],
+    ],
+
+    'protected_permissions' => [
+        'users.manage',
+        'users.impersonate',
+        'audit.view',
+        'system.maintenance',
+        'system.deployments',
+        'system.files.manage',
     ],
 
     'roles' => [
@@ -136,12 +146,16 @@ return [
         'admin.users.*' => 'users.manage',
         'admin.dashboard' => 'dashboard.view',
         'admin.home.*' => 'storefront.manage',
+        'admin.android-releases.*' => 'system.deployments',
         'admin.orders.*' => 'orders.manage',
         'admin.tickets.*' => 'support.manage',
         'admin.coupons.*' => 'coupons.manage',
         'admin.settings.*' => 'settings.manage',
+        'admin.nexus-ai.*' => 'settings.manage',
+        'admin.sms-providers.*' => 'sms.manage',
         'admin.sms-patterns.*' => 'sms.manage',
         'admin.sms-test.*' => 'sms.manage',
+        'admin.telegram-bot.*' => 'system.maintenance',
         'admin.system-maintenance.*' => 'system.maintenance',
         'admin.deployments.*' => 'system.deployments',
         'admin.file-manager.*' => 'system.files.manage',
