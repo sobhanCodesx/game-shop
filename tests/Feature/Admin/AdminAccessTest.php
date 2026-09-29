@@ -48,6 +48,7 @@ class AdminAccessTest extends TestCase
         $admin = User::factory()->create([
             'is_admin' => true,
             'role' => 'super-admin',
+            'status' => 'active',
         ]);
 
         $this->actingAs($admin)
