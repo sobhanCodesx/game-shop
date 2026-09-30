@@ -9,6 +9,7 @@ on:
       - 'resources/js/**'
       - 'routes/**'
       - 'tests/Feature/DigitalCommerceTest.php'
+      - 'tests/Feature/ProductMediaDeliveryTest.php'
       - '.github/workflows/digital-commerce-check.yml'
   workflow_dispatch:
 
@@ -56,4 +57,4 @@ jobs:
         run: npm run build
 
       - name: Run digital commerce regression tests
-        run: php artisan test tests/Feature/DigitalCommerceTest.php tests/Feature/ContentAgentDigitalProductMcpTest.php tests/Feature/ContentAgentMcpTest.php tests/Feature/Admin/AdminAccessTest.php
+        run: php artisan test tests/Feature/DigitalCommerceTest.php tests/Feature/ProductMediaDeliveryTest.php tests/Feature/ContentAgentDigitalProductMcpTest.php tests/Feature/ContentAgentMcpTest.php tests/Feature/Admin/AdminAccessTest.php
