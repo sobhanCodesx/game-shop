@@ -296,3 +296,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         ->where('resource', 'creators|inventory|payments|reviews|trades|posts|videos|shorts|comments|reports|moderation|notifications|banners|pages|audit-logs|support')
         ->name('resources.index');
 });
+
+
+require base_path('routes/digital.php');
