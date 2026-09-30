@@ -10,7 +10,7 @@ final class ProductMediaStorage
 {
     public static function diskName(): string
     {
-        return (string) config('product_media.disk', 'public');
+        return (string) config('product_media.disk', 'downloads');
     }
 
     public static function disk(): FilesystemAdapter
