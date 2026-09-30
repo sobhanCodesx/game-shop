@@ -71,7 +71,7 @@ final class ProductPageDataService
             ->where('type', 'image')
             ->sortByDesc('is_primary')
             ->pluck('path')
-            ->map(fn (string $path) => url(MediaStorage::url($path)))
+            ->map(fn (string $path) => url(ProductMediaStorage::url($path)))
             ->values();
 
         $image = $images->first() ?: url((string) config('seo.default_image', '/logo.png'));
@@ -101,7 +101,7 @@ final class ProductPageDataService
                 'media' => $product->media->map(fn ($media) => [
                     'id' => $media->id,
                     'type' => $media->type,
-                    'url' => MediaStorage::url($media->path),
+                    'url' => ProductMediaStorage::url($media->path),
                     'alt' => $media->alt ?: $product->title,
                     'is_primary' => (bool) $media->is_primary,
                 ])->values()->all(),
