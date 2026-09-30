@@ -41,7 +41,11 @@ final class DigitalProductMediaStorage
             // require opening the remote disk when its configured base URL exists.
         }
 
-        return MediaStorage::url($path);
+        try {
+            return MediaStorage::url($path);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     public static function exists(?string $path): bool
