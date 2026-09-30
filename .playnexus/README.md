@@ -44,6 +44,7 @@ Supported resource/slot combinations:
 - `story`: `media`, `thumbnail`, `attachment`
 - `video`: `video`, `thumbnail`, `attachment`
 - `product`: `media`, `attachment`
+- `digital_product`: `media`, `attachment`
 
 Server uploads require `PLAYNEXUS_CONTENT_AGENT_ALLOW_UPLOADS=true`. They use
 the existing `PLAYNEXUS_CONTENT_AGENT_TOKEN`; no extra authentication token is
