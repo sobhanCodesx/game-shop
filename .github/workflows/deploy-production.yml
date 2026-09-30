@@ -56,7 +56,7 @@ jobs:
           tests/Feature/MobileApiTest.php
           tests/Feature/MobilePushNotificationTest.php
           tests/Feature/ProductMediaStorageTest.php
-          tests/Feature/DigitalCommerceTest.php
+          tests/Feature/ContentAgentDigitalProductMcpTest.php
 
   build-and-deploy:
     needs: auth-regression
