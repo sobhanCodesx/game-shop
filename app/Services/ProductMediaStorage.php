@@ -20,7 +20,25 @@ final class ProductMediaStorage
 
     public static function url(?string $path): ?string
     {
-        return MediaStorage::url($path);
+        $path = MediaStorage::normalizePath($path);
+        if ($path === null) {
+            return null;
+        }
+
+        if (MediaStorage::isExternalUrl($path)) {
+            return $path;
+        }
+
+        if (app()->bound('router') && app('router')->has('media.stream')) {
+            return route('media.stream', ['path' => $path], false);
+        }
+
+        $baseUrl = config('filesystems.disks.'.self::diskName().'.url');
+        if (is_string($baseUrl) && trim($baseUrl) !== '') {
+            return rtrim($baseUrl, '/').'/'.$path;
+        }
+
+        return self::disk()->url($path);
     }
 
     public static function exists(?string $path): bool
