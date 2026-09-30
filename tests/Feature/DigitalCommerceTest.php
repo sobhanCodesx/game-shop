@@ -203,6 +203,66 @@ class DigitalCommerceTest extends TestCase
                 ->where('product.id', $product->id));
     }
 
+    public function test_editing_digital_product_with_new_image_upload_succeeds(): void
+    {
+        Storage::fake((string) config('media.disk', 'public'));
+
+        [$seller, $product] = $this->digitalProduct('media-edit');
+        $product->media()->create([
+            'type' => 'image',
+            'path' => 'digital-products/media-edit/old-cover.webp',
+            'alt' => 'کاور قبلی',
+            'sort_order' => 1,
+            'is_primary' => true,
+        ]);
+
+        $offers = $product->offers->map(fn ($offer) => [
+            'code' => $offer->code,
+            'label' => $offer->label,
+            'price' => $offer->price,
+            'stock' => $offer->stock,
+            'status' => $offer->status,
+        ])->values()->all();
+
+        $response = $this->actingAs($seller)->post(
+            '/admin/digital-products/'.$product->id,
+            [
+                '_method' => 'put',
+                'game_id' => $product->game_id,
+                'platform_id' => $product->platform_id,
+                'title' => $product->title,
+                'short_description' => 'ویرایش همراه با تصویر جدید',
+                'support_days' => 7,
+                'status' => 'published',
+                'featured' => false,
+                'offers' => $offers,
+                'attribute_values' => [],
+                'media' => [
+                    [
+                        'type' => 'image',
+                        'file' => UploadedFile::fake()->image('new-cover.jpg', 1200, 800),
+                        'alt' => 'کاور جدید',
+                        'is_primary' => true,
+                    ],
+                ],
+            ],
+        );
+
+        $response->assertRedirect('/admin/digital-products');
+
+        $product->refresh();
+        $this->assertSame('ویرایش همراه با تصویر جدید', $product->short_description);
+        $this->assertCount(1, $product->media);
+        $this->assertSame('کاور جدید', $product->media()->firstOrFail()->alt);
+        $this->assertTrue((bool) $product->media()->firstOrFail()->is_primary);
+        $this->assertStringStartsWith(
+            'digital-products/'.$product->id.'/',
+            $product->media()->firstOrFail()->path,
+        );
+        Storage::disk((string) config('media.disk', 'public'))
+            ->assertExists($product->media()->firstOrFail()->path);
+    }
+
     public function test_customer_creates_digital_order_and_stock_is_reserved_not_sold(): void
     {
         [, $product] = $this->digitalProduct();
