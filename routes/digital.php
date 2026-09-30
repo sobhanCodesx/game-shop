@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DigitalOrderController as AdminDigitalOrderController;
 use App\Http\Controllers\Admin\DigitalProductController as AdminDigitalProductController;
+use App\Http\Controllers\DigitalOrderAttachmentController;
 use App\Http\Controllers\DigitalOrderController;
 use App\Http\Controllers\DigitalStoreController;
 use Illuminate\Support\Facades\Route;
@@ -10,6 +11,8 @@ Route::get('digital', [DigitalStoreController::class, 'index'])->name('digital.i
 Route::get('digital/{digitalProduct:slug}', [DigitalStoreController::class, 'show'])->name('digital.show');
 
 Route::middleware('auth')->group(function () {
+    Route::get('digital-order-files/{message}', DigitalOrderAttachmentController::class)
+        ->name('digital-order-files.show');
     Route::post('digital/{digitalProduct:slug}/orders', [DigitalStoreController::class, 'order'])->name('digital.orders.store');
 
     Route::prefix('account/digital-orders')->name('account.digital-orders.')->group(function () {
