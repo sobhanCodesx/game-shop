@@ -5,6 +5,7 @@ namespace App\Services\Deployment;
 use App\Models\ContentAsset;
 use App\Services\GraphQL\PlayNexusGraphService;
 use App\Services\MediaStorage;
+use App\Services\ProductMediaStorage;
 use App\Services\Telegram\TelegramMtProtoCompatibilityService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -123,18 +124,33 @@ final class DeploymentHealthService
             return 'read-write-ok';
         });
 
-        $check('public_storage_link', function (): string {
-            $target = realpath(storage_path('app/public'));
-            $link = realpath(public_path('storage'));
+        $check('product_media_gateway', function (): string {
+            $path = 'deploy-health/product-media-'.bin2hex(random_bytes(8)).'.bin';
+            $payload = random_bytes(32);
+            $disk = ProductMediaStorage::disk();
 
-            if ($target === false) {
-                throw new \RuntimeException('storage/app/public is missing.');
-            }
-            if ($link === false || $link !== $target) {
-                throw new \RuntimeException('public/storage is missing or points to the wrong target.');
+            try {
+                if (! $disk->put($path, $payload)) {
+                    throw new \RuntimeException('Product media write probe failed.');
+                }
+
+                if (! $disk->exists($path) || ! hash_equals($payload, (string) $disk->get($path))) {
+                    throw new \RuntimeException('Product media read-back probe failed.');
+                }
+
+                $url = ProductMediaStorage::url($path);
+                if (! is_string($url) || ! str_starts_with($url, '/media/')) {
+                    throw new \RuntimeException('Product media gateway URL is invalid.');
+                }
+            } finally {
+                try {
+                    $disk->delete($path);
+                } catch (Throwable) {
+                    // Cleanup must not hide the original health failure.
+                }
             }
 
-            return 'public/storage -> storage/app/public';
+            return ProductMediaStorage::diskName().'/gateway-ok';
         });
 
         $check('telegram_mtproto_compatibility', function (): string {
