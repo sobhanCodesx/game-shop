@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-01-repair-product-charging-station-download",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "product",
+    "query": "dualsense-charging-station",
+    "slot": "media",
+    "source_url": "https://static01.galaxus.com/productimages/7/8/4/9/0/1/4/7/2/4/5/6/4/6/7/5/2/8/9/01994a6b-b2b3-7d8c-9fe2-ecc4edd3fbfa_720.jpeg",
+    "name": "dualsense-charging-station-cover.jpeg",
+    "alt": "تصویر پایه شارژ DualSense",
+    "sort_order": 0
+  }
+}
