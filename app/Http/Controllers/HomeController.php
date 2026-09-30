@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Admin\HomeSettingsController;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\HomeSection;
 use App\Models\HomeSlide;
@@ -24,6 +25,7 @@ use App\Services\StorefrontDataService;
 use App\Services\UserGamingRelevanceService;
 use App\Support\Seo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -131,10 +133,10 @@ class HomeController extends Controller
         ];
 
         $heroFeaturedProducts = $usesEagerProducts
-            ? Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap)
+            ? $this->homeCatalogProducts($request, $storefront, $cardRelations, $limit, true)
             : collect();
         $heroLatestProducts = $usesEagerProducts
-            ? Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap)
+            ? $this->homeCatalogProducts($request, $storefront, $cardRelations, $limit)
             : collect();
 
 
@@ -220,10 +222,10 @@ class HomeController extends Controller
             'slides' => $slides,
             'featuredProducts' => $usesEagerProducts
                 ? $heroFeaturedProducts
-                : Inertia::optional(fn () => Product::query()->with($cardRelations)->publiclyVisible()->where('featured', true)->latest()->limit($limit)->get()->map($productMap)),
+                : Inertia::optional(fn () => $this->homeCatalogProducts($request, $storefront, $cardRelations, $limit, true)),
             'latestProducts' => $usesEagerProducts
                 ? $heroLatestProducts
-                : Inertia::optional(fn () => Product::query()->with($cardRelations)->publiclyVisible()->latest()->limit($limit)->get()->map($productMap)),
+                : Inertia::optional(fn () => $this->homeCatalogProducts($request, $storefront, $cardRelations, $limit)),
             'contentSections' => Inertia::optional(fn () => HomeSection::query()->where('is_active', true)->orderBy('sort_order')->get()->map(function (HomeSection $section) use ($request, $prices, $storefront, $cardRelations) {
                 if ($section->content_type === 'products') {
                     $query = Product::query()->with($cardRelations)->publiclyVisible()
@@ -399,6 +401,52 @@ class HomeController extends Controller
                 ->sortByDesc('published_at')->take(10)->values()),
             'channels' => Inertia::optional(fn () => $homePublic->channels()),
         ]);
+    }
+
+    private function homeCatalogProducts(
+        Request $request,
+        StorefrontDataService $storefront,
+        array $cardRelations,
+        int $limit,
+        bool $featuredOnly = false,
+    ): Collection {
+        $physical = Product::query()
+            ->with($cardRelations)
+            ->publiclyVisible()
+            ->when($featuredOnly, fn ($query) => $query->where('featured', true))
+            ->latest()
+            ->limit($limit)
+            ->get()
+            ->map(fn (Product $product) => [
+                'sort_at' => ($product->published_at ?? $product->created_at)?->getTimestamp() ?? 0,
+                'product' => $storefront->product($product, $request->user()),
+            ]);
+
+        $digital = DigitalProduct::query()
+            ->published()
+            ->with([
+                'category:id,name,slug',
+                'game:id,name,slug,cover',
+                'platform:id,name,slug',
+                'offers',
+                'coverMedia',
+                'attributeValues.attribute.options',
+            ])
+            ->when($featuredOnly, fn ($query) => $query->where('featured', true))
+            ->latest()
+            ->limit($limit)
+            ->get()
+            ->map(fn (DigitalProduct $product) => [
+                'sort_at' => $product->created_at?->getTimestamp() ?? 0,
+                'product' => $storefront->digitalProduct($product),
+            ]);
+
+        return $physical
+            ->concat($digital)
+            ->sortByDesc('sort_at')
+            ->take($limit)
+            ->pluck('product')
+            ->values();
     }
 
     private function personalizedHome(Request $request, FeedService $feed, UserGamingRelevanceService $relevance, GameEventService $gameEvents, FollowedGameWatchService $watch, $radarItems): ?array
