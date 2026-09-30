@@ -44,6 +44,7 @@ export default function MobileNavigation({
     const discoverActive = pathname.startsWith("/discover") && !activePanel;
     const menuRouteActive = [
         "/shop",
+        "/digital",
         "/products",
         "/categories",
         "/games",
@@ -65,7 +66,7 @@ export default function MobileNavigation({
     const accountActive =
         activePanel === "account" ||
         (!activePanel &&
-            ["/account", "/orders", "/tickets", "/login", "/register"].some(
+            ["/account", "/account/digital-orders", "/orders", "/tickets", "/login", "/register"].some(
                 (path) => pathname === path || pathname.startsWith(`${path}/`),
             ));
     const itemClass = (active: boolean) =>
