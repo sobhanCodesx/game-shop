@@ -64,7 +64,7 @@ final class DigitalProductMediaStorage
                 return true;
             }
         } catch (Throwable) {
-            return false;
+            // Continue with the legacy local fallback below.
         }
 
         try {
