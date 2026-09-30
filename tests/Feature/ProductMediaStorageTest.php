@@ -55,6 +55,10 @@ class ProductMediaStorageTest extends TestCase
         $uploaded = collect($listed['slots'])->firstWhere('id', $asset['asset']['id']);
         $this->assertNotNull($uploaded);
         $this->assertTrue((bool) $uploaded['storage_exists']);
-        $this->assertStringContainsString('/storage/products/', (string) $uploaded['url']);
+        $this->assertStringStartsWith('/media/products/', (string) $uploaded['url']);
+
+        $this->get((string) $uploaded['url'])
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 }
