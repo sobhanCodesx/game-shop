@@ -37,7 +37,7 @@ class DigitalCommerceTest extends TestCase
     public function test_public_digital_store_uses_predefined_attributes_as_features_and_filters(): void
     {
         $region = $this->digitalAttribute();
-        [, $product] = $this->digitalProduct();
+        [$seller, $product] = $this->digitalProduct();
 
         $product->media()->create([
             'type' => 'image',
@@ -85,6 +85,8 @@ class DigitalCommerceTest extends TestCase
                 ->where('product.media.0.alt', 'کاور تست')
                 ->where('product.features.0.name', 'ریجن')
                 ->where('product.features.0.value', 'ترکیه')
+                ->where('product.seller.id', $seller->id)
+                ->where('product.seller.name', $seller->name)
                 ->has('product.offers', 4)
                 ->where('product.offers.0.price', 1_000_000)
                 ->missing('product.offers.0.supplier_cost'));
