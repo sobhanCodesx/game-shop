@@ -5,6 +5,7 @@ namespace App\Services\Deployment;
 use App\Models\ContentAsset;
 use App\Services\GraphQL\PlayNexusGraphService;
 use App\Services\MediaStorage;
+use App\Services\ProductMediaStorage;
 use App\Services\Telegram\TelegramMtProtoCompatibilityService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -121,6 +122,35 @@ final class DeploymentHealthService
             }
 
             return 'read-write-ok';
+        });
+
+        $check('product_media_storage', function (): string {
+            $path = 'deploy-health/product-media-'.bin2hex(random_bytes(8)).'.bin';
+            $payload = random_bytes(32);
+            $disk = ProductMediaStorage::disk();
+
+            try {
+                if (! $disk->put($path, $payload)) {
+                    throw new \RuntimeException('Product media write probe failed.');
+                }
+
+                if (! $disk->exists($path) || ! hash_equals($payload, (string) $disk->get($path))) {
+                    throw new \RuntimeException('Product media read-back probe failed.');
+                }
+
+                $url = ProductMediaStorage::url($path);
+                if (! is_string($url) || ! str_starts_with($url, '/media/')) {
+                    throw new \RuntimeException('Product media gateway URL is invalid.');
+                }
+            } finally {
+                try {
+                    $disk->delete($path);
+                } catch (Throwable) {
+                    // Health cleanup must not hide the original probe failure.
+                }
+            }
+
+            return ProductMediaStorage::diskName().'/gateway-ok';
         });
 
         $check('telegram_mtproto_compatibility', function (): string {
