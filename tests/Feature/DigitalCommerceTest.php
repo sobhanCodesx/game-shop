@@ -81,7 +81,7 @@ class DigitalCommerceTest extends TestCase
 
     public function test_receipt_payment_delivery_and_completion_flow_keeps_credentials_encrypted(): void
     {
-        Storage::fake((string) config('media.disk', 'public'));
+        Storage::fake('local');
 
         [$seller, $product] = $this->digitalProduct();
         $customer = User::factory()->create();
