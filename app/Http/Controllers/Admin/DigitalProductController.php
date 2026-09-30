@@ -327,7 +327,7 @@ class DigitalProductController extends Controller
             if ($file) {
                 $type = str_starts_with((string) $file->getMimeType(), 'video/') ? 'video' : 'image';
                 $extension = $file->guessExtension() ?: ($type === 'video' ? 'mp4' : 'jpg');
-                $path = 'digital-products/'.$product->id.'/'.Str::uuid().'.'.$extension;
+                $path = 'products/'.Str::uuid().'.'.$extension;
                 MediaStorage::disk()->put($path, fopen($file->getRealPath(), 'rb'));
 
                 if ($media) {

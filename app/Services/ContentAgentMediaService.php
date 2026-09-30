@@ -810,7 +810,7 @@ class ContentAgentMediaService
             throw new RuntimeException('Digital product images must be 8 MB or smaller.');
         }
 
-        $stored = $this->optimizer->store($file, "digital-products/{$product->id}");
+        $stored = $this->optimizer->store($file, 'products');
         $sortOrder = $metadata['sort_order'] ?? ((int) $product->media()->max('sort_order') + 1);
         $isPrimary = $kind === 'image' && ! $product->media()->where('type', 'image')->exists();
 

@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-30-gta6-03-publish",
-  "tool": "set_digital_product_state",
-  "arguments": {
-    "id": 1,
-    "state": "published"
-  }
-}
