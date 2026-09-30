@@ -6,6 +6,7 @@ use App\Models\Attribute;
 use App\Models\DigitalOffer;
 use App\Models\DigitalProduct;
 use App\Services\DigitalOrderService;
+use App\Services\DigitalProductMediaStorage;
 use App\Services\MediaStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -137,12 +138,12 @@ class DigitalStoreController extends Controller
                 'background_url' => MediaStorage::url($product->game->background),
             ] : null,
             'platform' => $product->platform?->only(['id', 'name', 'slug']),
-            'cover_url' => MediaStorage::url($cover?->path)
+            'cover_url' => DigitalProductMediaStorage::url($cover?->path)
                 ?: MediaStorage::url($product->game?->cover),
             'media' => $detailed
                 ? $product->media->map(fn ($media) => [
                     ...$media->only(['id', 'type', 'alt', 'is_primary']),
-                    'url' => MediaStorage::url($media->path),
+                    'url' => DigitalProductMediaStorage::url($media->path),
                 ])->values()
                 : [],
             'features' => $detailed
