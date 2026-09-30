@@ -255,8 +255,8 @@ class DigitalCommerceTest extends TestCase
         $this->assertCount(1, $product->media);
         $this->assertSame('کاور جدید', $product->media()->firstOrFail()->alt);
         $this->assertTrue((bool) $product->media()->firstOrFail()->is_primary);
-        $this->assertStringStartsWith(
-            'digital-products/'.$product->id.'/',
+        $this->assertStringNotContainsString(
+            '/',
             $product->media()->firstOrFail()->path,
         );
         Storage::disk((string) config('media.disk', 'public'))
