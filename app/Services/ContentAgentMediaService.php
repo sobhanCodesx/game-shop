@@ -651,7 +651,7 @@ class ContentAgentMediaService
                 'sort_order' => (int) $sortOrder,
             ]);
         } catch (Throwable $exception) {
-            ProductMediaStorage::delete($stored['path']);
+            MediaStorage::disk()->delete($stored['path']);
             throw $exception;
         }
 
@@ -660,7 +660,7 @@ class ContentAgentMediaService
             'slot' => 'media',
             'kind' => $kind,
             'path' => $media->path,
-            'url' => ProductMediaStorage::url($media->path),
+            'url' => MediaStorage::url($media->path),
             'mime' => $actualMime,
             'alt' => $media->alt,
             'sort_order' => (int) $media->sort_order,
@@ -807,7 +807,7 @@ class ContentAgentMediaService
                 'is_primary' => $isPrimary,
             ]);
         } catch (Throwable $exception) {
-            MediaStorage::disk()->delete($stored['path']);
+            ProductMediaStorage::delete($stored['path']);
             throw $exception;
         }
 
@@ -816,7 +816,7 @@ class ContentAgentMediaService
             'slot' => 'media',
             'kind' => $kind,
             'path' => $media->path,
-            'url' => MediaStorage::url($media->path),
+            'url' => ProductMediaStorage::url($media->path),
             'mime' => $actualMime,
             'alt' => $media->alt,
             'sort_order' => (int) $media->sort_order,
