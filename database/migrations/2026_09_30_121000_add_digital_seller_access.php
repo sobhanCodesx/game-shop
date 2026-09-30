@@ -34,7 +34,7 @@ return new class extends Migration
 
         $roleId = DB::table('roles')->where('slug', 'digital-seller')->value('id');
         $permissionIds = DB::table('permissions')
-            ->whereIn('slug', array_keys($permissions))
+            ->whereIn('slug', [...array_keys($permissions), 'dashboard.view'])
             ->pluck('id')
             ->all();
 
