@@ -9,6 +9,7 @@ import {
     Factory,
     Flame,
     FolderTree,
+    Gamepad2,
     Home,
     Radio,
     Radar,
