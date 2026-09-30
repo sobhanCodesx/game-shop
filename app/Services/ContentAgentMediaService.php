@@ -415,7 +415,7 @@ class ContentAgentMediaService
                 $this->directAsset('video', 'video', $target->video_path, $target->video_mime),
                 $this->directAsset('thumbnail', 'image', $target->thumbnail),
             ])),
-            'product', 'digital_product' => $target->media()->get()->map(fn ($media) => [
+            'product' => $target->media()->get()->map(fn ($media) => [
                 'id' => $media->id,
                 'slot' => 'media',
                 'kind' => $media->type,
@@ -425,6 +425,17 @@ class ContentAgentMediaService
                 'sort_order' => (int) $media->sort_order,
                 'is_primary' => (bool) $media->is_primary,
                 'storage_exists' => filled($media->path) && MediaStorage::disk()->exists($media->path),
+            ])->values()->all(),
+            'digital_product' => $target->media()->get()->map(fn ($media) => [
+                'id' => $media->id,
+                'slot' => 'media',
+                'kind' => $media->type,
+                'path' => $media->path,
+                'url' => DigitalProductMediaStorage::url($media->path),
+                'alt' => $media->alt,
+                'sort_order' => (int) $media->sort_order,
+                'is_primary' => (bool) $media->is_primary,
+                'storage_exists' => DigitalProductMediaStorage::exists($media->path),
             ])->values()->all(),
         };
 
@@ -492,7 +503,11 @@ class ContentAgentMediaService
                 : array_values(array_filter([$media->path]));
             $wasPrimary = in_array($resource, ['product', 'digital_product'], true) && (bool) $media->is_primary;
             $media->delete();
-            MediaStorage::disk()->delete($paths);
+            if ($resource === 'digital_product') {
+                DigitalProductMediaStorage::delete($paths);
+            } else {
+                MediaStorage::disk()->delete($paths);
+            }
 
             if ($wasPrimary) {
                 $nextPrimary = $target->media()->where('type', 'image')->orderBy('sort_order')->orderBy('id')->first();
@@ -810,7 +825,11 @@ class ContentAgentMediaService
             throw new RuntimeException('Digital product images must be 8 MB or smaller.');
         }
 
-        $stored = $this->optimizer->store($file, '');
+        $stored = $this->optimizer->store(
+            $file,
+            'digital-products',
+            DigitalProductMediaStorage::diskName(),
+        );
         $sortOrder = $metadata['sort_order'] ?? ((int) $product->media()->max('sort_order') + 1);
         $isPrimary = $kind === 'image' && ! $product->media()->where('type', 'image')->exists();
 
@@ -823,7 +842,7 @@ class ContentAgentMediaService
                 'is_primary' => $isPrimary,
             ]);
         } catch (Throwable $exception) {
-            MediaStorage::disk()->delete($stored['path']);
+            DigitalProductMediaStorage::delete($stored['path']);
             throw $exception;
         }
 
@@ -832,7 +851,7 @@ class ContentAgentMediaService
             'slot' => 'media',
             'kind' => $kind,
             'path' => $media->path,
-            'url' => MediaStorage::url($media->path),
+            'url' => DigitalProductMediaStorage::url($media->path),
             'mime' => $actualMime,
             'alt' => $media->alt,
             'sort_order' => (int) $media->sort_order,

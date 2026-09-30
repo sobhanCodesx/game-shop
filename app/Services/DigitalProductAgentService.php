@@ -7,6 +7,7 @@ use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\User;
+use App\Services\DigitalProductMediaStorage;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -490,7 +491,7 @@ class DigitalProductAgentService
             'media' => $product->media->map(fn ($media) => [
                 'id' => $media->id,
                 'type' => $media->type,
-                'url' => MediaStorage::url($media->path),
+                'url' => DigitalProductMediaStorage::url($media->path),
                 'alt' => $media->alt,
                 'sort_order' => (int) $media->sort_order,
                 'is_primary' => (bool) $media->is_primary,

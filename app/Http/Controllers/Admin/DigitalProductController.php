@@ -9,6 +9,7 @@ use App\Models\DigitalProductMedia;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\User;
+use App\Services\DigitalProductMediaStorage;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
 use Illuminate\Http\RedirectResponse;
@@ -49,7 +50,7 @@ class DigitalProductController extends Controller
             'game' => $product->game?->only(['id', 'name']),
             'platform' => $product->platform?->only(['id', 'name']),
             'seller' => $product->seller?->only(['id', 'name']),
-            'cover_url' => MediaStorage::url($product->coverMedia?->path)
+            'cover_url' => DigitalProductMediaStorage::url($product->coverMedia?->path)
                 ?: MediaStorage::url($product->game?->cover),
             'offers' => $product->offers->map(fn ($offer) => [
                 'id' => $offer->id,
@@ -347,7 +348,11 @@ class DigitalProductController extends Controller
             $file = $item['file'] ?? null;
             if ($file instanceof \Illuminate\Http\UploadedFile) {
                 $oldPath = $media?->path;
-                $stored = $this->mediaOptimizer->store($file, '');
+                $stored = $this->mediaOptimizer->store(
+                    $file,
+                    'digital-products',
+                    DigitalProductMediaStorage::diskName(),
+                );
 
                 if ($media) {
                     $media->update([
@@ -362,7 +367,7 @@ class DigitalProductController extends Controller
                 }
 
                 if ($oldPath && $oldPath !== $stored['path']) {
-                    MediaStorage::disk()->delete($oldPath);
+                    DigitalProductMediaStorage::delete($oldPath);
                 }
             }
 
@@ -382,7 +387,7 @@ class DigitalProductController extends Controller
             ->whereNotIn('id', $keptIds ?: [0])
             ->get()
             ->each(function (DigitalProductMedia $media): void {
-                MediaStorage::disk()->delete($media->path);
+                DigitalProductMediaStorage::delete($media->path);
                 $media->delete();
             });
 
@@ -449,7 +454,7 @@ class DigitalProductController extends Controller
                 ->all(),
             'media' => $product->media->map(fn ($media) => [
                 ...$media->only(['id', 'type', 'alt', 'is_primary']),
-                'url' => MediaStorage::url($media->path),
+                'url' => DigitalProductMediaStorage::url($media->path),
             ])->values(),
         ];
     }
