@@ -57,6 +57,12 @@ class ContentAgentMcpTest extends TestCase
             ->assertJsonFragment(['name' => 'unpublish_feed'])
             ->assertJsonFragment(['name' => 'delete_content'])
             ->assertJsonFragment(['name' => 'restore_content'])
+            ->assertJsonFragment(['name' => 'list_digital_sellers'])
+            ->assertJsonFragment(['name' => 'list_digital_product_attributes'])
+            ->assertJsonFragment(['name' => 'get_digital_product'])
+            ->assertJsonFragment(['name' => 'create_digital_product'])
+            ->assertJsonFragment(['name' => 'update_digital_product'])
+            ->assertJsonFragment(['name' => 'set_digital_product_state'])
             ->assertJsonFragment(['name' => 'start_asset_upload'])
             ->assertJsonFragment(['name' => 'upload_asset_chunk'])
             ->assertJsonFragment(['name' => 'complete_asset_upload'])
@@ -67,7 +73,7 @@ class ContentAgentMcpTest extends TestCase
             ->assertJsonFragment(['name' => 'start_android_release_upload'])
             ->assertJsonFragment(['name' => 'complete_android_release_upload'])
             ->assertJsonFragment(['name' => 'abort_android_release_upload'])
-            ->assertJsonFragment(['version' => '3.0.0']);
+            ->assertJsonFragment(['version' => '3.1.0']);
     }
 
     public function test_mcp_endpoint_supports_modern_discovery(): void
@@ -86,7 +92,7 @@ class ContentAgentMcpTest extends TestCase
             ],
         ])->assertOk()
             ->assertJsonPath('result.supportedVersions.0', '2026-07-28')
-            ->assertJsonFragment(['version' => '3.0.0']);
+            ->assertJsonFragment(['version' => '3.1.0']);
     }
 
     public function test_media_service_accepts_only_manifest_sized_base64_chunks(): void

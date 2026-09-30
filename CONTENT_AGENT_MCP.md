@@ -210,6 +210,43 @@ When Nexus Pulse is installed, the MCP also exposes controlled structured-event 
 
 GraphQL is the preferred read path for relational Event context, while these tools remain the controlled write/moderation path. Agent-created Events never bypass moderation by becoming active automatically.
 
+## Digital product MCP
+
+Digital account products use a dedicated MCP lifecycle rather than the physical-product model.
+
+Available tools:
+
+- `list_digital_sellers` — returns active seller ids/names.
+- `list_digital_product_attributes` — returns the predefined admin attributes and allowed option values. `capacity` and `platform` are intentionally excluded because they are modeled separately.
+- `get_digital_product` — returns one digital product with capacity offers, features and media.
+- `create_digital_product` — creates a **draft** digital product with game, platform, seller, all four offers and selected predefined features.
+- `update_digital_product` — edits metadata/offers/features without changing publication state.
+- `set_digital_product_state` — changes draft/hidden/published. Publishing is guarded by `PLAYNEXUS_CONTENT_AGENT_ALLOW_PUBLISH` and readiness checks.
+- Existing asset upload tools accept `resource=digital_product` and `slot=media` for product-owned images/videos.
+
+A create payload uses final sale prices only:
+
+```json
+{
+  "game_id": 10,
+  "platform_id": 2,
+  "seller_id": 7,
+  "support_days": 7,
+  "offers": [
+    {"code":"capacity_1","price":1000000,"stock":1,"status":"active"},
+    {"code":"capacity_2","price":2000000,"stock":1,"status":"active"},
+    {"code":"capacity_3","price":750000,"stock":1,"status":"active"},
+    {"code":"full","price":3000000,"stock":1,"status":"active"}
+  ],
+  "features": [
+    {"attribute_slug":"region","values":["turkey"]},
+    {"attribute_slug":"edition","values":["deluxe"]}
+  ]
+}
+```
+
+Creation never publishes automatically. Upload at least one image to the returned digital-product id, then explicitly call `set_digital_product_state` with `published`.
+
 ## MCP action layer
 
 Existing actions remain available and keep their safety semantics, including:
