@@ -281,7 +281,7 @@ GRAPHQL,
         $tools->assertOk()
             ->assertJsonFragment(['name' => 'describe_playnexus_graph'])
             ->assertJsonFragment(['name' => 'query_playnexus_graph'])
-            ->assertJsonFragment(['version' => '3.0.0']);
+            ->assertJsonFragment(['version' => '3.1.0']);
 
         $result = $this->withToken('graph-secret')->postJson('/api/mcp', [
             'jsonrpc' => '2.0',
