@@ -7,6 +7,7 @@ use App\Models\DigitalProduct;
 use App\Models\DigitalProductMedia;
 use App\Models\Game;
 use App\Models\Platform;
+use App\Models\ProductType;
 use App\Models\User;
 use App\Services\MediaStorage;
 use Illuminate\Http\RedirectResponse;
@@ -80,7 +81,7 @@ class DigitalProductController extends Controller
             ]);
 
             $this->syncOffers($product, $data['offers']);
-            $this->syncFeatures($product, $data['features'] ?? []);
+            $this->syncAttributeValues($product, $data['attribute_values'] ?? []);
             $this->syncMedia($product, $data['media']);
         });
 
@@ -91,7 +92,7 @@ class DigitalProductController extends Controller
     public function edit(Request $request, DigitalProduct $digitalProduct): Response
     {
         $this->authorizeProduct($request->user(), $digitalProduct);
-        $digitalProduct->load(['offers', 'media', 'features']);
+        $digitalProduct->load(['offers', 'media', 'attributeValues.attribute.options']);
 
         return Inertia::render('Admin/Digital/Products/Form', [
             ...$this->formData($request),
@@ -122,7 +123,7 @@ class DigitalProductController extends Controller
             ]);
 
             $this->syncOffers($digitalProduct, $data['offers']);
-            $this->syncFeatures($digitalProduct, $data['features'] ?? []);
+            $this->syncAttributeValues($digitalProduct, $data['attribute_values'] ?? []);
             $this->syncMedia($digitalProduct, $data['media']);
         });
 
@@ -159,9 +160,9 @@ class DigitalProductController extends Controller
             'offers.*.stock' => ['required', 'integer', 'min:0'],
             'offers.*.status' => ['required', Rule::in(['active', 'inactive'])],
 
-            'features' => ['nullable', 'array', 'max:30'],
-            'features.*.name' => ['required_with:features.*.value', 'nullable', 'string', 'max:120'],
-            'features.*.value' => ['required_with:features.*.name', 'nullable', 'string', 'max:3000'],
+            'attribute_values' => ['nullable', 'array'],
+            'attribute_values.*' => ['nullable', 'array'],
+            'attribute_values.*.*' => ['nullable', 'string', 'max:100'],
 
             'media' => ['required', 'array', 'min:1', 'max:12'],
             'media.*.id' => ['nullable', 'integer'],
@@ -170,6 +171,8 @@ class DigitalProductController extends Controller
             'media.*.alt' => ['nullable', 'string', 'max:255'],
             'media.*.is_primary' => ['boolean'],
         ]);
+
+        $data['attribute_values'] = $this->validateAttributeValues($data['attribute_values'] ?? []);
 
         $hasImage = false;
         foreach ($data['media'] as $index => $media) {
@@ -224,23 +227,81 @@ class DigitalProductController extends Controller
         }
     }
 
-    private function syncFeatures(DigitalProduct $product, array $features): void
+    private function syncAttributeValues(DigitalProduct $product, array $values): void
     {
-        $product->features()->delete();
+        $product->attributeValues()->delete();
 
-        foreach (array_values($features) as $index => $feature) {
-            $name = trim((string) ($feature['name'] ?? ''));
-            $value = trim((string) ($feature['value'] ?? ''));
-            if ($name === '' || $value === '') {
-                continue;
+        foreach ($values as $attributeId => $items) {
+            foreach (array_values(array_filter((array) $items, fn ($value) => $value !== null && $value !== '')) as $value) {
+                $product->attributeValues()->create([
+                    'attribute_id' => (int) $attributeId,
+                    'value' => (string) $value,
+                ]);
+            }
+        }
+    }
+
+    private function validateAttributeValues(array $values): array
+    {
+        $attributes = $this->digitalAttributes()->keyBy('id');
+        $validated = [];
+
+        foreach ($attributes as $attribute) {
+            $items = array_values(array_unique(array_filter(
+                (array) ($values[(string) $attribute->id] ?? $values[$attribute->id] ?? []),
+                fn ($value) => $value !== null && $value !== '',
+            )));
+
+            $allowed = $attribute->input_type === 'boolean'
+                ? ['1', '0']
+                : $attribute->options
+                    ->where('status', 'active')
+                    ->pluck('value')
+                    ->map(fn ($value) => (string) $value)
+                    ->all();
+
+            foreach ($items as $value) {
+                if (! in_array((string) $value, $allowed, true)) {
+                    throw ValidationException::withMessages([
+                        "attribute_values.{$attribute->id}" => "مقدار انتخاب‌شده برای {$attribute->title} معتبر نیست.",
+                    ]);
+                }
             }
 
-            $product->features()->create([
-                'name' => $name,
-                'value' => $value,
-                'sort_order' => $index + 1,
-            ]);
+            if (($attribute->pivot?->is_required ?? $attribute->is_required) && count($items) === 0) {
+                throw ValidationException::withMessages([
+                    "attribute_values.{$attribute->id}" => "ویژگی {$attribute->title} الزامی است.",
+                ]);
+            }
+
+            if ($attribute->input_type !== 'multi_select' && count($items) > 1) {
+                throw ValidationException::withMessages([
+                    "attribute_values.{$attribute->id}" => "برای {$attribute->title} فقط یک گزینه قابل انتخاب است.",
+                ]);
+            }
+
+            if ($items !== []) {
+                $validated[(string) $attribute->id] = array_map('strval', $items);
+            }
         }
+
+        return $validated;
+    }
+
+    private function digitalAttributes()
+    {
+        $type = ProductType::query()->where('slug', 'capacity_account')->where('status', 'active')->first();
+
+        if (! $type) {
+            return collect();
+        }
+
+        return $type->attributes()
+            ->with(['options' => fn ($query) => $query->where('status', 'active')->orderBy('sort_order')])
+            ->where('attributes.status', 'active')
+            ->where('attributes.is_filterable', true)
+            ->whereIn('attributes.input_type', ['select', 'multi_select', 'boolean'])
+            ->get();
     }
 
     private function syncMedia(DigitalProduct $product, array $mediaItems): void
@@ -327,6 +388,20 @@ class DigitalProductController extends Controller
                     ->where('role', 'digital-seller')
                     ->orderBy('name')
                     ->get(['id', 'name', 'email']),
+            'attributes' => $this->digitalAttributes()->map(fn ($attribute) => [
+                'id' => $attribute->id,
+                'title' => $attribute->title,
+                'slug' => $attribute->slug,
+                'input_type' => $attribute->input_type,
+                'is_required' => (bool) ($attribute->pivot?->is_required ?? $attribute->is_required),
+                'is_filterable' => (bool) $attribute->is_filterable,
+                'options' => $attribute->input_type === 'boolean'
+                    ? [
+                        ['title' => 'بله', 'value' => '1'],
+                        ['title' => 'خیر', 'value' => '0'],
+                    ]
+                    : $attribute->options->map(fn ($option) => $option->only(['id', 'title', 'value']))->values(),
+            ])->values(),
             'currentSellerId' => $actor->role === 'digital-seller' ? $actor->id : null,
         ];
     }
@@ -341,9 +416,10 @@ class DigitalProductController extends Controller
             'offers' => $product->offers->map(fn ($offer) => $offer->only([
                 'id', 'code', 'label', 'price', 'stock', 'status',
             ]))->values(),
-            'features' => $product->features->map(fn ($feature) => $feature->only([
-                'id', 'name', 'value',
-            ]))->values(),
+            'attribute_values' => $product->attributeValues
+                ->groupBy('attribute_id')
+                ->map(fn ($items) => $items->pluck('value')->values())
+                ->all(),
             'media' => $product->media->map(fn ($media) => [
                 ...$media->only(['id', 'type', 'alt', 'is_primary']),
                 'url' => MediaStorage::url($media->path),
