@@ -40,8 +40,8 @@ export default function Index({ products }: { products: any }) {
                                     key={product.id}
                                 >
                                     <div className="aspect-[16/10] overflow-hidden bg-[var(--store-bg)]">
-                                        {product.game?.cover_url && (
-                                            <img className="size-full object-cover transition duration-500 group-hover:scale-105" src={product.game.cover_url} alt={product.title} />
+                                        {product.cover_url && (
+                                            <img className="size-full object-cover transition duration-500 group-hover:scale-105" src={product.cover_url} alt={product.title} />
                                         )}
                                     </div>
                                     <div className="p-5">
