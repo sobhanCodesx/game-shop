@@ -123,18 +123,20 @@ final class DeploymentHealthService
             return 'read-write-ok';
         });
 
-        $check('public_storage_link', function (): string {
-            $target = realpath(storage_path('app/public'));
-            $link = realpath(public_path('storage'));
+        $check('media_storage_configuration', function (): string {
+            $mediaDisk = (string) config('media.disk');
+            $productDisk = (string) config('product_media.disk');
+            $digitalDisk = (string) config('digital_media.disk');
+            $downloadUrl = rtrim((string) config('filesystems.disks.downloads.url'), '/');
 
-            if ($target === false) {
-                throw new \RuntimeException('storage/app/public is missing.');
+            if ($mediaDisk !== 'downloads' || $productDisk !== 'downloads' || $digitalDisk !== 'downloads') {
+                throw new \\RuntimeException('All public media must use the downloads disk.');
             }
-            if ($link === false || $link !== $target) {
-                throw new \RuntimeException('public/storage is missing or points to the wrong target.');
+            if ($downloadUrl === '' || ! str_starts_with($downloadUrl, 'https://')) {
+                throw new \\RuntimeException('DOWNLOAD_URL must be a public HTTPS URL.');
             }
 
-            return 'public/storage -> storage/app/public';
+            return 'downloads -> '.$downloadUrl;
         });
 
         $check('telegram_mtproto_compatibility', function (): string {
