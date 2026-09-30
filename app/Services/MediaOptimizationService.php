@@ -81,7 +81,8 @@ class MediaOptimizationService
         imagedestroy($source);
         imagedestroy($canvas);
 
-        $path = trim($directory, '/').'/'.Str::uuid().'.webp';
+        $directory = trim($directory, '/');
+        $path = ($directory !== '' ? $directory.'/' : '').Str::uuid().'.webp';
         MediaStorage::disk()->put($path, fopen($temporary, 'rb'));
         @unlink($temporary);
 
