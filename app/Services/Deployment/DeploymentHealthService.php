@@ -123,18 +123,22 @@ final class DeploymentHealthService
             return 'read-write-ok';
         });
 
-        $check('public_storage_link', function (): string {
-            $target = realpath(storage_path('app/public'));
-            $link = realpath(public_path('storage'));
+        $check('public_product_media', function (): string {
+            $disk = \App\Services\ProductMediaStorage::disk();
+            $path = 'deploy-health/'.bin2hex(random_bytes(8)).'.txt';
 
-            if ($target === false) {
-                throw new \RuntimeException('storage/app/public is missing.');
-            }
-            if ($link === false || $link !== $target) {
-                throw new \RuntimeException('public/storage is missing or points to the wrong target.');
+            try {
+                if (! $disk->put($path, 'ok') || ! $disk->exists($path)) {
+                    throw new \RuntimeException('Product media disk write/read probe failed.');
+                }
+            } finally {
+                try {
+                    $disk->delete($path);
+                } catch (Throwable) {
+                }
             }
 
-            return 'public/storage -> storage/app/public';
+            return \App\Services\ProductMediaStorage::diskName();
         });
 
         $check('telegram_mtproto_compatibility', function (): string {
