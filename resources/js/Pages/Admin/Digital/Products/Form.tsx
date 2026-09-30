@@ -57,7 +57,7 @@ export default function Form({ product, games, platforms, sellers, currentSeller
                                 <option value="">انتخاب فروشنده</option>{sellers.map((x: any) => <option key={x.id} value={x.id}>{x.name} {x.email ? `— ${x.email}` : ""}</option>)}
                             </select>
                         </label>}
-                        <Input label="عنوان نمایش" placeholder="مثلاً Resident Evil Requiem - PS5" value={form.data.title} onChange={(e) => form.setData("title", e.target.value)} />
+                        <Input label="عنوان نمایش (اختیاری)" placeholder="مثلاً Resident Evil Requiem - PS5" value={form.data.title} onChange={(e) => form.setData("title", e.target.value)} />
                         <Input label="روزهای پشتیبانی" type="number" value={String(form.data.support_days)} onChange={(e) => form.setData("support_days", Number(e.target.value))} />
                         <label className="text-sm font-bold">وضعیت
                             <select className="mt-2 h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-3" value={form.data.status} onChange={(e) => form.setData("status", e.target.value)}>
