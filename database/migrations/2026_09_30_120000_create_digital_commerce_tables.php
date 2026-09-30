@@ -15,7 +15,7 @@ return new class extends Migration
                 $table->foreignId('platform_id')->nullable()->constrained()->nullOnDelete();
                 $table->foreignId('seller_id')->constrained('users')->restrictOnDelete();
                 $table->string('title');
-                $table->string('slug')->unique();
+                $table->string('slug', 180)->unique();
                 $table->string('short_description', 500)->nullable();
                 $table->unsignedSmallInteger('support_days')->default(7);
                 $table->string('status', 20)->default('draft')->index();
@@ -50,7 +50,7 @@ return new class extends Migration
         if (! Schema::hasTable('digital_orders')) {
             Schema::create('digital_orders', function (Blueprint $table) {
                 $table->id();
-                $table->string('number')->unique();
+                $table->string('number', 64)->unique();
                 $table->foreignId('user_id')->constrained()->restrictOnDelete();
                 $table->foreignId('seller_id')->constrained('users')->restrictOnDelete();
                 $table->foreignId('digital_product_id')->constrained()->restrictOnDelete();
