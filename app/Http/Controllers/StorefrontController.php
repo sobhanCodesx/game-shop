@@ -9,6 +9,7 @@ use App\Models\ProductMedia;
 use App\Models\SocialContent;
 use App\Services\ContentViewService;
 use App\Services\MediaStorage;
+use App\Services\ProductMediaStorage;
 use App\Services\SmartSearchService;
 use App\Services\StorefrontDataService;
 use App\Support\RichText;
@@ -281,7 +282,7 @@ class StorefrontController extends Controller
                     'kind' => 'product_media',
                     'data' => [
                         ...$data->product($item->product, $request->user()),
-                        'media_url' => MediaStorage::url($item->path),
+                        'media_url' => ProductMediaStorage::url($item->path),
                         'media_type' => $item->type,
                         'media_alt' => $item->alt ?: $item->product->title,
                     ],
