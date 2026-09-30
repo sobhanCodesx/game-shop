@@ -14,7 +14,7 @@ class DigitalProduct extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'game_id', 'platform_id', 'seller_id', 'title', 'slug',
+        'category_id', 'game_id', 'platform_id', 'seller_id', 'title', 'slug',
         'short_description', 'support_days', 'status', 'featured',
     ];
 
@@ -31,6 +31,11 @@ class DigitalProduct extends Model
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', 'published');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     public function game(): BelongsTo
