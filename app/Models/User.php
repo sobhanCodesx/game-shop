@@ -152,6 +152,21 @@ class User extends Authenticatable
         return $this->hasMany(Order::class);
     }
 
+    public function digitalOrders(): HasMany
+    {
+        return $this->hasMany(DigitalOrder::class);
+    }
+
+    public function digitalSales(): HasMany
+    {
+        return $this->hasMany(DigitalOrder::class, 'seller_id');
+    }
+
+    public function digitalProducts(): HasMany
+    {
+        return $this->hasMany(DigitalProduct::class, 'seller_id');
+    }
+
     public function walletTransactions(): HasMany
     {
         return $this->hasMany(WalletTransaction::class);
