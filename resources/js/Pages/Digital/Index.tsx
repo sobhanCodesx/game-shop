@@ -15,10 +15,14 @@ type FilterDefinition = {
 
 export default function Index({
     products,
+    categories = [],
+    selectedCategory = null,
     filters = [],
     selectedFilters = {},
 }: {
     products: any;
+    categories: Array<{ id: number; name: string; slug: string }>;
+    selectedCategory: string | null;
     filters: FilterDefinition[];
     selectedFilters: Record<string, string[]>;
 }) {
@@ -29,7 +33,25 @@ export default function Index({
 
         router.get(
             "/digital",
-            { filters: cleaned },
+            {
+                category: selectedCategory ?? undefined,
+                filters: cleaned,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
+    };
+
+    const changeCategory = (category: string) => {
+        router.get(
+            "/digital",
+            {
+                category: category || undefined,
+                filters: selectedFilters,
+            },
             {
                 preserveScroll: true,
                 preserveState: true,
@@ -51,6 +73,7 @@ export default function Index({
     const hasFilters = Object.values(selectedFilters).some(
         (values) => values.length > 0,
     );
+    const hasSidebar = categories.length > 0 || filters.length > 0;
 
     return (
         <StorefrontLayout>
@@ -86,7 +109,7 @@ export default function Index({
                 </section>
 
                 <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-                    {filters.length > 0 && (
+                    {hasSidebar && (
                         <aside className="h-fit rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 lg:sticky lg:top-28">
                             <div className="mb-4 flex items-center justify-between">
                                 <h2 className="flex items-center gap-2 font-black">
@@ -106,6 +129,30 @@ export default function Index({
                             </div>
 
                             <div className="space-y-5">
+                                {categories.length > 0 && (
+                                    <div>
+                                        <p className="mb-2 text-sm font-black">
+                                            دسته‌بندی
+                                        </p>
+                                        <select
+                                            className="h-11 w-full rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] px-3 text-sm text-[var(--store-text)]"
+                                            value={selectedCategory ?? ""}
+                                            onChange={(event) =>
+                                                changeCategory(event.target.value)
+                                            }
+                                        >
+                                            <option value="">همه دسته‌ها</option>
+                                            {categories.map((category) => (
+                                                <option
+                                                    key={category.id}
+                                                    value={category.slug}
+                                                >
+                                                    {category.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 {filters.map((filter) => (
                                     <div key={filter.id}>
                                         <p className="mb-2 text-sm font-black">
