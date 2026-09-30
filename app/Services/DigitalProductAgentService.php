@@ -70,6 +70,55 @@ class DigitalProductAgentService
         return $query->map(fn (Attribute $attribute) => $this->serializeAttribute($attribute))->all();
     }
 
+    public function createAttribute(array $arguments): array
+    {
+        $data = $this->validate($arguments, [
+            'title' => ['required', 'string', 'max:100'],
+            'slug' => [
+                'required',
+                'alpha_dash:ascii',
+                'max:100',
+                Rule::notIn(['capacity', 'platform']),
+                Rule::unique('attributes', 'slug'),
+            ],
+            'input_type' => ['required', Rule::in(['select', 'multi_select', 'boolean'])],
+            'is_required' => ['sometimes', 'boolean'],
+            'options' => ['exclude_if:input_type,boolean', 'required', 'array', 'min:1', 'max:100'],
+            'options.*.title' => ['required', 'string', 'max:100'],
+            'options.*.value' => ['required', 'alpha_dash:ascii', 'max:100', 'distinct'],
+        ]);
+
+        $attribute = DB::transaction(function () use ($data): Attribute {
+            $attribute = Attribute::query()->create([
+                'title' => trim((string) $data['title']),
+                'slug' => (string) $data['slug'],
+                'input_type' => (string) $data['input_type'],
+                'is_required' => (bool) ($data['is_required'] ?? false),
+                'is_filterable' => true,
+                'is_searchable' => true,
+                'is_visible_on_product' => true,
+                'is_usable_for_variant' => false,
+                'status' => 'active',
+                'sort_order' => ((int) Attribute::query()->max('sort_order')) + 1,
+            ]);
+
+            if ($attribute->input_type !== 'boolean') {
+                foreach (array_values($data['options']) as $index => $option) {
+                    $attribute->options()->create([
+                        'title' => trim((string) $option['title']),
+                        'value' => (string) $option['value'],
+                        'status' => 'active',
+                        'sort_order' => $index + 1,
+                    ]);
+                }
+            }
+
+            return $attribute;
+        }, 3);
+
+        return $this->serializeAttribute($attribute->fresh('options'));
+    }
+
     public function get(array $arguments): array
     {
         $data = $this->validate($arguments, [

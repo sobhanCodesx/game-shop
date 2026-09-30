@@ -48,6 +48,7 @@ class ContentAgentDigitalProductMcpTest extends TestCase
         $tools->assertOk()
             ->assertJsonFragment(['name' => 'list_digital_sellers'])
             ->assertJsonFragment(['name' => 'list_digital_product_attributes'])
+            ->assertJsonFragment(['name' => 'create_digital_product_attribute'])
             ->assertJsonFragment(['name' => 'get_digital_product'])
             ->assertJsonFragment(['name' => 'create_digital_product'])
             ->assertJsonFragment(['name' => 'update_digital_product'])
@@ -97,6 +98,66 @@ class ContentAgentDigitalProductMcpTest extends TestCase
         $this->assertSame(4, $product->offers()->count());
         $this->assertSame('turkey', $product->attributeValues()->value('value'));
         $this->assertSame('MCP Game - PS5 MCP', $product->title);
+    }
+
+    public function test_mcp_can_create_predefined_digital_product_feature_with_values(): void
+    {
+        config()->set('content_agent.token', 'test-secret');
+
+        $response = $this->mcp('tools/call', [
+            'name' => 'create_digital_product_attribute',
+            'arguments' => [
+                'title' => 'ادیشن',
+                'slug' => 'edition',
+                'input_type' => 'select',
+                'is_required' => false,
+                'options' => [
+                    ['title' => 'استاندارد', 'value' => 'standard'],
+                    ['title' => 'دیلاکس', 'value' => 'deluxe'],
+                ],
+            ],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('result.isError', false)
+            ->assertJsonPath('result.structuredContent.result.slug', 'edition')
+            ->assertJsonPath('result.structuredContent.result.title', 'ادیشن')
+            ->assertJsonPath('result.structuredContent.result.input_type', 'select')
+            ->assertJsonPath('result.structuredContent.result.options.0.value', 'standard')
+            ->assertJsonPath('result.structuredContent.result.options.1.value', 'deluxe');
+
+        $attribute = Attribute::query()->where('slug', 'edition')->firstOrFail();
+        $this->assertTrue((bool) $attribute->is_filterable);
+        $this->assertTrue((bool) $attribute->is_searchable);
+        $this->assertTrue((bool) $attribute->is_visible_on_product);
+        $this->assertFalse((bool) $attribute->is_usable_for_variant);
+        $this->assertSame('active', $attribute->status);
+        $this->assertSame(2, $attribute->options()->count());
+
+        $listed = $this->mcp('tools/call', [
+            'name' => 'list_digital_product_attributes',
+            'arguments' => ['query' => 'edition'],
+        ]);
+
+        $listed->assertOk()
+            ->assertJsonPath('result.isError', false)
+            ->assertJsonPath('result.structuredContent.result.0.slug', 'edition');
+
+        $reserved = $this->mcp('tools/call', [
+            'name' => 'create_digital_product_attribute',
+            'arguments' => [
+                'title' => 'ظرفیت',
+                'slug' => 'capacity',
+                'input_type' => 'select',
+                'options' => [
+                    ['title' => 'یک', 'value' => 'one'],
+                ],
+            ],
+        ]);
+
+        $reserved->assertOk()
+            ->assertJsonPath('result.isError', true)
+            ->assertJsonPath('result.structuredContent.error', 'Validation failed.');
     }
 
     public function test_mcp_digital_product_media_and_publish_readiness(): void

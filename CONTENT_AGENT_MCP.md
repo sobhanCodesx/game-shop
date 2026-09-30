@@ -218,6 +218,7 @@ Available tools:
 
 - `list_digital_sellers` — returns active seller ids/names.
 - `list_digital_product_attributes` — returns the predefined admin attributes and allowed option values. `capacity` and `platform` are intentionally excluded because they are modeled separately.
+- `create_digital_product_attribute` — creates a reusable Digital Product feature with predefined values; it becomes active/filterable/searchable/visible immediately.
 - `get_digital_product` — returns one digital product with capacity offers, features and media.
 - `create_digital_product` — creates a **draft** digital product with game, platform, seller, all four offers and selected predefined features.
 - `update_digital_product` — edits metadata/offers/features without changing publication state.

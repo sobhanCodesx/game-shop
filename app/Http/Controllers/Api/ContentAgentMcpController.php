@@ -174,6 +174,7 @@ class ContentAgentMcpController extends Controller
             'restore_content' => $contentAgent->restoreContent($arguments),
             'list_digital_sellers' => $digitalProducts->listSellers($arguments),
             'list_digital_product_attributes' => $digitalProducts->listAttributes($arguments),
+            'create_digital_product_attribute' => $digitalProducts->createAttribute($arguments),
             'get_digital_product' => $digitalProducts->get($arguments),
             'create_digital_product' => $digitalProducts->create($arguments),
             'update_digital_product' => $digitalProducts->update($arguments),
@@ -568,6 +569,49 @@ class ContentAgentMcpController extends Controller
                     'additionalProperties' => false,
                 ],
                 'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'create_digital_product_attribute',
+                'description' => 'Create one predefined Digital Product feature and its allowed values. The feature is automatically active, filterable, searchable, visible on product pages and excluded from variant logic. Reserved slugs capacity/platform are rejected.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'title' => ['type' => 'string', 'maxLength' => 100],
+                        'slug' => [
+                            'type' => 'string',
+                            'maxLength' => 100,
+                            'pattern' => '^[A-Za-z0-9_-]+$',
+                            'description' => 'Stable ASCII key used in filters, e.g. region or edition.',
+                        ],
+                        'input_type' => [
+                            'type' => 'string',
+                            'enum' => ['select', 'multi_select', 'boolean'],
+                        ],
+                        'is_required' => ['type' => 'boolean', 'default' => false],
+                        'options' => [
+                            'type' => 'array',
+                            'minItems' => 1,
+                            'maxItems' => 100,
+                            'description' => 'Required for select/multi_select; omitted for boolean.',
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'title' => ['type' => 'string', 'maxLength' => 100],
+                                    'value' => [
+                                        'type' => 'string',
+                                        'maxLength' => 100,
+                                        'pattern' => '^[A-Za-z0-9_-]+$',
+                                    ],
+                                ],
+                                'required' => ['title', 'value'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                    ],
+                    'required' => ['title', 'slug', 'input_type'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             [
                 'name' => 'get_digital_product',
