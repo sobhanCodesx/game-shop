@@ -123,6 +123,20 @@ final class DeploymentHealthService
             return 'read-write-ok';
         });
 
+        $check('public_storage_link', function (): string {
+            $target = realpath(storage_path('app/public'));
+            $link = realpath(public_path('storage'));
+
+            if ($target === false) {
+                throw new \RuntimeException('storage/app/public is missing.');
+            }
+            if ($link === false || $link !== $target) {
+                throw new \RuntimeException('public/storage is missing or points to the wrong target.');
+            }
+
+            return 'public/storage -> storage/app/public';
+        });
+
         $check('telegram_mtproto_compatibility', function (): string {
             $report = $this->telegramMtProto->report();
 

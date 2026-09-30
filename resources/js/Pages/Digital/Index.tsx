@@ -159,12 +159,18 @@ export default function Index({
                                             href={`/digital/${product.slug}`}
                                             key={product.id}
                                         >
-                                            <div className="aspect-[16/10] overflow-hidden bg-[var(--store-bg)]">
+                                            <div className="relative aspect-[16/10] overflow-hidden bg-[var(--store-bg)]">
+                                                <div className="absolute inset-0 grid place-items-center">
+                                                    <Gamepad2 className="text-indigo-400/60" size={42} />
+                                                </div>
                                                 {product.cover_url && (
                                                     <img
-                                                        className="size-full object-cover transition duration-500 group-hover:scale-105"
+                                                        className="relative size-full object-cover transition duration-500 group-hover:scale-105"
                                                         src={product.cover_url}
                                                         alt={product.title}
+                                                        onError={(event) => {
+                                                            event.currentTarget.style.display = "none";
+                                                        }}
                                                     />
                                                 )}
                                             </div>

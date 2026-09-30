@@ -288,7 +288,46 @@ final class DeploymentManager
     }
 
     private function migrate(array $state): array { $this->artisan('optimize:clear', [] ,$state); $this->artisan('package:discover', ['--ansi' => false], $state); $this->artisan('migrate', ['--force' => true], $state); return $this->states->update($state['id'], ['stage' => 'migrated', 'progress' => 70]); }
-    private function optimize(array $state): array { foreach (['config:cache', 'route:cache', 'view:cache', 'event:cache'] as $command) $this->artisan($command, [], $state); if (function_exists('opcache_reset')) @opcache_reset(); return $this->states->update($state['id'], ['stage' => 'optimized', 'progress' => 85]); }
+    private function optimize(array $state): array
+    {
+        $this->ensurePublicStorageLink($state);
+
+        foreach (['config:cache', 'route:cache', 'view:cache', 'event:cache'] as $command) {
+            $this->artisan($command, [], $state);
+        }
+
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+        }
+
+        return $this->states->update($state['id'], ['stage' => 'optimized', 'progress' => 85]);
+    }
+
+    private function ensurePublicStorageLink(array $state): void
+    {
+        $target = storage_path('app/public');
+        $link = public_path('storage');
+        File::ensureDirectoryExists($target, 0750, true);
+
+        $resolvedTarget = realpath($target);
+        $resolvedLink = realpath($link);
+
+        if ($resolvedTarget !== false && $resolvedLink !== false && $resolvedTarget === $resolvedLink) {
+            return;
+        }
+
+        if (file_exists($link) || is_link($link)) {
+            throw new RuntimeException('public/storage exists but does not point to storage/app/public.');
+        }
+
+        $this->artisan('storage:link', [], $state);
+
+        $resolvedLink = realpath($link);
+        if ($resolvedTarget === false || $resolvedLink === false || $resolvedTarget !== $resolvedLink) {
+            throw new RuntimeException('public/storage link could not be created correctly.');
+        }
+    }
+
     private function health(array $state): array
     {
         $checks = [is_file(base_path('vendor/autoload.php')), is_file(public_path('build/manifest.json')), is_writable(storage_path()), DB::select('SELECT 1') !== []];

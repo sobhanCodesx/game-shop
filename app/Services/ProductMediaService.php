@@ -19,7 +19,7 @@ class ProductMediaService
                 continue;
             }
 
-            $optimized = $this->optimizer->store($file, "products/{$product->id}");
+            $optimized = $this->optimizer->store($file, "products/{$product->id}", ProductMediaStorage::diskName());
             $type = $optimized['type'];
             $media = $index === 0 && $replacement ? $replacement : new ProductMedia(['product_id' => $product->id]);
             $oldPath = $media->path;
@@ -33,7 +33,7 @@ class ProductMediaService
             ])->save();
 
             if ($oldPath && $oldPath !== $media->path) {
-                MediaStorage::disk()->delete($oldPath);
+                ProductMediaStorage::delete($oldPath);
             }
         }
     }
@@ -56,12 +56,12 @@ class ProductMediaService
 
             if ($file instanceof UploadedFile) {
                 $oldPath = $media->path;
-                $optimized = $this->optimizer->store($file, "products/{$product->id}");
+                $optimized = $this->optimizer->store($file, "products/{$product->id}", ProductMediaStorage::diskName());
                 $media->path = $optimized['path'];
                 $media->type = $optimized['type'];
 
                 if ($oldPath) {
-                    MediaStorage::disk()->delete($oldPath);
+                    ProductMediaStorage::delete($oldPath);
                 }
             }
 
@@ -77,7 +77,7 @@ class ProductMediaService
         }
 
         $product->media()->whereNotIn('id', $keptIds)->get()->each(function (ProductMedia $media): void {
-            MediaStorage::disk()->delete($media->path);
+            ProductMediaStorage::delete($media->path);
             $media->delete();
         });
 

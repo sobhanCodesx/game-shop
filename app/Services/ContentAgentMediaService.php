@@ -420,11 +420,11 @@ class ContentAgentMediaService
                 'slot' => 'media',
                 'kind' => $media->type,
                 'path' => $media->path,
-                'url' => MediaStorage::url($media->path),
+                'url' => ProductMediaStorage::url($media->path),
                 'alt' => $media->alt,
                 'sort_order' => (int) $media->sort_order,
                 'is_primary' => (bool) $media->is_primary,
-                'storage_exists' => filled($media->path) && MediaStorage::disk()->exists($media->path),
+                'storage_exists' => ProductMediaStorage::exists($media->path),
             ])->values()->all(),
             'digital_product' => $target->media()->get()->map(fn ($media) => [
                 'id' => $media->id,
@@ -505,6 +505,8 @@ class ContentAgentMediaService
             $media->delete();
             if ($resource === 'digital_product') {
                 DigitalProductMediaStorage::delete($paths);
+            } elseif ($resource === 'product') {
+                ProductMediaStorage::delete($paths);
             } else {
                 MediaStorage::disk()->delete($paths);
             }
@@ -780,9 +782,21 @@ class ContentAgentMediaService
             throw new RuntimeException('Product images must be 8 MB or smaller.');
         }
 
-        $stored = $this->optimizer->store($file, "products/{$product->id}");
+        $stored = $this->optimizer->store(
+            $file,
+            "products/{$product->id}",
+            ProductMediaStorage::diskName(),
+        );
         $sortOrder = $metadata['sort_order'] ?? ((int) $product->media()->max('sort_order') + 1);
-        $isPrimary = $kind === 'image' && ! $product->media()->where('type', 'image')->exists();
+        $forcePrimary = $kind === 'image'
+            && array_key_exists('sort_order', $metadata)
+            && (int) $metadata['sort_order'] === 0;
+        $isPrimary = $kind === 'image'
+            && ($forcePrimary || ! $product->media()->where('type', 'image')->exists());
+
+        if ($forcePrimary) {
+            $product->media()->where('type', 'image')->update(['is_primary' => false]);
+        }
 
         try {
             $media = $product->media()->create([
@@ -793,7 +807,7 @@ class ContentAgentMediaService
                 'is_primary' => $isPrimary,
             ]);
         } catch (Throwable $exception) {
-            MediaStorage::disk()->delete($stored['path']);
+            ProductMediaStorage::delete($stored['path']);
             throw $exception;
         }
 
@@ -802,7 +816,7 @@ class ContentAgentMediaService
             'slot' => 'media',
             'kind' => $kind,
             'path' => $media->path,
-            'url' => MediaStorage::url($media->path),
+            'url' => ProductMediaStorage::url($media->path),
             'mime' => $actualMime,
             'alt' => $media->alt,
             'sort_order' => (int) $media->sort_order,
@@ -831,7 +845,15 @@ class ContentAgentMediaService
             DigitalProductMediaStorage::diskName(),
         );
         $sortOrder = $metadata['sort_order'] ?? ((int) $product->media()->max('sort_order') + 1);
-        $isPrimary = $kind === 'image' && ! $product->media()->where('type', 'image')->exists();
+        $forcePrimary = $kind === 'image'
+            && array_key_exists('sort_order', $metadata)
+            && (int) $metadata['sort_order'] === 0;
+        $isPrimary = $kind === 'image'
+            && ($forcePrimary || ! $product->media()->where('type', 'image')->exists());
+
+        if ($forcePrimary) {
+            $product->media()->where('type', 'image')->update(['is_primary' => false]);
+        }
 
         try {
             $media = $product->media()->create([

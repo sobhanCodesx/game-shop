@@ -44,18 +44,20 @@ export default function ProductCard({
                 variant="secondary"
             >
                 <div className="relative aspect-[4/5] overflow-hidden bg-[var(--store-surface-strong)]">
-                    {product.cover_url ? (
+                    <div className="absolute inset-0 grid place-items-center">
+                        <Gamepad2 className="text-indigo-400/70" size={48} />
+                    </div>
+                    {product.cover_url && (
                         <img
                             alt={product.cover_alt}
-                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                            className="relative h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                             decoding="async"
                             loading="lazy"
+                            onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                            }}
                             src={product.cover_url}
                         />
-                    ) : (
-                        <div className="grid h-full place-items-center">
-                            <Gamepad2 className="text-indigo-400" size={48} />
-                        </div>
                     )}
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/45 to-transparent opacity-60 transition group-hover:opacity-80" />
                     <div className="absolute right-2.5 top-2.5 flex max-w-[72%] flex-col items-start gap-1.5">
