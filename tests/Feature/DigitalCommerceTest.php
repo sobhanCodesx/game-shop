@@ -21,6 +21,17 @@ class DigitalCommerceTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('media.disk', 'downloads');
+        config()->set('product_media.disk', 'downloads');
+        config()->set('digital_media.disk', 'downloads');
+        config()->set('filesystems.disks.downloads.url', 'https://cdn.test/storage');
+        Storage::fake('downloads');
+    }
+
     public function test_public_digital_store_uses_predefined_attributes_as_features_and_filters(): void
     {
         $region = $this->digitalAttribute();
@@ -66,7 +77,9 @@ class DigitalCommerceTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Digital/Show')
                 ->where('product.id', $product->id)
+                ->where('product.cover_url', 'https://cdn.test/storage/digital-products/test/cover.webp')
                 ->has('product.media', 1)
+                ->where('product.media.0.url', 'https://cdn.test/storage/digital-products/test/cover.webp')
                 ->where('product.media.0.alt', 'کاور تست')
                 ->where('product.features.0.name', 'ریجن')
                 ->where('product.features.0.value', 'ترکیه')
@@ -150,6 +163,18 @@ class DigitalCommerceTest extends TestCase
         $this->assertSame('turkey', $product->attributeValues()->value('value'));
         $this->assertSame(1_000_000, $product->offers()->where('code', 'capacity_1')->value('price'));
         $this->assertFalse(Schema::hasColumn('digital_offers', 'supplier_cost'));
+
+        $cover = $product->media()->firstOrFail();
+        $this->assertStringNotContainsString('/', $cover->path);
+        Storage::disk('downloads')->assertExists($cover->path);
+
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Show')
+                ->where('product.id', $product->id)
+                ->where('product.cover_url', 'https://cdn.test/storage/'.$cover->path)
+                ->where('product.media.0.url', 'https://cdn.test/storage/'.$cover->path));
     }
 
     public function test_admin_digital_product_edit_uses_id_binding_and_listing_is_paginated(): void
@@ -184,7 +209,8 @@ class DigitalCommerceTest extends TestCase
                 ->component('Admin/Digital/Products/Form')
                 ->where('product.id', $product->id)
                 ->where('product.title', $product->title)
-                ->where('product.media.0.alt', 'کاور محصول دیجیتال'));
+                ->where('product.media.0.alt', 'کاور محصول دیجیتال')
+                ->where('product.media.0.url', 'https://cdn.test/storage/digital-products/admin-edit/cover.webp'));
 
         $this->actingAs($seller)
             ->get('/admin/digital-products')
@@ -264,6 +290,15 @@ class DigitalCommerceTest extends TestCase
         );
         Storage::disk('downloads')
             ->assertExists($product->media()->firstOrFail()->path);
+
+        $newPath = $product->media()->firstOrFail()->path;
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Show')
+                ->where('product.id', $product->id)
+                ->where('product.cover_url', 'https://cdn.test/storage/'.$newPath)
+                ->where('product.media.0.url', 'https://cdn.test/storage/'.$newPath));
     }
 
     public function test_customer_creates_digital_order_and_stock_is_reserved_not_sold(): void
