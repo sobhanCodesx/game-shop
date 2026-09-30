@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attribute;
+use App\Models\Category;
 use App\Models\DigitalOffer;
 use App\Models\DigitalProduct;
 use App\Services\DigitalOrderService;
@@ -21,20 +22,25 @@ class DigitalStoreController extends Controller
     {
         $filterAttributes = $this->filterAttributes();
         $selectedFilters = $this->selectedFilters($request, $filterAttributes);
+        $selectedCategory = trim($request->string('category')->toString());
 
         $query = DigitalProduct::query()
             ->published()
             ->with([
+                'category:id,name,slug',
                 'game:id,name,slug,cover,background',
                 'platform:id,name,slug',
                 'offers',
                 'coverMedia',
             ])
-            ->whereHas(
-                'offers',
-                fn ($offer) => $offer
-                    ->where('status', 'active')
-                    ->whereColumn('stock', '>', 'reserved_stock'),
+            ->when(
+                $selectedCategory !== '',
+                fn ($productQuery) => $productQuery->whereHas(
+                    'category',
+                    fn ($categoryQuery) => $categoryQuery
+                        ->where('status', 'active')
+                        ->where('slug', $selectedCategory),
+                ),
             );
 
         foreach ($selectedFilters as $attributeId => $values) {
@@ -55,6 +61,13 @@ class DigitalStoreController extends Controller
 
         return Inertia::render('Digital/Index', [
             'products' => $products,
+            'categories' => Category::query()
+                ->where('status', 'active')
+                ->whereHas('digitalProducts', fn ($productQuery) => $productQuery->published())
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug']),
+            'selectedCategory' => $selectedCategory !== '' ? $selectedCategory : null,
             'filters' => $filterAttributes->map(fn ($attribute) => [
                 'id' => $attribute->id,
                 'title' => $attribute->title,
@@ -76,6 +89,7 @@ class DigitalStoreController extends Controller
         abort_unless($digitalProduct->status === 'published', 404);
 
         $digitalProduct->load([
+            'category:id,name,slug',
             'game:id,name,slug,cover,background',
             'platform:id,name,slug',
             'offers',
@@ -132,6 +146,7 @@ class DigitalStoreController extends Controller
                 'support_days',
                 'featured',
             ]),
+            'category' => $product->category?->only(['id', 'name', 'slug']),
             'game' => $product->game ? [
                 ...$product->game->only(['id', 'name', 'slug']),
                 'cover_url' => MediaStorage::url($product->game->cover),
