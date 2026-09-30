@@ -11,7 +11,7 @@ class MediaOptimizationService
     /** @return array{path: string, type: 'image'|'video'} */
     public function store(UploadedFile $file, string $directory, ?string $disk = null): array
     {
-        $disk ??= (string) config('media.disk', 'public');
+        $disk ??= (string) config('media.disk', 'downloads');
 
         if (str_starts_with($this->mimeType($file), 'video/')) {
             return ['path' => $this->storeVideo($file, $directory, $disk), 'type' => 'video'];

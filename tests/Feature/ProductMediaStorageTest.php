@@ -16,9 +16,10 @@ class ProductMediaStorageTest extends TestCase
     public function test_product_media_upload_works_when_legacy_media_disk_is_broken_and_replaces_primary(): void
     {
         config()->set('content_agent.allow_uploads', true);
-        config()->set('media.disk', 'broken-legacy-ftp');
-        config()->set('product_media.disk', 'media_public');
-        Storage::fake('media_public');
+        config()->set('media.disk', 'downloads');
+        config()->set('product_media.disk', 'downloads');
+        config()->set('filesystems.disks.downloads.url', 'https://cdn.test/storage');
+        Storage::fake('downloads');
 
         $product = Product::factory()->create();
         $legacy = $product->media()->create([
@@ -43,8 +44,8 @@ class ProductMediaStorageTest extends TestCase
 
         $this->assertSame('image', $asset['asset']['kind']);
         $this->assertTrue((bool) $asset['asset']['is_primary']);
-        $this->assertStringStartsWith("products/{$product->id}/", $asset['asset']['path']);
-        Storage::disk('media_public')->assertExists($asset['asset']['path']);
+        $this->assertStringNotContainsString('/', $asset['asset']['path']);
+        Storage::disk('downloads')->assertExists($asset['asset']['path']);
         $this->assertFalse((bool) $legacy->fresh()->is_primary);
 
         $listed = app(ContentAgentMediaService::class)->listContentAssets([
@@ -55,6 +56,6 @@ class ProductMediaStorageTest extends TestCase
         $uploaded = collect($listed['slots'])->firstWhere('id', $asset['asset']['id']);
         $this->assertNotNull($uploaded);
         $this->assertTrue((bool) $uploaded['storage_exists']);
-        $this->assertStringContainsString('/storage/products/', (string) $uploaded['url']);
+        $this->assertStringStartsWith('https://cdn.test/storage/', (string) $uploaded['url']);
     }
 }

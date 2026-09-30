@@ -123,13 +123,25 @@ final class DeploymentHealthService
             return 'read-write-ok';
         });
 
-        $check('public_product_media', function (): string {
-            $disk = \App\Services\ProductMediaStorage::disk();
-            $path = 'deploy-health/'.bin2hex(random_bytes(8)).'.txt';
+        $check('download_media', function (): string {
+            $mediaDisk = (string) config('media.disk');
+            $productDisk = (string) config('product_media.disk');
+            $digitalDisk = (string) config('digital_media.disk');
+            $downloadUrl = rtrim((string) config('filesystems.disks.downloads.url'), '/');
+
+            if ($mediaDisk !== 'downloads' || $productDisk !== 'downloads' || $digitalDisk !== 'downloads') {
+                throw new \\RuntimeException('All public media must use the downloads disk.');
+            }
+            if ($downloadUrl === '' || ! str_starts_with($downloadUrl, 'https://')) {
+                throw new \\RuntimeException('DOWNLOAD_URL must be configured as HTTPS.');
+            }
+
+            $disk = \\App\\Services\\ProductMediaStorage::disk();
+            $path = 'deploy-health-'.bin2hex(random_bytes(8)).'.txt';
 
             try {
                 if (! $disk->put($path, 'ok') || ! $disk->exists($path)) {
-                    throw new \RuntimeException('Product media disk write/read probe failed.');
+                    throw new \\RuntimeException('Download media write/read probe failed.');
                 }
             } finally {
                 try {
@@ -138,7 +150,7 @@ final class DeploymentHealthService
                 }
             }
 
-            return \App\Services\ProductMediaStorage::diskName();
+            return 'downloads -> '.$downloadUrl;
         });
 
         $check('telegram_mtproto_compatibility', function (): string {
