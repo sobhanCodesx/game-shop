@@ -235,7 +235,7 @@ class DigitalProductAgentService
             'offers.*.stock' => ['required_with:offers', 'integer', 'min:0'],
             'offers.*.status' => ['required_with:offers', Rule::in(['active', 'inactive'])],
             'features' => ['sometimes', 'array', 'max:30'],
-            'features.*.attribute_slug' => ['required', 'string', 'max:120'],
+            'features.*.attribute_slug' => ['required', 'string', 'max:120', 'distinct'],
             'features.*.values' => ['required', 'array', 'min:1', 'max:20'],
             'features.*.values.*' => ['required', 'string', 'max:100', 'distinct'],
         ]);
