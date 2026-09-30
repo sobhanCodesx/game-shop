@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attribute;
 use App\Models\DigitalOffer;
 use App\Models\DigitalProduct;
-use App\Models\ProductType;
 use App\Services\DigitalOrderService;
 use App\Services\MediaStorage;
 use Illuminate\Http\RedirectResponse;
@@ -198,27 +198,19 @@ class DigitalStoreController extends Controller
 
     private function filterAttributes(): Collection
     {
-        $type = ProductType::query()
-            ->where('slug', 'capacity_account')
-            ->where('status', 'active')
-            ->first();
-
-        if (! $type) {
-            return collect();
-        }
-
-        return $type->attributes()
+        return Attribute::query()
             ->with([
                 'options' => fn ($query) => $query
                     ->where('status', 'active')
                     ->orderBy('sort_order'),
             ])
-            ->where('attributes.status', 'active')
-            ->where('attributes.is_filterable', true)
-            ->whereIn(
-                'attributes.input_type',
-                ['select', 'multi_select', 'boolean'],
-            )
+            ->where('status', 'active')
+            ->where('is_filterable', true)
+            ->whereIn('input_type', ['select', 'multi_select', 'boolean'])
+            ->whereNotIn('slug', ['capacity', 'platform'])
+            ->whereHas('digitalValues')
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get();
     }
 
