@@ -10,6 +10,7 @@ use App\Services\MediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -119,7 +120,7 @@ class DigitalOrderController extends Controller
         $file = $data['receipt'];
         $extension = $file->guessExtension() ?: 'jpg';
         $path = 'digital-orders/'.$digitalOrder->id.'/receipts/'.Str::uuid().'.'.$extension;
-        MediaStorage::disk()->put($path, fopen($file->getRealPath(), 'rb'));
+        Storage::disk('local')->put($path, fopen($file->getRealPath(), 'rb'));
 
         $digitalOrder->messages()->create([
             'user_id' => $request->user()->id,
@@ -215,7 +216,9 @@ class DigitalOrderController extends Controller
             ...$message->only(['id', 'type', 'message', 'attachment_name', 'seen_at', 'created_at']),
             'sender' => $message->user?->name,
             'is_admin' => (bool) $message->user?->is_admin,
-            'attachment_url' => MediaStorage::url($message->attachment_path),
+            'attachment_url' => $message->attachment_path
+                ? route('digital-order-files.show', $message)
+                : null,
         ];
     }
 }
