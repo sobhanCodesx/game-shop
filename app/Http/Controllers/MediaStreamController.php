@@ -38,14 +38,21 @@ class MediaStreamController extends Controller
 
         // Existing product rows may still point at the old FTP/general-media
         // disk. On the first successful request, copy the asset into the new
-        // product disk and serve it from there. A transient FTP/CDN failure no
-        // longer leaves the product permanently tied to that origin.
-        if (
-            $isProductMedia
-            && $legacyDisk !== $productDisk
-            && $this->promote($legacyDisk, $productDisk, $path)
-        ) {
-            return $this->serveFromDisk($productDisk, $path);
+        // product disk and serve it from there. If a remote legacy disk cannot
+        // be probed, fall back to its public URL instead of turning a storage
+        // outage into a broken storefront image.
+        if ($isProductMedia && $legacyDisk !== $productDisk) {
+            if ($this->promote($legacyDisk, $productDisk, $path)) {
+                return $this->serveFromDisk($productDisk, $path);
+            }
+
+            if ($this->diskDriver($legacyDisk) !== 'local') {
+                return redirect()->away($this->directDiskUrl($legacyDisk, $path), 302);
+            }
+        }
+
+        if ($this->diskDriver($legacyDisk) !== 'local') {
+            return redirect()->away($this->directDiskUrl($legacyDisk, $path), 302);
         }
 
         if (! $this->diskHas($legacyDisk, $path)) {
@@ -53,6 +60,11 @@ class MediaStreamController extends Controller
         }
 
         return $this->serveFromDisk($legacyDisk, $path);
+    }
+
+    private function diskDriver(string $disk): string
+    {
+        return (string) config("filesystems.disks.{$disk}.driver", '');
     }
 
     private function diskHas(string $disk, string $path): bool
