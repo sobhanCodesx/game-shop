@@ -70,6 +70,22 @@ class DigitalOrderService
                 throw ValidationException::withMessages(['status' => 'این سفارش دیگر قابل تأیید پرداخت نیست.']);
             }
 
+            if ($locked->payment_status !== 'paid' && $locked->reservation_expires_at?->isPast()) {
+                $offer = DigitalOffer::query()->lockForUpdate()->findOrFail($locked->digital_offer_id);
+                if ($offer->reserved_stock > 0) {
+                    $offer->decrement('reserved_stock');
+                }
+                $locked->update(['order_status' => 'expired', 'reservation_expires_at' => null]);
+                $locked->messages()->create([
+                    'type' => 'system',
+                    'message' => 'زمان رزرو سفارش تمام شد و موجودی آزاد شد.',
+                ]);
+
+                throw ValidationException::withMessages([
+                    'status' => 'زمان رزرو این سفارش تمام شده است؛ مشتری باید سفارش جدید ثبت کند.',
+                ]);
+            }
+
             $locked->update([
                 'order_status' => 'active',
                 'payment_status' => 'paid',
