@@ -18,12 +18,12 @@ class DigitalStoreController extends Controller
     {
         $products = DigitalProduct::query()
             ->published()
-            ->with(['game:id,name,slug,cover,background', 'platform:id,name,slug', 'offers'])
+            ->with(['game:id,name,slug,cover,background', 'platform:id,name,slug', 'offers', 'coverMedia'])
             ->whereHas('offers', fn ($query) => $query->where('status', 'active')->whereColumn('stock', '>', 'reserved_stock'))
             ->orderByDesc('featured')
             ->latest('id')
             ->paginate(18)
-            ->through(fn (DigitalProduct $product) => $this->productPayload($product));
+            ->through(fn (DigitalProduct $product) => $this->productPayload($product, false));
 
         return Inertia::render('Digital/Index', ['products' => $products]);
     }
@@ -32,10 +32,10 @@ class DigitalStoreController extends Controller
     {
         abort_unless($digitalProduct->status === 'published', 404);
 
-        $digitalProduct->load(['game:id,name,slug,cover,background', 'platform:id,name,slug', 'offers']);
+        $digitalProduct->load(['game:id,name,slug,cover,background', 'platform:id,name,slug', 'offers', 'media', 'features']);
 
         return Inertia::render('Digital/Show', [
-            'product' => $this->productPayload($digitalProduct),
+            'product' => $this->productPayload($digitalProduct, true),
         ]);
     }
 
@@ -58,8 +58,12 @@ class DigitalStoreController extends Controller
             ->with('success', 'سفارش دیجیتال ثبت شد؛ ادامه خرید از همین گفت‌وگو انجام می‌شود.');
     }
 
-    private function productPayload(DigitalProduct $product): array
+    private function productPayload(DigitalProduct $product, bool $detailed): array
     {
+        $cover = $product->relationLoaded('coverMedia')
+            ? $product->coverMedia
+            : $product->media->firstWhere('is_primary', true) ?? $product->media->firstWhere('type', 'image');
+
         return [
             ...$product->only(['id', 'title', 'slug', 'short_description', 'support_days', 'featured']),
             'game' => $product->game ? [
@@ -68,6 +72,19 @@ class DigitalStoreController extends Controller
                 'background_url' => MediaStorage::url($product->game->background),
             ] : null,
             'platform' => $product->platform?->only(['id', 'name', 'slug']),
+            'cover_url' => MediaStorage::url($cover?->path)
+                ?: MediaStorage::url($product->game?->cover),
+            'media' => $detailed
+                ? $product->media->map(fn ($media) => [
+                    ...$media->only(['id', 'type', 'alt', 'is_primary']),
+                    'url' => MediaStorage::url($media->path),
+                ])->values()
+                : [],
+            'features' => $detailed
+                ? $product->features->map(fn ($feature) => $feature->only([
+                    'id', 'name', 'value',
+                ]))->values()
+                : [],
             'offers' => $product->offers
                 ->where('status', 'active')
                 ->map(fn ($offer) => [

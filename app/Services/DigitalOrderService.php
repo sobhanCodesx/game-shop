@@ -37,7 +37,6 @@ class DigitalOrderService
                 'digital_product_id' => $lockedOffer->digital_product_id,
                 'digital_offer_id' => $lockedOffer->id,
                 'sale_price' => $lockedOffer->price,
-                'supplier_cost' => $lockedOffer->supplier_cost,
                 'order_status' => 'new',
                 'payment_status' => 'unpaid',
                 'delivery_status' => 'waiting',

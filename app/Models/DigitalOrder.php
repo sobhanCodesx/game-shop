@@ -11,7 +11,7 @@ class DigitalOrder extends Model
 {
     protected $fillable = [
         'number', 'user_id', 'seller_id', 'digital_product_id', 'digital_offer_id',
-        'sale_price', 'supplier_cost', 'order_status', 'payment_status',
+        'sale_price', 'order_status', 'payment_status',
         'delivery_status', 'reservation_expires_at', 'paid_at',
         'delivered_at', 'completed_at', 'cancelled_at',
     ];
@@ -20,7 +20,6 @@ class DigitalOrder extends Model
     {
         return [
             'sale_price' => 'integer',
-            'supplier_cost' => 'integer',
             'reservation_expires_at' => 'datetime',
             'paid_at' => 'datetime',
             'delivered_at' => 'datetime',

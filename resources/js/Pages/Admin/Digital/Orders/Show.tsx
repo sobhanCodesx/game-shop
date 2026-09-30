@@ -69,7 +69,6 @@ export default function Show({ order: initial }: { order: any }) {
                         <p className="text-sm text-indigo-400">{order.offer.label} · {order.product.platform}</p>
                         <p>{order.customer?.name}</p><p className="text-xs text-slate-500">{order.customer?.phone || order.customer?.email}</p>
                         <p className="pt-2 text-xl font-black">{money.format(order.sale_price)} تومان</p>
-                        <p className="text-xs text-slate-500">قیمت تأمین: {money.format(order.supplier_cost)} · حاشیه: {money.format(order.sale_price - order.supplier_cost)}</p>
                     </Card.Content></Card>
 
                     <Card variant="secondary"><Card.Content className="space-y-2 p-5">

@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DigitalProduct;
+use App\Models\DigitalProductMedia;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\User;
+use App\Services\MediaStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,7 +23,13 @@ class DigitalProductController extends Controller
     public function index(Request $request): Response
     {
         $query = DigitalProduct::query()
-            ->with(['game:id,name,cover', 'platform:id,name', 'seller:id,name,email', 'offers'])
+            ->with([
+                'game:id,name,cover',
+                'platform:id,name',
+                'seller:id,name,email',
+                'offers',
+                'coverMedia',
+            ])
             ->latest('id');
 
         $this->scopeSeller($query, $request->user());
@@ -28,7 +37,8 @@ class DigitalProductController extends Controller
         $products = $query->paginate(24)->withQueryString();
         $products->through(fn (DigitalProduct $product) => [
             ...$product->toArray(),
-            'cover_url' => \App\Services\MediaStorage::url($product->game?->cover),
+            'cover_url' => MediaStorage::url($product->coverMedia?->path)
+                ?: MediaStorage::url($product->game?->cover),
         ]);
 
         return Inertia::render('Admin/Digital/Products/Index', [
@@ -51,6 +61,7 @@ class DigitalProductController extends Controller
         $title = trim((string) ($data['title'] ?? '')) ?: "{$game->name} - {$platform->name}";
         $slugBase = Str::slug($title) ?: 'digital-game';
         $slug = $slugBase;
+
         for ($i = 2; DigitalProduct::withTrashed()->where('slug', $slug)->exists(); $i++) {
             $slug = $slugBase.'-'.$i;
         }
@@ -68,33 +79,30 @@ class DigitalProductController extends Controller
                 'featured' => (bool) ($data['featured'] ?? false),
             ]);
 
-            foreach ($data['offers'] as $index => $offer) {
-                $product->offers()->create([
-                    ...$offer,
-                    'sort_order' => $index + 1,
-                    'reserved_stock' => 0,
-                ]);
-            }
+            $this->syncOffers($product, $data['offers']);
+            $this->syncFeatures($product, $data['features'] ?? []);
+            $this->syncMedia($product, $data['media']);
         });
 
-        return to_route('admin.digital-products.index')->with('success', 'محصول دیجیتال ایجاد شد.');
+        return to_route('admin.digital-products.index')
+            ->with('success', 'محصول دیجیتال ایجاد شد.');
     }
 
     public function edit(Request $request, DigitalProduct $digitalProduct): Response
     {
         $this->authorizeProduct($request->user(), $digitalProduct);
-        $digitalProduct->load('offers');
+        $digitalProduct->load(['offers', 'media', 'features']);
 
         return Inertia::render('Admin/Digital/Products/Form', [
             ...$this->formData($request),
-            'product' => $digitalProduct,
+            'product' => $this->formProductPayload($digitalProduct),
         ]);
     }
 
     public function update(Request $request, DigitalProduct $digitalProduct): RedirectResponse
     {
         $this->authorizeProduct($request->user(), $digitalProduct);
-        $data = $this->validateProduct($request, $digitalProduct);
+        $data = $this->validateProduct($request);
         $actor = $request->user();
 
         $game = Game::query()->findOrFail($data['game_id']);
@@ -113,24 +121,28 @@ class DigitalProductController extends Controller
                 'featured' => (bool) ($data['featured'] ?? false),
             ]);
 
-            foreach ($data['offers'] as $index => $offer) {
-                $digitalProduct->offers()->updateOrCreate(
-                    ['code' => $offer['code']],
-                    [...$offer, 'sort_order' => $index + 1],
-                );
-            }
+            $this->syncOffers($digitalProduct, $data['offers']);
+            $this->syncFeatures($digitalProduct, $data['features'] ?? []);
+            $this->syncMedia($digitalProduct, $data['media']);
         });
 
-        return to_route('admin.digital-products.index')->with('success', 'محصول دیجیتال به‌روزرسانی شد.');
+        return to_route('admin.digital-products.index')
+            ->with('success', 'محصول دیجیتال به‌روزرسانی شد.');
     }
 
-    private function validateProduct(Request $request, ?DigitalProduct $product = null): array
+    private function validateProduct(Request $request): array
     {
         $sellerRule = $request->user()->role === 'digital-seller'
             ? ['nullable']
-            : ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'digital-seller')->where('status', 'active'))];
+            : [
+                'required',
+                'integer',
+                Rule::exists('users', 'id')->where(
+                    fn ($query) => $query->where('role', 'digital-seller')->where('status', 'active'),
+                ),
+            ];
 
-        return $request->validate([
+        $data = $request->validate([
             'game_id' => ['required', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
             'platform_id' => ['required', 'integer', Rule::exists('platforms', 'id')->whereNull('deleted_at')],
             'seller_id' => $sellerRule,
@@ -139,14 +151,165 @@ class DigitalProductController extends Controller
             'support_days' => ['required', 'integer', 'min:0', 'max:365'],
             'status' => ['required', Rule::in(['draft', 'published', 'hidden'])],
             'featured' => ['boolean'],
+
             'offers' => ['required', 'array', 'size:4'],
             'offers.*.code' => ['required', Rule::in(['capacity_1', 'capacity_2', 'capacity_3', 'full']), 'distinct'],
             'offers.*.label' => ['required', 'string', 'max:80'],
-            'offers.*.supplier_cost' => ['required', 'integer', 'min:0'],
             'offers.*.price' => ['required', 'integer', 'min:1'],
             'offers.*.stock' => ['required', 'integer', 'min:0'],
             'offers.*.status' => ['required', Rule::in(['active', 'inactive'])],
+
+            'features' => ['nullable', 'array', 'max:30'],
+            'features.*.name' => ['required_with:features.*.value', 'nullable', 'string', 'max:120'],
+            'features.*.value' => ['required_with:features.*.name', 'nullable', 'string', 'max:3000'],
+
+            'media' => ['required', 'array', 'min:1', 'max:12'],
+            'media.*.id' => ['nullable', 'integer'],
+            'media.*.type' => ['required', Rule::in(['image', 'video'])],
+            'media.*.file' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime', 'max:2097152'],
+            'media.*.alt' => ['nullable', 'string', 'max:255'],
+            'media.*.is_primary' => ['boolean'],
         ]);
+
+        $hasImage = false;
+        foreach ($data['media'] as $index => $media) {
+            if (($media['type'] ?? null) === 'image') {
+                $hasImage = true;
+            }
+
+            if (empty($media['id']) && empty($media['file'])) {
+                throw ValidationException::withMessages([
+                    "media.{$index}.file" => 'فایل رسانه جدید الزامی است.',
+                ]);
+            }
+
+            if (! empty($media['id']) && ! DigitalProductMedia::query()->whereKey($media['id'])->exists()) {
+                throw ValidationException::withMessages([
+                    "media.{$index}.id" => 'رسانه انتخاب‌شده معتبر نیست.',
+                ]);
+            }
+
+            if (! empty($media['file'])) {
+                $file = $media['file'];
+                if ($file->getMimeType() && str_starts_with($file->getMimeType(), 'image/') && $file->getSize() > 8 * 1024 * 1024) {
+                    throw ValidationException::withMessages([
+                        "media.{$index}.file" => 'حجم تصویر نباید بیشتر از ۸ مگابایت باشد.',
+                    ]);
+                }
+            }
+        }
+
+        if (! $hasImage) {
+            throw ValidationException::withMessages([
+                'media' => 'حداقل یک تصویر برای محصول دیجیتال لازم است.',
+            ]);
+        }
+
+        return $data;
+    }
+
+    private function syncOffers(DigitalProduct $product, array $offers): void
+    {
+        foreach ($offers as $index => $offer) {
+            $product->offers()->updateOrCreate(
+                ['code' => $offer['code']],
+                [
+                    'label' => $offer['label'],
+                    'price' => $offer['price'],
+                    'stock' => $offer['stock'],
+                    'status' => $offer['status'],
+                    'sort_order' => $index + 1,
+                ],
+            );
+        }
+    }
+
+    private function syncFeatures(DigitalProduct $product, array $features): void
+    {
+        $product->features()->delete();
+
+        foreach (array_values($features) as $index => $feature) {
+            $name = trim((string) ($feature['name'] ?? ''));
+            $value = trim((string) ($feature['value'] ?? ''));
+            if ($name === '' || $value === '') {
+                continue;
+            }
+
+            $product->features()->create([
+                'name' => $name,
+                'value' => $value,
+                'sort_order' => $index + 1,
+            ]);
+        }
+    }
+
+    private function syncMedia(DigitalProduct $product, array $mediaItems): void
+    {
+        $existing = $product->media()->get()->keyBy('id');
+        $keptIds = [];
+
+        foreach (array_values($mediaItems) as $index => $item) {
+            $media = ! empty($item['id']) ? $existing->get((int) $item['id']) : null;
+
+            if (! empty($item['id']) && ! $media) {
+                throw ValidationException::withMessages([
+                    "media.{$index}.id" => 'این رسانه متعلق به محصول فعلی نیست.',
+                ]);
+            }
+
+            $file = $item['file'] ?? null;
+            if ($file) {
+                $type = str_starts_with((string) $file->getMimeType(), 'video/') ? 'video' : 'image';
+                $extension = $file->guessExtension() ?: ($type === 'video' ? 'mp4' : 'jpg');
+                $path = 'digital-products/'.$product->id.'/'.Str::uuid().'.'.$extension;
+                MediaStorage::disk()->put($path, fopen($file->getRealPath(), 'rb'));
+
+                if ($media) {
+                    MediaStorage::disk()->delete($media->path);
+                    $media->update([
+                        'type' => $type,
+                        'path' => $path,
+                    ]);
+                } else {
+                    $media = $product->media()->create([
+                        'type' => $type,
+                        'path' => $path,
+                    ]);
+                }
+            }
+
+            if (! $media) {
+                continue;
+            }
+
+            $media->update([
+                'alt' => trim((string) ($item['alt'] ?? '')) ?: null,
+                'sort_order' => $index + 1,
+                'is_primary' => $media->type === 'image' && (bool) ($item['is_primary'] ?? false),
+            ]);
+            $keptIds[] = $media->id;
+        }
+
+        $product->media()
+            ->whereNotIn('id', $keptIds ?: [0])
+            ->get()
+            ->each(function (DigitalProductMedia $media): void {
+                MediaStorage::disk()->delete($media->path);
+                $media->delete();
+            });
+
+        $images = $product->media()->where('type', 'image')->orderBy('sort_order')->get();
+        if ($images->isNotEmpty() && ! $images->contains(fn ($media) => $media->is_primary)) {
+            $images->first()->update(['is_primary' => true]);
+        }
+
+        if ($images->where('is_primary', true)->count() > 1) {
+            $primary = $images->firstWhere('is_primary', true);
+            $product->media()
+                ->where('type', 'image')
+                ->where('id', '!=', $primary->id)
+                ->update(['is_primary' => false]);
+        }
     }
 
     private function formData(Request $request): array
@@ -159,8 +322,32 @@ class DigitalProductController extends Controller
             'platforms' => Platform::query()->where('status', 'active')->orderBy('sort_order')->get(['id', 'name']),
             'sellers' => $actor->role === 'digital-seller'
                 ? collect([$actor->only(['id', 'name', 'email'])])
-                : User::query()->where('status', 'active')->where('role', 'digital-seller')->orderBy('name')->get(['id', 'name', 'email']),
+                : User::query()
+                    ->where('status', 'active')
+                    ->where('role', 'digital-seller')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'email']),
             'currentSellerId' => $actor->role === 'digital-seller' ? $actor->id : null,
+        ];
+    }
+
+    private function formProductPayload(DigitalProduct $product): array
+    {
+        return [
+            ...$product->only([
+                'id', 'game_id', 'platform_id', 'seller_id', 'title',
+                'short_description', 'support_days', 'status', 'featured',
+            ]),
+            'offers' => $product->offers->map(fn ($offer) => $offer->only([
+                'id', 'code', 'label', 'price', 'stock', 'status',
+            ]))->values(),
+            'features' => $product->features->map(fn ($feature) => $feature->only([
+                'id', 'name', 'value',
+            ]))->values(),
+            'media' => $product->media->map(fn ($media) => [
+                ...$media->only(['id', 'type', 'alt', 'is_primary']),
+                'url' => MediaStorage::url($media->path),
+            ])->values(),
         ];
     }
 
