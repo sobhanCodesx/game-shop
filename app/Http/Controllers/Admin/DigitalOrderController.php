@@ -119,9 +119,14 @@ class DigitalOrderController extends Controller
     public function preparing(Request $request, DigitalOrder $digitalOrder): RedirectResponse
     {
         $this->authorizeOrder($request->user(), $digitalOrder);
-        abort_unless($digitalOrder->payment_status === 'paid', 422);
+        abort_unless(
+            $digitalOrder->payment_status === 'paid'
+            && $digitalOrder->order_status === 'active'
+            && $digitalOrder->delivery_status === 'waiting',
+            422,
+        );
 
-        $digitalOrder->update(['order_status' => 'active', 'delivery_status' => 'preparing']);
+        $digitalOrder->update(['delivery_status' => 'preparing']);
         $digitalOrder->messages()->create([
             'user_id' => $request->user()->id,
             'type' => 'system',
@@ -134,7 +139,12 @@ class DigitalOrderController extends Controller
     public function deliver(Request $request, DigitalOrder $digitalOrder): RedirectResponse
     {
         $this->authorizeOrder($request->user(), $digitalOrder);
-        abort_unless($digitalOrder->payment_status === 'paid', 422);
+        abort_unless(
+            $digitalOrder->payment_status === 'paid'
+            && $digitalOrder->order_status === 'active'
+            && in_array($digitalOrder->delivery_status, ['waiting', 'preparing', 'problem', 'delivered'], true),
+            422,
+        );
 
         $data = $request->validate([
             'login' => ['required', 'string', 'max:1000'],

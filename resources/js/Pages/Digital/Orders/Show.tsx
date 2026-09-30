@@ -108,7 +108,7 @@ export default function Show({ order: initial }: { order: any }) {
                             ))}
                             {order.delivery.instructions && <div className="rounded-2xl bg-[var(--store-surface)] p-4 text-sm leading-7">{order.delivery.instructions}</div>}
                         </div>
-                        {order.order_status !== "completed" && (
+                        {!["completed", "cancelled", "expired"].includes(order.order_status) && (
                             <div className="mt-4 grid gap-2 sm:grid-cols-2">
                                 <Button onPress={() => router.patch(`/account/digital-orders/${order.id}/confirm`)} variant="primary"><CheckCircle2 size={18} /> همه‌چیز درست است</Button>
                                 <Button onPress={() => router.patch(`/account/digital-orders/${order.id}/problem`)} variant="danger-soft"><ShieldAlert size={18} /> مشکل دارم</Button>

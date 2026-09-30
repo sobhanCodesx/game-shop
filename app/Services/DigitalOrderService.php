@@ -70,7 +70,11 @@ class DigitalOrderService
                 return $locked;
             }
 
-            if ($locked->payment_status !== 'paid' && $locked->reservation_expires_at?->isPast()) {
+            if ($locked->payment_status === 'paid') {
+                return $locked;
+            }
+
+            if ($locked->reservation_expires_at?->isPast()) {
                 $offer = DigitalOffer::query()->lockForUpdate()->findOrFail($locked->digital_offer_id);
                 if ($offer->reserved_stock > 0) {
                     $offer->decrement('reserved_stock');
@@ -118,11 +122,14 @@ class DigitalOrderService
     {
         return DB::transaction(function () use ($order): DigitalOrder {
             $locked = DigitalOrder::query()->lockForUpdate()->findOrFail($order->id);
-            if ($locked->delivery_status !== 'delivered') {
-                throw ValidationException::withMessages(['status' => 'تا قبل از تحویل اطلاعات اکانت، سفارش قابل تکمیل نیست.']);
-            }
             if ($locked->order_status === 'completed') {
                 return $locked;
+            }
+            if ($locked->order_status !== 'active' || $locked->payment_status !== 'paid') {
+                throw ValidationException::withMessages(['status' => 'این سفارش در وضعیت قابل تکمیل نیست.']);
+            }
+            if ($locked->delivery_status !== 'delivered') {
+                throw ValidationException::withMessages(['status' => 'تا قبل از تحویل اطلاعات اکانت، سفارش قابل تکمیل نیست.']);
             }
 
             $offer = DigitalOffer::query()->lockForUpdate()->findOrFail($locked->digital_offer_id);
@@ -152,6 +159,16 @@ class DigitalOrderService
             $locked = DigitalOrder::query()->lockForUpdate()->findOrFail($order->id);
             if (in_array($locked->order_status, ['completed', 'cancelled', 'expired'], true)) {
                 return $locked;
+            }
+            if ($locked->payment_status === 'paid') {
+                throw ValidationException::withMessages([
+                    'status' => 'سفارش پرداخت‌شده از مسیر لغو عادی قابل لغو نیست؛ ابتدا وضعیت مالی باید تعیین تکلیف شود.',
+                ]);
+            }
+            if ($locked->delivery_status !== 'waiting') {
+                throw ValidationException::withMessages([
+                    'status' => 'سفارشی که وارد فرایند تحویل شده از مسیر لغو عادی قابل لغو نیست.',
+                ]);
             }
 
             $offer = DigitalOffer::query()->lockForUpdate()->findOrFail($locked->digital_offer_id);

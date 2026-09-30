@@ -76,7 +76,7 @@ export default function Show({ order: initial }: { order: any }) {
                         <h2 className="mb-3 font-black">عملیات سریع</h2>
                         {order.payment_status !== "paid" && <Button fullWidth onPress={() => router.patch(`/admin/digital-orders/${order.id}/payment`)} variant="primary">تأیید پرداخت</Button>}
                         {order.payment_status === "paid" && order.delivery_status === "waiting" && <Button fullWidth onPress={() => router.patch(`/admin/digital-orders/${order.id}/preparing`)} variant="secondary">شروع آماده‌سازی</Button>}
-                        {!["cancelled", "expired", "completed"].includes(order.order_status) && <Button fullWidth onPress={() => router.patch(`/admin/digital-orders/${order.id}/cancel`)} variant="danger-soft">لغو سفارش</Button>}
+                        {order.payment_status !== "paid" && order.delivery_status === "waiting" && !["cancelled", "expired", "completed"].includes(order.order_status) && <Button fullWidth onPress={() => router.patch(`/admin/digital-orders/${order.id}/cancel`)} variant="danger-soft">لغو سفارش</Button>}
                     </Card.Content></Card>
 
                     {order.payment_status === "paid" && order.order_status !== "completed" && (

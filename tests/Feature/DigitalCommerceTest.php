@@ -142,6 +142,50 @@ class DigitalCommerceTest extends TestCase
         $this->assertSame(0, $offer->reserved_stock);
     }
 
+
+    public function test_paid_order_cannot_be_cancelled_and_keeps_reserved_stock(): void
+    {
+        [$seller, $product] = $this->digitalProduct('paid-cancel');
+        $customer = User::factory()->create();
+        $offer = $product->offers()->firstOrFail();
+        $order = app(\App\Services\DigitalOrderService::class)->create($customer, $offer);
+
+        app(\App\Services\DigitalOrderService::class)->markPaid($order, $seller);
+
+        $this->actingAs($seller)
+            ->patch('/admin/digital-orders/'.$order->id.'/cancel')
+            ->assertSessionHasErrors('status');
+
+        $order->refresh();
+        $offer->refresh();
+        $this->assertSame('active', $order->order_status);
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertSame(1, $offer->reserved_stock);
+    }
+
+    public function test_cancelled_order_cannot_be_completed_even_if_delivery_state_is_tampered(): void
+    {
+        [, $product] = $this->digitalProduct('cancel-complete');
+        $customer = User::factory()->create();
+        $offer = $product->offers()->firstOrFail();
+        $service = app(\App\Services\DigitalOrderService::class);
+        $order = $service->create($customer, $offer);
+
+        $service->cancel($order, $customer);
+        $order->forceFill([
+            'payment_status' => 'paid',
+            'delivery_status' => 'delivered',
+        ])->save();
+
+        $this->actingAs($customer)
+            ->patch('/account/digital-orders/'.$order->id.'/confirm')
+            ->assertSessionHasErrors('status');
+
+        $this->assertSame('cancelled', $order->fresh()->order_status);
+        $this->assertSame(5, $offer->fresh()->stock);
+        $this->assertSame(0, $offer->fresh()->reserved_stock);
+    }
+
     private function digitalProduct(string $slug = 'test-game'): array
     {
         $seller = User::factory()->create([
