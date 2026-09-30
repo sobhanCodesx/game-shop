@@ -10,7 +10,7 @@ final class DigitalProductMediaStorage
 {
     public static function diskName(): string
     {
-        return (string) config('digital_media.disk', 'public');
+        return (string) config('digital_media.disk', 'downloads');
     }
 
     public static function disk(): FilesystemAdapter
@@ -25,27 +25,14 @@ final class DigitalProductMediaStorage
         }
 
         $path = ltrim($path, '/');
+        $baseUrl = config('filesystems.disks.'.self::diskName().'.url');
 
-        try {
-            if (self::disk()->exists($path)) {
-                $baseUrl = config('filesystems.disks.'.self::diskName().'.url');
-
-                if (is_string($baseUrl) && $baseUrl !== '') {
-                    return rtrim($baseUrl, '/').'/'.$path;
-                }
-
-                return self::disk()->url($path);
-            }
-        } catch (Throwable) {
-            // Legacy storage may be unavailable. URL generation below does not
-            // require opening the remote disk when its configured base URL exists.
+        // Public URL generation must not open an FTP connection.
+        if (is_string($baseUrl) && $baseUrl !== '') {
+            return rtrim($baseUrl, '/').'/'.$path;
         }
 
-        try {
-            return MediaStorage::url($path);
-        } catch (Throwable) {
-            return null;
-        }
+        return self::disk()->url($path);
     }
 
     public static function exists(?string $path): bool
