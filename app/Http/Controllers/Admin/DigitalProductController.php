@@ -156,7 +156,7 @@ class DigitalProductController extends Controller
             'offers' => ['required', 'array', 'size:4'],
             'offers.*.code' => ['required', Rule::in(['capacity_1', 'capacity_2', 'capacity_3', 'full']), 'distinct'],
             'offers.*.label' => ['required', 'string', 'max:80'],
-            'offers.*.price' => ['required', 'integer', 'min:1'],
+            'offers.*.price' => ['required', 'integer', 'min:0'],
             'offers.*.stock' => ['required', 'integer', 'min:0'],
             'offers.*.status' => ['required', Rule::in(['active', 'inactive'])],
 
@@ -171,6 +171,14 @@ class DigitalProductController extends Controller
             'media.*.alt' => ['nullable', 'string', 'max:255'],
             'media.*.is_primary' => ['boolean'],
         ]);
+
+        foreach ($data['offers'] as $index => $offer) {
+            if (($offer['status'] ?? null) === 'active' && (int) ($offer['price'] ?? 0) < 1) {
+                throw ValidationException::withMessages([
+                    "offers.{$index}.price" => 'قیمت فروش ظرفیت فعال باید بیشتر از صفر باشد.',
+                ]);
+            }
+        }
 
         $data['attribute_values'] = $this->validateAttributeValues($data['attribute_values'] ?? []);
 
