@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Attribute;
+use App\Models\Category;
 use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Platform;
@@ -89,6 +90,63 @@ class DigitalCommerceTest extends TestCase
                 ->missing('product.offers.0.supplier_cost'));
     }
 
+    public function test_published_digital_product_is_visible_in_shop_and_category_even_when_out_of_stock(): void
+    {
+        $category = Category::query()->create([
+            'name' => 'بازی دیجیتال',
+            'slug' => 'digital-games',
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+        $region = $this->digitalAttribute();
+        [, $product] = $this->digitalProduct('catalog-digital');
+
+        $product->update(['category_id' => $category->id]);
+        $product->offers()->update([
+            'stock' => 0,
+            'reserved_stock' => 0,
+        ]);
+        $product->attributeValues()->create([
+            'attribute_id' => $region->id,
+            'value' => 'turkey',
+        ]);
+
+        $this->get('/digital')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Index')
+                ->has('products.data', 1)
+                ->where('products.data.0.id', $product->id)
+                ->where('categories.0.slug', 'digital-games'));
+
+        $this->get('/products')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Shop/Index')
+                ->where('products.total', 1)
+                ->where('products.data.0.id', $product->id)
+                ->where('products.data.0.url', '/digital/'.$product->slug)
+                ->where('products.data.0.badge', 'دیجیتال')
+                ->where('products.data.0.category', 'بازی دیجیتال'));
+
+        $this->get('/categories/'.$category->slug.'?filters[region][]=turkey')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Categories/Show')
+                ->where('products.total', 1)
+                ->where('products.data.0.id', $product->id)
+                ->where('catalogFilters.0.slug', 'region')
+                ->where('catalogFilters.0.options.0.value', 'turkey')
+                ->where('selectedAttributeFilters.region.0', 'turkey'));
+
+        $this->get('/categories/'.$category->slug.'?filters[region][]=usa')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Categories/Show')
+                ->where('products.total', 0)
+                ->has('products.data', 0));
+    }
+
     public function test_digital_seller_creates_product_with_media_features_and_only_sale_price(): void
     {
         config()->set('digital_media.disk', 'downloads');
@@ -103,6 +161,12 @@ class DigitalCommerceTest extends TestCase
 
         $game = Game::factory()->create();
         $platform = Platform::factory()->create();
+        $category = Category::query()->create([
+            'name' => 'اکانت بازی',
+            'slug' => 'game-accounts',
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
         $region = $this->digitalAttribute();
 
         Attribute::query()->firstOrCreate(
@@ -125,10 +189,13 @@ class DigitalCommerceTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Digital/Products/Form')
+                ->has('categories', 1)
+                ->where('categories.0.id', $category->id)
                 ->has('attributes', 1)
                 ->where('attributes.0.slug', 'region'));
 
         $response = $this->actingAs($seller)->post('/admin/digital-products', [
+            'category_id' => $category->id,
             'game_id' => $game->id,
             'platform_id' => $platform->id,
             'title' => 'Digital Test',
@@ -158,6 +225,7 @@ class DigitalCommerceTest extends TestCase
         $response->assertRedirect('/admin/digital-products');
 
         $product = DigitalProduct::query()->where('title', 'Digital Test')->firstOrFail();
+        $this->assertSame($category->id, $product->category_id);
         $this->assertSame($seller->id, $product->seller_id);
         $this->assertCount(1, $product->media);
         $this->assertCount(1, $product->attributeValues);
