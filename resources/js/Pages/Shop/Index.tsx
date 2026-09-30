@@ -151,7 +151,10 @@ export default function ShopIndex({
                 </div>
                 <section className="pn-deferred-zone grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-6">
                     {products.data.map((product) => (
-                        <ProductCard key={product.id} product={product} />
+                        <ProductCard
+                            key={`${product.url}-${product.id}`}
+                            product={product}
+                        />
                     ))}
                     {!products.data.length && (
                         <EmptyState
