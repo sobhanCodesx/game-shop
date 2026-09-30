@@ -1,7 +1,7 @@
 import { Button, Card, Checkbox, Chip, Input } from "@heroui/react";
 import { Head, Link, useForm } from "@inertiajs/react";
-import { Filter, ImageIcon, Save, Sparkles } from "lucide-react";
-import { FormEvent } from "react";
+import { Filter, ImageIcon, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import { FormEvent, useState } from "react";
 
 import ProductMediaUploader, {
     type ProductMediaItem,
@@ -33,6 +33,12 @@ type AttributeDefinition = {
     options: AttributeOption[];
 };
 
+type FeatureRow = {
+    key: string;
+    attribute_id: string;
+    value: string;
+};
+
 type FormData = {
     game_id: string;
     platform_id: string;
@@ -48,6 +54,11 @@ type FormData = {
 };
 
 const formatter = new Intl.NumberFormat("fa-IR");
+const emptyFeatureRow = (): FeatureRow => ({
+    key: `feature-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    attribute_id: "",
+    value: "",
+});
 
 const defaultOffers: Offer[] = [
     { code: "capacity_1", label: "ظرفیت ۱", price: 0, stock: 0, status: "active" },
@@ -102,6 +113,39 @@ export default function Form({
             })) ?? [],
     });
 
+    const initialFeatureRows: FeatureRow[] = Object.entries(
+        product?.attribute_values ?? {},
+    ).flatMap(([attributeId, values]: [string, any]) =>
+        (Array.isArray(values) ? values : []).map((value: string, index: number) => ({
+            key: `stored-${attributeId}-${index}`,
+            attribute_id: attributeId,
+            value: String(value),
+        })),
+    );
+
+    const [featureRows, setFeatureRows] = useState<FeatureRow[]>(
+        initialFeatureRows.length ? initialFeatureRows : [emptyFeatureRow()],
+    );
+
+    const updateFeatureRow = (
+        key: string,
+        patch: Partial<FeatureRow>,
+    ) => {
+        setFeatureRows((rows) =>
+            rows.map((row) =>
+                row.key === key
+                    ? {
+                          ...row,
+                          ...patch,
+                          ...(patch.attribute_id !== undefined
+                              ? { value: "" }
+                              : {}),
+                      }
+                    : row,
+            ),
+        );
+    };
+
     const updateOffer = <K extends keyof Offer>(
         index: number,
         key: K,
@@ -114,32 +158,23 @@ export default function Form({
             ),
         );
 
-    const setSingleAttribute = (attributeId: number, value: string) =>
-        form.setData("attribute_values", {
-            ...form.data.attribute_values,
-            [String(attributeId)]: value ? [value] : [],
-        });
-
-    const toggleMultiAttribute = (
-        attributeId: number,
-        value: string,
-        selected: boolean,
-    ) => {
-        const key = String(attributeId);
-        const current = form.data.attribute_values[key] ?? [];
-        form.setData("attribute_values", {
-            ...form.data.attribute_values,
-            [key]: selected
-                ? Array.from(new Set([...current, value]))
-                : current.filter((item) => item !== value),
-        });
-    };
-
     const submit = (event: FormEvent) => {
         event.preventDefault();
 
+        const attributeValues = featureRows.reduce<Record<string, string[]>>(
+            (result, row) => {
+                if (!row.attribute_id || !row.value) return result;
+                result[row.attribute_id] = Array.from(
+                    new Set([...(result[row.attribute_id] ?? []), row.value]),
+                );
+                return result;
+            },
+            {},
+        );
+
         form.transform((values) => ({
             ...values,
+            attribute_values: attributeValues,
             media: values.media.map((media) => ({
                 id: media.id,
                 type: media.type,
@@ -336,84 +371,99 @@ export default function Form({
 
                 <Card variant="secondary">
                     <Card.Content className="p-5">
-                        <div className="mb-5 flex items-center gap-3">
-                            <span className="grid size-10 place-items-center rounded-xl bg-cyan-500/10 text-cyan-300">
-                                <Filter size={20} />
-                            </span>
-                            <div>
-                                <h2 className="text-lg font-black">
-                                    ویژگی‌ها و فیلترها
-                                </h2>
-                                <p className="mt-1 text-xs text-slate-400">
-                                    این ویژگی‌ها قبلاً توسط ادمین تعریف شده‌اند و در فروشگاه به فیلتر تبدیل می‌شوند.
-                                </p>
+                        <div className="mb-5 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <span className="grid size-10 place-items-center rounded-xl bg-cyan-500/10 text-cyan-300">
+                                    <Filter size={20} />
+                                </span>
+                                <div>
+                                    <h2 className="text-lg font-black">
+                                        ویژگی‌ها و فیلترها
+                                    </h2>
+                                    <p className="mt-1 text-xs text-slate-400">
+                                        اول ویژگی را انتخاب کن، بعد مقدار همان ویژگی را.
+                                    </p>
+                                </div>
                             </div>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                isDisabled={!attributes.length}
+                                onPress={() =>
+                                    setFeatureRows((rows) => [
+                                        ...rows,
+                                        emptyFeatureRow(),
+                                    ])
+                                }
+                            >
+                                <Plus size={16} />
+                                ویژگی
+                            </Button>
                         </div>
 
                         {attributes.length ? (
-                            <div className="grid gap-4 md:grid-cols-2">
-                                {attributes.map((attribute) => {
-                                    const selected =
-                                        form.data.attribute_values[
-                                            String(attribute.id)
-                                        ] ?? [];
+                            <div className="space-y-3">
+                                {featureRows.map((row) => {
+                                    const attribute = attributes.find(
+                                        (item) =>
+                                            String(item.id) === row.attribute_id,
+                                    );
 
                                     return (
                                         <div
-                                            className="rounded-2xl border border-slate-800 bg-slate-950/35 p-4"
-                                            key={attribute.id}
+                                            className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-950/35 p-4 md:grid-cols-[1fr_1fr_44px]"
+                                            key={row.key}
                                         >
-                                            <div className="mb-3 flex items-center gap-2">
-                                                <strong>{attribute.title}</strong>
-                                                {attribute.is_required && (
-                                                    <Chip
-                                                        size="sm"
-                                                        variant="soft"
-                                                        color="danger"
-                                                    >
-                                                        الزامی
-                                                    </Chip>
-                                                )}
-                                            </div>
-
-                                            {attribute.input_type ===
-                                            "multi_select" ? (
-                                                <div className="flex flex-wrap gap-3">
-                                                    {attribute.options.map(
-                                                        (option) => (
-                                                            <Checkbox
-                                                                key={option.value}
-                                                                isSelected={selected.includes(
-                                                                    option.value,
-                                                                )}
-                                                                onChange={(value) =>
-                                                                    toggleMultiAttribute(
-                                                                        attribute.id,
-                                                                        option.value,
-                                                                        value,
-                                                                    )
-                                                                }
-                                                            >
-                                                                {option.title}
-                                                            </Checkbox>
-                                                        ),
-                                                    )}
-                                                </div>
-                                            ) : (
+                                            <label className="text-sm font-bold text-slate-200">
+                                                ویژگی
                                                 <select
-                                                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm"
-                                                    value={selected[0] ?? ""}
+                                                    className="mt-2 h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm"
+                                                    value={row.attribute_id}
                                                     onChange={(event) =>
-                                                        setSingleAttribute(
-                                                            attribute.id,
-                                                            event.target.value,
+                                                        updateFeatureRow(
+                                                            row.key,
+                                                            {
+                                                                attribute_id:
+                                                                    event.target
+                                                                        .value,
+                                                            },
                                                         )
                                                     }
                                                 >
                                                     <option value="">
-                                                        انتخاب نشده
+                                                        انتخاب ویژگی
                                                     </option>
-                                                    {attribute.options.map(
+                                                    {attributes.map((item) => (
+                                                        <option
+                                                            key={item.id}
+                                                            value={item.id}
+                                                        >
+                                                            {item.title}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+
+                                            <label className="text-sm font-bold text-slate-200">
+                                                مقدار
+                                                <select
+                                                    className="mt-2 h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm disabled:opacity-50"
+                                                    disabled={!attribute}
+                                                    value={row.value}
+                                                    onChange={(event) =>
+                                                        updateFeatureRow(
+                                                            row.key,
+                                                            {
+                                                                value: event.target
+                                                                    .value,
+                                                            },
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="">
+                                                        انتخاب مقدار
+                                                    </option>
+                                                    {attribute?.options.map(
                                                         (option) => (
                                                             <option
                                                                 key={option.value}
@@ -424,26 +474,50 @@ export default function Form({
                                                         ),
                                                     )}
                                                 </select>
-                                            )}
+                                                {row.attribute_id &&
+                                                    (form.errors as any)[
+                                                        `attribute_values.${row.attribute_id}`
+                                                    ] && (
+                                                        <p className="mt-2 text-xs text-rose-400">
+                                                            {
+                                                                (form.errors as any)[
+                                                                    `attribute_values.${row.attribute_id}`
+                                                                ]
+                                                            }
+                                                        </p>
+                                                    )}
+                                            </label>
 
-                                            {(form.errors as any)[
-                                                `attribute_values.${attribute.id}`
-                                            ] && (
-                                                <p className="mt-2 text-xs text-rose-400">
-                                                    {
-                                                        (form.errors as any)[
-                                                            `attribute_values.${attribute.id}`
-                                                        ]
-                                                    }
-                                                </p>
-                                            )}
+                                            <Button
+                                                aria-label="حذف ویژگی"
+                                                className="mt-6"
+                                                isIconOnly
+                                                type="button"
+                                                variant="danger-soft"
+                                                onPress={() =>
+                                                    setFeatureRows((rows) => {
+                                                        const next = rows.filter(
+                                                            (item) =>
+                                                                item.key !==
+                                                                row.key,
+                                                        );
+                                                        return next.length
+                                                            ? next
+                                                            : [
+                                                                  emptyFeatureRow(),
+                                                              ];
+                                                    })
+                                                }
+                                            >
+                                                <Trash2 size={16} />
+                                            </Button>
                                         </div>
                                     );
                                 })}
                             </div>
                         ) : (
                             <div className="rounded-2xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-400">
-                                هنوز ویژگی فیلترپذیری به نوع محصول «اکانت ظرفیتی» وصل نشده است.
+                                هنوز ویژگی فیلترپذیری در پنل ادمین تعریف نشده است.
                             </div>
                         )}
                     </Card.Content>

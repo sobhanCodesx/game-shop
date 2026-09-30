@@ -38,4 +38,9 @@ class Attribute extends Model
         return $this->belongsToMany(ProductType::class, 'product_type_attributes')
             ->withPivot(['is_required', 'sort_order']);
     }
+
+    public function digitalValues(): HasMany
+    {
+        return $this->hasMany(DigitalProductAttributeValue::class);
+    }
 }

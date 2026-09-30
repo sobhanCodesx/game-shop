@@ -90,6 +90,29 @@ class DigitalCommerceTest extends TestCase
         $platform = Platform::factory()->create();
         $region = $this->digitalAttribute();
 
+        Attribute::query()->firstOrCreate(
+            ['slug' => 'capacity'],
+            [
+                'title' => 'ظرفیت',
+                'input_type' => 'select',
+                'is_required' => true,
+                'is_filterable' => true,
+                'is_searchable' => false,
+                'is_visible_on_product' => true,
+                'is_usable_for_variant' => true,
+                'status' => 'active',
+                'sort_order' => 0,
+            ],
+        );
+
+        $this->actingAs($seller)
+            ->get('/admin/digital-products/create')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Digital/Products/Form')
+                ->has('attributes', 1)
+                ->where('attributes.0.slug', 'region'));
+
         $response = $this->actingAs($seller)->post('/admin/digital-products', [
             'game_id' => $game->id,
             'platform_id' => $platform->id,
