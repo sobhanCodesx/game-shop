@@ -9,6 +9,7 @@ use App\Services\ContentAgentService;
 use App\Services\DigitalProductAgentService;
 use App\Services\FeedService;
 use App\Services\GraphQL\PlayNexusGraphService;
+use App\Services\MediaStorageDiagnosticService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -21,7 +22,7 @@ class ContentAgentMcpController extends Controller
     private const MODERN_PROTOCOL = '2026-07-28';
     private const LEGACY_PROTOCOL = '2025-11-25';
 
-    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, DigitalProductAgentService $digitalProducts, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases): Response
+    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, DigitalProductAgentService $digitalProducts, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases, MediaStorageDiagnosticService $mediaDiagnostics): Response
     {
         $payload = $request->json()->all();
 
@@ -46,7 +47,7 @@ class ContentAgentMcpController extends Controller
                 'initialize' => $this->rpcResult($id, $this->initializeResult($params)),
                 'server/discover' => $this->rpcResult($id, $this->discoverResult()),
                 'tools/list' => $this->rpcResult($id, $this->toolsListResult()),
-                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia, $digitalProducts, $graph, $androidReleases)),
+                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia, $digitalProducts, $graph, $androidReleases, $mediaDiagnostics)),
                 'ping' => $this->rpcResult($id, new \stdClass()),
                 default => $this->rpcError($id, -32601, 'Method not found.'),
             };
@@ -136,12 +137,13 @@ class ContentAgentMcpController extends Controller
         ];
     }
 
-    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, DigitalProductAgentService $digitalProducts, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases): array
+    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, DigitalProductAgentService $digitalProducts, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases, MediaStorageDiagnosticService $mediaDiagnostics): array
     {
         $name = (string) ($params['name'] ?? '');
         $arguments = is_array($params['arguments'] ?? null) ? $params['arguments'] : [];
 
         $result = match ($name) {
+            'diagnose_media_storage' => $mediaDiagnostics->report(),
             'describe_playnexus_graph' => $graph->describe(),
             'query_playnexus_graph' => $graph->execute(
                 (string) ($arguments['query'] ?? ''),
@@ -249,6 +251,16 @@ class ContentAgentMcpController extends Controller
         ];
 
         return [
+            [
+                'name' => 'diagnose_media_storage',
+                'description' => 'Read-only production media-storage diagnostics. Reports non-secret download-host configuration presence and probes plain/explicit-TLS FTP login without revealing credentials.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => new \stdClass(),
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
             [
                 'name' => 'describe_playnexus_graph',
                 'description' => 'Discover the read-only PlayNexus Intelligence Graph. Returns SDL, limits, guidance and useful example queries. Use this when you need to understand relationships before querying.',
