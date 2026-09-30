@@ -25,6 +25,24 @@ final class ProductMediaStorage
         }
 
         $path = ltrim($path, '/');
+
+        // Product media created before the download-host migration may still
+        // exist in public/storage. Serve that exact file when present.
+        try {
+            $legacy = Storage::disk('public');
+            if ($legacy->exists($path)) {
+                $legacyUrl = config('filesystems.disks.public.url');
+
+                if (is_string($legacyUrl) && $legacyUrl !== '') {
+                    return rtrim($legacyUrl, '/').'/'.$path;
+                }
+
+                return $legacy->url($path);
+            }
+        } catch (Throwable) {
+            // Fall through to the canonical download host.
+        }
+
         $baseUrl = config('filesystems.disks.'.self::diskName().'.url');
 
         // Public URL generation must not open an FTP connection.
@@ -50,6 +68,14 @@ final class ProductMediaStorage
         }
 
         try {
+            if (Storage::disk('public')->exists($path)) {
+                return true;
+            }
+        } catch (Throwable) {
+            // Ignore an unavailable legacy public disk.
+        }
+
+        try {
             return MediaStorage::disk()->exists($path);
         } catch (Throwable) {
             return false;
@@ -71,9 +97,18 @@ final class ProductMediaStorage
             }
 
             try {
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                    continue;
+                }
+            } catch (Throwable) {
+                // Ignore a missing/unavailable legacy public disk.
+            }
+
+            try {
                 MediaStorage::disk()->delete($path);
             } catch (Throwable) {
-                // Legacy remote media can be unavailable temporarily.
+                // Canonical remote media can be unavailable temporarily.
             }
         }
     }
