@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-09-30-gta6-01-cover",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "digital_product",
+    "id": 1,
+    "slot": "media",
+    "source_url": "https://www.rockstargames.com/VI/_next/static/media/Official_Cover_Art_landscape.12.uu2irr.2_a.jpg?akim=1&imdensity=1&imwidth=3840",
+    "name": "gta-vi-official-cover-art.jpg",
+    "alt": "Grand Theft Auto VI: Ultimate Edition برای PlayStation 5",
+    "sort_order": 1
+  }
+}
