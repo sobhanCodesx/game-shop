@@ -16,7 +16,10 @@ export default function Show({ order: initial }: { order: any }) {
         const poll = async () => {
             try {
                 const response = await fetch(`/admin/digital-orders/${order.id}/messages`, { headers: { Accept: "application/json" } });
-                if (response.ok) setOrder((current: any) => ({ ...current, ...(await response.json()) }));
+                if (response.ok) {
+                    const data = await response.json();
+                    setOrder((current: any) => ({ ...current, ...data }));
+                }
             } finally {
                 timer = window.setTimeout(poll, document.hidden ? 12000 : 2500);
             }
