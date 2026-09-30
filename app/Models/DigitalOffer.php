@@ -9,14 +9,12 @@ use Illuminate\Validation\ValidationException;
 class DigitalOffer extends Model
 {
     protected $fillable = [
-        'digital_product_id', 'code', 'label', 'supplier_cost',
-        'price', 'stock', 'reserved_stock', 'status', 'sort_order',
+        'digital_product_id', 'code', 'label', 'price', 'stock', 'reserved_stock', 'status', 'sort_order',
     ];
 
     protected function casts(): array
     {
         return [
-            'supplier_cost' => 'integer',
             'price' => 'integer',
             'stock' => 'integer',
             'reserved_stock' => 'integer',
