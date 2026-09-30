@@ -1,0 +1,59 @@
+name: Digital Commerce Check
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'config/admin-access.php'
+      - 'database/migrations/**'
+      - 'resources/js/**'
+      - 'routes/**'
+      - 'tests/Feature/DigitalCommerceTest.php'
+      - '.github/workflows/digital-commerce-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  digital-commerce:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:MxB3sypjSv/hgL1A0+W5h3I2R0c1uvmkUN7nxGgDg+Y=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run digital commerce regression tests
+        run: php artisan test tests/Feature/DigitalCommerceTest.php tests/Feature/Admin/AdminAccessTest.php
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
