@@ -350,7 +350,7 @@ class DigitalProductController extends Controller
                 $oldPath = $media?->path;
                 $stored = $this->mediaOptimizer->store(
                     $file,
-                    'digital-products',
+                    '',
                     DigitalProductMediaStorage::diskName(),
                 );
 
