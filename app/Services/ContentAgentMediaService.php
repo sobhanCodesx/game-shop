@@ -784,7 +784,7 @@ class ContentAgentMediaService
 
         $stored = $this->optimizer->store(
             $file,
-            "products/{$product->id}",
+            '',
             ProductMediaStorage::diskName(),
         );
         $sortOrder = $metadata['sort_order'] ?? ((int) $product->media()->max('sort_order') + 1);
@@ -841,7 +841,7 @@ class ContentAgentMediaService
 
         $stored = $this->optimizer->store(
             $file,
-            'digital-products',
+            '',
             DigitalProductMediaStorage::diskName(),
         );
         $sortOrder = $metadata['sort_order'] ?? ((int) $product->media()->max('sort_order') + 1);
