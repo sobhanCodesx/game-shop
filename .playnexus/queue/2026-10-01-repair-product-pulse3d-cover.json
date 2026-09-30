@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-01-repair-product-pulse3d-cover",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "product",
+    "query": "pulse-3d-wireless-headset",
+    "slot": "media",
+    "source_url": "https://image.ceneostatic.pl/data/products/171005971/c5d3e7e2-af52-44a2-a805-9f57f0aad2c9_i-sony-playstation-5-pulse-3d-wireless-headset-elite-white.jpg",
+    "name": "pulse-3d-wireless-headset-cover.jpg",
+    "alt": "تصویر هدست بی‌سیم Pulse 3D",
+    "sort_order": 0
+  }
+}
