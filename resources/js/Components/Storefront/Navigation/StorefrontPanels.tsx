@@ -9,6 +9,7 @@ import {
     Factory,
     Flame,
     FolderTree,
+    Gamepad2,
     Home,
     Radio,
     Radar,
@@ -53,8 +54,15 @@ const mobileMenuLinks = [
         href: "/shop",
         matches: ["/shop", "/products", "/categories", "/games"],
         label: "فروشگاه",
-        hint: "محصولات گیمینگ",
+        hint: "محصولات فیزیکی و عمومی",
         icon: ShoppingBag,
+    },
+    {
+        href: "/digital",
+        matches: ["/digital"],
+        label: "بازی دیجیتال",
+        hint: "اکانت‌های ظرفیتی و فول",
+        icon: Gamepad2,
     },
     {
         href: "/videos",
@@ -614,6 +622,11 @@ export default function StorefrontPanels({
                                         <Link href="/account" onClick={onClose}>
                                             <Button variant="primary">
                                                 داشبورد کاربری
+                                            </Button>
+                                        </Link>
+                                        <Link href="/account/digital-orders" onClick={onClose}>
+                                            <Button variant="secondary">
+                                                سفارش‌های دیجیتال
                                             </Button>
                                         </Link>
                                         {user.is_admin && (

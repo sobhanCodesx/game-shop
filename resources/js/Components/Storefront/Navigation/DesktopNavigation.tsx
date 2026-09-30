@@ -319,6 +319,15 @@ export default function DesktopNavigation({
                                         داشبورد کاربری
                                     </Link>
 
+                                    <Link
+                                        href="/account/digital-orders"
+                                        onClick={() => setAccountOpen(false)}
+                                        className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-[var(--store-text)] transition hover:bg-[var(--store-accent-soft)] hover:text-indigo-500"
+                                    >
+                                        <Gamepad2 size={18} className="shrink-0" />
+                                        سفارش‌های دیجیتال
+                                    </Link>
+
                                     {user.is_admin && (
                                         <Link
                                             href="/admin"
@@ -412,6 +421,14 @@ export default function DesktopNavigation({
                     >
                         <ShoppingBag size={15} className="shrink-0" />
                         فروشگاه
+                    </Link>
+
+                    <Link
+                        className={navLinkClass(matchesPath("/digital"))}
+                        href="/digital"
+                    >
+                        <Gamepad2 size={15} className="shrink-0" />
+                        بازی دیجیتال
                     </Link>
 
                     <Link
