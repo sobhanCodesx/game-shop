@@ -50,11 +50,17 @@ final class MediaStorage
             return $path;
         }
 
-        // Serve internal media through the application gateway. This removes
-        // the public/storage symlink and CDN base URL as single points of
-        // failure, while MediaStreamController can still redirect non-local
-        // assets to their configured origin when appropriate.
-        if (app()->bound('router') && app('router')->has('media.stream')) {
+        $isProductMedia = str_starts_with($path, 'products/')
+            || str_starts_with($path, 'digital-products/');
+
+        // Product images use the application gateway so they do not depend on
+        // public/storage being a valid symlink and can self-heal from legacy
+        // storage. Other media keeps its existing direct CDN/storage fast path.
+        if (
+            $isProductMedia
+            && app()->bound('router')
+            && app('router')->has('media.stream')
+        ) {
             return route('media.stream', ['path' => $path], false);
         }
 
