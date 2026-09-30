@@ -295,7 +295,9 @@ class DigitalProductAgentService
 
     private function syncOffers(DigitalProduct $product, array $offers): void
     {
-        foreach ($offers as $index => $offer) {
+        $sortOrder = array_flip(array_keys(self::OFFER_CODES));
+
+        foreach ($offers as $offer) {
             $product->offers()->updateOrCreate(
                 ['code' => $offer['code']],
                 [
@@ -303,7 +305,7 @@ class DigitalProductAgentService
                     'price' => (int) $offer['price'],
                     'stock' => (int) $offer['stock'],
                     'status' => (string) $offer['status'],
-                    'sort_order' => $index + 1,
+                    'sort_order' => ((int) $sortOrder[$offer['code']]) + 1,
                 ]
             );
         }
