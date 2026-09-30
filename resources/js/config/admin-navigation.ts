@@ -69,6 +69,7 @@ export const adminNavigation: NavigationEntry[] = [
         children: [
             link("صفحه اصلی فروشگاه", "/admin/home", Home, { permission: "storefront.manage" }),
             link("محصولات", "/admin/products", ShoppingBag, { permission: "catalog.manage" }),
+            link("محصولات دیجیتال", "/admin/digital-products", Gamepad2, { permission: "digital.catalog.manage" }),
             link("انواع محصول", "/admin/product-types", Boxes, { permission: "catalog.manage" }),
             link("ویژگی‌های محصول", "/admin/attributes", Tags, { permission: "catalog.manage" }),
             link("دسته‌بندی‌ها", "/admin/categories", LayoutGrid, { permission: "catalog.manage" }),
@@ -84,6 +85,7 @@ export const adminNavigation: NavigationEntry[] = [
         icon: ClipboardList,
         children: [
             link("سفارش‌ها", "/admin/orders", ClipboardList, { permission: "orders.manage" }),
+            link("سفارش‌های دیجیتال", "/admin/digital-orders", MessageSquareText, { permission: "digital.orders.manage" }),
             link("درخواست‌های معاوضه", "/admin/tickets?type=exchange", RefreshCw, { permission: "support.manage" }),
             link("کدهای تخفیف", "/admin/coupons", BadgePercent, { permission: "coupons.manage" }),
         ],
