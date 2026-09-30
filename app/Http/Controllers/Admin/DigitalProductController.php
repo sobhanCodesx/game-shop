@@ -9,6 +9,7 @@ use App\Models\DigitalProductMedia;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\User;
+use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,8 @@ use Inertia\Response;
 
 class DigitalProductController extends Controller
 {
+    public function __construct(private readonly MediaOptimizationService $mediaOptimizer) {}
+
     public function index(Request $request): Response
     {
         $query = DigitalProduct::query()
@@ -342,23 +345,27 @@ class DigitalProductController extends Controller
             }
 
             $file = $item['file'] ?? null;
-            if ($file) {
-                $type = str_starts_with((string) $file->getMimeType(), 'video/') ? 'video' : 'image';
-                $extension = $file->guessExtension() ?: ($type === 'video' ? 'mp4' : 'jpg');
-                $path = 'products/'.Str::uuid().'.'.$extension;
-                MediaStorage::disk()->put($path, fopen($file->getRealPath(), 'rb'));
+            if ($file instanceof \Illuminate\Http\UploadedFile) {
+                $oldPath = $media?->path;
+                $stored = $this->mediaOptimizer->store(
+                    $file,
+                    "digital-products/{$product->id}",
+                );
 
                 if ($media) {
-                    MediaStorage::disk()->delete($media->path);
                     $media->update([
-                        'type' => $type,
-                        'path' => $path,
+                        'type' => $stored['type'],
+                        'path' => $stored['path'],
                     ]);
                 } else {
                     $media = $product->media()->create([
-                        'type' => $type,
-                        'path' => $path,
+                        'type' => $stored['type'],
+                        'path' => $stored['path'],
                     ]);
+                }
+
+                if ($oldPath && $oldPath !== $stored['path']) {
+                    MediaStorage::disk()->delete($oldPath);
                 }
             }
 
