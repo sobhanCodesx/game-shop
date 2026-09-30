@@ -63,25 +63,34 @@ export default function Show({ product }: { product: any }) {
                 <div className="grid gap-7 lg:grid-cols-[1.05fr_.95fr]">
                     <section className="min-w-0">
                         <div className="overflow-hidden rounded-[30px] border border-[var(--store-border)] bg-[var(--store-surface)]">
-                            <div className="aspect-[16/11] bg-[var(--store-bg)]">
+                            <div className="relative aspect-[16/11] bg-[var(--store-bg)]">
+                                <div className="absolute inset-0 grid place-items-center">
+                                    <Gamepad2 className="text-indigo-400/60" size={54} />
+                                </div>
                                 {activeMedia?.type === "video" ? (
                                     <video
-                                        className="size-full object-cover"
+                                        className="relative size-full object-cover"
                                         controls
                                         preload="metadata"
                                         src={activeMedia.url}
                                     />
                                 ) : activeMedia?.url ? (
                                     <img
-                                        className="size-full object-cover"
+                                        className="relative size-full object-cover"
                                         src={activeMedia.url}
                                         alt={activeMedia.alt || product.title}
+                                        onError={(event) => {
+                                            event.currentTarget.style.display = "none";
+                                        }}
                                     />
                                 ) : product.cover_url ? (
                                     <img
-                                        className="size-full object-cover"
+                                        className="relative size-full object-cover"
                                         src={product.cover_url}
                                         alt={product.title}
+                                        onError={(event) => {
+                                            event.currentTarget.style.display = "none";
+                                        }}
                                     />
                                 ) : null}
                             </div>
@@ -96,11 +105,19 @@ export default function Show({ product }: { product: any }) {
                                             type="button"
                                         >
                                             {media.type === "image" ? (
-                                                <img
-                                                    className="size-full object-cover"
-                                                    src={media.url}
-                                                    alt={media.alt || product.title}
-                                                />
+                                                <>
+                                                    <div className="absolute inset-0 grid place-items-center bg-[var(--store-bg)]">
+                                                        <Gamepad2 className="text-indigo-400/50" size={22} />
+                                                    </div>
+                                                    <img
+                                                        className="relative size-full object-cover"
+                                                        src={media.url}
+                                                        alt={media.alt || product.title}
+                                                        onError={(event) => {
+                                                            event.currentTarget.style.display = "none";
+                                                        }}
+                                                    />
+                                                </>
                                             ) : (
                                                 <div className="grid size-full place-items-center bg-black/70 text-white">
                                                     <Play size={22} />
