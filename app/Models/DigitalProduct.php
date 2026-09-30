@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DigitalProduct extends Model
@@ -50,6 +51,24 @@ class DigitalProduct extends Model
     public function offers(): HasMany
     {
         return $this->hasMany(DigitalOffer::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function media(): HasMany
+    {
+        return $this->hasMany(DigitalProductMedia::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function coverMedia(): HasOne
+    {
+        return $this->hasOne(DigitalProductMedia::class)
+            ->where('type', 'image')
+            ->orderByDesc('is_primary')
+            ->orderBy('sort_order');
+    }
+
+    public function features(): HasMany
+    {
+        return $this->hasMany(DigitalProductFeature::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function orders(): HasMany
