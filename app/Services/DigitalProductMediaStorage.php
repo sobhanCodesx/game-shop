@@ -25,23 +25,14 @@ final class DigitalProductMediaStorage
         }
 
         $path = ltrim($path, '/');
+        $baseUrl = config('filesystems.disks.'.self::diskName().'.url');
 
-        try {
-            if (self::disk()->exists($path)) {
-                $baseUrl = config('filesystems.disks.'.self::diskName().'.url');
-
-                if (is_string($baseUrl) && $baseUrl !== '') {
-                    return rtrim($baseUrl, '/').'/'.$path;
-                }
-
-                return self::disk()->url($path);
-            }
-        } catch (Throwable) {
-            // Legacy storage may be unavailable. URL generation below does not
-            // require opening the remote disk when its configured base URL exists.
+        // URL generation must not open an FTP connection on storefront requests.
+        if (is_string($baseUrl) && $baseUrl !== '') {
+            return rtrim($baseUrl, '/').'/'.$path;
         }
 
-        return MediaStorage::url($path);
+        return self::disk()->url($path);
     }
 
     public static function exists(?string $path): bool
