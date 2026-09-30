@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\AndroidRelease;
+use App\Models\DigitalOrder;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\SocialContent;
@@ -183,7 +184,20 @@ class HandleInertiaRequests extends Middleware
                     ->values(),
             ] : null,
             'cart' => fn () => ['item_count' => collect($request->session()->get('cart', []))->sum(fn ($item) => (int) ($item['quantity'] ?? 0))],
-            'admin' => fn () => $request->user()?->canAccessAdminPanel() ? ['pending_orders_count' => Order::query()->where('status', 'pending')->count(), 'open_tickets_count' => Ticket::query()->where('status', 'pending')->count()] : null,
+            'admin' => fn () => $request->user()?->canAccessAdminPanel()
+                ? ($request->user()->role === 'digital-seller'
+                    ? [
+                        'pending_orders_count' => DigitalOrder::query()
+                            ->where('seller_id', $request->user()->id)
+                            ->whereIn('order_status', ['new', 'active'])
+                            ->count(),
+                        'open_tickets_count' => 0,
+                    ]
+                    : [
+                        'pending_orders_count' => Order::query()->where('status', 'pending')->count(),
+                        'open_tickets_count' => Ticket::query()->where('status', 'pending')->count(),
+                    ])
+                : null,
             'impersonation' => fn () => $request->session()->has('impersonator_id') ? [
                 'active' => true,
                 'admin_name' => User::query()->whereKey($request->session()->get('impersonator_id'))->value('name'),
