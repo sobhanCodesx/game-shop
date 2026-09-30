@@ -210,8 +210,7 @@ class ContentAgentDigitalProductMcpTest extends TestCase
         $this->assertSame('media', $asset['slot']);
         $this->assertSame('image', $asset['asset']['kind']);
         $this->assertTrue((bool) $asset['asset']['is_primary']);
-        $this->assertStringStartsWith('products/', $asset['asset']['path']);
-        $this->assertStringNotContainsString('digital-products/', $asset['asset']['path']);
+        $this->assertStringNotContainsString('/', $asset['asset']['path']);
 
         $assets = $this->mcp('tools/call', [
             'name' => 'list_content_assets',
