@@ -151,6 +151,58 @@ class DigitalCommerceTest extends TestCase
         $this->assertFalse(Schema::hasColumn('digital_offers', 'supplier_cost'));
     }
 
+    public function test_admin_digital_product_edit_uses_id_binding_and_listing_is_paginated(): void
+    {
+        [$seller, $product] = $this->digitalProduct('admin-edit');
+
+        $product->media()->create([
+            'type' => 'image',
+            'path' => 'digital-products/admin-edit/cover.webp',
+            'alt' => 'کاور محصول دیجیتال',
+            'sort_order' => 1,
+            'is_primary' => true,
+        ]);
+
+        foreach (range(1, 12) as $index) {
+            DigitalProduct::query()->create([
+                'game_id' => $product->game_id,
+                'platform_id' => $product->platform_id,
+                'seller_id' => $seller->id,
+                'title' => 'Digital Product '.$index,
+                'slug' => 'digital-product-'.$index,
+                'short_description' => 'محصول صفحه‌بندی',
+                'support_days' => 7,
+                'status' => 'draft',
+            ]);
+        }
+
+        $this->actingAs($seller)
+            ->get('/admin/digital-products/'.$product->id.'/edit')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Digital/Products/Form')
+                ->where('product.id', $product->id)
+                ->where('product.title', $product->title)
+                ->where('product.media.0.alt', 'کاور محصول دیجیتال'));
+
+        $this->actingAs($seller)
+            ->get('/admin/digital-products')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Digital/Products/Index')
+                ->where('products.per_page', 12)
+                ->where('products.total', 13)
+                ->where('products.last_page', 2)
+                ->has('products.data', 12)
+                ->has('products.links'));
+
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Show')
+                ->where('product.id', $product->id));
+    }
+
     public function test_customer_creates_digital_order_and_stock_is_reserved_not_sold(): void
     {
         [, $product] = $this->digitalProduct();

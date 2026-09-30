@@ -31,8 +31,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('digital-products', [AdminDigitalProductController::class, 'index'])->name('digital-products.index');
     Route::get('digital-products/create', [AdminDigitalProductController::class, 'create'])->name('digital-products.create');
     Route::post('digital-products', [AdminDigitalProductController::class, 'store'])->name('digital-products.store');
-    Route::get('digital-products/{digitalProduct}/edit', [AdminDigitalProductController::class, 'edit'])->name('digital-products.edit');
-    Route::put('digital-products/{digitalProduct}', [AdminDigitalProductController::class, 'update'])->name('digital-products.update');
+    Route::get('digital-products/{digitalProduct:id}/edit', [AdminDigitalProductController::class, 'edit'])->name('digital-products.edit');
+    Route::put('digital-products/{digitalProduct:id}', [AdminDigitalProductController::class, 'update'])->name('digital-products.update');
 
     Route::get('digital-orders', [AdminDigitalOrderController::class, 'index'])->name('digital-orders.index');
     Route::get('digital-orders/{digitalOrder}', [AdminDigitalOrderController::class, 'show'])->name('digital-orders.show');

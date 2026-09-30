@@ -35,11 +35,29 @@ class DigitalProductController extends Controller
 
         $this->scopeSeller($query, $request->user());
 
-        $products = $query->paginate(24)->withQueryString();
+        $products = $query->paginate(12)->withQueryString();
         $products->through(fn (DigitalProduct $product) => [
-            ...$product->toArray(),
+            'id' => $product->id,
+            'title' => $product->title,
+            'slug' => $product->slug,
+            'status' => $product->status,
+            'featured' => (bool) $product->featured,
+            'support_days' => (int) $product->support_days,
+            'game' => $product->game?->only(['id', 'name']),
+            'platform' => $product->platform?->only(['id', 'name']),
+            'seller' => $product->seller?->only(['id', 'name']),
             'cover_url' => MediaStorage::url($product->coverMedia?->path)
                 ?: MediaStorage::url($product->game?->cover),
+            'offers' => $product->offers->map(fn ($offer) => [
+                'id' => $offer->id,
+                'code' => $offer->code,
+                'label' => $offer->label,
+                'price' => (int) $offer->price,
+                'stock' => (int) $offer->stock,
+                'reserved_stock' => (int) $offer->reserved_stock,
+                'available_stock' => $offer->availableStock(),
+                'status' => $offer->status,
+            ])->values(),
         ]);
 
         return Inertia::render('Admin/Digital/Products/Index', [
