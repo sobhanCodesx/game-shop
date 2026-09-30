@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-01-repair-product-dualsense-download",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "product",
+    "query": "dualsense-wireless-controller-white",
+    "slot": "media",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/DualSense_Controller_Chroma_Pearl.jpg/960px-DualSense_Controller_Chroma_Pearl.jpg",
+    "name": "dualsense-wireless-controller-white-cover.jpg",
+    "alt": "تصویر کنترلر بی‌سیم DualSense سفید",
+    "sort_order": 0
+  }
+}
