@@ -129,6 +129,13 @@ class DigitalCommerceTest extends TestCase
                 ->where('products.data.0.badge', 'دیجیتال')
                 ->where('products.data.0.category', 'بازی دیجیتال'));
 
+        [, $other] = $this->digitalProduct('catalog-digital-usa');
+        $other->update(['category_id' => $category->id]);
+        $other->attributeValues()->create([
+            'attribute_id' => $region->id,
+            'value' => 'usa',
+        ]);
+
         $this->get('/categories/'.$category->slug.'?filters[region][]=turkey')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -143,8 +150,9 @@ class DigitalCommerceTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Categories/Show')
-                ->where('products.total', 0)
-                ->has('products.data', 0));
+                ->where('products.total', 1)
+                ->where('products.data.0.id', $other->id)
+                ->where('selectedAttributeFilters.region.0', 'usa'));
     }
 
     public function test_digital_seller_creates_product_with_media_features_and_only_sale_price(): void
