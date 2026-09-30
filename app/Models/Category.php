@@ -32,6 +32,11 @@ class Category extends Model
         return $this->hasMany(Product::class);
     }
 
+    public function digitalProducts(): HasMany
+    {
+        return $this->hasMany(DigitalProduct::class);
+    }
+
     public function attributes(): HasMany
     {
         return $this->hasMany(CategoryAttribute::class)->orderBy('sort_order');
