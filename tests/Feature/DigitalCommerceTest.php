@@ -24,6 +24,7 @@ class DigitalCommerceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutVite();
 
         config()->set('media.disk', 'downloads');
         config()->set('product_media.disk', 'downloads');
