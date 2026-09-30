@@ -34,7 +34,6 @@ return new class extends Migration
                 $table->foreignId('digital_product_id')->constrained()->cascadeOnDelete();
                 $table->string('code', 30);
                 $table->string('label', 80);
-                $table->unsignedBigInteger('supplier_cost')->default(0);
                 $table->unsignedBigInteger('price');
                 $table->unsignedInteger('stock')->default(0);
                 $table->unsignedInteger('reserved_stock')->default(0);
@@ -56,7 +55,6 @@ return new class extends Migration
                 $table->foreignId('digital_product_id')->constrained()->restrictOnDelete();
                 $table->foreignId('digital_offer_id')->constrained()->restrictOnDelete();
                 $table->unsignedBigInteger('sale_price');
-                $table->unsignedBigInteger('supplier_cost')->default(0);
                 $table->string('order_status', 20)->default('new')->index();
                 $table->string('payment_status', 20)->default('unpaid')->index();
                 $table->string('delivery_status', 20)->default('waiting')->index();
