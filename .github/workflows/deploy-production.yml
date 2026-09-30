@@ -55,6 +55,8 @@ jobs:
           tests/Feature/TelegramUserNotificationsTest.php
           tests/Feature/MobileApiTest.php
           tests/Feature/MobilePushNotificationTest.php
+          tests/Feature/ProductMediaStorageTest.php
+          tests/Feature/DigitalCommerceTest.php
 
   build-and-deploy:
     needs: auth-regression
