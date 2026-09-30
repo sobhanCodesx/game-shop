@@ -47,18 +47,6 @@ return [
             'report' => false,
         ],
 
-        // Product and Digital Product media must remain web-accessible even
-        // when symlink()/exec() are disabled by shared hosting. If public/storage
-        // is a symlink this follows it; if it is a real directory it writes there.
-        'media_public' => [
-            'driver' => 'local',
-            'root' => public_path('storage'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
-            'visibility' => 'public',
-            'throw' => false,
-            'report' => false,
-        ],
-
         'downloads' => [
             'driver' => 'ftp',
             'host' => env('DOWNLOAD_FTP_HOST'),
