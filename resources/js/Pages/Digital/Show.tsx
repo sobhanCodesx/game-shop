@@ -137,7 +137,7 @@ export default function Show({ product }: { product: any }) {
 
                         {(product.short_description || product.features.length > 0) && (
                             <div className="mt-4 rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:mt-5 sm:rounded-[28px] sm:p-6">
-                                <details className="group" open={false}>
+                                <details className="group">
                                     <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-black">
                                         <span>جزئیات و ویژگی‌های محصول</span>
                                         <span className="text-xs text-indigo-500 group-open:hidden">
