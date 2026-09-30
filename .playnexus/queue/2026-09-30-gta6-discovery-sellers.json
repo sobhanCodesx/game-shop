@@ -1,0 +1,7 @@
+{
+  "job_id": "2026-09-30-gta6-discovery-sellers",
+  "tool": "list_digital_sellers",
+  "arguments": {
+    "limit": 50
+  }
+}

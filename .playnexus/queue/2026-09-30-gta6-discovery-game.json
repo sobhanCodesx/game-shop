@@ -1,0 +1,8 @@
+{
+  "job_id": "2026-09-30-gta6-discovery-game",
+  "tool": "search_games",
+  "arguments": {
+    "query": "Grand Theft Auto VI",
+    "limit": 10
+  }
+}
