@@ -72,11 +72,16 @@ class DigitalOrderController extends Controller
             ->whereNull('seen_at')
             ->update(['seen_at' => now()]);
 
+        $fresh = $digitalOrder->fresh(['messages.user', 'delivery']);
+
         return response()->json([
-            'messages' => $digitalOrder->fresh('messages.user')->messages->map(fn ($message) => $this->messagePayload($message))->values(),
-            'order_status' => $digitalOrder->order_status,
-            'payment_status' => $digitalOrder->payment_status,
-            'delivery_status' => $digitalOrder->delivery_status,
+            'messages' => $fresh->messages->map(fn ($message) => $this->messagePayload($message))->values(),
+            'order_status' => $fresh->order_status,
+            'payment_status' => $fresh->payment_status,
+            'delivery_status' => $fresh->delivery_status,
+            'delivery' => in_array($fresh->delivery_status, ['delivered', 'problem', 'resolved'], true)
+                ? $fresh->delivery?->only(['login', 'password', 'backup_code', 'instructions', 'delivered_at', 'customer_viewed_at'])
+                : null,
         ]);
     }
 
@@ -198,7 +203,7 @@ class DigitalOrderController extends Controller
             ],
             'offer' => $order->offer->only(['id', 'label', 'code']),
             'messages' => $order->messages->map(fn ($message) => $this->messagePayload($message))->values(),
-            'delivery' => $order->delivery_status === 'delivered' || in_array($order->order_status, ['completed'], true)
+            'delivery' => in_array($order->delivery_status, ['delivered', 'problem', 'resolved'], true) || $order->order_status === 'completed'
                 ? $order->delivery?->only(['login', 'password', 'backup_code', 'instructions', 'delivered_at', 'customer_viewed_at'])
                 : null,
         ];
