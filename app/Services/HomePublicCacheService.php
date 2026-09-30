@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\HomeSlide;
 use App\Models\Product;
@@ -111,23 +112,53 @@ final class HomePublicCacheService
     {
         return collect($this->cache->remember(
             'home',
-            'preview-products',
-            fn () => Product::query()
-                ->with(['category:id,name', 'coverMedia'])
-                ->publiclyVisible()
-                ->latest()
-                ->limit(3)
-                ->get()
-                ->map(fn (Product $product) => [
-                    'id' => $product->id,
-                    'title' => $product->title,
-                    'url' => route('products.show', $product->slug, false),
-                    'category' => $product->category?->name,
-                    'cover_url' => MediaStorage::url($product->coverMedia?->path),
-                    'published_at' => ($product->published_at ?? $product->created_at)?->toISOString(),
-                ])
-                ->values()
-                ->all(),
+            'preview-products-v2',
+            function (): array {
+                $physical = Product::query()
+                    ->with(['category:id,name', 'coverMedia'])
+                    ->publiclyVisible()
+                    ->latest()
+                    ->limit(3)
+                    ->get()
+                    ->map(fn (Product $product) => [
+                        'sort_at' => ($product->published_at ?? $product->created_at)?->getTimestamp() ?? 0,
+                        'item' => [
+                            'id' => $product->id,
+                            'title' => $product->title,
+                            'url' => route('products.show', $product->slug, false),
+                            'category' => $product->category?->name,
+                            'cover_url' => MediaStorage::url($product->coverMedia?->path),
+                            'published_at' => ($product->published_at ?? $product->created_at)?->toISOString(),
+                        ],
+                    ]);
+
+                $digital = DigitalProduct::query()
+                    ->published()
+                    ->with(['category:id,name', 'game:id,cover', 'coverMedia'])
+                    ->latest()
+                    ->limit(3)
+                    ->get()
+                    ->map(fn (DigitalProduct $product) => [
+                        'sort_at' => $product->created_at?->getTimestamp() ?? 0,
+                        'item' => [
+                            'id' => $product->id,
+                            'title' => $product->title,
+                            'url' => route('digital.show', $product, false),
+                            'category' => $product->category?->name ?? 'بازی دیجیتال',
+                            'cover_url' => DigitalProductMediaStorage::url($product->coverMedia?->path)
+                                ?: MediaStorage::url($product->game?->cover),
+                            'published_at' => $product->created_at?->toISOString(),
+                        ],
+                    ]);
+
+                return $physical
+                    ->concat($digital)
+                    ->sortByDesc('sort_at')
+                    ->take(3)
+                    ->pluck('item')
+                    ->values()
+                    ->all();
+            },
             600,
         ));
     }
