@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attribute;
 use App\Models\Category;
+use App\Models\CategoryAttribute;
+use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Product;
 use App\Models\ProductMedia;
@@ -17,6 +20,7 @@ use App\Support\Seo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -29,10 +33,14 @@ class StorefrontController extends Controller
     public function shop(Request $request, StorefrontDataService $data): Response
     {
         $isOffers = $request->routeIs('offers.index');
-        $products = $this->productQuery($request)
-            ->when($isOffers, fn (Builder $query) => $query->whereNotNull('discount_price')->whereColumn('discount_price', '<', 'price'))
-            ->paginate(18)->withQueryString()
-            ->through(fn (Product $product) => $data->product($product, $request->user()));
+        $products = $isOffers
+            ? $this->productQuery($request)
+                ->whereNotNull('discount_price')
+                ->whereColumn('discount_price', '<', 'price')
+                ->paginate(18)
+                ->withQueryString()
+                ->through(fn (Product $product) => $data->product($product, $request->user()))
+            : $this->catalogProducts($request, $data);
         $canonical = route($isOffers ? 'offers.index' : 'shop.index');
         $siteName = (string) config('seo.site_name', 'PlayNexus');
         $description = $isOffers
@@ -152,15 +160,29 @@ class StorefrontController extends Controller
     public function category(Request $request, Category $category, StorefrontDataService $data): Response
     {
         abort_unless($category->status === 'active', 404);
-        $category->load(['children' => fn ($query) => $query->where('status', 'active')->orderBy('sort_order')]);
+        $category->load([
+            'children' => fn ($query) => $query->where('status', 'active')->orderBy('sort_order'),
+        ]);
+        $category->loadCount([
+            'products' => fn ($query) => $query->publiclyVisible(),
+            'digitalProducts' => fn ($query) => $query->published(),
+        ]);
+
         $allCategories = Category::query()->where('status', 'active')->get(['id', 'parent_id']);
         $ids = [$category->id];
         for ($cursor = 0; $cursor < count($ids); $cursor++) {
             array_push($ids, ...$allCategories->where('parent_id', $ids[$cursor])->pluck('id')->all());
         }
 
-        $products = $this->productQuery($request)->whereIn('category_id', $ids)->paginate(18)->withQueryString()
-            ->through(fn (Product $product) => $data->product($product, $request->user()));
+        $filterDefinitions = $this->categoryFilterDefinitions($ids);
+        $selectedAttributeFilters = $this->selectedCategoryFilters($request, $filterDefinitions);
+        $products = $this->catalogProducts(
+            $request,
+            $data,
+            $ids,
+            $filterDefinitions,
+            $selectedAttributeFilters,
+        );
 
         $categoryData = $data->category($category);
         $canonical = route('categories.show', $category->slug);
@@ -174,7 +196,7 @@ class StorefrontController extends Controller
         $image = $imagePath !== ''
             ? (Str::startsWith($imagePath, ['http://', 'https://']) ? $imagePath : url($imagePath))
             : url((string) config('seo.default_image', '/logo.png'));
-        $hasFilters = $request->hasAny(['q', 'sort', 'trade', 'page']);
+        $hasFilters = $request->hasAny(['q', 'sort', 'trade', 'filters', 'page']);
         $itemListId = $canonical.'#products';
 
         return Inertia::render('Categories/Show', [
@@ -224,6 +246,14 @@ class StorefrontController extends Controller
             'category' => $categoryData,
             'products' => $products,
             'filters' => $request->only(['q', 'sort', 'trade']),
+            'catalogFilters' => $filterDefinitions->map(fn (array $filter) => [
+                'title' => $filter['title'],
+                'slug' => $filter['slug'],
+                'options' => $filter['options'],
+            ])->values(),
+            'selectedAttributeFilters' => collect($selectedAttributeFilters)
+                ->mapWithKeys(fn (array $values, string $slug) => [$slug => array_values($values)])
+                ->all(),
         ]);
     }
 
@@ -476,6 +506,348 @@ class StorefrontController extends Controller
                 fn () => $search->suggestions($term),
             ),
         ]);
+    }
+
+    private function catalogProducts(
+        Request $request,
+        StorefrontDataService $data,
+        ?array $categoryIds = null,
+        ?Collection $filterDefinitions = null,
+        array $selectedAttributeFilters = [],
+    ): LengthAwarePaginator {
+        $physical = Product::query()
+            ->publiclyVisible()
+            ->search($request->string('q')->toString() ?: null)
+            ->when(
+                $request->filled('category'),
+                fn (Builder $query) => $query->whereHas(
+                    'category',
+                    fn ($categoryQuery) => $categoryQuery->where('slug', $request->string('category')),
+                ),
+            )
+            ->when(
+                $request->filled('game'),
+                fn (Builder $query) => $query->whereHas(
+                    'game',
+                    fn ($gameQuery) => $gameQuery->where('slug', $request->string('game')),
+                ),
+            )
+            ->when($request->boolean('trade'), fn (Builder $query) => $query->where('trade_enabled', true));
+
+        $digital = DigitalProduct::query()
+            ->published()
+            ->when(
+                $request->filled('q'),
+                fn (Builder $query) => $query->where(
+                    fn (Builder $inner) => $inner
+                        ->where('title', 'like', '%'.$request->string('q')->toString().'%')
+                        ->orWhereHas(
+                            'game',
+                            fn ($gameQuery) => $gameQuery->where('name', 'like', '%'.$request->string('q')->toString().'%'),
+                        ),
+                ),
+            )
+            ->when(
+                $request->filled('category'),
+                fn (Builder $query) => $query->whereHas(
+                    'category',
+                    fn ($categoryQuery) => $categoryQuery->where('slug', $request->string('category')),
+                ),
+            )
+            ->when(
+                $request->filled('game'),
+                fn (Builder $query) => $query->whereHas(
+                    'game',
+                    fn ($gameQuery) => $gameQuery->where('slug', $request->string('game')),
+                ),
+            );
+
+        if ($request->boolean('trade')) {
+            $digital->whereRaw('1 = 0');
+        }
+
+        if ($categoryIds !== null) {
+            $physical->whereIn('category_id', $categoryIds);
+            $digital->whereIn('category_id', $categoryIds);
+        }
+
+        if ($filterDefinitions && $selectedAttributeFilters !== []) {
+            $bySlug = $filterDefinitions->keyBy('slug');
+
+            foreach ($selectedAttributeFilters as $slug => $values) {
+                $definition = $bySlug->get($slug);
+                if (! $definition) {
+                    continue;
+                }
+
+                $physicalIds = $definition['physical_ids'];
+                if ($physicalIds === []) {
+                    $physical->whereRaw('1 = 0');
+                } else {
+                    $physical->whereHas(
+                        'attributeValues',
+                        fn ($valueQuery) => $valueQuery
+                            ->whereIn('category_attribute_id', $physicalIds)
+                            ->whereIn('value', $values),
+                    );
+                }
+
+                $digitalIds = $definition['digital_ids'];
+                if ($digitalIds === []) {
+                    $digital->whereRaw('1 = 0');
+                } else {
+                    $digital->whereHas(
+                        'attributeValues',
+                        fn ($valueQuery) => $valueQuery
+                            ->whereIn('attribute_id', $digitalIds)
+                            ->whereIn('value', $values),
+                    );
+                }
+            }
+        }
+
+        $physicalRows = (clone $physical)
+            ->reorder()
+            ->selectRaw(
+                "'physical' as kind, products.id as item_id, products.created_at as sort_at, "
+                ."products.featured as featured_sort, COALESCE(products.discount_price, products.price) as price_sort, "
+                ."products.sold_stock as popular_sort",
+            )
+            ->toBase();
+
+        $digitalRows = (clone $digital)
+            ->reorder()
+            ->selectRaw(
+                "'digital' as kind, digital_products.id as item_id, digital_products.created_at as sort_at, "
+                ."digital_products.featured as featured_sort, "
+                ."(select min(digital_offers.price) from digital_offers "
+                ."where digital_offers.digital_product_id = digital_products.id "
+                ."and digital_offers.status = 'active' and digital_offers.price > 0) as price_sort, "
+                ."0 as popular_sort",
+            )
+            ->toBase();
+
+        $catalog = DB::query()->fromSub(
+            $physicalRows->unionAll($digitalRows),
+            'catalog_items',
+        );
+
+        match ($request->string('sort')->toString()) {
+            'popular' => $catalog->orderByDesc('popular_sort')->orderByDesc('sort_at'),
+            'price_asc' => $catalog
+                ->orderByRaw('(price_sort is null or price_sort = 0) asc')
+                ->orderBy('price_sort')
+                ->orderByDesc('sort_at'),
+            'price_desc' => $catalog
+                ->orderByRaw('(price_sort is null or price_sort = 0) asc')
+                ->orderByDesc('price_sort')
+                ->orderByDesc('sort_at'),
+            default => $catalog->orderByDesc('sort_at')->orderByDesc('item_id'),
+        };
+
+        $page = $catalog->paginate(18)->withQueryString();
+        $rows = $page->getCollection();
+
+        $physicalItems = Product::query()
+            ->with($this->productRelations())
+            ->whereIn('id', $rows->where('kind', 'physical')->pluck('item_id'))
+            ->get()
+            ->keyBy('id');
+
+        $digitalItems = DigitalProduct::query()
+            ->with($this->digitalProductRelations())
+            ->whereIn('id', $rows->where('kind', 'digital')->pluck('item_id'))
+            ->get()
+            ->keyBy('id');
+
+        $page->setCollection(
+            $rows->map(function ($row) use ($physicalItems, $digitalItems, $data, $request) {
+                if ($row->kind === 'digital') {
+                    $product = $digitalItems->get((int) $row->item_id);
+
+                    return $product ? $data->digitalProduct($product) : null;
+                }
+
+                $product = $physicalItems->get((int) $row->item_id);
+
+                return $product ? $data->product($product, $request->user()) : null;
+            })->filter()->values(),
+        );
+
+        return $page;
+    }
+
+    private function categoryFilterDefinitions(array $categoryIds): Collection
+    {
+        $physical = CategoryAttribute::query()
+            ->whereIn('category_id', $categoryIds)
+            ->where('is_filterable', true)
+            ->with([
+                'values' => fn ($query) => $query->whereHas(
+                    'product',
+                    fn ($productQuery) => $productQuery
+                        ->publiclyVisible()
+                        ->whereIn('category_id', $categoryIds),
+                ),
+            ])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $digital = Attribute::query()
+            ->with([
+                'options' => fn ($query) => $query
+                    ->where('status', 'active')
+                    ->orderBy('sort_order'),
+                'digitalValues' => fn ($query) => $query->whereHas(
+                    'product',
+                    fn ($productQuery) => $productQuery
+                        ->published()
+                        ->whereIn('category_id', $categoryIds),
+                ),
+            ])
+            ->where('status', 'active')
+            ->where('is_filterable', true)
+            ->whereIn('input_type', ['select', 'multi_select', 'boolean'])
+            ->whereNotIn('slug', ['capacity', 'platform'])
+            ->whereHas(
+                'digitalValues.product',
+                fn ($productQuery) => $productQuery
+                    ->published()
+                    ->whereIn('category_id', $categoryIds),
+            )
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $filters = collect();
+
+        foreach ($physical->groupBy('slug') as $slug => $definitions) {
+            $values = $definitions
+                ->flatMap(fn (CategoryAttribute $definition) => $definition->values->pluck('value'))
+                ->filter(fn ($value) => filled($value))
+                ->map(fn ($value) => (string) $value)
+                ->unique()
+                ->values();
+
+            if ($values->isEmpty()) {
+                continue;
+            }
+
+            $first = $definitions->first();
+            $filters->put($slug, [
+                'title' => $first->name,
+                'slug' => $slug,
+                'options' => $values->map(fn (string $value) => [
+                    'title' => $this->categoryAttributeValueLabel($definitions, $value),
+                    'value' => $value,
+                ])->all(),
+                'physical_ids' => $definitions->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                'digital_ids' => [],
+            ]);
+        }
+
+        foreach ($digital as $attribute) {
+            $values = $attribute->digitalValues
+                ->pluck('value')
+                ->filter(fn ($value) => filled($value))
+                ->map(fn ($value) => (string) $value)
+                ->unique()
+                ->values();
+
+            if ($values->isEmpty()) {
+                continue;
+            }
+
+            $options = $values->map(function (string $value) use ($attribute): array {
+                $title = $attribute->input_type === 'boolean'
+                    ? ($value === '1' ? 'بله' : 'خیر')
+                    : (string) ($attribute->options->firstWhere('value', $value)?->title ?? $value);
+
+                return ['title' => $title, 'value' => $value];
+            })->all();
+
+            if ($filters->has($attribute->slug)) {
+                $current = $filters->get($attribute->slug);
+                $current['digital_ids'] = array_values(array_unique([
+                    ...$current['digital_ids'],
+                    (int) $attribute->id,
+                ]));
+                $current['options'] = collect([...$current['options'], ...$options])
+                    ->unique('value')
+                    ->values()
+                    ->all();
+                $filters->put($attribute->slug, $current);
+                continue;
+            }
+
+            $filters->put($attribute->slug, [
+                'title' => $attribute->title,
+                'slug' => $attribute->slug,
+                'options' => $options,
+                'physical_ids' => [],
+                'digital_ids' => [(int) $attribute->id],
+            ]);
+        }
+
+        return $filters->values();
+    }
+
+    private function selectedCategoryFilters(Request $request, Collection $definitions): array
+    {
+        $requested = (array) $request->input('filters', []);
+        $selected = [];
+
+        foreach ($definitions as $definition) {
+            $allowed = collect($definition['options'])
+                ->pluck('value')
+                ->map(fn ($value) => (string) $value)
+                ->all();
+            $values = array_values(array_unique(array_map(
+                'strval',
+                (array) ($requested[$definition['slug']] ?? []),
+            )));
+            $values = array_values(array_intersect($values, $allowed));
+
+            if ($values !== []) {
+                $selected[$definition['slug']] = $values;
+            }
+        }
+
+        return $selected;
+    }
+
+    private function categoryAttributeValueLabel(Collection $definitions, string $value): string
+    {
+        foreach ($definitions as $definition) {
+            foreach ((array) $definition->options as $option) {
+                if (is_array($option)) {
+                    $optionValue = (string) ($option['value'] ?? $option['slug'] ?? $option['title'] ?? '');
+                    if ($optionValue === $value) {
+                        return (string) ($option['title'] ?? $option['label'] ?? $value);
+                    }
+                    continue;
+                }
+
+                if ((string) $option === $value) {
+                    return $value;
+                }
+            }
+        }
+
+        return $value;
+    }
+
+    private function digitalProductRelations(): array
+    {
+        return [
+            'category:id,name,slug',
+            'game:id,name,slug,cover',
+            'platform:id,name,slug',
+            'offers',
+            'coverMedia',
+            'attributeValues.attribute.options',
+        ];
     }
 
     private function productQuery(Request $request): Builder

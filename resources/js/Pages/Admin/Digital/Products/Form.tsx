@@ -40,6 +40,7 @@ type FeatureRow = {
 };
 
 type FormData = {
+    category_id: string;
     game_id: string;
     platform_id: string;
     seller_id: string;
@@ -69,6 +70,7 @@ const defaultOffers: Offer[] = [
 
 export default function Form({
     product,
+    categories = [],
     games,
     platforms,
     sellers,
@@ -76,6 +78,7 @@ export default function Form({
     currentSellerId,
 }: {
     product: any;
+    categories: Array<{ id: number; parent_id?: number | null; name: string; slug: string }>;
     games: any[];
     platforms: any[];
     sellers: any[];
@@ -83,6 +86,7 @@ export default function Form({
     currentSellerId: number | null;
 }) {
     const form = useForm<FormData>({
+        category_id: String(product?.category_id ?? ""),
         game_id: String(product?.game_id ?? ""),
         platform_id: String(product?.platform_id ?? ""),
         seller_id: String(product?.seller_id ?? currentSellerId ?? ""),
@@ -220,6 +224,29 @@ export default function Form({
                         </div>
 
                         <div className="grid gap-4 p-5 md:grid-cols-2">
+                            <label className="text-sm font-bold text-slate-200">
+                                دسته‌بندی
+                                <select
+                                    className="mt-2 h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-3"
+                                    value={form.data.category_id}
+                                    onChange={(event) =>
+                                        form.setData("category_id", event.target.value)
+                                    }
+                                >
+                                    <option value="">بدون دسته‌بندی</option>
+                                    {categories.map((item) => (
+                                        <option key={item.id} value={item.id}>
+                                            {item.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {(form.errors as any).category_id && (
+                                    <p className="mt-2 text-xs text-rose-400">
+                                        {(form.errors as any).category_id}
+                                    </p>
+                                )}
+                            </label>
+
                             <label className="text-sm font-bold text-slate-200">
                                 بازی
                                 <select

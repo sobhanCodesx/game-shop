@@ -644,6 +644,7 @@ class ContentAgentMcpController extends Controller
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
+                        'category_id' => ['type' => ['integer', 'null'], 'minimum' => 1, 'description' => 'Optional active storefront category.'],
                         'game_id' => ['type' => 'integer', 'minimum' => 1],
                         'platform_id' => ['type' => 'integer', 'minimum' => 1],
                         'seller_id' => ['type' => 'integer', 'minimum' => 1],
@@ -699,6 +700,7 @@ class ContentAgentMcpController extends Controller
                     'type' => 'object',
                     'properties' => [
                         'id' => ['type' => 'integer', 'minimum' => 1],
+                        'category_id' => ['type' => ['integer', 'null'], 'minimum' => 1, 'description' => 'Set an active category ID or null to clear it.'],
                         'game_id' => ['type' => 'integer', 'minimum' => 1],
                         'platform_id' => ['type' => 'integer', 'minimum' => 1],
                         'seller_id' => ['type' => 'integer', 'minimum' => 1],

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Attribute;
+use App\Models\Category;
 use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Platform;
@@ -129,6 +130,7 @@ class DigitalProductAgentService
         return $this->serialize(
             DigitalProduct::query()
                 ->with([
+                    'category:id,name,slug',
                     'game:id,name,slug',
                     'platform:id,name,slug',
                     'seller:id,name',
@@ -149,6 +151,7 @@ class DigitalProductAgentService
 
         $product = DB::transaction(function () use ($data, $title): DigitalProduct {
             $product = DigitalProduct::query()->create([
+                'category_id' => isset($data['category_id']) ? (int) $data['category_id'] : null,
                 'game_id' => (int) $data['game_id'],
                 'platform_id' => (int) $data['platform_id'],
                 'seller_id' => (int) $data['seller_id'],
@@ -169,6 +172,7 @@ class DigitalProductAgentService
         }, 3);
 
         return $this->serialize($product->fresh([
+            'category:id,name,slug',
             'game:id,name,slug',
             'platform:id,name,slug',
             'seller:id,name',
@@ -186,6 +190,11 @@ class DigitalProductAgentService
         DB::transaction(function () use ($data, $product): void {
             $updates = [];
 
+            if (array_key_exists('category_id', $data)) {
+                $updates['category_id'] = $data['category_id'] === null
+                    ? null
+                    : (int) $data['category_id'];
+            }
             if (array_key_exists('game_id', $data)) {
                 $updates['game_id'] = (int) $data['game_id'];
             }
@@ -224,6 +233,7 @@ class DigitalProductAgentService
         }, 3);
 
         return $this->serialize($product->fresh([
+            'category:id,name,slug',
             'game:id,name,slug',
             'platform:id,name,slug',
             'seller:id,name',
@@ -251,6 +261,7 @@ class DigitalProductAgentService
         $product->update(['status' => $state]);
 
         return $this->serialize($product->fresh([
+            'category:id,name,slug',
             'game:id,name,slug',
             'platform:id,name,slug',
             'seller:id,name',
@@ -266,6 +277,14 @@ class DigitalProductAgentService
 
         $data = $this->validate($arguments, [
             'id' => $creating ? ['prohibited'] : ['required', 'integer', 'min:1'],
+            'category_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                Rule::exists('categories', 'id')
+                    ->whereNull('deleted_at')
+                    ->where('status', 'active'),
+            ],
             'game_id' => [$required, 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
             'platform_id' => [$required, 'integer', Rule::exists('platforms', 'id')->whereNull('deleted_at')],
             'seller_id' => [
@@ -435,6 +454,7 @@ class DigitalProductAgentService
     private function serialize(DigitalProduct $product): array
     {
         $product->loadMissing([
+            'category:id,name,slug',
             'game:id,name,slug',
             'platform:id,name,slug',
             'seller:id,name',
@@ -472,6 +492,7 @@ class DigitalProductAgentService
             'title' => $product->title,
             'slug' => $product->slug,
             'status' => $product->status,
+            'category' => $product->category?->only(['id', 'name', 'slug']),
             'game' => $product->game?->only(['id', 'name', 'slug']),
             'platform' => $product->platform?->only(['id', 'name', 'slug']),
             'seller' => $product->seller?->only(['id', 'name']),

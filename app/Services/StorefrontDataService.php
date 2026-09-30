@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Category;
+use App\Models\DigitalProduct;
 use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\User;
@@ -14,7 +15,10 @@ class StorefrontDataService
     public function navigation(): array
     {
         $categories = Category::query()->where('status', 'active')
-            ->withCount(['products' => fn ($query) => $query->publiclyVisible()])
+            ->withCount([
+                'products' => fn ($query) => $query->publiclyVisible(),
+                'digitalProducts' => fn ($query) => $query->published(),
+            ])
             ->orderBy('sort_order')->orderBy('id')->get();
         $grouped = $categories->groupBy(fn (Category $category) => $category->parent_id ?? 0);
 
@@ -26,7 +30,9 @@ class StorefrontDataService
                 'name' => $category->name,
                 'slug' => $category->slug,
                 'image_url' => MediaStorage::url($category->image),
-                'products_count' => (int) $category->products_count + $children->sum('products_count'),
+                'products_count' => (int) $category->products_count
+                    + (int) $category->digital_products_count
+                    + $children->sum('products_count'),
                 'children' => $children->all(),
             ];
         };
@@ -42,7 +48,8 @@ class StorefrontDataService
             'slug' => $category->slug,
             'description' => $category->description,
             'image_url' => MediaStorage::url($category->image),
-            'products_count' => $category->products_count ?? 0,
+            'products_count' => (int) ($category->products_count ?? 0)
+                + (int) ($category->digital_products_count ?? 0),
             'children' => $category->relationLoaded('children')
                 ? $category->children->map(fn (Category $child) => $this->category($child))->values()->all()
                 : [],
@@ -72,6 +79,100 @@ class StorefrontDataService
             'variants_count' => $product->relationLoaded('variants')
                 ? $product->variants->where('status', 'active')->count()
                 : null,
+        ];
+    }
+
+    public function digitalProduct(DigitalProduct $product): array
+    {
+        $cover = $product->relationLoaded('coverMedia') ? $product->coverMedia : null;
+        $activeOffers = $product->offers->where('status', 'active');
+        $availableOffers = $activeOffers->filter(fn ($offer) => $offer->availableStock() > 0);
+        $priceSource = $availableOffers->isNotEmpty() ? $availableOffers : $activeOffers;
+        $price = (int) ($priceSource->min('price') ?? 0);
+        $stock = (int) $activeOffers->sum(fn ($offer) => max(0, $offer->availableStock()));
+
+        $meta = collect([
+            [
+                'key' => 'availability',
+                'label' => 'وضعیت',
+                'value' => $stock > 0 ? 'موجود' : 'ناموجود',
+                'tone' => $stock > 0 ? 'success' : 'danger',
+            ],
+        ]);
+
+        if ($product->category?->name) {
+            $meta->push([
+                'key' => 'category',
+                'label' => 'دسته',
+                'value' => $product->category->name,
+                'tone' => 'accent',
+            ]);
+        }
+
+        if ($product->platform?->name) {
+            $meta->push([
+                'key' => 'platform',
+                'label' => 'پلتفرم',
+                'value' => $product->platform->name,
+                'tone' => 'info',
+            ]);
+        }
+
+        if ($product->relationLoaded('attributeValues')) {
+            $product->attributeValues
+                ->groupBy('attribute_id')
+                ->take(2)
+                ->each(function ($items) use ($meta): void {
+                    $attribute = $items->first()?->attribute;
+                    if (! $attribute) {
+                        return;
+                    }
+
+                    $labels = $items->map(function ($item) use ($attribute): string {
+                        if ($attribute->input_type === 'boolean') {
+                            return $item->value === '1' ? 'بله' : 'خیر';
+                        }
+
+                        return (string) (
+                            $attribute->options?->firstWhere('value', $item->value)?->title
+                            ?? $item->value
+                        );
+                    })->filter()->values();
+
+                    if ($labels->isNotEmpty()) {
+                        $meta->push([
+                            'key' => 'digital-'.$attribute->slug,
+                            'label' => $attribute->title,
+                            'value' => $labels->join('، '),
+                            'tone' => 'neutral',
+                        ]);
+                    }
+                });
+        }
+
+        return [
+            'id' => $product->id,
+            'title' => $product->title,
+            'slug' => $product->slug,
+            'url' => route('digital.show', $product, false),
+            'category' => $product->category?->name,
+            'badge' => 'دیجیتال',
+            'product_type' => 'اکانت دیجیتال',
+            'availability' => $stock > 0 ? 'in_stock' : 'out_of_stock',
+            'stock' => $stock,
+            'trade_enabled' => false,
+            'cover_url' => DigitalProductMediaStorage::url($cover?->path)
+                ?: MediaStorage::url($product->game?->cover),
+            'cover_alt' => $cover?->alt ?: $product->title,
+            'variants_count' => null,
+            'pricing' => [
+                'regular_price' => $price,
+                'sale_price' => $price,
+                'final_price' => $price,
+                'is_partner_price' => false,
+                'discount_amount' => 0,
+            ],
+            'meta_badges' => $meta->values()->all(),
         ];
     }
 
