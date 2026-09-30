@@ -64,10 +64,10 @@ class DigitalOrderService
 
     public function markPaid(DigitalOrder $order, User $actor): DigitalOrder
     {
-        return DB::transaction(function () use ($order, $actor): DigitalOrder {
+        $result = DB::transaction(function () use ($order, $actor): DigitalOrder {
             $locked = DigitalOrder::query()->lockForUpdate()->findOrFail($order->id);
             if (in_array($locked->order_status, ['cancelled', 'expired', 'completed'], true)) {
-                throw ValidationException::withMessages(['status' => 'این سفارش دیگر قابل تأیید پرداخت نیست.']);
+                return $locked;
             }
 
             if ($locked->payment_status !== 'paid' && $locked->reservation_expires_at?->isPast()) {
@@ -81,9 +81,7 @@ class DigitalOrderService
                     'message' => 'زمان رزرو سفارش تمام شد و موجودی آزاد شد.',
                 ]);
 
-                throw ValidationException::withMessages([
-                    'status' => 'زمان رزرو این سفارش تمام شده است؛ مشتری باید سفارش جدید ثبت کند.',
-                ]);
+                return $locked->fresh();
             }
 
             $locked->update([
@@ -100,6 +98,20 @@ class DigitalOrderService
 
             return $locked->fresh();
         }, 3);
+
+        if ($result->order_status === 'expired') {
+            throw ValidationException::withMessages([
+                'status' => 'زمان رزرو این سفارش تمام شده است؛ مشتری باید سفارش جدید ثبت کند.',
+            ]);
+        }
+
+        if (in_array($result->order_status, ['cancelled', 'completed'], true)) {
+            throw ValidationException::withMessages([
+                'status' => 'این سفارش دیگر قابل تأیید پرداخت نیست.',
+            ]);
+        }
+
+        return $result;
     }
 
     public function complete(DigitalOrder $order): DigitalOrder
