@@ -347,10 +347,7 @@ class DigitalProductController extends Controller
             $file = $item['file'] ?? null;
             if ($file instanceof \Illuminate\Http\UploadedFile) {
                 $oldPath = $media?->path;
-                $stored = $this->mediaOptimizer->store(
-                    $file,
-                    "digital-products/{$product->id}",
-                );
+                $stored = $this->mediaOptimizer->store($file, '');
 
                 if ($media) {
                     $media->update([
