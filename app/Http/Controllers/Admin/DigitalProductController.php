@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DigitalProduct;
 use App\Models\Attribute;
+use App\Models\Category;
 use App\Models\DigitalProductMedia;
 use App\Models\Game;
 use App\Models\Platform;
@@ -29,6 +30,7 @@ class DigitalProductController extends Controller
     {
         $query = DigitalProduct::query()
             ->with([
+                'category:id,name,slug',
                 'game:id,name,cover',
                 'platform:id,name',
                 'seller:id,name,email',
@@ -47,6 +49,7 @@ class DigitalProductController extends Controller
             'status' => $product->status,
             'featured' => (bool) $product->featured,
             'support_days' => (int) $product->support_days,
+            'category' => $product->category?->only(['id', 'name', 'slug']),
             'game' => $product->game?->only(['id', 'name']),
             'platform' => $product->platform?->only(['id', 'name']),
             'seller' => $product->seller?->only(['id', 'name']),
@@ -91,6 +94,7 @@ class DigitalProductController extends Controller
 
         DB::transaction(function () use ($data, $sellerId, $title, $slug): void {
             $product = DigitalProduct::query()->create([
+                'category_id' => $data['category_id'] ?? null,
                 'game_id' => $data['game_id'],
                 'platform_id' => $data['platform_id'],
                 'seller_id' => $sellerId,
@@ -134,6 +138,7 @@ class DigitalProductController extends Controller
 
         DB::transaction(function () use ($data, $digitalProduct, $actor, $title): void {
             $digitalProduct->update([
+                'category_id' => $data['category_id'] ?? null,
                 'game_id' => $data['game_id'],
                 'platform_id' => $data['platform_id'],
                 'seller_id' => $actor->role === 'digital-seller' ? $actor->id : (int) $data['seller_id'],
@@ -166,6 +171,13 @@ class DigitalProductController extends Controller
             ];
 
         $data = $request->validate([
+            'category_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('categories', 'id')
+                    ->whereNull('deleted_at')
+                    ->where('status', 'active'),
+            ],
             'game_id' => ['required', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
             'platform_id' => ['required', 'integer', Rule::exists('platforms', 'id')->whereNull('deleted_at')],
             'seller_id' => $sellerRule,
@@ -411,6 +423,11 @@ class DigitalProductController extends Controller
 
         return [
             'product' => null,
+            'categories' => Category::query()
+                ->where('status', 'active')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'parent_id', 'name', 'slug']),
             'games' => Game::query()->where('status', 'active')->orderBy('name')->get(['id', 'name']),
             'platforms' => Platform::query()->where('status', 'active')->orderBy('sort_order')->get(['id', 'name']),
             'sellers' => $actor->role === 'digital-seller'
@@ -442,7 +459,7 @@ class DigitalProductController extends Controller
     {
         return [
             ...$product->only([
-                'id', 'game_id', 'platform_id', 'seller_id', 'title',
+                'id', 'category_id', 'game_id', 'platform_id', 'seller_id', 'title',
                 'short_description', 'support_days', 'status', 'featured',
             ]),
             'offers' => $product->offers->map(fn ($offer) => $offer->only([
