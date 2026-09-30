@@ -25,22 +25,14 @@ final class ProductMediaStorage
         }
 
         $path = ltrim($path, '/');
+        $baseUrl = config('filesystems.disks.'.self::diskName().'.url');
 
-        try {
-            if (self::disk()->exists($path)) {
-                $baseUrl = config('filesystems.disks.'.self::diskName().'.url');
-
-                if (is_string($baseUrl) && $baseUrl !== '') {
-                    return rtrim($baseUrl, '/').'/'.$path;
-                }
-
-                return self::disk()->url($path);
-            }
-        } catch (Throwable) {
-            // Fall through to the legacy media disk without breaking storefront rendering.
+        // URL generation must not open an FTP connection on storefront requests.
+        if (is_string($baseUrl) && $baseUrl !== '') {
+            return rtrim($baseUrl, '/').'/'.$path;
         }
 
-        return MediaStorage::url($path);
+        return self::disk()->url($path);
     }
 
     public static function exists(?string $path): bool
