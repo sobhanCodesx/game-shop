@@ -198,7 +198,7 @@ class ContentAgentDigitalProductMcpTest extends TestCase
 
         $badSeller->assertOk()
             ->assertJsonPath('result.isError', true)
-            ->assertJsonPath('result.error', 'Validation failed.');
+            ->assertJsonPath('result.structuredContent.error', 'Validation failed.');
 
         $seller = User::factory()->create([
             'role' => 'digital-seller',
@@ -220,7 +220,7 @@ class ContentAgentDigitalProductMcpTest extends TestCase
 
         $badFeature->assertOk()
             ->assertJsonPath('result.isError', true)
-            ->assertJsonPath('result.error', 'Validation failed.');
+            ->assertJsonPath('result.structuredContent.error', 'Validation failed.');
     }
 
     private function mcp(string $method, array $params = [])
