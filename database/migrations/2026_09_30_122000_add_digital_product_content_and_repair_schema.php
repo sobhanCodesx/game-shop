@@ -45,7 +45,7 @@ return new class extends Migration
             Schema::table('digital_orders', fn (Blueprint $table) => $table->dropColumn('supplier_cost'));
         }
 
-        if (Schema::hasTable('digital_orders')) {
+        if (Schema::hasTable('digital_orders') && DB::getDriverName() === 'mysql') {
             DB::statement('ALTER TABLE digital_orders MODIFY number VARCHAR(64) NOT NULL');
 
             if (! $this->hasIndex('digital_orders', 'digital_orders_number_unique')) {
