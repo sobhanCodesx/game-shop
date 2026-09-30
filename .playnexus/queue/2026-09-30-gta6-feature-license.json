@@ -1,0 +1,16 @@
+{
+  "job_id": "2026-09-30-gta6-feature-license",
+  "tool": "create_digital_product_attribute",
+  "arguments": {
+    "title": "نوع اکانت",
+    "slug": "account_license",
+    "input_type": "select",
+    "is_required": false,
+    "options": [
+      {
+        "title": "اکانت قانونی",
+        "value": "legal"
+      }
+    ]
+  }
+}
