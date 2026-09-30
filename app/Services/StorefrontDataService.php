@@ -65,7 +65,7 @@ class StorefrontDataService
             'availability' => $product->availability,
             'stock' => $product->show_stock ? max(0, $product->stock - $product->reserved_stock) : null,
             'trade_enabled' => $product->trade_enabled,
-            'cover_url' => MediaStorage::url($cover?->path),
+            'cover_url' => ProductMediaStorage::url($cover?->path),
             'cover_alt' => $cover?->alt ?: $product->title,
             'pricing' => $pricing,
             'meta_badges' => $this->productMetaBadges($product, $pricing),
