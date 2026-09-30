@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 MCP_TOOLS = {
+    "diagnose_media_storage",
     "describe_playnexus_graph",
     "query_playnexus_graph",
     "list_game_events",
