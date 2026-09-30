@@ -1,6 +1,16 @@
 import { Button, Checkbox } from "@heroui/react";
 import { Head, Link, router } from "@inertiajs/react";
-import { Filter, Gamepad2, ShieldCheck, X, Zap } from "lucide-react";
+import {
+    Filter,
+    Gamepad2,
+    ShieldCheck,
+    SlidersHorizontal,
+    X,
+    Zap,
+} from "lucide-react";
+import { useState } from "react";
+
+import Pagination from "../../Components/Storefront/Shared/Pagination";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 
 const money = new Intl.NumberFormat("fa-IR");
@@ -26,6 +36,8 @@ export default function Index({
     filters: FilterDefinition[];
     selectedFilters: Record<string, string[]>;
 }) {
+    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
     const applyFilters = (next: Record<string, string[]>) => {
         const cleaned = Object.fromEntries(
             Object.entries(next).filter(([, values]) => values.length > 0),
@@ -70,124 +82,183 @@ export default function Index({
         });
     };
 
+    const clearFilters = () => applyFilters({});
     const hasFilters = Object.values(selectedFilters).some(
         (values) => values.length > 0,
     );
+    const activeFilterCount = Object.values(selectedFilters).reduce(
+        (total, values) => total + values.length,
+        0,
+    );
     const hasSidebar = categories.length > 0 || filters.length > 0;
+
+    const filterPanel = (
+        <div className="space-y-5">
+            <div className="flex items-center justify-between gap-3">
+                <strong className="flex items-center gap-2 text-sm">
+                    <Filter size={17} className="text-indigo-500" />
+                    فیلترها
+                </strong>
+                {hasFilters && (
+                    <Button size="sm" variant="ghost" onPress={clearFilters}>
+                        <X size={14} />
+                        پاک کردن
+                    </Button>
+                )}
+            </div>
+
+            {categories.length > 0 && (
+                <div>
+                    <p className="mb-2 text-xs font-black text-[var(--store-muted)]">
+                        دسته‌بندی
+                    </p>
+                    <select
+                        className="h-11 w-full rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] px-3 text-sm text-[var(--store-text)]"
+                        value={selectedCategory ?? ""}
+                        onChange={(event) => changeCategory(event.target.value)}
+                    >
+                        <option value="">همه دسته‌ها</option>
+                        {categories.map((category) => (
+                            <option key={category.id} value={category.slug}>
+                                {category.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {filters.map((filter) => (
+                <div
+                    className="border-t border-[var(--store-border)] pt-4 first:border-t-0 first:pt-0"
+                    key={filter.id}
+                >
+                    <p className="mb-2 text-sm font-black">{filter.title}</p>
+                    <div className="space-y-2">
+                        {filter.options.map((option) => (
+                            <Checkbox
+                                key={option.value}
+                                isSelected={(
+                                    selectedFilters[filter.slug] ?? []
+                                ).includes(option.value)}
+                                onChange={(selected) =>
+                                    toggle(filter.slug, option.value, selected)
+                                }
+                            >
+                                <span className="text-sm">{option.title}</span>
+                            </Checkbox>
+                        ))}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
 
     return (
         <StorefrontLayout>
             <Head title="بازی‌های دیجیتال" />
-            <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
-                <section className="mb-8 overflow-hidden rounded-[32px] border border-indigo-500/20 bg-[radial-gradient(circle_at_10%_0%,rgba(99,102,241,.22),transparent_40%),var(--store-surface)] p-6 sm:p-9">
-                    <div className="flex items-start gap-4">
-                        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-indigo-500 text-white">
-                            <Gamepad2 size={28} />
+
+            <main className="mx-auto max-w-7xl px-3 pb-28 pt-4 sm:px-6 sm:pb-12 lg:pt-8">
+                <section className="mb-4 rounded-[24px] border border-indigo-500/20 bg-[radial-gradient(circle_at_10%_0%,rgba(99,102,241,.18),transparent_38%),var(--store-surface)] p-4 sm:mb-6 sm:p-6">
+                    <div className="flex items-center gap-3">
+                        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 sm:size-13">
+                            <Gamepad2 size={22} />
                         </span>
-                        <div>
-                            <p className="text-xs font-black tracking-wider text-indigo-500">
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black tracking-[.16em] text-indigo-500">
                                 PLAYNEXUS DIGITAL
                             </p>
-                            <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-                                بازی دیجیتال، بدون پیچیدگی
+                            <h1 className="mt-1 text-2xl font-black sm:text-3xl">
+                                بازی‌های دیجیتال
                             </h1>
-                            <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--store-muted)]">
-                                بازی را انتخاب کن، ظرفیت مناسب را بردار و ادامه خرید و تحویل را مستقیم داخل گفت‌وگوی اختصاصی سفارش انجام بده.
+                            <p className="mt-1 hidden text-xs text-[var(--store-muted)] sm:block">
+                                بازی را پیدا کن، ظرفیت را انتخاب کن و مستقیم سفارش بده.
                             </p>
                         </div>
-                    </div>
-                    <div className="mt-6 flex flex-wrap gap-3 text-xs font-bold text-[var(--store-muted)]">
-                        <span className="rounded-full bg-indigo-500/10 px-3 py-2">
-                            <Zap className="ml-1 inline" size={14} />
-                            ثبت سفارش سریع
-                        </span>
-                        <span className="rounded-full bg-emerald-500/10 px-3 py-2">
-                            <ShieldCheck className="ml-1 inline" size={14} />
-                            تحویل داخل حساب PlayNexus
-                        </span>
+                        <div className="hidden shrink-0 items-center gap-2 text-[10px] font-bold text-[var(--store-muted)] md:flex">
+                            <span className="flex items-center gap-1 rounded-full bg-indigo-500/10 px-3 py-2">
+                                <Zap size={13} />
+                                سفارش سریع
+                            </span>
+                            <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-2">
+                                <ShieldCheck size={13} />
+                                تحویل امن
+                            </span>
+                        </div>
                     </div>
                 </section>
 
-                <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-                    {hasSidebar && (
-                        <aside className="h-fit rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 lg:sticky lg:top-28">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h2 className="flex items-center gap-2 font-black">
-                                    <Filter size={18} />
-                                    فیلترها
-                                </h2>
-                                {hasFilters && (
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onPress={() => applyFilters({})}
-                                    >
-                                        <X size={14} />
-                                        پاک کردن
-                                    </Button>
-                                )}
-                            </div>
+                {categories.length > 0 && (
+                    <div className="home-slider mb-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden">
+                        <button
+                            className={`shrink-0 rounded-full border px-3 py-2 text-xs font-black transition ${
+                                !selectedCategory
+                                    ? "border-indigo-500 bg-indigo-500 text-white"
+                                    : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)]"
+                            }`}
+                            onClick={() => changeCategory("")}
+                            type="button"
+                        >
+                            همه
+                        </button>
+                        {categories.map((category) => (
+                            <button
+                                className={`shrink-0 rounded-full border px-3 py-2 text-xs font-black transition ${
+                                    selectedCategory === category.slug
+                                        ? "border-indigo-500 bg-indigo-500 text-white"
+                                        : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)]"
+                                }`}
+                                key={category.id}
+                                onClick={() => changeCategory(category.slug)}
+                                type="button"
+                            >
+                                {category.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
-                            <div className="space-y-5">
-                                {categories.length > 0 && (
-                                    <div>
-                                        <p className="mb-2 text-sm font-black">
-                                            دسته‌بندی
-                                        </p>
-                                        <select
-                                            className="h-11 w-full rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] px-3 text-sm text-[var(--store-text)]"
-                                            value={selectedCategory ?? ""}
-                                            onChange={(event) =>
-                                                changeCategory(event.target.value)
-                                            }
-                                        >
-                                            <option value="">همه دسته‌ها</option>
-                                            {categories.map((category) => (
-                                                <option
-                                                    key={category.id}
-                                                    value={category.slug}
-                                                >
-                                                    {category.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-                                {filters.map((filter) => (
-                                    <div key={filter.id}>
-                                        <p className="mb-2 text-sm font-black">
-                                            {filter.title}
-                                        </p>
-                                        <div className="space-y-2">
-                                            {filter.options.map((option) => (
-                                                <Checkbox
-                                                    key={option.value}
-                                                    isSelected={(
-                                                        selectedFilters[
-                                                            filter.slug
-                                                        ] ?? []
-                                                    ).includes(option.value)}
-                                                    onChange={(selected) =>
-                                                        toggle(
-                                                            filter.slug,
-                                                            option.value,
-                                                            selected,
-                                                        )
-                                                    }
-                                                >
-                                                    {option.title}
-                                                </Checkbox>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] px-3 py-2.5 lg:hidden">
+                    <span className="text-xs font-bold text-[var(--store-muted)]">
+                        {money.format(products.total)} محصول
+                    </span>
+                    <Button
+                        size="sm"
+                        variant={mobileFiltersOpen || hasFilters ? "primary" : "secondary"}
+                        onPress={() => setMobileFiltersOpen((value) => !value)}
+                    >
+                        <SlidersHorizontal size={15} />
+                        فیلتر
+                        {activeFilterCount > 0 && (
+                            <span className="rounded-full bg-white/20 px-1.5 text-[10px]">
+                                {money.format(activeFilterCount)}
+                            </span>
+                        )}
+                    </Button>
+                </div>
+
+                {mobileFiltersOpen && hasSidebar && (
+                    <section className="mb-4 rounded-[22px] border border-indigo-500/20 bg-[var(--store-surface)] p-4 lg:hidden">
+                        {filterPanel}
+                    </section>
+                )}
+
+                <div className="grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
+                    {hasSidebar && (
+                        <aside className="hidden h-fit rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-5 lg:sticky lg:top-28 lg:block">
+                            {filterPanel}
                         </aside>
                     )}
 
                     <section className="min-w-0">
+                        <div className="mb-4 hidden items-center justify-between lg:flex">
+                            <strong className="text-lg">محصولات دیجیتال</strong>
+                            <span className="text-xs font-bold text-[var(--store-muted)]">
+                                {money.format(products.total)} محصول
+                            </span>
+                        </div>
+
                         {products.data.length ? (
-                            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
                                 {products.data.map((product: any) => {
                                     const available = product.offers.filter(
                                         (offer: any) => offer.available,
@@ -198,56 +269,69 @@ export default function Index({
                                                   (offer: any) => offer.price,
                                               ),
                                           )
-                                        : null;
+                                        : product.offers.length
+                                          ? Math.min(
+                                                ...product.offers.map(
+                                                    (offer: any) => offer.price,
+                                                ),
+                                            )
+                                          : null;
 
                                     return (
                                         <Link
-                                            className="group overflow-hidden rounded-[26px] border border-[var(--store-border)] bg-[var(--store-surface)] transition hover:-translate-y-1 hover:border-indigo-500/50"
+                                            className="group min-w-0 overflow-hidden rounded-[20px] border border-[var(--store-border)] bg-[var(--store-surface)] transition hover:-translate-y-1 hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 sm:rounded-[24px]"
                                             href={`/digital/${product.slug}`}
                                             key={product.id}
                                         >
-                                            <div className="relative aspect-[16/10] overflow-hidden bg-[var(--store-bg)]">
+                                            <div className="relative aspect-[4/5] overflow-hidden bg-[var(--store-bg)]">
                                                 <div className="absolute inset-0 grid place-items-center">
-                                                    <Gamepad2 className="text-indigo-400/60" size={42} />
+                                                    <Gamepad2
+                                                        className="text-indigo-400/45"
+                                                        size={36}
+                                                    />
                                                 </div>
                                                 {product.cover_url && (
                                                     <img
-                                                        className="relative size-full object-cover transition duration-500 group-hover:scale-105"
+                                                        className="relative size-full object-cover transition duration-500 group-hover:scale-[1.035]"
                                                         src={product.cover_url}
                                                         alt={product.title}
+                                                        loading="lazy"
+                                                        decoding="async"
                                                         onError={(event) => {
-                                                            event.currentTarget.style.display = "none";
+                                                            event.currentTarget.style.display =
+                                                                "none";
                                                         }}
                                                     />
                                                 )}
+                                                <span className="absolute right-2 top-2 rounded-lg border border-indigo-300/30 bg-indigo-600 px-2 py-1 text-[9px] font-black text-white shadow-lg">
+                                                    دیجیتال
+                                                </span>
+                                                {product.platform?.name && (
+                                                    <span className="absolute bottom-2 left-2 rounded-lg bg-black/70 px-2 py-1 text-[9px] font-black text-white">
+                                                        {product.platform.name}
+                                                    </span>
+                                                )}
                                             </div>
-                                            <div className="p-5">
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <h2 className="font-black">
-                                                        {product.title}
-                                                    </h2>
-                                                    {product.platform?.name && (
-                                                        <span className="rounded-lg bg-indigo-500/10 px-2 py-1 text-[10px] font-black text-indigo-500">
-                                                            {
-                                                                product.platform
-                                                                    .name
-                                                            }
-                                                        </span>
-                                                    )}
+
+                                            <div className="p-3 sm:p-4">
+                                                <h2 className="line-clamp-2 min-h-11 text-sm font-black leading-[1.4rem] sm:text-[15px]">
+                                                    {product.title}
+                                                </h2>
+                                                <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-[var(--store-muted)]">
+                                                    <span>
+                                                        {money.format(
+                                                            available.length,
+                                                        )}{" "}
+                                                        انتخاب موجود
+                                                    </span>
                                                 </div>
-                                                <p className="mt-3 text-xs text-[var(--store-muted)]">
-                                                    {available.length.toLocaleString(
-                                                        "fa-IR",
-                                                    )}{" "}
-                                                    گزینه موجود
-                                                </p>
                                                 {min !== null && (
-                                                    <p className="mt-2 text-sm">
+                                                    <p className="mt-2 text-[10px] text-[var(--store-muted)]">
                                                         از{" "}
-                                                        <strong className="text-lg text-emerald-500">
-                                                            {money.format(min)}{" "}
-                                                            تومان
-                                                        </strong>
+                                                        <strong className="text-sm font-black text-emerald-500 sm:text-base">
+                                                            {money.format(min)}
+                                                        </strong>{" "}
+                                                        تومان
                                                     </p>
                                                 )}
                                             </div>
@@ -256,10 +340,12 @@ export default function Index({
                                 })}
                             </div>
                         ) : (
-                            <div className="rounded-3xl border border-dashed border-[var(--store-border)] p-12 text-center text-[var(--store-muted)]">
+                            <div className="rounded-3xl border border-dashed border-[var(--store-border)] p-10 text-center text-sm text-[var(--store-muted)]">
                                 محصولی با این فیلترها پیدا نشد.
                             </div>
                         )}
+
+                        <Pagination links={products.links} />
                     </section>
                 </div>
             </main>
