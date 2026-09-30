@@ -128,7 +128,7 @@ class DigitalProductController extends Controller
     {
         $sellerRule = $request->user()->role === 'digital-seller'
             ? ['nullable']
-            : ['required', 'integer', Rule::exists('users', 'id')];
+            : ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'digital-seller')->where('status', 'active'))];
 
         return $request->validate([
             'game_id' => ['required', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
