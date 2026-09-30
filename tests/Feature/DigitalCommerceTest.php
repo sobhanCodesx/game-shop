@@ -77,8 +77,8 @@ class DigitalCommerceTest extends TestCase
 
     public function test_digital_seller_creates_product_with_media_features_and_only_sale_price(): void
     {
-        config()->set('digital_media.disk', 'media_public');
-        Storage::fake('media_public');
+        config()->set('digital_media.disk', 'downloads');
+        Storage::fake('downloads');
 
         $seller = User::factory()->create([
             'is_admin' => true,
@@ -207,8 +207,8 @@ class DigitalCommerceTest extends TestCase
     public function test_editing_digital_product_with_new_image_upload_succeeds(): void
     {
         config()->set('media.disk', 'broken-legacy-ftp');
-        config()->set('digital_media.disk', 'media_public');
-        Storage::fake('media_public');
+        config()->set('digital_media.disk', 'downloads');
+        Storage::fake('downloads');
 
         [$seller, $product] = $this->digitalProduct('media-edit');
         $product->media()->create([
@@ -258,11 +258,11 @@ class DigitalCommerceTest extends TestCase
         $this->assertCount(1, $product->media);
         $this->assertSame('کاور جدید', $product->media()->firstOrFail()->alt);
         $this->assertTrue((bool) $product->media()->firstOrFail()->is_primary);
-        $this->assertStringStartsWith(
-            'digital-products/',
+        $this->assertStringNotContainsString(
+            '/',
             $product->media()->firstOrFail()->path,
         );
-        Storage::disk('media_public')
+        Storage::disk('downloads')
             ->assertExists($product->media()->firstOrFail()->path);
     }
 
