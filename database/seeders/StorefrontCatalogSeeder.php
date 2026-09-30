@@ -13,7 +13,7 @@ use App\Models\ProductType;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use App\Services\MediaStorage;
+use App\Services\ProductMediaStorage;
 use Illuminate\Support\Str;
 
 class StorefrontCatalogSeeder extends Seeder
@@ -223,7 +223,7 @@ class StorefrontCatalogSeeder extends Seeder
 
         foreach (['jpg', 'png', 'webp'] as $extension) {
             $localPath = "products/catalog/{$product->slug}.{$extension}";
-            if (MediaStorage::disk()->exists($localPath)) {
+            if (ProductMediaStorage::disk()->exists($localPath)) {
                 ProductMedia::query()->updateOrCreate(['product_id' => $product->id, 'is_primary' => true], [
                     'type' => 'image', 'path' => $localPath, 'alt' => "کاور {$product->title}", 'sort_order' => 0,
                 ]);
@@ -255,7 +255,7 @@ class StorefrontCatalogSeeder extends Seeder
             }
             $extension = str_contains($image->header('Content-Type'), 'png') ? 'png' : 'jpg';
             $path = "products/catalog/{$product->slug}.{$extension}";
-            MediaStorage::disk()->put($path, $image->body());
+            ProductMediaStorage::disk()->put($path, $image->body());
             ProductMedia::query()->updateOrCreate(['product_id' => $product->id, 'is_primary' => true], [
                 'type' => 'image', 'path' => $path, 'alt' => "کاور {$product->title}", 'sort_order' => 0,
             ]);
