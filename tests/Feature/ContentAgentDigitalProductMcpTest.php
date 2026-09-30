@@ -215,6 +215,22 @@ class ContentAgentDigitalProductMcpTest extends TestCase
         $this->assertStringStartsWith('digital-products/', $asset['asset']['path']);
         Storage::disk('public')->assertExists($asset['asset']['path']);
 
+        $replacementFile = UploadedFile::fake()->image('replacement-cover.jpg', 1200, 800);
+        $replacement = app(ContentAgentMediaService::class)->attachLocalFile([
+            'resource' => 'digital_product',
+            'id' => $productId,
+            'slot' => 'media',
+            'name' => 'replacement-cover.jpg',
+            'mime' => 'image/jpeg',
+            'alt' => 'کاور جایگزین محصول دیجیتال',
+            'sort_order' => 0,
+            'is_primary' => true,
+        ], $replacementFile->getRealPath());
+
+        $this->assertTrue((bool) $replacement['asset']['is_primary']);
+        $this->assertFalse((bool) $product->media()->findOrFail($asset['asset']['id'])->is_primary);
+        $this->assertTrue((bool) $product->media()->findOrFail($replacement['asset']['id'])->is_primary);
+
         $assets = $this->mcp('tools/call', [
             'name' => 'list_content_assets',
             'arguments' => [
