@@ -1,0 +1,59 @@
+{
+  "job_id": "2026-09-30-gta6-ultimate-create-product",
+  "tool": "create_digital_product",
+  "arguments": {
+    "game_id": 71,
+    "platform_id": 1,
+    "seller_id": 20,
+    "title": "Grand Theft Auto VI: Ultimate Edition",
+    "short_description": "پیش‌خرید اکانت قانونی Grand Theft Auto VI: Ultimate Edition برای PlayStation 5 با قابلیت فروش مجدد. ظرفیت ۱، ۲ و ۳ با قیمت مشخص، تحویل و پشتیبانی از طریق تیکت اختصاصی PlayNexus. عرضه رسمی GTA VI در ۱۹ نوامبر ۲۰۲۶؛ نسخه Ultimate Edition شامل محتوای ویژه رسمی Rockstar Games است.",
+    "support_days": 7,
+    "featured": false,
+    "offers": [
+      {
+        "code": "capacity_1",
+        "price": 3000000,
+        "stock": 1,
+        "status": "active"
+      },
+      {
+        "code": "capacity_2",
+        "price": 15000000,
+        "stock": 1,
+        "status": "active"
+      },
+      {
+        "code": "capacity_3",
+        "price": 9000000,
+        "stock": 1,
+        "status": "active"
+      },
+      {
+        "code": "full",
+        "price": 0,
+        "stock": 0,
+        "status": "inactive"
+      }
+    ],
+    "features": [
+      {
+        "attribute_slug": "game_edition",
+        "values": [
+          "ultimate"
+        ]
+      },
+      {
+        "attribute_slug": "account_license",
+        "values": [
+          "legal"
+        ]
+      },
+      {
+        "attribute_slug": "resale_capability",
+        "values": [
+          "1"
+        ]
+      }
+    ]
+  }
+}
