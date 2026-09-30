@@ -17,8 +17,8 @@ class ProductMediaStorageTest extends TestCase
     {
         config()->set('content_agent.allow_uploads', true);
         config()->set('media.disk', 'broken-legacy-ftp');
-        config()->set('product_media.disk', 'public');
-        Storage::fake('public');
+        config()->set('product_media.disk', 'media_public');
+        Storage::fake('media_public');
 
         $product = Product::factory()->create();
         $legacy = $product->media()->create([
@@ -44,7 +44,7 @@ class ProductMediaStorageTest extends TestCase
         $this->assertSame('image', $asset['asset']['kind']);
         $this->assertTrue((bool) $asset['asset']['is_primary']);
         $this->assertStringStartsWith("products/{$product->id}/", $asset['asset']['path']);
-        Storage::disk('public')->assertExists($asset['asset']['path']);
+        Storage::disk('media_public')->assertExists($asset['asset']['path']);
         $this->assertFalse((bool) $legacy->fresh()->is_primary);
 
         $listed = app(ContentAgentMediaService::class)->listContentAssets([
