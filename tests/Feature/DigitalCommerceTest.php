@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -106,7 +107,7 @@ class DigitalCommerceTest extends TestCase
         $this->assertCount(1, $product->media);
         $this->assertCount(2, $product->features);
         $this->assertSame(1_000_000, $product->offers()->where('code', 'capacity_1')->value('price'));
-        $this->assertFalse(IlluminateSupportFacadesSchema::hasColumn('digital_offers', 'supplier_cost'));
+        $this->assertFalse(Schema::hasColumn('digital_offers', 'supplier_cost'));
     }
 
     public function test_customer_creates_digital_order_and_stock_is_reserved_not_sold(): void
