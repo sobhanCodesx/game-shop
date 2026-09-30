@@ -1,0 +1,14 @@
+{
+  "job_id": "2026-09-30-gta6-create-game",
+  "tool": "create_game",
+  "arguments": {
+    "name": "Grand Theft Auto VI",
+    "developer": "Rockstar Games",
+    "publisher": "Rockstar Games",
+    "release_date": "2026-11-19",
+    "description": "Grand Theft Auto VI جدیدترین بازی Rockstar Games است که داستان Jason و Lucia را در Vice City و ایالت Leonida دنبال می‌کند. نسخه PlayStation 5 بازی در ۱۹ نوامبر ۲۰۲۶ عرضه می‌شود.",
+    "platform_ids": [
+      1
+    ]
+  }
+}
