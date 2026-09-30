@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\AndroidReleaseAgentService;
 use App\Services\ContentAgentMediaService;
 use App\Services\ContentAgentService;
+use App\Services\DigitalProductAgentService;
 use App\Services\FeedService;
 use App\Services\GraphQL\PlayNexusGraphService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -20,7 +21,7 @@ class ContentAgentMcpController extends Controller
     private const MODERN_PROTOCOL = '2026-07-28';
     private const LEGACY_PROTOCOL = '2025-11-25';
 
-    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases): Response
+    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, DigitalProductAgentService $digitalProducts, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases): Response
     {
         $payload = $request->json()->all();
 
@@ -45,7 +46,7 @@ class ContentAgentMcpController extends Controller
                 'initialize' => $this->rpcResult($id, $this->initializeResult($params)),
                 'server/discover' => $this->rpcResult($id, $this->discoverResult()),
                 'tools/list' => $this->rpcResult($id, $this->toolsListResult()),
-                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia, $graph, $androidReleases)),
+                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia, $digitalProducts, $graph, $androidReleases)),
                 'ping' => $this->rpcResult($id, new \stdClass()),
                 default => $this->rpcError($id, -32601, 'Method not found.'),
             };
@@ -135,7 +136,7 @@ class ContentAgentMcpController extends Controller
         ];
     }
 
-    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases): array
+    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, DigitalProductAgentService $digitalProducts, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases): array
     {
         $name = (string) ($params['name'] ?? '');
         $arguments = is_array($params['arguments'] ?? null) ? $params['arguments'] : [];
@@ -171,6 +172,12 @@ class ContentAgentMcpController extends Controller
             'unpublish_feed' => $contentAgent->unpublishFeed($arguments),
             'delete_content' => $contentAgent->deleteContent($arguments),
             'restore_content' => $contentAgent->restoreContent($arguments),
+            'list_digital_sellers' => $digitalProducts->listSellers($arguments),
+            'list_digital_product_attributes' => $digitalProducts->listAttributes($arguments),
+            'get_digital_product' => $digitalProducts->get($arguments),
+            'create_digital_product' => $digitalProducts->create($arguments),
+            'update_digital_product' => $digitalProducts->update($arguments),
+            'set_digital_product_state' => $digitalProducts->setState($arguments),
             'publish_android_release' => $androidReleases->publish($arguments),
             'start_android_release_upload' => $androidReleases->startUpload($arguments),
             'complete_android_release_upload' => $androidReleases->completeUpload($arguments),
@@ -221,7 +228,7 @@ class ContentAgentMcpController extends Controller
     {
         $resourceEnum = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product'];
         $mutableResourceEnum = ['game', 'studio', 'collection', 'feed', 'story', 'video'];
-        $mediaResourceEnum = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product'];
+        $mediaResourceEnum = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product', 'digital_product'];
         $mediaSlotEnum = ['cover', 'background', 'logo', 'icon', 'media', 'video', 'thumbnail', 'attachment'];
         $maxUploadSize = max(1, (int) config('content_agent.uploads.max_size', 104857600));
         $maxChunkSize = max(1, (int) config('content_agent.uploads.max_chunk_size', 2097152));
@@ -538,8 +545,169 @@ class ContentAgentMcpController extends Controller
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             [
+                'name' => 'list_digital_sellers',
+                'description' => 'List active Digital Sellers that may own a PlayNexus digital product. Returns id and display name only.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'query' => ['type' => ['string', 'null'], 'maxLength' => 120],
+                        'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 20],
+                    ],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'list_digital_product_attributes',
+                'description' => 'List predefined filterable Digital Product features and their allowed option values. Capacity and platform are intentionally excluded because they are modeled separately.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'query' => ['type' => ['string', 'null'], 'maxLength' => 120],
+                    ],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'get_digital_product',
+                'description' => 'Read one Digital Product including offers, selected predefined features and attached media.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'create_digital_product',
+                'description' => 'Create a Digital Product as DRAFT. Requires game, platform, Digital Seller, all four capacity/full sale offers and optional predefined features. Upload at least one image using the normal asset upload tools with resource=digital_product before publishing.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'game_id' => ['type' => 'integer', 'minimum' => 1],
+                        'platform_id' => ['type' => 'integer', 'minimum' => 1],
+                        'seller_id' => ['type' => 'integer', 'minimum' => 1],
+                        'title' => ['type' => ['string', 'null'], 'maxLength' => 255, 'description' => 'Optional. Defaults to game name + platform name.'],
+                        'short_description' => ['type' => ['string', 'null'], 'maxLength' => 500],
+                        'support_days' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 365, 'default' => 7],
+                        'featured' => ['type' => 'boolean', 'default' => false],
+                        'offers' => [
+                            'type' => 'array',
+                            'minItems' => 4,
+                            'maxItems' => 4,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'code' => ['type' => 'string', 'enum' => ['capacity_1', 'capacity_2', 'capacity_3', 'full']],
+                                    'price' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Final sale price in تومان.'],
+                                    'stock' => ['type' => 'integer', 'minimum' => 0],
+                                    'status' => ['type' => 'string', 'enum' => ['active', 'inactive']],
+                                ],
+                                'required' => ['code', 'price', 'stock', 'status'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                        'features' => [
+                            'type' => 'array',
+                            'maxItems' => 30,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'attribute_slug' => ['type' => 'string', 'maxLength' => 120],
+                                    'values' => [
+                                        'type' => 'array',
+                                        'minItems' => 1,
+                                        'maxItems' => 20,
+                                        'uniqueItems' => true,
+                                        'items' => ['type' => 'string', 'maxLength' => 100],
+                                    ],
+                                ],
+                                'required' => ['attribute_slug', 'values'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                    ],
+                    'required' => ['game_id', 'platform_id', 'seller_id', 'offers'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'update_digital_product',
+                'description' => 'Edit Digital Product metadata, all four sale offers and/or predefined feature selections without changing publication state. Media is managed through the asset upload tools.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'game_id' => ['type' => 'integer', 'minimum' => 1],
+                        'platform_id' => ['type' => 'integer', 'minimum' => 1],
+                        'seller_id' => ['type' => 'integer', 'minimum' => 1],
+                        'title' => ['type' => ['string', 'null'], 'maxLength' => 255],
+                        'short_description' => ['type' => ['string', 'null'], 'maxLength' => 500],
+                        'support_days' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 365],
+                        'featured' => ['type' => 'boolean'],
+                        'offers' => [
+                            'type' => 'array',
+                            'minItems' => 4,
+                            'maxItems' => 4,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'code' => ['type' => 'string', 'enum' => ['capacity_1', 'capacity_2', 'capacity_3', 'full']],
+                                    'price' => ['type' => 'integer', 'minimum' => 1],
+                                    'stock' => ['type' => 'integer', 'minimum' => 0],
+                                    'status' => ['type' => 'string', 'enum' => ['active', 'inactive']],
+                                ],
+                                'required' => ['code', 'price', 'stock', 'status'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                        'features' => [
+                            'type' => 'array',
+                            'maxItems' => 30,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'attribute_slug' => ['type' => 'string', 'maxLength' => 120],
+                                    'values' => [
+                                        'type' => 'array',
+                                        'minItems' => 1,
+                                        'maxItems' => 20,
+                                        'uniqueItems' => true,
+                                        'items' => ['type' => 'string', 'maxLength' => 100],
+                                    ],
+                                ],
+                                'required' => ['attribute_slug', 'values'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                    ],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'set_digital_product_state',
+                'description' => 'Set a Digital Product to draft, hidden or published. Publishing requires the server publish permission and validates that the product has media, all four offers, an active offer and all required predefined features.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'state' => ['type' => 'string', 'enum' => ['draft', 'published', 'hidden']],
+                    ],
+                    'required' => ['id', 'state'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
                 'name' => 'start_asset_upload',
-                'description' => 'Start a secure chunked binary upload for a PlayNexus record. Metadata only; this MCP never fetches a remote URL. Supports games, studios, platforms, collections, feeds, stories, videos and products.',
+                'description' => 'Start a secure chunked binary upload for a PlayNexus record. Metadata only; this MCP never fetches a remote URL. Supports games, studios, platforms, collections, feeds, stories, videos, physical products and digital products.',
                 'inputSchema' => [
                     'type' => 'object',
                     'properties' => [
@@ -798,7 +966,7 @@ class ContentAgentMcpController extends Controller
 
     private function instructions(): string
     {
-        return 'PlayNexus Content Admin MCP v2.4. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos=draft, games/studios=inactive, collections=private. Editing never changes publication state. Binary content media uses dedicated chunked asset tools. Android APK releases should use start_android_release_upload + the authenticated binary chunk endpoint + complete_android_release_upload, which verifies SHA-256 and stores release notes/version metadata without long-running web requests. publish_android_release remains only as a compatibility path for smaller direct GitHub assets. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+        return 'PlayNexus Content Admin MCP v3.1. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos/digital-products=draft, games/studios=inactive, collections=private. Editing never changes publication state. Digital products use predefined feature/value options and separate capacity offers; upload their media with resource=digital_product. Binary content media uses dedicated chunked asset tools. Android APK releases should use start_android_release_upload + the authenticated binary chunk endpoint + complete_android_release_upload, which verifies SHA-256 and stores release notes/version metadata without long-running web requests. publish_android_release remains only as a compatibility path for smaller direct GitHub assets. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
     }
 
     private function serverInfo(): array
@@ -806,7 +974,7 @@ class ContentAgentMcpController extends Controller
         return [
             'name' => 'playnexus-content-agent',
             'title' => 'PlayNexus AI Content & Intelligence Agent',
-            'version' => '3.0.0',
+            'version' => '3.1.0',
         ];
     }
 
