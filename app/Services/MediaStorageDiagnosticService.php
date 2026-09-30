@@ -42,10 +42,31 @@ final class MediaStorageDiagnosticService
             ];
         }
 
+        $alternateHost = str_starts_with($host, 'ftp.') ? null : 'ftp.'.$host;
+        $localUsername = str_contains($username, '@')
+            ? strstr($username, '@', true)
+            : null;
+
         return [
             ...$base,
-            'plain_ftp' => $this->probe($host, $port, $username, $password, $timeout, false),
-            'explicit_tls_ftp' => $this->probe($host, $port, $username, $password, $timeout, true),
+            'configured_host' => [
+                'plain' => $this->probe($host, $port, $username, $password, $timeout, false),
+                'explicit_tls' => $this->probe($host, $port, $username, $password, $timeout, true),
+            ],
+            'ftp_subdomain_host' => $alternateHost ? [
+                'host' => $alternateHost,
+                'resolved_ip' => $this->resolvedIp($alternateHost),
+                'plain' => $this->probe($alternateHost, $port, $username, $password, $timeout, false),
+                'explicit_tls' => $this->probe($alternateHost, $port, $username, $password, $timeout, true),
+            ] : null,
+            'localpart_username_on_configured_host' => $localUsername ? [
+                'plain' => $this->probe($host, $port, $localUsername, $password, $timeout, false),
+                'explicit_tls' => $this->probe($host, $port, $localUsername, $password, $timeout, true),
+            ] : null,
+            'localpart_username_on_ftp_subdomain' => ($localUsername && $alternateHost) ? [
+                'plain' => $this->probe($alternateHost, $port, $localUsername, $password, $timeout, false),
+                'explicit_tls' => $this->probe($alternateHost, $port, $localUsername, $password, $timeout, true),
+            ] : null,
         ];
     }
 
