@@ -280,7 +280,7 @@ class DigitalProductAgentService
             'featured' => ['sometimes', 'boolean'],
             'offers' => [$required, 'array', 'size:4'],
             'offers.*.code' => ['required_with:offers', Rule::in(array_keys(self::OFFER_CODES)), 'distinct'],
-            'offers.*.price' => ['required_with:offers', 'integer', 'min:1'],
+            'offers.*.price' => ['required_with:offers', 'integer', 'min:0'],
             'offers.*.stock' => ['required_with:offers', 'integer', 'min:0'],
             'offers.*.status' => ['required_with:offers', Rule::in(['active', 'inactive'])],
             'features' => ['sometimes', 'array', 'max:30'],
@@ -296,6 +296,14 @@ class DigitalProductAgentService
                 throw ValidationException::withMessages([
                     'offers' => 'Offers must contain capacity_1, capacity_2, capacity_3 and full exactly once.',
                 ]);
+            }
+
+            foreach ($data['offers'] as $index => $offer) {
+                if (($offer['status'] ?? null) === 'active' && (int) ($offer['price'] ?? 0) < 1) {
+                    throw ValidationException::withMessages([
+                        "offers.{$index}.price" => 'Active digital offers must have a sale price greater than zero.',
+                    ]);
+                }
             }
         }
 
@@ -392,8 +400,12 @@ class DigitalProductAgentService
             throw new RuntimeException('Digital product must have all four sale offers before publishing.');
         }
 
-        if ($product->offers->where('status', 'active')->isEmpty()) {
+        $activeOffers = $product->offers->where('status', 'active');
+        if ($activeOffers->isEmpty()) {
             throw new RuntimeException('Digital product cannot be published without at least one active offer.');
+        }
+        if ($activeOffers->contains(fn ($offer) => (int) $offer->price < 1)) {
+            throw new RuntimeException('Every active digital offer must have a sale price greater than zero.');
         }
 
         $required = $this->digitalAttributes()->where('is_required', true);

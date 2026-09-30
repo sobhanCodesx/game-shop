@@ -647,7 +647,7 @@ class ContentAgentMcpController extends Controller
                                 'type' => 'object',
                                 'properties' => [
                                     'code' => ['type' => 'string', 'enum' => ['capacity_1', 'capacity_2', 'capacity_3', 'full']],
-                                    'price' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Final sale price in تومان.'],
+                                    'price' => ['type' => 'integer', 'minimum' => 0, 'description' => 'Final sale price in تومان.'],
                                     'stock' => ['type' => 'integer', 'minimum' => 0],
                                     'status' => ['type' => 'string', 'enum' => ['active', 'inactive']],
                                 ],
@@ -702,7 +702,7 @@ class ContentAgentMcpController extends Controller
                                 'type' => 'object',
                                 'properties' => [
                                     'code' => ['type' => 'string', 'enum' => ['capacity_1', 'capacity_2', 'capacity_3', 'full']],
-                                    'price' => ['type' => 'integer', 'minimum' => 1],
+                                    'price' => ['type' => 'integer', 'minimum' => 0],
                                     'stock' => ['type' => 'integer', 'minimum' => 0],
                                     'status' => ['type' => 'string', 'enum' => ['active', 'inactive']],
                                 ],
