@@ -1,8 +1,0 @@
-{
-  "job_id": "2026-09-30-gta6-discovery-platform",
-  "tool": "search_platforms",
-  "arguments": {
-    "query": "PlayStation 5",
-    "limit": 10
-  }
-}
