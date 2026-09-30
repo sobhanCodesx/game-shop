@@ -1,0 +1,9 @@
+{
+  "job_id": "2026-09-30-1358-feed5-games",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query FeedCandidateGames {\n  games(first: 100, offset: 0, orderBy: \"updated_at\", orderDir: \"desc\") {\n    nodes { id name slug status coverUrl backgroundUrl }\n    pageInfo { total first offset hasMore nextOffset }\n  }\n}",
+    "variables": {},
+    "operation_name": "FeedCandidateGames"
+  }
+}
