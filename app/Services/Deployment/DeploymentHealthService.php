@@ -130,18 +130,18 @@ final class DeploymentHealthService
             $downloadUrl = rtrim((string) config('filesystems.disks.downloads.url'), '/');
 
             if ($mediaDisk !== 'downloads' || $productDisk !== 'downloads' || $digitalDisk !== 'downloads') {
-                throw new \\RuntimeException('All public media must use the downloads disk.');
+                throw new \RuntimeException('All public media must use the downloads disk.');
             }
             if ($downloadUrl === '' || ! str_starts_with($downloadUrl, 'https://')) {
-                throw new \\RuntimeException('DOWNLOAD_URL must be configured as HTTPS.');
+                throw new \RuntimeException('DOWNLOAD_URL must be configured as HTTPS.');
             }
 
-            $disk = \\App\\Services\\ProductMediaStorage::disk();
+            $disk = \App\Services\ProductMediaStorage::disk();
             $path = 'deploy-health-'.bin2hex(random_bytes(8)).'.txt';
 
             try {
                 if (! $disk->put($path, 'ok') || ! $disk->exists($path)) {
-                    throw new \\RuntimeException('Download media write/read probe failed.');
+                    throw new \RuntimeException('Download media write/read probe failed.');
                 }
             } finally {
                 try {
