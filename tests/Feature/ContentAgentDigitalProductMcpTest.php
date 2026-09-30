@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Attribute;
+use App\Models\Category;
 use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Platform;
@@ -28,6 +29,12 @@ class ContentAgentDigitalProductMcpTest extends TestCase
         ]);
         $game = Game::factory()->create(['name' => 'MCP Game']);
         $platform = Platform::factory()->create(['name' => 'PS5 MCP']);
+        $category = Category::query()->create([
+            'name' => 'اکانت دیجیتال',
+            'slug' => 'digital-accounts',
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
         $region = $this->regionAttribute();
 
         Attribute::query()->create([
@@ -68,6 +75,7 @@ class ContentAgentDigitalProductMcpTest extends TestCase
         $response = $this->mcp('tools/call', [
             'name' => 'create_digital_product',
             'arguments' => [
+                'category_id' => $category->id,
                 'game_id' => $game->id,
                 'platform_id' => $platform->id,
                 'seller_id' => $seller->id,
@@ -86,6 +94,7 @@ class ContentAgentDigitalProductMcpTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('result.isError', false)
             ->assertJsonPath('result.structuredContent.result.status', 'draft')
+            ->assertJsonPath('result.structuredContent.result.category.id', $category->id)
             ->assertJsonPath('result.structuredContent.result.game.id', $game->id)
             ->assertJsonPath('result.structuredContent.result.platform.id', $platform->id)
             ->assertJsonPath('result.structuredContent.result.seller.id', $seller->id)
@@ -95,6 +104,7 @@ class ContentAgentDigitalProductMcpTest extends TestCase
 
         $product = DigitalProduct::query()->firstOrFail();
         $this->assertSame('draft', $product->status);
+        $this->assertSame($category->id, $product->category_id);
         $this->assertSame(4, $product->offers()->count());
         $this->assertSame('turkey', $product->attributeValues()->value('value'));
         $this->assertSame('MCP Game - PS5 MCP', $product->title);
