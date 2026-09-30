@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-09-30-feed5-upload-03",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "feed",
+    "query": "The Witcher 3 Remastered منتشر شد؛ آپگرید رایگان، Path Tracing و پشتیبانی از ماد",
+    "slot": "media",
+    "source_url": "https://cdnpn.ir/storage/games/backgrounds/5f9f6621-6b7f-4d0e-891c-474d7aed3686.webp",
+    "name": "witcher-3-remastered-launch.webp",
+    "alt": "The Witcher 3 Wild Hunt Remastered",
+    "sort_order": 0
+  }
+}

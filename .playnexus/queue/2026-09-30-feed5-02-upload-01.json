@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-09-30-feed5-upload-01",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "feed",
+    "query": "آپدیت 1.4.3.5 بازی Battlefield 6 منتشر شد؛ تمرکز روی HUD، AI و پایداری",
+    "slot": "media",
+    "source_url": "https://drop-assets.ea.com/images/290cahwLsXnV5UESI3XNwJ/3ac108dd78820b23a4011f37fff3eae5/BF6_S4B2_TopGun_LeadImage_1080x1080_NoLogo.png",
+    "name": "battlefield-6-update-1-4-3-5.png",
+    "alt": "Battlefield 6 Update 1.4.3.5",
+    "sort_order": 0
+  }
+}
