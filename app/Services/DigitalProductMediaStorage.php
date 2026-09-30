@@ -10,7 +10,7 @@ final class DigitalProductMediaStorage
 {
     public static function diskName(): string
     {
-        return (string) config('digital_media.disk', 'public');
+        return (string) config('digital_media.disk', 'downloads');
     }
 
     public static function disk(): FilesystemAdapter
