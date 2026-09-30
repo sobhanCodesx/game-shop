@@ -146,7 +146,7 @@ export default function Form({
         );
     };
 
-    const const updateOffer = <K extends keyof Offer>(
+    const updateOffer = <K extends keyof Offer>(
         index: number,
         key: K,
         value: Offer[K],
