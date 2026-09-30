@@ -174,6 +174,7 @@ class ContentAgentMcpController extends Controller
             'restore_content' => $contentAgent->restoreContent($arguments),
             'list_digital_sellers' => $digitalProducts->listSellers($arguments),
             'list_digital_product_attributes' => $digitalProducts->listAttributes($arguments),
+            'create_digital_product_attribute' => $digitalProducts->createAttribute($arguments),
             'get_digital_product' => $digitalProducts->get($arguments),
             'create_digital_product' => $digitalProducts->create($arguments),
             'update_digital_product' => $digitalProducts->update($arguments),
@@ -568,6 +569,917 @@ class ContentAgentMcpController extends Controller
                     'additionalProperties' => false,
                 ],
                 'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'create_digital_product_attribute',
+                'description' => 'Create one predefined Digital Product feature and its allowed values. The feature is automatically active, filterable, searchable, visible on product pages and excluded from variant logic. Reserved slugs capacity/platform are rejected.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'title' => ['type' => 'string', 'maxLength' => 100],
+                        'slug' => [
+                            'type' => 'string',
+                            'maxLength' => 100,
+                            'pattern' => '^[A-Za-z0-9_-]+
+                'description' => 'Read one Digital Product including offers, selected predefined features and attached media.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'create_digital_product',
+                'description' => 'Create a Digital Product as DRAFT. Requires game, platform, Digital Seller, all four capacity/full sale offers and optional predefined features. Upload at least one image using the normal asset upload tools with resource=digital_product before publishing.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'game_id' => ['type' => 'integer', 'minimum' => 1],
+                        'platform_id' => ['type' => 'integer', 'minimum' => 1],
+                        'seller_id' => ['type' => 'integer', 'minimum' => 1],
+                        'title' => ['type' => ['string', 'null'], 'maxLength' => 255, 'description' => 'Optional. Defaults to game name + platform name.'],
+                        'short_description' => ['type' => ['string', 'null'], 'maxLength' => 500],
+                        'support_days' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 365, 'default' => 7],
+                        'featured' => ['type' => 'boolean', 'default' => false],
+                        'offers' => [
+                            'type' => 'array',
+                            'minItems' => 4,
+                            'maxItems' => 4,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'code' => ['type' => 'string', 'enum' => ['capacity_1', 'capacity_2', 'capacity_3', 'full']],
+                                    'price' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Final sale price in تومان.'],
+                                    'stock' => ['type' => 'integer', 'minimum' => 0],
+                                    'status' => ['type' => 'string', 'enum' => ['active', 'inactive']],
+                                ],
+                                'required' => ['code', 'price', 'stock', 'status'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                        'features' => [
+                            'type' => 'array',
+                            'maxItems' => 30,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'attribute_slug' => ['type' => 'string', 'maxLength' => 120],
+                                    'values' => [
+                                        'type' => 'array',
+                                        'minItems' => 1,
+                                        'maxItems' => 20,
+                                        'uniqueItems' => true,
+                                        'items' => ['type' => 'string', 'maxLength' => 100],
+                                    ],
+                                ],
+                                'required' => ['attribute_slug', 'values'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                    ],
+                    'required' => ['game_id', 'platform_id', 'seller_id', 'offers'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'update_digital_product',
+                'description' => 'Edit Digital Product metadata, all four sale offers and/or predefined feature selections without changing publication state. Media is managed through the asset upload tools.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'game_id' => ['type' => 'integer', 'minimum' => 1],
+                        'platform_id' => ['type' => 'integer', 'minimum' => 1],
+                        'seller_id' => ['type' => 'integer', 'minimum' => 1],
+                        'title' => ['type' => ['string', 'null'], 'maxLength' => 255],
+                        'short_description' => ['type' => ['string', 'null'], 'maxLength' => 500],
+                        'support_days' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 365],
+                        'featured' => ['type' => 'boolean'],
+                        'offers' => [
+                            'type' => 'array',
+                            'minItems' => 4,
+                            'maxItems' => 4,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'code' => ['type' => 'string', 'enum' => ['capacity_1', 'capacity_2', 'capacity_3', 'full']],
+                                    'price' => ['type' => 'integer', 'minimum' => 1],
+                                    'stock' => ['type' => 'integer', 'minimum' => 0],
+                                    'status' => ['type' => 'string', 'enum' => ['active', 'inactive']],
+                                ],
+                                'required' => ['code', 'price', 'stock', 'status'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                        'features' => [
+                            'type' => 'array',
+                            'maxItems' => 30,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'attribute_slug' => ['type' => 'string', 'maxLength' => 120],
+                                    'values' => [
+                                        'type' => 'array',
+                                        'minItems' => 1,
+                                        'maxItems' => 20,
+                                        'uniqueItems' => true,
+                                        'items' => ['type' => 'string', 'maxLength' => 100],
+                                    ],
+                                ],
+                                'required' => ['attribute_slug', 'values'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                    ],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'set_digital_product_state',
+                'description' => 'Set a Digital Product to draft, hidden or published. Publishing requires the server publish permission and validates that the product has media, all four offers, an active offer and all required predefined features.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'state' => ['type' => 'string', 'enum' => ['draft', 'published', 'hidden']],
+                    ],
+                    'required' => ['id', 'state'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'start_asset_upload',
+                'description' => 'Start a secure chunked binary upload for a PlayNexus record. Metadata only; this MCP never fetches a remote URL. Supports games, studios, platforms, collections, feeds, stories, videos, physical products and digital products.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'slot' => ['type' => 'string', 'enum' => $mediaSlotEnum],
+                        'name' => ['type' => 'string', 'maxLength' => 255],
+                        'mime' => ['type' => 'string', 'maxLength' => 120, 'description' => 'Client-declared MIME; the server independently detects the real MIME before attaching.'],
+                        'size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxUploadSize],
+                        'chunk_size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxChunkSize],
+                        'total_chunks' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 1000],
+                        'sha256' => ['type' => ['string', 'null'], 'minLength' => 64, 'maxLength' => 64],
+                        'alt' => ['type' => ['string', 'null'], 'maxLength' => 255],
+                        'sort_order' => ['type' => ['integer', 'null'], 'minimum' => 0],
+                        'duration' => ['type' => ['integer', 'null'], 'minimum' => 0],
+                    ],
+                    'required' => ['resource', 'id', 'slot', 'name', 'mime', 'size', 'chunk_size', 'total_chunks'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'upload_asset_chunk',
+                'description' => 'Upload one Base64-encoded binary chunk into an existing PlayNexus upload session. URLs are not accepted.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                        'chunk_index' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 999],
+                        'data_base64' => ['type' => 'string', 'description' => 'Raw Base64 bytes without a data-URL prefix.'],
+                    ],
+                    'required' => ['upload_id', 'chunk_index', 'data_base64'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'complete_asset_upload',
+                'description' => 'Verify size, SHA-256 and real MIME, assemble all chunks, store the binary, and attach it to the target record.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'abort_asset_upload',
+                'description' => 'Discard an incomplete temporary binary upload session.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'list_content_assets',
+                'description' => 'List current media slots and general file attachments for one PlayNexus content record.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'remove_content_asset',
+                'description' => 'Remove a media slot, feed-media item, or general attachment. asset_id is required for feed media and attachments; destructive permission is required.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'slot' => ['type' => 'string', 'enum' => $mediaSlotEnum],
+                        'asset_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id', 'slot'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'publish_android_release',
+                'description' => 'Compatibility path for publishing an Android APK from an allowlisted GitHub asset URL. Large APKs should use the dedicated chunked Android release upload tools to avoid web-server request timeouts.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'source_url' => ['type' => 'string', 'format' => 'uri', 'maxLength' => 2048, 'description' => 'Direct HTTPS APK URL on an allowlisted GitHub asset host.'],
+                        'release_notes' => ['type' => ['string', 'null'], 'maxLength' => 5000],
+                        'file_name' => ['type' => ['string', 'null'], 'maxLength' => 255, 'pattern' => '\\.apk$'],
+                        'version' => ['type' => ['string', 'null'], 'pattern' => '^\\d+\\.\\d+\\.\\d+$'],
+                        'version_code' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'sha256' => ['type' => ['string', 'null'], 'pattern' => '^[a-fA-F0-9]{64}$'],
+                    ],
+                    'required' => ['source_url'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'start_android_release_upload',
+                'description' => 'Start a resumable chunked Android APK release upload. Stores release metadata and changelog with the upload session. Use the binary Android release chunk endpoint for file bytes, then complete_android_release_upload.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'file_name' => ['type' => 'string', 'maxLength' => 255, 'pattern' => '\\.apk$'],
+                        'release_notes' => ['type' => ['string', 'null'], 'maxLength' => 5000],
+                        'version' => ['type' => ['string', 'null'], 'pattern' => '^\\d+\\.\\d+\\.\\d+$'],
+                        'version_code' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'size' => ['type' => 'integer', 'minimum' => 4, 'maximum' => 1073741824],
+                        'chunk_size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxChunkSize],
+                        'total_chunks' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 2000],
+                        'sha256' => ['type' => 'string', 'pattern' => '^[a-fA-F0-9]{64}$'],
+                    ],
+                    'required' => ['file_name', 'size', 'chunk_size', 'total_chunks', 'sha256'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'complete_android_release_upload',
+                'description' => 'Assemble and verify a completed chunked APK upload, store it on the PlayNexus download disk, create the Android release record with notes/version metadata, and make it active.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'abort_android_release_upload',
+                'description' => 'Discard an incomplete Android APK release upload session.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'sync_collection_videos',
+                'description' => 'Replace the ordered videos in a collection. video_ids order becomes playlist position.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'collection_id' => ['type' => 'integer', 'minimum' => 1],
+                        'video_ids' => ['type' => 'array', 'items' => ['type' => 'integer', 'minimum' => 1], 'maxItems' => 500, 'uniqueItems' => true],
+                    ],
+                    'required' => ['collection_id', 'video_ids'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'set_content_state',
+                'description' => 'Explicitly change public/private or active/draft state for games, studios, collections, stories and videos. Feed publishing is intentionally excluded; use publish_feed. Public/active/published transitions require server-side publishing permission.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => ['game', 'studio', 'collection', 'feed', 'story', 'video']],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'state' => ['type' => 'string', 'maxLength' => 30, 'description' => 'game/studio: active|inactive; collection: public|private; story/video: published|draft; feed: draft only'],
+                    ],
+                    'required' => ['resource', 'id', 'state'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'publish_feed',
+                'description' => 'Publish an existing PlayNexus feed. Use only after an explicit user request. Server-side publishing must be enabled.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'unpublish_feed',
+                'description' => 'Return a published PlayNexus feed to draft and clear published_at.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'delete_content',
+                'description' => 'Delete a mutable content record. Games/studios use soft delete; collections/feeds/stories/videos are removed and their owned media is cleaned up. Requires destructive operations to be enabled server-side.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mutableResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'restore_content',
+                'description' => 'Restore a soft-deleted game or studio. Requires destructive operations to be enabled server-side.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => ['game', 'studio']],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+        ];
+    }
+
+    private function searchTool(string $name, string $description): array
+    {
+        return [
+            'name' => $name,
+            'description' => $description,
+            'inputSchema' => [
+                'type' => 'object',
+                'properties' => [
+                    'query' => ['type' => 'string', 'maxLength' => 120],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 20, 'default' => 10],
+                ],
+                'required' => ['query'],
+                'additionalProperties' => false,
+            ],
+            'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+        ];
+    }
+
+    private function instructions(): string
+    {
+        return 'PlayNexus Content Admin MCP v3.1. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos/digital-products=draft, games/studios=inactive, collections=private. Editing never changes publication state. Digital products use predefined feature/value options and separate capacity offers; upload their media with resource=digital_product. Binary content media uses dedicated chunked asset tools. Android APK releases should use start_android_release_upload + the authenticated binary chunk endpoint + complete_android_release_upload, which verifies SHA-256 and stores release notes/version metadata without long-running web requests. publish_android_release remains only as a compatibility path for smaller direct GitHub assets. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+    }
+
+    private function serverInfo(): array
+    {
+        return [
+            'name' => 'playnexus-content-agent',
+            'title' => 'PlayNexus AI Content & Intelligence Agent',
+            'version' => '3.1.0',
+        ];
+    }
+
+    private function resultMeta(): array
+    {
+        return ['io.modelcontextprotocol/serverInfo' => $this->serverInfo()];
+    }
+
+    private function rpcResult(mixed $id, array|\stdClass $result): Response
+    {
+        return response()->json([
+            'jsonrpc' => '2.0',
+            'id' => $id,
+            'result' => $result,
+        ]);
+    }
+
+    private function rpcError(mixed $id, int $code, string $message, int $status = 200): Response
+    {
+        return response()->json([
+            'jsonrpc' => '2.0',
+            'id' => $id,
+            'error' => [
+                'code' => $code,
+                'message' => $message,
+            ],
+        ], $status);
+    }
+}
+,
+                            'description' => 'Stable ASCII key used in filters, e.g. region or edition.',
+                        ],
+                        'input_type' => [
+                            'type' => 'string',
+                            'enum' => ['select', 'multi_select', 'boolean'],
+                        ],
+                        'is_required' => ['type' => 'boolean', 'default' => false],
+                        'options' => [
+                            'type' => 'array',
+                            'minItems' => 1,
+                            'maxItems' => 100,
+                            'description' => 'Required for select/multi_select; omitted for boolean.',
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'title' => ['type' => 'string', 'maxLength' => 100],
+                                    'value' => [
+                                        'type' => 'string',
+                                        'maxLength' => 100,
+                                        'pattern' => '^[A-Za-z0-9_-]+
+                'description' => 'Read one Digital Product including offers, selected predefined features and attached media.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'create_digital_product',
+                'description' => 'Create a Digital Product as DRAFT. Requires game, platform, Digital Seller, all four capacity/full sale offers and optional predefined features. Upload at least one image using the normal asset upload tools with resource=digital_product before publishing.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'game_id' => ['type' => 'integer', 'minimum' => 1],
+                        'platform_id' => ['type' => 'integer', 'minimum' => 1],
+                        'seller_id' => ['type' => 'integer', 'minimum' => 1],
+                        'title' => ['type' => ['string', 'null'], 'maxLength' => 255, 'description' => 'Optional. Defaults to game name + platform name.'],
+                        'short_description' => ['type' => ['string', 'null'], 'maxLength' => 500],
+                        'support_days' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 365, 'default' => 7],
+                        'featured' => ['type' => 'boolean', 'default' => false],
+                        'offers' => [
+                            'type' => 'array',
+                            'minItems' => 4,
+                            'maxItems' => 4,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'code' => ['type' => 'string', 'enum' => ['capacity_1', 'capacity_2', 'capacity_3', 'full']],
+                                    'price' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Final sale price in تومان.'],
+                                    'stock' => ['type' => 'integer', 'minimum' => 0],
+                                    'status' => ['type' => 'string', 'enum' => ['active', 'inactive']],
+                                ],
+                                'required' => ['code', 'price', 'stock', 'status'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                        'features' => [
+                            'type' => 'array',
+                            'maxItems' => 30,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'attribute_slug' => ['type' => 'string', 'maxLength' => 120],
+                                    'values' => [
+                                        'type' => 'array',
+                                        'minItems' => 1,
+                                        'maxItems' => 20,
+                                        'uniqueItems' => true,
+                                        'items' => ['type' => 'string', 'maxLength' => 100],
+                                    ],
+                                ],
+                                'required' => ['attribute_slug', 'values'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                    ],
+                    'required' => ['game_id', 'platform_id', 'seller_id', 'offers'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'update_digital_product',
+                'description' => 'Edit Digital Product metadata, all four sale offers and/or predefined feature selections without changing publication state. Media is managed through the asset upload tools.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'game_id' => ['type' => 'integer', 'minimum' => 1],
+                        'platform_id' => ['type' => 'integer', 'minimum' => 1],
+                        'seller_id' => ['type' => 'integer', 'minimum' => 1],
+                        'title' => ['type' => ['string', 'null'], 'maxLength' => 255],
+                        'short_description' => ['type' => ['string', 'null'], 'maxLength' => 500],
+                        'support_days' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 365],
+                        'featured' => ['type' => 'boolean'],
+                        'offers' => [
+                            'type' => 'array',
+                            'minItems' => 4,
+                            'maxItems' => 4,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'code' => ['type' => 'string', 'enum' => ['capacity_1', 'capacity_2', 'capacity_3', 'full']],
+                                    'price' => ['type' => 'integer', 'minimum' => 1],
+                                    'stock' => ['type' => 'integer', 'minimum' => 0],
+                                    'status' => ['type' => 'string', 'enum' => ['active', 'inactive']],
+                                ],
+                                'required' => ['code', 'price', 'stock', 'status'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                        'features' => [
+                            'type' => 'array',
+                            'maxItems' => 30,
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'attribute_slug' => ['type' => 'string', 'maxLength' => 120],
+                                    'values' => [
+                                        'type' => 'array',
+                                        'minItems' => 1,
+                                        'maxItems' => 20,
+                                        'uniqueItems' => true,
+                                        'items' => ['type' => 'string', 'maxLength' => 100],
+                                    ],
+                                ],
+                                'required' => ['attribute_slug', 'values'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                    ],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'set_digital_product_state',
+                'description' => 'Set a Digital Product to draft, hidden or published. Publishing requires the server publish permission and validates that the product has media, all four offers, an active offer and all required predefined features.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'state' => ['type' => 'string', 'enum' => ['draft', 'published', 'hidden']],
+                    ],
+                    'required' => ['id', 'state'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'start_asset_upload',
+                'description' => 'Start a secure chunked binary upload for a PlayNexus record. Metadata only; this MCP never fetches a remote URL. Supports games, studios, platforms, collections, feeds, stories, videos, physical products and digital products.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'slot' => ['type' => 'string', 'enum' => $mediaSlotEnum],
+                        'name' => ['type' => 'string', 'maxLength' => 255],
+                        'mime' => ['type' => 'string', 'maxLength' => 120, 'description' => 'Client-declared MIME; the server independently detects the real MIME before attaching.'],
+                        'size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxUploadSize],
+                        'chunk_size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxChunkSize],
+                        'total_chunks' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 1000],
+                        'sha256' => ['type' => ['string', 'null'], 'minLength' => 64, 'maxLength' => 64],
+                        'alt' => ['type' => ['string', 'null'], 'maxLength' => 255],
+                        'sort_order' => ['type' => ['integer', 'null'], 'minimum' => 0],
+                        'duration' => ['type' => ['integer', 'null'], 'minimum' => 0],
+                    ],
+                    'required' => ['resource', 'id', 'slot', 'name', 'mime', 'size', 'chunk_size', 'total_chunks'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'upload_asset_chunk',
+                'description' => 'Upload one Base64-encoded binary chunk into an existing PlayNexus upload session. URLs are not accepted.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                        'chunk_index' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 999],
+                        'data_base64' => ['type' => 'string', 'description' => 'Raw Base64 bytes without a data-URL prefix.'],
+                    ],
+                    'required' => ['upload_id', 'chunk_index', 'data_base64'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'complete_asset_upload',
+                'description' => 'Verify size, SHA-256 and real MIME, assemble all chunks, store the binary, and attach it to the target record.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'abort_asset_upload',
+                'description' => 'Discard an incomplete temporary binary upload session.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'list_content_assets',
+                'description' => 'List current media slots and general file attachments for one PlayNexus content record.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'remove_content_asset',
+                'description' => 'Remove a media slot, feed-media item, or general attachment. asset_id is required for feed media and attachments; destructive permission is required.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mediaResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'slot' => ['type' => 'string', 'enum' => $mediaSlotEnum],
+                        'asset_id' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id', 'slot'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'publish_android_release',
+                'description' => 'Compatibility path for publishing an Android APK from an allowlisted GitHub asset URL. Large APKs should use the dedicated chunked Android release upload tools to avoid web-server request timeouts.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'source_url' => ['type' => 'string', 'format' => 'uri', 'maxLength' => 2048, 'description' => 'Direct HTTPS APK URL on an allowlisted GitHub asset host.'],
+                        'release_notes' => ['type' => ['string', 'null'], 'maxLength' => 5000],
+                        'file_name' => ['type' => ['string', 'null'], 'maxLength' => 255, 'pattern' => '\\.apk$'],
+                        'version' => ['type' => ['string', 'null'], 'pattern' => '^\\d+\\.\\d+\\.\\d+$'],
+                        'version_code' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'sha256' => ['type' => ['string', 'null'], 'pattern' => '^[a-fA-F0-9]{64}$'],
+                    ],
+                    'required' => ['source_url'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'start_android_release_upload',
+                'description' => 'Start a resumable chunked Android APK release upload. Stores release metadata and changelog with the upload session. Use the binary Android release chunk endpoint for file bytes, then complete_android_release_upload.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'file_name' => ['type' => 'string', 'maxLength' => 255, 'pattern' => '\\.apk$'],
+                        'release_notes' => ['type' => ['string', 'null'], 'maxLength' => 5000],
+                        'version' => ['type' => ['string', 'null'], 'pattern' => '^\\d+\\.\\d+\\.\\d+$'],
+                        'version_code' => ['type' => ['integer', 'null'], 'minimum' => 1],
+                        'size' => ['type' => 'integer', 'minimum' => 4, 'maximum' => 1073741824],
+                        'chunk_size' => ['type' => 'integer', 'minimum' => 1, 'maximum' => $maxChunkSize],
+                        'total_chunks' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 2000],
+                        'sha256' => ['type' => 'string', 'pattern' => '^[a-fA-F0-9]{64}$'],
+                    ],
+                    'required' => ['file_name', 'size', 'chunk_size', 'total_chunks', 'sha256'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'complete_android_release_upload',
+                'description' => 'Assemble and verify a completed chunked APK upload, store it on the PlayNexus download disk, create the Android release record with notes/version metadata, and make it active.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'abort_android_release_upload',
+                'description' => 'Discard an incomplete Android APK release upload session.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'upload_id' => ['type' => 'string', 'format' => 'uuid'],
+                    ],
+                    'required' => ['upload_id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'sync_collection_videos',
+                'description' => 'Replace the ordered videos in a collection. video_ids order becomes playlist position.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'collection_id' => ['type' => 'integer', 'minimum' => 1],
+                        'video_ids' => ['type' => 'array', 'items' => ['type' => 'integer', 'minimum' => 1], 'maxItems' => 500, 'uniqueItems' => true],
+                    ],
+                    'required' => ['collection_id', 'video_ids'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'set_content_state',
+                'description' => 'Explicitly change public/private or active/draft state for games, studios, collections, stories and videos. Feed publishing is intentionally excluded; use publish_feed. Public/active/published transitions require server-side publishing permission.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => ['game', 'studio', 'collection', 'feed', 'story', 'video']],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'state' => ['type' => 'string', 'maxLength' => 30, 'description' => 'game/studio: active|inactive; collection: public|private; story/video: published|draft; feed: draft only'],
+                    ],
+                    'required' => ['resource', 'id', 'state'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'publish_feed',
+                'description' => 'Publish an existing PlayNexus feed. Use only after an explicit user request. Server-side publishing must be enabled.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => true],
+            ],
+            [
+                'name' => 'unpublish_feed',
+                'description' => 'Return a published PlayNexus feed to draft and clear published_at.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]],
+                    'required' => ['id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'delete_content',
+                'description' => 'Delete a mutable content record. Games/studios use soft delete; collections/feeds/stories/videos are removed and their owned media is cleaned up. Requires destructive operations to be enabled server-side.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => $mutableResourceEnum],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => true, 'openWorldHint' => false],
+            ],
+            [
+                'name' => 'restore_content',
+                'description' => 'Restore a soft-deleted game or studio. Requires destructive operations to be enabled server-side.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'resource' => ['type' => 'string', 'enum' => ['game', 'studio']],
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                    ],
+                    'required' => ['resource', 'id'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
+            ],
+        ];
+    }
+
+    private function searchTool(string $name, string $description): array
+    {
+        return [
+            'name' => $name,
+            'description' => $description,
+            'inputSchema' => [
+                'type' => 'object',
+                'properties' => [
+                    'query' => ['type' => 'string', 'maxLength' => 120],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 20, 'default' => 10],
+                ],
+                'required' => ['query'],
+                'additionalProperties' => false,
+            ],
+            'annotations' => ['readOnlyHint' => true, 'destructiveHint' => false, 'openWorldHint' => false],
+        ];
+    }
+
+    private function instructions(): string
+    {
+        return 'PlayNexus Content Admin MCP v3.1. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos/digital-products=draft, games/studios=inactive, collections=private. Editing never changes publication state. Digital products use predefined feature/value options and separate capacity offers; upload their media with resource=digital_product. Binary content media uses dedicated chunked asset tools. Android APK releases should use start_android_release_upload + the authenticated binary chunk endpoint + complete_android_release_upload, which verifies SHA-256 and stores release notes/version metadata without long-running web requests. publish_android_release remains only as a compatibility path for smaller direct GitHub assets. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+    }
+
+    private function serverInfo(): array
+    {
+        return [
+            'name' => 'playnexus-content-agent',
+            'title' => 'PlayNexus AI Content & Intelligence Agent',
+            'version' => '3.1.0',
+        ];
+    }
+
+    private function resultMeta(): array
+    {
+        return ['io.modelcontextprotocol/serverInfo' => $this->serverInfo()];
+    }
+
+    private function rpcResult(mixed $id, array|\stdClass $result): Response
+    {
+        return response()->json([
+            'jsonrpc' => '2.0',
+            'id' => $id,
+            'result' => $result,
+        ]);
+    }
+
+    private function rpcError(mixed $id, int $code, string $message, int $status = 200): Response
+    {
+        return response()->json([
+            'jsonrpc' => '2.0',
+            'id' => $id,
+            'error' => [
+                'code' => $code,
+                'message' => $message,
+            ],
+        ], $status);
+    }
+}
+,
+                                    ],
+                                ],
+                                'required' => ['title', 'value'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                    ],
+                    'required' => ['title', 'slug', 'input_type'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             [
                 'name' => 'get_digital_product',
