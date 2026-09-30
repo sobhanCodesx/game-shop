@@ -1,0 +1,5 @@
+{
+  "job_id": "2026-10-01-diagnose-download-media-storage",
+  "tool": "diagnose_media_storage",
+  "arguments": {}
+}
