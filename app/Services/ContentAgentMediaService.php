@@ -420,11 +420,11 @@ class ContentAgentMediaService
                 'slot' => 'media',
                 'kind' => $media->type,
                 'path' => $media->path,
-                'url' => MediaStorage::url($media->path),
+                'url' => ProductMediaStorage::url($media->path),
                 'alt' => $media->alt,
                 'sort_order' => (int) $media->sort_order,
                 'is_primary' => (bool) $media->is_primary,
-                'storage_exists' => filled($media->path) && MediaStorage::disk()->exists($media->path),
+                'storage_exists' => ProductMediaStorage::exists($media->path),
             ])->values()->all(),
             'digital_product' => $target->media()->get()->map(fn ($media) => [
                 'id' => $media->id,
@@ -503,8 +503,8 @@ class ContentAgentMediaService
                 : array_values(array_filter([$media->path]));
             $wasPrimary = in_array($resource, ['product', 'digital_product'], true) && (bool) $media->is_primary;
             $media->delete();
-            if ($resource === 'digital_product') {
-                DigitalProductMediaStorage::delete($paths);
+            if (in_array($resource, ['product', 'digital_product'], true)) {
+                ProductMediaStorage::delete($paths);
             } else {
                 MediaStorage::disk()->delete($paths);
             }
@@ -649,7 +649,7 @@ class ContentAgentMediaService
                 'sort_order' => (int) $sortOrder,
             ]);
         } catch (Throwable $exception) {
-            MediaStorage::disk()->delete($stored['path']);
+            ProductMediaStorage::delete($stored['path']);
             throw $exception;
         }
 
@@ -658,7 +658,7 @@ class ContentAgentMediaService
             'slot' => 'media',
             'kind' => $kind,
             'path' => $media->path,
-            'url' => MediaStorage::url($media->path),
+            'url' => ProductMediaStorage::url($media->path),
             'mime' => $actualMime,
             'alt' => $media->alt,
             'sort_order' => (int) $media->sort_order,
@@ -780,7 +780,11 @@ class ContentAgentMediaService
             throw new RuntimeException('Product images must be 8 MB or smaller.');
         }
 
-        $stored = $this->optimizer->store($file, "products/{$product->id}");
+        $stored = $this->optimizer->store(
+            $file,
+            "products/{$product->id}",
+            ProductMediaStorage::diskName(),
+        );
         $sortOrder = $metadata['sort_order'] ?? ((int) $product->media()->max('sort_order') + 1);
         $isPrimary = $kind === 'image' && ! $product->media()->where('type', 'image')->exists();
 
