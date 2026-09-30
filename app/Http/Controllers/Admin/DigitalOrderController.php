@@ -30,7 +30,7 @@ class DigitalOrderController extends Controller
 
         return Inertia::render('Admin/Digital/Orders/Index', [
             'orders' => $query->paginate(30)->withQueryString()->through(fn (DigitalOrder $order) => [
-                ...$order->only(['id', 'number', 'sale_price', 'supplier_cost', 'order_status', 'payment_status', 'delivery_status', 'created_at']),
+                ...$order->only(['id', 'number', 'sale_price', 'order_status', 'payment_status', 'delivery_status', 'created_at']),
                 'customer' => $order->customer?->only(['id', 'name', 'phone', 'email']),
                 'product_title' => $order->product->title,
                 'offer_label' => $order->offer->label,
@@ -209,7 +209,7 @@ class DigitalOrderController extends Controller
     {
         return [
             ...$order->only([
-                'id', 'number', 'sale_price', 'supplier_cost', 'order_status',
+                'id', 'number', 'sale_price', 'order_status',
                 'payment_status', 'delivery_status', 'reservation_expires_at',
                 'paid_at', 'delivered_at', 'completed_at', 'created_at',
             ]),
