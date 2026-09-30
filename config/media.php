@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'disk' => env('MEDIA_DISK', 'public'),
+    'disk' => env('MEDIA_DISK', 'downloads'),
     'image' => [
         'max_width' => 1600,
         'max_height' => 1600,
