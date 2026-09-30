@@ -19,7 +19,7 @@ class ProductMediaService
                 continue;
             }
 
-            $optimized = $this->optimizer->store($file, "products/{$product->id}", ProductMediaStorage::diskName());
+            $optimized = $this->optimizer->store($file, '', ProductMediaStorage::diskName());
             $type = $optimized['type'];
             $media = $index === 0 && $replacement ? $replacement : new ProductMedia(['product_id' => $product->id]);
             $oldPath = $media->path;
@@ -56,7 +56,7 @@ class ProductMediaService
 
             if ($file instanceof UploadedFile) {
                 $oldPath = $media->path;
-                $optimized = $this->optimizer->store($file, "products/{$product->id}", ProductMediaStorage::diskName());
+                $optimized = $this->optimizer->store($file, '', ProductMediaStorage::diskName());
                 $media->path = $optimized['path'];
                 $media->type = $optimized['type'];
 
