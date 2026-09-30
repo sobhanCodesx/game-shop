@@ -221,7 +221,9 @@ class DigitalOrderController extends Controller
             ...$message->only(['id', 'type', 'message', 'attachment_name', 'seen_at', 'created_at']),
             'sender' => $message->user?->name,
             'is_admin' => (bool) $message->user?->is_admin,
-            'attachment_url' => MediaStorage::url($message->attachment_path),
+            'attachment_url' => $message->attachment_path
+                ? route('digital-order-files.show', $message)
+                : null,
         ];
     }
 }
