@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-01-repair-product-portal-cover",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "product",
+    "query": "playstation-portal-remote-player",
+    "slot": "media",
+    "source_url": "https://static.comet.it/b2c/public/products/PSX01926V/6ce8697a947883590fc1d59074fe1f3f-6787e9f1c822f4.11265182-PORTAL_MIDNIGHTBLACK_PR_01_UI_RGB.jpg",
+    "name": "playstation-portal-remote-player-cover.jpg",
+    "alt": "تصویر PlayStation Portal Remote Player",
+    "sort_order": 0
+  }
+}
