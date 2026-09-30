@@ -21,7 +21,7 @@ class AdminDashboardController extends Controller
 
             return Inertia::render('Admin/Dashboard', [
                 'stats' => [
-                    ['key' => 'revenue', 'label' => 'فروش دیجیتال این ماه', 'value' => (int) $monthOrders->clone()->where('order_status', 'completed')->sum('sale_price'), 'format' => 'currency', 'change' => 0],
+                    ['key' => 'revenue', 'label' => 'فروش دیجیتال این ماه', 'value' => (int) (clone $monthOrders)->where('order_status', 'completed')->sum('sale_price'), 'format' => 'currency', 'change' => 0],
                     ['key' => 'orders', 'label' => 'سفارش‌های دیجیتال', 'value' => (clone $orders)->count(), 'format' => 'number', 'change' => 0],
                     ['key' => 'users', 'label' => 'مشتری‌های دیجیتال', 'value' => (clone $orders)->distinct()->count('user_id'), 'format' => 'number', 'change' => 0],
                     ['key' => 'products', 'label' => 'محصولات دیجیتال فعال', 'value' => DigitalProduct::query()->where('seller_id', $actor->id)->where('status', 'published')->count(), 'format' => 'number', 'change' => 0],
