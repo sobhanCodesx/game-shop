@@ -40,9 +40,14 @@ export default function CategoryShow({
     selectedAttributeFilters: Record<string, string[]>;
 }) {
     const [query, setQuery] = useState(filters.q ?? "");
+    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const tradeActive = filters.trade === "1";
     const hasAttributeFilters = Object.values(selectedAttributeFilters).some(
         (values) => values.length > 0,
+    );
+    const activeFilterCount = Object.values(selectedAttributeFilters).reduce(
+        (total, values) => total + values.length,
+        0,
     );
     const hasAnyFilters =
         Boolean(filters.q) ||
@@ -106,11 +111,11 @@ export default function CategoryShow({
     };
 
     const filterPanel = (
-        <div className="space-y-6">
+        <div className="space-y-5">
             <div className="flex items-center justify-between gap-3">
                 <strong className="flex items-center gap-2 text-sm">
                     <Filter className="text-indigo-500" size={17} />
-                    فیلتر دقیق محصولات
+                    فیلتر محصولات
                 </strong>
                 {hasAnyFilters && (
                     <Button size="sm" variant="ghost" onPress={clearAll}>
@@ -126,10 +131,8 @@ export default function CategoryShow({
                         className="border-t border-[var(--store-border)] pt-4 first:border-t-0 first:pt-0"
                         key={filter.slug}
                     >
-                        <p className="mb-3 text-sm font-black">
-                            {filter.title}
-                        </p>
-                        <div className="space-y-2.5">
+                        <p className="mb-2 text-sm font-black">{filter.title}</p>
+                        <div className="space-y-2">
                             {filter.options.map((option) => (
                                 <Checkbox
                                     key={option.value}
@@ -154,7 +157,7 @@ export default function CategoryShow({
                 ))
             ) : (
                 <p className="text-xs leading-6 text-[var(--store-muted)]">
-                    برای این دسته هنوز ویژگی فیلترپذیری روی محصولات ثبت نشده است.
+                    برای این دسته فیلتر ویژگی فعالی وجود ندارد.
                 </p>
             )}
         </div>
@@ -163,60 +166,60 @@ export default function CategoryShow({
     return (
         <StorefrontLayout>
             <Seo seo={seo} />
-            <main className="mx-auto max-w-7xl px-3 py-6 sm:px-4 md:py-12">
-                <header className="relative mb-6 overflow-hidden rounded-[30px] border border-indigo-500/20 bg-[radial-gradient(circle_at_8%_0%,rgba(99,102,241,.24),transparent_42%),var(--store-surface)] p-6 shadow-xl shadow-slate-950/5 md:p-10">
+
+            <main className="mx-auto max-w-7xl px-3 pb-28 pt-4 sm:px-4 sm:pb-12 md:pt-7">
+                <header className="relative mb-4 overflow-hidden rounded-[24px] border border-indigo-500/20 bg-[radial-gradient(circle_at_8%_0%,rgba(99,102,241,.18),transparent_44%),var(--store-surface)] p-4 sm:p-6">
                     {category.image_url && (
                         <img
                             alt=""
-                            className="absolute inset-0 h-full w-full object-cover opacity-10"
+                            className="absolute inset-y-0 left-0 h-full w-40 object-cover opacity-[.08] sm:w-64"
                             decoding="async"
                             fetchPriority="high"
                             loading="eager"
                             src={category.image_url}
                         />
                     )}
-                    <div className="relative max-w-3xl">
-                        <span className="text-xs font-black tracking-[.18em] text-indigo-500">
-                            PLAYNEXUS CATEGORY
+                    <div className="relative flex items-center gap-3">
+                        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-indigo-500/10 text-indigo-500 sm:size-12">
+                            <Gamepad2 size={22} />
                         </span>
-                        <h1 className="mt-2 text-3xl font-black md:text-5xl">
-                            {category.name}
-                        </h1>
-                        {category.description && (
-                            <p className="mt-3 leading-8 text-[var(--store-muted)]">
-                                {category.description}
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black tracking-[.16em] text-indigo-500">
+                                PLAYNEXUS CATEGORY
                             </p>
-                        )}
-                        <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-4 py-2 text-xs font-bold text-[var(--store-muted)]">
-                            <Gamepad2 size={15} className="text-indigo-500" />
-                            {new Intl.NumberFormat("fa-IR").format(products.total)}{" "}
-                            محصول منتشرشده
+                            <h1 className="mt-0.5 truncate text-2xl font-black sm:text-3xl">
+                                {category.name}
+                            </h1>
+                            {category.description && (
+                                <p className="mt-1 line-clamp-1 text-xs text-[var(--store-muted)] sm:line-clamp-2 sm:max-w-3xl">
+                                    {category.description}
+                                </p>
+                            )}
                         </div>
+                        <span className="shrink-0 rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-3 py-1.5 text-[10px] font-black text-[var(--store-muted)]">
+                            {new Intl.NumberFormat("fa-IR").format(products.total)} محصول
+                        </span>
                     </div>
                 </header>
 
                 {!!category.children.length && (
-                    <section className="pn-deferred-zone mb-6 flex gap-3 overflow-x-auto pb-2">
+                    <section className="home-slider mb-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         {category.children.map((child) => (
                             <Link
-                                className="flex min-w-40 items-center gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-3 transition hover:-translate-y-0.5 hover:border-indigo-500/50"
+                                className="flex shrink-0 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] px-3 py-2 text-xs font-black transition hover:border-indigo-500/50"
                                 href={`/categories/${child.slug}${tradeActive ? "?trade=1" : ""}`}
                                 key={child.id}
                             >
-                                <span className="grid size-10 place-items-center rounded-xl bg-[var(--store-accent-soft)] text-indigo-500">
-                                    <Gamepad2 size={18} />
-                                </span>
-                                <strong className="text-sm">
-                                    {child.name}
-                                </strong>
+                                <Gamepad2 size={14} className="text-indigo-500" />
+                                {child.name}
                             </Link>
                         ))}
                     </section>
                 )}
 
-                <section className="mb-6 rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-3 sm:p-4">
+                <section className="mb-3 rounded-[20px] border border-[var(--store-border)] bg-[var(--store-surface)] p-2.5 sm:p-3">
                     <form
-                        className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto_auto]"
+                        className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:grid-cols-[minmax(0,1fr)_150px_auto_auto]"
                         onSubmit={submitSearch}
                     >
                         <Input
@@ -225,9 +228,20 @@ export default function CategoryShow({
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
                         />
+
+                        <Button
+                            className="sm:hidden"
+                            isIconOnly
+                            type="submit"
+                            variant="primary"
+                            aria-label="جستجو"
+                        >
+                            <Search size={16} />
+                        </Button>
+
                         <select
                             aria-label="مرتب‌سازی"
-                            className="min-h-10 rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] px-3 text-sm text-[var(--store-text)]"
+                            className="min-h-10 rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] px-2.5 text-xs text-[var(--store-text)] max-sm:col-span-1"
                             value={filters.sort ?? "latest"}
                             onChange={(event) =>
                                 navigate(selectedAttributeFilters, {
@@ -240,7 +254,9 @@ export default function CategoryShow({
                             <option value="price_asc">ارزان‌ترین</option>
                             <option value="price_desc">گران‌ترین</option>
                         </select>
+
                         <Button
+                            className="text-xs"
                             type="button"
                             variant={tradeActive ? "primary" : "secondary"}
                             onPress={() =>
@@ -249,48 +265,76 @@ export default function CategoryShow({
                                 })
                             }
                         >
-                            <Repeat2 size={16} />
-                            قابل معاوضه
+                            <Repeat2 size={15} />
+                            <span className="max-sm:hidden">قابل معاوضه</span>
+                            <span className="sm:hidden">معاوضه</span>
                         </Button>
-                        <Button type="submit" variant="primary">
+
+                        <Button
+                            className="hidden sm:flex"
+                            type="submit"
+                            variant="primary"
+                        >
                             <Search size={16} />
                             جستجو
                         </Button>
                     </form>
                 </section>
 
-                <details className="mb-5 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-4 lg:hidden">
-                    <summary className="flex cursor-pointer list-none items-center justify-between font-black">
-                        <span className="flex items-center gap-2">
-                            <SlidersHorizontal size={17} />
-                            فیلتر ویژگی‌ها
-                        </span>
-                        {hasAttributeFilters && (
-                            <span className="rounded-full bg-indigo-500 px-2 py-0.5 text-[10px] text-white">
-                                فعال
+                <div className="mb-4 flex items-center justify-between gap-2 lg:hidden">
+                    <Button
+                        size="sm"
+                        variant={
+                            mobileFiltersOpen || hasAttributeFilters
+                                ? "primary"
+                                : "secondary"
+                        }
+                        onPress={() => setMobileFiltersOpen((value) => !value)}
+                    >
+                        <SlidersHorizontal size={15} />
+                        فیلتر ویژگی‌ها
+                        {activeFilterCount > 0 && (
+                            <span className="rounded-full bg-white/20 px-1.5 text-[10px]">
+                                {new Intl.NumberFormat("fa-IR").format(
+                                    activeFilterCount,
+                                )}
                             </span>
                         )}
-                    </summary>
-                    <div className="mt-5">{filterPanel}</div>
-                </details>
+                    </Button>
 
-                <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+                    {hasAnyFilters && (
+                        <button
+                            className="text-[11px] font-black text-rose-400"
+                            onClick={clearAll}
+                            type="button"
+                        >
+                            حذف همه فیلترها
+                        </button>
+                    )}
+                </div>
+
+                {mobileFiltersOpen && (
+                    <section className="mb-4 rounded-[20px] border border-indigo-500/20 bg-[var(--store-surface)] p-4 lg:hidden">
+                        {filterPanel}
+                    </section>
+                )}
+
+                <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
                     <aside className="hidden h-fit rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-5 lg:sticky lg:top-28 lg:block">
                         {filterPanel}
                     </aside>
 
                     <section className="min-w-0">
-                        <div className="mb-4 flex items-center justify-between rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] px-4 py-3 text-xs text-[var(--store-muted)]">
-                            <span className="flex items-center gap-2">
-                                <SlidersHorizontal size={15} />
-                                فیلترها از ویژگی‌ها و مقادیر واقعی محصولات همین دسته ساخته می‌شوند.
-                            </span>
-                            <strong className="hidden text-[var(--store-text)] sm:block">
+                        <div className="mb-3 flex items-center justify-between">
+                            <strong className="text-sm sm:text-base">
+                                محصولات {category.name}
+                            </strong>
+                            <span className="text-[10px] font-bold text-[var(--store-muted)]">
                                 {new Intl.NumberFormat("fa-IR").format(
                                     products.total,
                                 )}{" "}
                                 نتیجه
-                            </strong>
+                            </span>
                         </div>
 
                         <div className="pn-deferred-zone grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
