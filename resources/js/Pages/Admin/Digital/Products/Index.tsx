@@ -18,7 +18,7 @@ export default function Index({ products }: { products: any }) {
                     <Card key={product.id} variant="secondary">
                         <Card.Content className="p-5">
                             <div className="flex gap-4">
-                                {product.game?.cover && <img className="h-24 w-20 rounded-xl object-cover" src={product.game.cover} alt="" />}
+                                {product.cover_url && <img className="h-24 w-20 rounded-xl object-cover" src={product.cover_url} alt="" />}
                                 <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h2 className="font-black">{product.title}</h2>
