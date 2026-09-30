@@ -12,6 +12,7 @@ use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -50,6 +51,7 @@ class ContentAgentMediaService
             'sha256' => ['sometimes', 'nullable', 'string', 'size:64', 'regex:/^[a-f0-9]{64}$/i'],
             'alt' => ['sometimes', 'nullable', 'string', 'max:255'],
             'sort_order' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:4294967295'],
+            'is_primary' => ['sometimes', 'boolean'],
             'duration' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:4294967295'],
         ]);
 
@@ -84,6 +86,7 @@ class ContentAgentMediaService
             'sha256' => isset($data['sha256']) && $data['sha256'] !== null ? strtolower((string) $data['sha256']) : null,
             'alt' => isset($data['alt']) ? trim((string) $data['alt']) : null,
             'sort_order' => isset($data['sort_order']) ? (int) $data['sort_order'] : null,
+            'is_primary' => isset($data['is_primary']) ? (bool) $data['is_primary'] : false,
             'duration' => isset($data['duration']) ? (int) $data['duration'] : null,
             'created_at' => now()->toISOString(),
         ];
@@ -305,6 +308,7 @@ class ContentAgentMediaService
             'mime' => ['sometimes', 'nullable', 'string', 'max:120'],
             'alt' => ['sometimes', 'nullable', 'string', 'max:255'],
             'sort_order' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:4294967295'],
+            'is_primary' => ['sometimes', 'boolean'],
             'duration' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:4294967295'],
         ]);
 
@@ -343,6 +347,7 @@ class ContentAgentMediaService
             'sha256' => $sha256,
             'alt' => isset($data['alt']) ? trim((string) $data['alt']) : null,
             'sort_order' => isset($data['sort_order']) ? (int) $data['sort_order'] : null,
+            'is_primary' => isset($data['is_primary']) ? (bool) $data['is_primary'] : false,
             'duration' => isset($data['duration']) ? (int) $data['duration'] : null,
         ];
 
@@ -786,16 +791,23 @@ class ContentAgentMediaService
             ProductMediaStorage::diskName(),
         );
         $sortOrder = $metadata['sort_order'] ?? ((int) $product->media()->max('sort_order') + 1);
-        $isPrimary = $kind === 'image' && ! $product->media()->where('type', 'image')->exists();
+        $isPrimary = $kind === 'image'
+            && ((bool) ($metadata['is_primary'] ?? false) || ! $product->media()->where('type', 'image')->exists());
 
         try {
-            $media = $product->media()->create([
-                'type' => $kind,
-                'path' => $stored['path'],
-                'alt' => filled($metadata['alt'] ?? null) ? trim((string) $metadata['alt']) : $product->title,
-                'sort_order' => (int) $sortOrder,
-                'is_primary' => $isPrimary,
-            ]);
+            $media = DB::transaction(function () use ($product, $kind, $stored, $metadata, $sortOrder, $isPrimary) {
+                if ($isPrimary) {
+                    $product->media()->where('type', 'image')->update(['is_primary' => false]);
+                }
+
+                return $product->media()->create([
+                    'type' => $kind,
+                    'path' => $stored['path'],
+                    'alt' => filled($metadata['alt'] ?? null) ? trim((string) $metadata['alt']) : $product->title,
+                    'sort_order' => (int) $sortOrder,
+                    'is_primary' => $isPrimary,
+                ]);
+            });
         } catch (Throwable $exception) {
             MediaStorage::disk()->delete($stored['path']);
             throw $exception;
@@ -835,16 +847,23 @@ class ContentAgentMediaService
             DigitalProductMediaStorage::diskName(),
         );
         $sortOrder = $metadata['sort_order'] ?? ((int) $product->media()->max('sort_order') + 1);
-        $isPrimary = $kind === 'image' && ! $product->media()->where('type', 'image')->exists();
+        $isPrimary = $kind === 'image'
+            && ((bool) ($metadata['is_primary'] ?? false) || ! $product->media()->where('type', 'image')->exists());
 
         try {
-            $media = $product->media()->create([
-                'type' => $kind,
-                'path' => $stored['path'],
-                'alt' => filled($metadata['alt'] ?? null) ? trim((string) $metadata['alt']) : $product->title,
-                'sort_order' => (int) $sortOrder,
-                'is_primary' => $isPrimary,
-            ]);
+            $media = DB::transaction(function () use ($product, $kind, $stored, $metadata, $sortOrder, $isPrimary) {
+                if ($isPrimary) {
+                    $product->media()->where('type', 'image')->update(['is_primary' => false]);
+                }
+
+                return $product->media()->create([
+                    'type' => $kind,
+                    'path' => $stored['path'],
+                    'alt' => filled($metadata['alt'] ?? null) ? trim((string) $metadata['alt']) : $product->title,
+                    'sort_order' => (int) $sortOrder,
+                    'is_primary' => $isPrimary,
+                ]);
+            });
         } catch (Throwable $exception) {
             DigitalProductMediaStorage::delete($stored['path']);
             throw $exception;
