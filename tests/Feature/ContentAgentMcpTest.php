@@ -59,6 +59,7 @@ class ContentAgentMcpTest extends TestCase
             ->assertJsonFragment(['name' => 'restore_content'])
             ->assertJsonFragment(['name' => 'list_digital_sellers'])
             ->assertJsonFragment(['name' => 'list_digital_product_attributes'])
+            ->assertJsonFragment(['name' => 'create_digital_product_attribute'])
             ->assertJsonFragment(['name' => 'get_digital_product'])
             ->assertJsonFragment(['name' => 'create_digital_product'])
             ->assertJsonFragment(['name' => 'update_digital_product'])
