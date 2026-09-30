@@ -10,7 +10,7 @@ final class ProductMediaStorage
 {
     public static function diskName(): string
     {
-        return (string) config('product_media.disk', 'public');
+        return (string) config('product_media.disk', 'downloads');
     }
 
     public static function disk(): FilesystemAdapter
@@ -25,26 +25,14 @@ final class ProductMediaStorage
         }
 
         $path = ltrim($path, '/');
+        $baseUrl = config('filesystems.disks.'.self::diskName().'.url');
 
-        try {
-            if (self::disk()->exists($path)) {
-                $baseUrl = config('filesystems.disks.'.self::diskName().'.url');
-
-                if (is_string($baseUrl) && $baseUrl !== '') {
-                    return rtrim($baseUrl, '/').'/'.$path;
-                }
-
-                return self::disk()->url($path);
-            }
-        } catch (Throwable) {
-            // Fall through to the legacy media disk without breaking storefront rendering.
+        // Public URL generation must not open an FTP connection.
+        if (is_string($baseUrl) && $baseUrl !== '') {
+            return rtrim($baseUrl, '/').'/'.$path;
         }
 
-        try {
-            return MediaStorage::url($path);
-        } catch (Throwable) {
-            return null;
-        }
+        return self::disk()->url($path);
     }
 
     public static function exists(?string $path): bool
