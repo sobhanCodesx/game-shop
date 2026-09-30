@@ -1,9 +1,9 @@
 {
-  "job_id": "2026-09-30-1350-feed5-context",
+  "job_id": "2026-09-30-1350-feed5-recent-feeds",
   "tool": "query_playnexus_graph",
   "arguments": {
-    "query": "query Feed5Context {\n  feeds(first: 80, offset: 0, orderBy: \"published_at\", orderDir: \"desc\") {\n    nodes { id title status publishedAt feedBadge game { id name slug coverUrl backgroundUrl } }\n    pageInfo { total first offset hasMore nextOffset }\n  }\n  battlefield: search(query: \"Battlefield 6\", first: 8) { games { id name slug status coverUrl backgroundUrl } content { id type title status publishedAt } }\n  godofwar: search(query: \"God of War\", first: 8) { games { id name slug status coverUrl backgroundUrl } content { id type title status publishedAt } }\n  gears: search(query: \"Gears of War\", first: 8) { games { id name slug status coverUrl backgroundUrl } content { id type title status publishedAt } }\n  minecraft: search(query: \"Minecraft Dungeons\", first: 8) { games { id name slug status coverUrl backgroundUrl } content { id type title status publishedAt } }\n  starfox: search(query: \"Star Fox\", first: 8) { games { id name slug status coverUrl backgroundUrl } content { id type title status publishedAt } }\n  xenoblade: search(query: \"Xenoblade Chronicles 3\", first: 8) { games { id name slug status coverUrl backgroundUrl } content { id type title status publishedAt } }\n}",
+    "query": "query RecentFeeds {\n  feeds(first: 30, offset: 0, orderBy: \"published_at\", orderDir: \"desc\") {\n    nodes { id title status publishedAt feedBadge game { id name slug } }\n    pageInfo { total first offset hasMore nextOffset }\n  }\n}",
     "variables": {},
-    "operation_name": "Feed5Context"
+    "operation_name": "RecentFeeds"
   }
 }
