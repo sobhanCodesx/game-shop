@@ -9,7 +9,7 @@ final class MediaStorage
 {
     public static function disk(): FilesystemAdapter
     {
-        return Storage::disk((string) config('media.disk', 'public'));
+        return Storage::disk((string) config('media.disk', 'downloads'));
     }
 
     public static function url(?string $path): ?string
@@ -19,7 +19,7 @@ final class MediaStorage
         }
 
         $path = ltrim($path, '/');
-        $disk = (string) config('media.disk', 'public');
+        $disk = (string) config('media.disk', 'downloads');
         $baseUrl = config("filesystems.disks.{$disk}.url");
 
         // Building a public URL must not open an FTP connection. Public pages
