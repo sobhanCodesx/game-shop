@@ -25,8 +25,14 @@ class DigitalProductController extends Controller
 
         $this->scopeSeller($query, $request->user());
 
+        $products = $query->paginate(24)->withQueryString();
+        $products->through(fn (DigitalProduct $product) => [
+            ...$product->toArray(),
+            'cover_url' => \App\Services\MediaStorage::url($product->game?->cover),
+        ]);
+
         return Inertia::render('Admin/Digital/Products/Index', [
-            'products' => $query->paginate(24)->withQueryString(),
+            'products' => $products,
         ]);
     }
 
@@ -91,12 +97,16 @@ class DigitalProductController extends Controller
         $data = $this->validateProduct($request, $digitalProduct);
         $actor = $request->user();
 
-        DB::transaction(function () use ($data, $digitalProduct, $actor): void {
+        $game = Game::query()->findOrFail($data['game_id']);
+        $platform = Platform::query()->findOrFail($data['platform_id']);
+        $title = trim((string) ($data['title'] ?? '')) ?: "{$game->name} - {$platform->name}";
+
+        DB::transaction(function () use ($data, $digitalProduct, $actor, $title): void {
             $digitalProduct->update([
                 'game_id' => $data['game_id'],
                 'platform_id' => $data['platform_id'],
                 'seller_id' => $actor->role === 'digital-seller' ? $actor->id : (int) $data['seller_id'],
-                'title' => $data['title'],
+                'title' => $title,
                 'short_description' => $data['short_description'] ?? null,
                 'support_days' => $data['support_days'],
                 'status' => $data['status'],
