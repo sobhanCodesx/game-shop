@@ -18,9 +18,22 @@ class DigitalCommerceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_public_digital_store_is_separate_and_does_not_expose_supplier_cost(): void
+    public function test_public_digital_store_exposes_product_media_features_and_sale_prices(): void
     {
-        [$seller, $product] = $this->digitalProduct();
+        [, $product] = $this->digitalProduct();
+
+        $product->media()->create([
+            'type' => 'image',
+            'path' => 'digital-products/test/cover.webp',
+            'alt' => 'کاور تست',
+            'sort_order' => 1,
+            'is_primary' => true,
+        ]);
+        $product->features()->create([
+            'name' => 'ریجن',
+            'value' => 'ترکیه',
+            'sort_order' => 1,
+        ]);
 
         $this->get('/digital')
             ->assertOk()
@@ -28,6 +41,7 @@ class DigitalCommerceTest extends TestCase
                 ->component('Digital/Index')
                 ->has('products.data', 1)
                 ->where('products.data.0.title', $product->title)
+                ->where('products.data.0.offers.0.price', 1_000_000)
                 ->missing('products.data.0.offers.0.supplier_cost'));
 
         $this->get('/digital/'.$product->slug)
@@ -35,8 +49,64 @@ class DigitalCommerceTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Digital/Show')
                 ->where('product.id', $product->id)
+                ->has('product.media', 1)
+                ->where('product.media.0.alt', 'کاور تست')
+                ->where('product.features.0.name', 'ریجن')
+                ->where('product.features.0.value', 'ترکیه')
                 ->has('product.offers', 4)
                 ->missing('product.offers.0.supplier_cost'));
+    }
+
+    public function test_digital_seller_creates_product_with_media_features_and_only_sale_price(): void
+    {
+        Storage::fake((string) config('media.disk', 'public'));
+
+        $seller = User::factory()->create([
+            'is_admin' => true,
+            'role' => 'digital-seller',
+            'status' => 'active',
+        ]);
+        $seller->roles()->sync([Role::query()->where('slug', 'digital-seller')->firstOrFail()->id]);
+
+        $game = Game::factory()->create();
+        $platform = Platform::factory()->create();
+
+        $response = $this->actingAs($seller)->post('/admin/digital-products', [
+            'game_id' => $game->id,
+            'platform_id' => $platform->id,
+            'title' => 'Digital Test',
+            'short_description' => 'توضیح محصول',
+            'support_days' => 7,
+            'status' => 'published',
+            'featured' => false,
+            'offers' => [
+                ['code' => 'capacity_1', 'label' => 'ظرفیت ۱', 'price' => 1_000_000, 'stock' => 2, 'status' => 'active'],
+                ['code' => 'capacity_2', 'label' => 'ظرفیت ۲', 'price' => 2_000_000, 'stock' => 2, 'status' => 'active'],
+                ['code' => 'capacity_3', 'label' => 'ظرفیت ۳', 'price' => 800_000, 'stock' => 2, 'status' => 'active'],
+                ['code' => 'full', 'label' => 'فول ظرفیت', 'price' => 3_000_000, 'stock' => 1, 'status' => 'active'],
+            ],
+            'features' => [
+                ['name' => 'ریجن', 'value' => 'ترکیه'],
+                ['name' => 'زبان', 'value' => 'انگلیسی'],
+            ],
+            'media' => [
+                [
+                    'type' => 'image',
+                    'file' => UploadedFile::fake()->image('cover.jpg', 1200, 800),
+                    'alt' => 'کاور محصول',
+                    'is_primary' => true,
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect('/admin/digital-products');
+
+        $product = DigitalProduct::query()->where('title', 'Digital Test')->firstOrFail();
+        $this->assertSame($seller->id, $product->seller_id);
+        $this->assertCount(1, $product->media);
+        $this->assertCount(2, $product->features);
+        $this->assertSame(1_000_000, $product->offers()->where('code', 'capacity_1')->value('price'));
+        $this->assertFalse(IlluminateSupportFacadesSchema::hasColumn('digital_offers', 'supplier_cost'));
     }
 
     public function test_customer_creates_digital_order_and_stock_is_reserved_not_sold(): void
@@ -217,15 +287,14 @@ class DigitalCommerceTest extends TestCase
         ]);
 
         foreach ([
-            ['capacity_1', 'ظرفیت ۱', 800_000, 1_000_000],
-            ['capacity_2', 'ظرفیت ۲', 1_700_000, 2_000_000],
-            ['capacity_3', 'ظرفیت ۳', 600_000, 750_000],
-            ['full', 'فول ظرفیت', 2_500_000, 3_000_000],
-        ] as $index => [$code, $label, $cost, $price]) {
+            ['capacity_1', 'ظرفیت ۱', 1_000_000],
+            ['capacity_2', 'ظرفیت ۲', 2_000_000],
+            ['capacity_3', 'ظرفیت ۳', 750_000],
+            ['full', 'فول ظرفیت', 3_000_000],
+        ] as $index => [$code, $label, $price]) {
             $product->offers()->create([
                 'code' => $code,
                 'label' => $label,
-                'supplier_cost' => $cost,
                 'price' => $price,
                 'stock' => 5,
                 'reserved_stock' => 0,
