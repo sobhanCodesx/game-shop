@@ -9,20 +9,22 @@ use RuntimeException;
 class MediaOptimizationService
 {
     /** @return array{path: string, type: 'image'|'video'} */
-    public function store(UploadedFile $file, string $directory): array
+    public function store(UploadedFile $file, string $directory, ?string $disk = null): array
     {
+        $disk ??= (string) config('media.disk', 'public');
+
         if (str_starts_with($this->mimeType($file), 'video/')) {
-            return ['path' => $this->storeVideo($file, $directory), 'type' => 'video'];
+            return ['path' => $this->storeVideo($file, $directory, $disk), 'type' => 'video'];
         }
 
-        return ['path' => $this->storeImage($file, $directory), 'type' => 'image'];
+        return ['path' => $this->storeImage($file, $directory, $disk), 'type' => 'image'];
     }
 
-    private function storeImage(UploadedFile $file, string $directory): string
+    private function storeImage(UploadedFile $file, string $directory, string $disk): string
     {
         $mime = $this->mimeType($file);
         if ($mime === 'image/gif') {
-            return $file->store($directory, (string) config('media.disk', 'public'));
+            return $file->store($directory, $disk);
         }
 
         $dimensions = @getimagesize($file->getRealPath());
@@ -32,7 +34,7 @@ class MediaOptimizationService
 
         [$width, $height] = $dimensions;
         if (! $this->supportsGd($mime) || ! $this->hasEnoughMemoryForGd($file, $width, $height)) {
-            return $this->storeLargeImage($file, $directory);
+            return $this->storeLargeImage($file, $directory, $disk);
         }
 
         $source = match ($mime) {
@@ -83,7 +85,7 @@ class MediaOptimizationService
 
         $directory = trim($directory, '/');
         $path = ($directory !== '' ? $directory.'/' : '').Str::uuid().'.webp';
-        MediaStorage::disk()->put($path, fopen($temporary, 'rb'));
+        \Illuminate\Support\Facades\Storage::disk($disk)->put($path, fopen($temporary, 'rb'));
         @unlink($temporary);
 
         return $path;
@@ -131,7 +133,7 @@ class MediaOptimizationService
         return (int) floor($amount * $multiplier);
     }
 
-    private function storeLargeImage(UploadedFile $file, string $directory): string
+    private function storeLargeImage(UploadedFile $file, string $directory, string $disk): string
     {
         $extension = match ($this->mimeType($file)) {
             'image/jpeg' => 'jpg',
@@ -143,13 +145,13 @@ class MediaOptimizationService
         return $file->storeAs(
             trim($directory, '/'),
             Str::uuid().'.'.$extension,
-            (string) config('media.disk', 'public'),
+            $disk,
         );
     }
 
-    private function storeVideo(UploadedFile $file, string $directory): string
+    private function storeVideo(UploadedFile $file, string $directory, string $disk): string
     {
-        $path = $file->store($directory, (string) config('media.disk', 'public'));
+        $path = $file->store($directory, $disk);
         if (! is_string($path) || $path === '') {
             throw new RuntimeException('ذخیره فایل ویدیو روی فضای رسانه انجام نشد. دسترسی نوشتن فضای ذخیره‌سازی را بررسی کنید.');
         }
