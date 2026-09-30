@@ -998,7 +998,7 @@ def upload_asset(
             "total_chunks": total_chunks,
             "sha256": digest,
         }
-        for key in ("alt", "sort_order", "duration"):
+        for key in ("alt", "sort_order", "is_primary", "duration"):
             if key in arguments and arguments[key] is not None:
                 start_arguments[key] = arguments[key]
 
