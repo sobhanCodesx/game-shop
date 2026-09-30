@@ -124,7 +124,7 @@ class DigitalProductController extends Controller
             'game_id' => ['required', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
             'platform_id' => ['required', 'integer', Rule::exists('platforms', 'id')->whereNull('deleted_at')],
             'seller_id' => $sellerRule,
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['nullable', 'string', 'max:255'],
             'short_description' => ['nullable', 'string', 'max:500'],
             'support_days' => ['required', 'integer', 'min:0', 'max:365'],
             'status' => ['required', Rule::in(['draft', 'published', 'hidden'])],
