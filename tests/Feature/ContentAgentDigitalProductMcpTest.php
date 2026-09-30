@@ -166,8 +166,8 @@ class ContentAgentDigitalProductMcpTest extends TestCase
         config()->set('content_agent.allow_uploads', true);
         config()->set('content_agent.allow_publish', true);
         config()->set('media.disk', 'broken-legacy-ftp');
-        config()->set('digital_media.disk', 'public');
-        Storage::fake('public');
+        config()->set('digital_media.disk', 'media_public');
+        Storage::fake('media_public');
 
         $seller = User::factory()->create([
             'name' => 'Digital Seller',
@@ -213,7 +213,7 @@ class ContentAgentDigitalProductMcpTest extends TestCase
         $this->assertSame('image', $asset['asset']['kind']);
         $this->assertTrue((bool) $asset['asset']['is_primary']);
         $this->assertStringStartsWith('digital-products/', $asset['asset']['path']);
-        Storage::disk('public')->assertExists($asset['asset']['path']);
+        Storage::disk('media_public')->assertExists($asset['asset']['path']);
 
         $assets = $this->mcp('tools/call', [
             'name' => 'list_content_assets',
