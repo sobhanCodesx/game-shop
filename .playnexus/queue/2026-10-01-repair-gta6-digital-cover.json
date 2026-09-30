@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-01-repair-gta6-digital-cover",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "digital_product",
+    "id": 1,
+    "slot": "media",
+    "source_url": "https://www.rockstargames.com/VI/_next/static/media/Official_Cover_Art_landscape.12.uu2irr.2_a.jpg?akim=1&imdensity=1&imwidth=3840",
+    "name": "grand-theft-auto-vi-official-cover-art.jpg",
+    "alt": "کاور رسمی Grand Theft Auto VI: Ultimate Edition برای PlayStation 5",
+    "sort_order": 0
+  }
+}
