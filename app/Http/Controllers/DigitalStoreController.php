@@ -94,6 +94,7 @@ class DigitalStoreController extends Controller
             'platform:id,name,slug',
             'offers',
             'media',
+            'seller:id,name,avatar',
             'attributeValues.attribute.options',
         ]);
 
@@ -153,6 +154,10 @@ class DigitalStoreController extends Controller
                 'background_url' => MediaStorage::url($product->game->background),
             ] : null,
             'platform' => $product->platform?->only(['id', 'name', 'slug']),
+            'seller' => $detailed && $product->seller ? [
+                ...$product->seller->only(['id', 'name']),
+                'avatar_url' => MediaStorage::url($product->seller->avatar),
+            ] : null,
             'cover_url' => DigitalProductMediaStorage::url($cover?->path)
                 ?: MediaStorage::url($product->game?->cover),
             'media' => $detailed

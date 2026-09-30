@@ -464,7 +464,7 @@ function ProductGrid({
                                 ? "w-[64vw] max-w-[240px] shrink-0 snap-start sm:w-[245px] lg:w-[260px]"
                                 : "w-[84vw] max-w-[300px] shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
                         }
-                        key={product.id}
+                        key={`${product.url}-${product.id}`}
                     >
                         <ProductCard product={product} />
                     </div>
