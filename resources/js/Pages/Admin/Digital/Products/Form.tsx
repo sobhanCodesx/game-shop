@@ -1,13 +1,13 @@
-import { Button, Card, Checkbox, Input } from "@heroui/react";
+import { Button, Card, Checkbox, Chip, Input } from "@heroui/react";
 import { Head, Link, useForm } from "@inertiajs/react";
-import { ImageIcon, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import { Filter, ImageIcon, Save, Sparkles } from "lucide-react";
 import { FormEvent } from "react";
 
 import ProductMediaUploader, {
     type ProductMediaItem,
 } from "../../../../Components/Admin/Form/ProductMediaUploader";
-import PriceInput from "../../../../Components/Admin/Form/PriceInput";
 import AdminLayout from "../../../../Layouts/AdminLayout";
+import { normalizeDigits } from "../../../../utils/persian-number";
 
 type Offer = {
     code: "capacity_1" | "capacity_2" | "capacity_3" | "full";
@@ -17,10 +17,20 @@ type Offer = {
     status: "active" | "inactive";
 };
 
-type Feature = {
+type AttributeOption = {
     id?: number;
-    name: string;
+    title: string;
     value: string;
+};
+
+type AttributeDefinition = {
+    id: number;
+    title: string;
+    slug: string;
+    input_type: "select" | "multi_select" | "boolean";
+    is_required: boolean;
+    is_filterable: boolean;
+    options: AttributeOption[];
 };
 
 type FormData = {
@@ -33,9 +43,11 @@ type FormData = {
     status: "draft" | "published" | "hidden";
     featured: boolean;
     offers: Offer[];
-    features: Feature[];
+    attribute_values: Record<string, string[]>;
     media: ProductMediaItem[];
 };
+
+const formatter = new Intl.NumberFormat("fa-IR");
 
 const defaultOffers: Offer[] = [
     { code: "capacity_1", label: "ظرفیت ۱", price: 0, stock: 0, status: "active" },
@@ -44,15 +56,21 @@ const defaultOffers: Offer[] = [
     { code: "full", label: "فول ظرفیت", price: 0, stock: 0, status: "active" },
 ];
 
-const emptyFeature = (): Feature => ({ name: "", value: "" });
-
 export default function Form({
     product,
     games,
     platforms,
     sellers,
+    attributes = [],
     currentSellerId,
-}: any) {
+}: {
+    product: any;
+    games: any[];
+    platforms: any[];
+    sellers: any[];
+    attributes: AttributeDefinition[];
+    currentSellerId: number | null;
+}) {
     const form = useForm<FormData>({
         game_id: String(product?.game_id ?? ""),
         platform_id: String(product?.platform_id ?? ""),
@@ -71,13 +89,7 @@ export default function Form({
                   status: offer.status,
               }))
             : defaultOffers,
-        features: product?.features?.length
-            ? product.features.map((feature: any) => ({
-                  id: feature.id,
-                  name: feature.name,
-                  value: feature.value,
-              }))
-            : [emptyFeature()],
+        attribute_values: product?.attribute_values ?? {},
         media:
             product?.media?.map((media: any) => ({
                 key: `stored-${media.id}`,
@@ -102,13 +114,26 @@ export default function Form({
             ),
         );
 
-    const updateFeature = (index: number, key: "name" | "value", value: string) =>
-        form.setData(
-            "features",
-            form.data.features.map((feature, i) =>
-                i === index ? { ...feature, [key]: value } : feature,
-            ),
-        );
+    const setSingleAttribute = (attributeId: number, value: string) =>
+        form.setData("attribute_values", {
+            ...form.data.attribute_values,
+            [String(attributeId)]: value ? [value] : [],
+        });
+
+    const toggleMultiAttribute = (
+        attributeId: number,
+        value: string,
+        selected: boolean,
+    ) => {
+        const key = String(attributeId);
+        const current = form.data.attribute_values[key] ?? [];
+        form.setData("attribute_values", {
+            ...form.data.attribute_values,
+            [key]: selected
+                ? Array.from(new Set([...current, value]))
+                : current.filter((item) => item !== value),
+        });
+    };
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -129,17 +154,14 @@ export default function Form({
             product
                 ? `/admin/digital-products/${product.id}`
                 : "/admin/digital-products",
-            {
-                forceFormData: true,
-                preserveScroll: true,
-            },
+            { forceFormData: true, preserveScroll: true },
         );
     };
 
     return (
         <AdminLayout
             title={product ? "ویرایش بازی دیجیتال" : "بازی دیجیتال جدید"}
-            description="بازی، مدیا، ویژگی‌ها و قیمت ظرفیت‌ها؛ بدون فرم‌های اضافه فروشگاه فیزیکی."
+            description="بازی، مدیا، ویژگی‌های ازپیش‌تعریف‌شده و قیمت ظرفیت‌ها."
         >
             <Head title={product ? "ویرایش بازی دیجیتال" : "بازی دیجیتال جدید"} />
 
@@ -153,10 +175,10 @@ export default function Form({
                                 </span>
                                 <div>
                                     <h2 className="text-xl font-black text-white">
-                                        محصول دیجیتال را سریع بساز
+                                        محصول دیجیتال
                                     </h2>
                                     <p className="mt-1 text-sm text-slate-400">
-                                        فقط اطلاعاتی که واقعاً در فروش و صفحه محصول استفاده می‌شود.
+                                        فقط اطلاعات لازم برای فروش؛ بدون فرم فروشگاه فیزیکی.
                                     </p>
                                 </div>
                             </div>
@@ -173,7 +195,7 @@ export default function Form({
                                     }
                                 >
                                     <option value="">انتخاب بازی</option>
-                                    {games.map((item: any) => (
+                                    {games.map((item) => (
                                         <option key={item.id} value={item.id}>
                                             {item.name}
                                         </option>
@@ -191,7 +213,7 @@ export default function Form({
                                     }
                                 >
                                     <option value="">انتخاب پلتفرم</option>
-                                    {platforms.map((item: any) => (
+                                    {platforms.map((item) => (
                                         <option key={item.id} value={item.id}>
                                             {item.name}
                                         </option>
@@ -210,7 +232,7 @@ export default function Form({
                                         }
                                     >
                                         <option value="">انتخاب فروشنده</option>
-                                        {sellers.map((item: any) => (
+                                        {sellers.map((item) => (
                                             <option key={item.id} value={item.id}>
                                                 {item.name}
                                             </option>
@@ -265,7 +287,6 @@ export default function Form({
                                 </label>
                                 <textarea
                                     className="mt-2 min-h-24 w-full rounded-2xl border border-slate-700 bg-slate-950 p-3 text-sm outline-none focus:border-indigo-500"
-                                    placeholder="چیزی که مشتری قبل از انتخاب ظرفیت باید بداند..."
                                     value={form.data.short_description}
                                     onChange={(event) =>
                                         form.setData(
@@ -295,7 +316,7 @@ export default function Form({
                             <div>
                                 <h2 className="text-lg font-black">مدیا محصول</h2>
                                 <p className="mt-1 text-xs text-slate-400">
-                                    کاور، اسکرین‌شات و ویدیو. یک تصویر را به‌عنوان کاور اصلی انتخاب کن.
+                                    کاور، اسکرین‌شات و ویدیو. یک تصویر کاور اصلی انتخاب کن.
                                 </p>
                             </div>
                         </div>
@@ -315,87 +336,127 @@ export default function Form({
 
                 <Card variant="secondary">
                     <Card.Content className="p-5">
-                        <div className="mb-4 flex items-center justify-between gap-4">
+                        <div className="mb-5 flex items-center gap-3">
+                            <span className="grid size-10 place-items-center rounded-xl bg-cyan-500/10 text-cyan-300">
+                                <Filter size={20} />
+                            </span>
                             <div>
-                                <h2 className="text-lg font-black">ویژگی‌های محصول</h2>
+                                <h2 className="text-lg font-black">
+                                    ویژگی‌ها و فیلترها
+                                </h2>
                                 <p className="mt-1 text-xs text-slate-400">
-                                    هر چیزی که مشتری باید قبل از خرید ببیند؛ بدون ساخت Attribute پیچیده.
+                                    این ویژگی‌ها قبلاً توسط ادمین تعریف شده‌اند و در فروشگاه به فیلتر تبدیل می‌شوند.
                                 </p>
                             </div>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                onPress={() =>
-                                    form.setData("features", [
-                                        ...form.data.features,
-                                        emptyFeature(),
-                                    ])
-                                }
-                            >
-                                <Plus size={16} />
-                                ویژگی
-                            </Button>
                         </div>
 
-                        <div className="space-y-3">
-                            {form.data.features.map((feature, index) => (
-                                <div
-                                    className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-950/35 p-3 md:grid-cols-[220px_1fr_44px]"
-                                    key={feature.id ?? `new-${index}`}
-                                >
-                                    <Input
-                                        label="نام ویژگی"
-                                        placeholder="مثلاً ریجن"
-                                        value={feature.name}
-                                        onChange={(event) =>
-                                            updateFeature(
-                                                index,
-                                                "name",
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
-                                    <Input
-                                        label="مقدار"
-                                        placeholder="مثلاً ترکیه"
-                                        value={feature.value}
-                                        onChange={(event) =>
-                                            updateFeature(
-                                                index,
-                                                "value",
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
-                                    <Button
-                                        aria-label="حذف ویژگی"
-                                        className="mt-6"
-                                        isIconOnly
-                                        type="button"
-                                        variant="danger-soft"
-                                        onPress={() =>
-                                            form.setData(
-                                                "features",
-                                                form.data.features.filter(
-                                                    (_, i) => i !== index,
-                                                ),
-                                            )
-                                        }
-                                    >
-                                        <Trash2 size={16} />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
+                        {attributes.length ? (
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {attributes.map((attribute) => {
+                                    const selected =
+                                        form.data.attribute_values[
+                                            String(attribute.id)
+                                        ] ?? [];
+
+                                    return (
+                                        <div
+                                            className="rounded-2xl border border-slate-800 bg-slate-950/35 p-4"
+                                            key={attribute.id}
+                                        >
+                                            <div className="mb-3 flex items-center gap-2">
+                                                <strong>{attribute.title}</strong>
+                                                {attribute.is_required && (
+                                                    <Chip
+                                                        size="sm"
+                                                        variant="soft"
+                                                        color="danger"
+                                                    >
+                                                        الزامی
+                                                    </Chip>
+                                                )}
+                                            </div>
+
+                                            {attribute.input_type ===
+                                            "multi_select" ? (
+                                                <div className="flex flex-wrap gap-3">
+                                                    {attribute.options.map(
+                                                        (option) => (
+                                                            <Checkbox
+                                                                key={option.value}
+                                                                isSelected={selected.includes(
+                                                                    option.value,
+                                                                )}
+                                                                onChange={(value) =>
+                                                                    toggleMultiAttribute(
+                                                                        attribute.id,
+                                                                        option.value,
+                                                                        value,
+                                                                    )
+                                                                }
+                                                            >
+                                                                {option.title}
+                                                            </Checkbox>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <select
+                                                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm"
+                                                    value={selected[0] ?? ""}
+                                                    onChange={(event) =>
+                                                        setSingleAttribute(
+                                                            attribute.id,
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="">
+                                                        انتخاب نشده
+                                                    </option>
+                                                    {attribute.options.map(
+                                                        (option) => (
+                                                            <option
+                                                                key={option.value}
+                                                                value={option.value}
+                                                            >
+                                                                {option.title}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                            )}
+
+                                            {(form.errors as any)[
+                                                `attribute_values.${attribute.id}`
+                                            ] && (
+                                                <p className="mt-2 text-xs text-rose-400">
+                                                    {
+                                                        (form.errors as any)[
+                                                            `attribute_values.${attribute.id}`
+                                                        ]
+                                                    }
+                                                </p>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="rounded-2xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-400">
+                                هنوز ویژگی فیلترپذیری به نوع محصول «اکانت ظرفیتی» وصل نشده است.
+                            </div>
+                        )}
                     </Card.Content>
                 </Card>
 
                 <Card variant="secondary">
                     <Card.Content className="p-5">
                         <div className="mb-5">
-                            <h2 className="text-lg font-black">ظرفیت‌ها و قیمت فروش</h2>
+                            <h2 className="text-lg font-black">
+                                ظرفیت‌ها و قیمت فروش
+                            </h2>
                             <p className="mt-1 text-xs text-slate-400">
-                                فقط قیمت فروش، موجودی و فعال/غیرفعال بودن هر ظرفیت.
+                                قیمت فروش، موجودی و وضعیت هر ظرفیت.
                             </p>
                         </div>
 
@@ -409,18 +470,50 @@ export default function Form({
                                         <strong>{offer.label}</strong>
                                     </div>
 
-                                    <PriceInput
-                                        label="قیمت فروش"
-                                        description="قیمت نهایی نمایش‌داده‌شده به مشتری"
-                                        value={offer.price}
-                                        onChange={(value) =>
-                                            updateOffer(
-                                                index,
-                                                "price",
-                                                Number(value || 0),
-                                            )
-                                        }
-                                    />
+                                    <div>
+                                        <label className="text-sm font-bold text-slate-200">
+                                            قیمت فروش
+                                        </label>
+                                        <div className="mt-2 flex items-stretch gap-2">
+                                            <Input
+                                                className="min-w-0 flex-1 text-left text-base font-bold tabular-nums"
+                                                dir="ltr"
+                                                fullWidth
+                                                inputMode="numeric"
+                                                placeholder="۰"
+                                                value={
+                                                    offer.price > 0
+                                                        ? formatter.format(
+                                                              offer.price,
+                                                          )
+                                                        : ""
+                                                }
+                                                onChange={(event) => {
+                                                    const normalized =
+                                                        normalizeDigits(
+                                                            event.target.value,
+                                                        ).replace(
+                                                            /[^0-9]/g,
+                                                            "",
+                                                        );
+                                                    updateOffer(
+                                                        index,
+                                                        "price",
+                                                        normalized
+                                                            ? Number(normalized)
+                                                            : 0,
+                                                    );
+                                                }}
+                                            />
+                                            <Chip
+                                                className="h-auto shrink-0 px-3 text-sm font-bold"
+                                                color="accent"
+                                                variant="soft"
+                                            >
+                                                تومان
+                                            </Chip>
+                                        </div>
+                                    </div>
 
                                     <Input
                                         label="موجودی"
@@ -445,12 +538,15 @@ export default function Form({
                                                 updateOffer(
                                                     index,
                                                     "status",
-                                                    event.target.value as Offer["status"],
+                                                    event.target
+                                                        .value as Offer["status"],
                                                 )
                                             }
                                         >
                                             <option value="active">فعال</option>
-                                            <option value="inactive">غیرفعال</option>
+                                            <option value="inactive">
+                                                غیرفعال
+                                            </option>
                                         </select>
                                     </label>
                                 </div>
@@ -461,7 +557,7 @@ export default function Form({
 
                 {Object.keys(form.errors).length > 0 && (
                     <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-300">
-                        بعضی اطلاعات معتبر نیست. مدیا، قیمت‌ها و فیلدهای ضروری را بررسی کن.
+                        بعضی اطلاعات معتبر نیست. مدیا، ویژگی‌ها و قیمت‌ها را بررسی کن.
                     </div>
                 )}
 
@@ -475,7 +571,9 @@ export default function Form({
                         variant="primary"
                     >
                         <Save size={17} />
-                        {form.processing ? "در حال ذخیره..." : "ذخیره محصول"}
+                        {form.processing
+                            ? "در حال ذخیره..."
+                            : "ذخیره محصول"}
                     </Button>
                 </div>
             </form>

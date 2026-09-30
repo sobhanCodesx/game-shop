@@ -71,6 +71,13 @@ class DigitalProduct extends Model
         return $this->hasMany(DigitalProductFeature::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function attributeValues(): HasMany
+    {
+        return $this->hasMany(DigitalProductAttributeValue::class)
+            ->orderBy('attribute_id')
+            ->orderBy('id');
+    }
+
     public function orders(): HasMany
     {
         return $this->hasMany(DigitalOrder::class);

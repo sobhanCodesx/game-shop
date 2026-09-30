@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Attribute;
 use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Platform;
+use App\Models\ProductType;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,8 +21,9 @@ class DigitalCommerceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_public_digital_store_exposes_product_media_features_and_sale_prices(): void
+    public function test_public_digital_store_uses_predefined_attributes_as_features_and_filters(): void
     {
+        $region = $this->digitalAttribute();
         [, $product] = $this->digitalProduct();
 
         $product->media()->create([
@@ -30,20 +33,33 @@ class DigitalCommerceTest extends TestCase
             'sort_order' => 1,
             'is_primary' => true,
         ]);
-        $product->features()->create([
-            'name' => 'ریجن',
-            'value' => 'ترکیه',
-            'sort_order' => 1,
+        $product->attributeValues()->create([
+            'attribute_id' => $region->id,
+            'value' => 'turkey',
+        ]);
+
+        [, $other] = $this->digitalProduct('other-region-game');
+        $other->attributeValues()->create([
+            'attribute_id' => $region->id,
+            'value' => 'usa',
         ]);
 
         $this->get('/digital')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Digital/Index')
+                ->has('products.data', 2)
+                ->where('filters.0.title', 'ریجن')
+                ->where('filters.0.slug', 'region')
+                ->where('filters.0.options.0.value', 'turkey'));
+
+        $this->get('/digital?filters[region][]=turkey')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Index')
                 ->has('products.data', 1)
-                ->where('products.data.0.title', $product->title)
-                ->where('products.data.0.offers.0.price', 1_000_000)
-                ->missing('products.data.0.offers.0.supplier_cost'));
+                ->where('products.data.0.id', $product->id)
+                ->where('selectedFilters.region.0', 'turkey'));
 
         $this->get('/digital/'.$product->slug)
             ->assertOk()
@@ -55,6 +71,7 @@ class DigitalCommerceTest extends TestCase
                 ->where('product.features.0.name', 'ریجن')
                 ->where('product.features.0.value', 'ترکیه')
                 ->has('product.offers', 4)
+                ->where('product.offers.0.price', 1_000_000)
                 ->missing('product.offers.0.supplier_cost'));
     }
 
@@ -71,6 +88,7 @@ class DigitalCommerceTest extends TestCase
 
         $game = Game::factory()->create();
         $platform = Platform::factory()->create();
+        $region = $this->digitalAttribute();
 
         $response = $this->actingAs($seller)->post('/admin/digital-products', [
             'game_id' => $game->id,
@@ -86,9 +104,8 @@ class DigitalCommerceTest extends TestCase
                 ['code' => 'capacity_3', 'label' => 'ظرفیت ۳', 'price' => 800_000, 'stock' => 2, 'status' => 'active'],
                 ['code' => 'full', 'label' => 'فول ظرفیت', 'price' => 3_000_000, 'stock' => 1, 'status' => 'active'],
             ],
-            'features' => [
-                ['name' => 'ریجن', 'value' => 'ترکیه'],
-                ['name' => 'زبان', 'value' => 'انگلیسی'],
+            'attribute_values' => [
+                (string) $region->id => ['turkey'],
             ],
             'media' => [
                 [
@@ -105,7 +122,8 @@ class DigitalCommerceTest extends TestCase
         $product = DigitalProduct::query()->where('title', 'Digital Test')->firstOrFail();
         $this->assertSame($seller->id, $product->seller_id);
         $this->assertCount(1, $product->media);
-        $this->assertCount(2, $product->features);
+        $this->assertCount(1, $product->attributeValues);
+        $this->assertSame('turkey', $product->attributeValues()->value('value'));
         $this->assertSame(1_000_000, $product->offers()->where('code', 'capacity_1')->value('price'));
         $this->assertFalse(Schema::hasColumn('digital_offers', 'supplier_cost'));
     }
@@ -255,6 +273,53 @@ class DigitalCommerceTest extends TestCase
         $this->assertSame('cancelled', $order->fresh()->order_status);
         $this->assertSame(5, $offer->fresh()->stock);
         $this->assertSame(0, $offer->fresh()->reserved_stock);
+    }
+
+    private function digitalAttribute(): Attribute
+    {
+        $type = ProductType::query()->firstOrCreate(
+            ['slug' => 'capacity_account'],
+            [
+                'title' => 'اکانت ظرفیتی',
+                'inventory_type' => 'digital',
+                'supports_variants' => true,
+                'supports_shipping' => false,
+                'supports_exchange' => false,
+                'supports_digital_delivery' => true,
+                'supports_digital_inventory' => true,
+                'requires_cover' => true,
+                'status' => 'active',
+                'sort_order' => 0,
+            ],
+        );
+
+        $attribute = Attribute::query()->firstOrCreate(
+            ['slug' => 'region'],
+            [
+                'title' => 'ریجن',
+                'input_type' => 'select',
+                'is_required' => false,
+                'is_filterable' => true,
+                'is_searchable' => true,
+                'is_visible_on_product' => true,
+                'is_usable_for_variant' => false,
+                'status' => 'active',
+                'sort_order' => 0,
+            ],
+        );
+
+        if (! $attribute->options()->exists()) {
+            $attribute->options()->createMany([
+                ['title' => 'ترکیه', 'value' => 'turkey', 'status' => 'active', 'sort_order' => 1],
+                ['title' => 'آمریکا', 'value' => 'usa', 'status' => 'active', 'sort_order' => 2],
+            ]);
+        }
+
+        $type->attributes()->syncWithoutDetaching([
+            $attribute->id => ['is_required' => false, 'sort_order' => 1],
+        ]);
+
+        return $attribute->fresh('options');
     }
 
     private function digitalProduct(string $slug = 'test-game'): array
