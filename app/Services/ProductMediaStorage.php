@@ -40,7 +40,11 @@ final class ProductMediaStorage
             // Fall through to the legacy media disk without breaking storefront rendering.
         }
 
-        return MediaStorage::url($path);
+        try {
+            return MediaStorage::url($path);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     public static function exists(?string $path): bool
