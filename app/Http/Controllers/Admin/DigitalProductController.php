@@ -83,9 +83,17 @@ class DigitalProductController extends Controller
         $data = $this->validateProduct($request);
         $actor = $request->user();
         $sellerId = $actor->role === 'digital-seller' ? $actor->id : (int) $data['seller_id'];
-        $game = Game::query()->findOrFail($data['game_id']);
+        $game = filled($data['game_id'] ?? null)
+            ? Game::query()->findOrFail((int) $data['game_id'])
+            : null;
         $platform = Platform::query()->findOrFail($data['platform_id']);
-        $title = trim((string) ($data['title'] ?? '')) ?: "{$game->name} - {$platform->name}";
+        $title = trim((string) ($data['title'] ?? ''))
+            ?: ($game ? "{$game->name} - {$platform->name}" : '');
+        if ($title === '') {
+            throw ValidationException::withMessages([
+                'title' => 'وقتی بازی انتخاب نمی‌شود، عنوان محصول الزامی است.',
+            ]);
+        }
         $slugBase = Str::slug($title) ?: 'digital-game';
         $slug = $slugBase;
 
@@ -96,7 +104,7 @@ class DigitalProductController extends Controller
         DB::transaction(function () use ($data, $sellerId, $title, $slug): void {
             $product = DigitalProduct::query()->create([
                 'category_id' => $data['category_id'] ?? null,
-                'game_id' => $data['game_id'],
+                'game_id' => $data['game_id'] ?? null,
                 'platform_id' => $data['platform_id'],
                 'seller_id' => $sellerId,
                 'title' => $title,
@@ -138,14 +146,22 @@ class DigitalProductController extends Controller
         $data = $this->validateProduct($request);
         $actor = $request->user();
 
-        $game = Game::query()->findOrFail($data['game_id']);
+        $game = filled($data['game_id'] ?? null)
+            ? Game::query()->findOrFail((int) $data['game_id'])
+            : null;
         $platform = Platform::query()->findOrFail($data['platform_id']);
-        $title = trim((string) ($data['title'] ?? '')) ?: "{$game->name} - {$platform->name}";
+        $title = trim((string) ($data['title'] ?? ''))
+            ?: ($game ? "{$game->name} - {$platform->name}" : '');
+        if ($title === '') {
+            throw ValidationException::withMessages([
+                'title' => 'وقتی بازی انتخاب نمی‌شود، عنوان محصول الزامی است.',
+            ]);
+        }
 
         DB::transaction(function () use ($data, $digitalProduct, $actor, $title): void {
             $digitalProduct->update([
                 'category_id' => $data['category_id'] ?? null,
-                'game_id' => $data['game_id'],
+                'game_id' => $data['game_id'] ?? null,
                 'platform_id' => $data['platform_id'],
                 'seller_id' => $actor->role === 'digital-seller' ? $actor->id : (int) $data['seller_id'],
                 'title' => $title,
@@ -221,7 +237,7 @@ class DigitalProductController extends Controller
                     ->whereNull('deleted_at')
                     ->where('status', 'active'),
             ],
-            'game_id' => ['required', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
+            'game_id' => ['nullable', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
             'platform_id' => ['required', 'integer', Rule::exists('platforms', 'id')->whereNull('deleted_at')],
             'seller_id' => $sellerRule,
             'title' => ['nullable', 'string', 'max:255'],
