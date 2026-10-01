@@ -549,6 +549,41 @@ class DigitalCommerceTest extends TestCase
         $this->assertSame(0, $offer->fresh()->reserved_stock);
     }
 
+    public function test_digital_account_and_game_channel_link_to_each_other(): void
+    {
+        [, $product] = $this->digitalProduct('linked-channel-game');
+        $game = $product->game()->firstOrFail();
+
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Show')
+                ->where('product.game.id', $game->id)
+                ->where('product.game.channel_url', '/channels/'.$game->slug)
+                ->where('product.game.digital_products_url', '/digital?game='.$game->slug)
+                ->where('seo.canonical', route('digital.show', $product)));
+
+        $this->get('/digital?game='.$game->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Index')
+                ->where('selectedGame.id', $game->id)
+                ->where('selectedGame.slug', $game->slug)
+                ->where('products.total', 1)
+                ->where('products.data.0.id', $product->id));
+
+        $this->get('/channels/'.$game->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Channels/Show')
+                ->where('channel.id', $game->id)
+                ->where('digitalProductsCount', 1)
+                ->where('productsCount', 1)
+                ->where('products.0.id', $product->id)
+                ->where('products.0.url', '/digital/'.$product->slug)
+                ->where('products.0.badge', 'دیجیتال'));
+    }
+
     public function test_latest_price_inquiry_targets_only_the_linked_product_seller(): void
     {
         [$seller, $product] = $this->digitalProduct('latest-price-inquiry');
