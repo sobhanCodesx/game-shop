@@ -14,6 +14,9 @@ Route::middleware('auth')->group(function () {
     Route::get('digital-order-files/{message}', DigitalOrderAttachmentController::class)
         ->name('digital-order-files.show');
     Route::post('digital/{digitalProduct:slug}/orders', [DigitalStoreController::class, 'order'])->name('digital.orders.store');
+    Route::post('digital/{digitalProduct:slug}/price-inquiry', [DigitalStoreController::class, 'priceInquiry'])
+        ->middleware('throttle:6,1')
+        ->name('digital.price-inquiry');
 
     Route::prefix('account/digital-orders')->name('account.digital-orders.')->group(function () {
         Route::get('/', [DigitalOrderController::class, 'index'])->name('index');
