@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Throwable;
 
 class TicketService
 {
@@ -129,6 +130,54 @@ class TicketService
         $this->telegramAdmin->ticketReply($ticket, $message);
     }
 
+    public function replyAsTelegramAdmin(
+        Ticket $ticket,
+        User $admin,
+        string $message,
+    ): void {
+        $message = trim($message);
+
+        if (! $admin->is_admin || $admin->status !== 'active') {
+            throw new RuntimeException('حساب مدیریتی فعال برای ثبت پاسخ پیدا نشد.');
+        }
+
+        if ($message === '' || mb_strlen($message) > 5000) {
+            throw new RuntimeException('متن پاسخ باید بین ۱ تا ۵۰۰۰ کاراکتر باشد.');
+        }
+
+        DB::transaction(function () use ($ticket, $admin, $message): void {
+            $locked = Ticket::query()->lockForUpdate()->findOrFail($ticket->id);
+
+            if ($locked->status === 'closed') {
+                throw new RuntimeException('این تیکت بسته شده است.');
+            }
+
+            $locked->replies()->create([
+                'user_id' => $admin->id,
+                'message' => $message,
+                'is_admin' => true,
+            ]);
+
+            $locked->update([
+                'status' => 'open',
+                'last_replied_at' => now(),
+            ]);
+        }, 3);
+
+        try {
+            $ticket->refresh()->loadMissing('user');
+            $ticket->user?->notify(new TicketActivityNotification(
+                $ticket,
+                'پاسخ جدید پشتیبانی',
+                'به تیکت '.$ticket->number.' از طریق پشتیبانی PlayNexus پاسخ داده شد.',
+            ));
+        } catch (Throwable $exception) {
+            report($exception);
+            // The reply is already committed. Notification delivery must not
+            // make Telegram retry the same message and create a duplicate reply.
+        }
+    }
+
     public function replyAsDigitalSeller(Ticket $ticket, User $seller, string $message): void
     {
         $message = trim($message);
@@ -162,12 +211,18 @@ class TicketService
             ]);
         }, 3);
 
-        $ticket->refresh()->loadMissing('user');
-        $ticket->user->notify(new TicketActivityNotification(
-            $ticket,
-            'پاسخ جدید فروشنده',
-            'فروشنده به استعلام قیمت '.$ticket->number.' پاسخ داد.',
-        ));
+        try {
+            $ticket->refresh()->loadMissing('user');
+            $ticket->user->notify(new TicketActivityNotification(
+                $ticket,
+                'پاسخ جدید فروشنده',
+                'فروشنده به استعلام قیمت '.$ticket->number.' پاسخ داد.',
+            ));
+        } catch (Throwable $exception) {
+            report($exception);
+            // Do not let a notification transport failure make Telegram retry
+            // an already committed seller reply.
+        }
     }
 
     private function storeAttachments(TicketReply $reply, User $actor, array $files): void
