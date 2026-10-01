@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\CategoryAttribute;
+use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\Product;
@@ -11,6 +12,7 @@ use App\Models\ProductAttributeValue;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\SocialContent;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -92,6 +94,88 @@ class StorefrontExperienceTest extends TestCase
             ->where('product.attributes.0.name', 'ژانر')
             ->where('product.attributes.0.value', 'اکشن ماجراجویی')
             ->where('product.media.0.alt', 'کاور محصول تست'));
+    }
+
+    public function test_product_detail_prioritizes_related_products_and_game_content(): void
+    {
+        $game = Game::factory()->create([
+            'name' => 'Linked Product Game',
+            'slug' => 'linked-product-game',
+            'status' => 'active',
+        ]);
+        $platform = Platform::factory()->create([
+            'name' => 'PlayStation Related',
+            'slug' => 'playstation-related',
+        ]);
+        $source = Product::factory()->create([
+            'game_id' => $game->id,
+            'title' => 'Source Physical Product',
+            'slug' => 'source-physical-product',
+            'status' => 'published',
+            'visibility' => 'public',
+        ]);
+        $source->platforms()->attach($platform);
+
+        $relatedPhysical = Product::factory()->create([
+            'game_id' => $game->id,
+            'title' => 'Related Physical Product',
+            'slug' => 'related-physical-product',
+            'status' => 'published',
+            'visibility' => 'public',
+        ]);
+
+        $seller = User::factory()->create(['status' => 'active']);
+        $relatedDigital = DigitalProduct::query()->create([
+            'game_id' => $game->id,
+            'platform_id' => $platform->id,
+            'seller_id' => $seller->id,
+            'title' => 'Related Digital Product',
+            'slug' => 'related-digital-product',
+            'support_days' => 7,
+            'status' => 'published',
+        ]);
+        $relatedDigital->offers()->create([
+            'code' => 'capacity_1',
+            'label' => 'ظرفیت ۱',
+            'price' => 900_000,
+            'stock' => 1,
+            'reserved_stock' => 0,
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+
+        $post = SocialContent::withoutEvents(fn () => SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'post',
+            'feed_type' => 'news',
+            'title' => 'فید همین بازی',
+            'slug' => 'linked-game-feed',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]));
+        $video = SocialContent::withoutEvents(fn () => SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'video',
+            'feed_type' => 'video',
+            'title' => 'ویدیوی همین بازی',
+            'slug' => 'linked-game-video',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]));
+
+        $this->get(route('products.show', $source))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->where('relatedGame.id', $game->id)
+                ->where('relatedGame.channel_url', '/channels/'.$game->slug)
+                ->has('latestProducts', 2)
+                ->where('latestProducts.0.url', '/digital/'.$relatedDigital->slug)
+                ->where('latestProducts.1.url', '/products/'.$relatedPhysical->slug)
+                ->has('latestFeed', 1)
+                ->where('latestFeed.0.id', $post->id)
+                ->has('latestVideos', 1)
+                ->where('latestVideos.0.id', $video->id));
     }
 
     public function test_product_cards_only_receive_prioritized_real_metadata(): void

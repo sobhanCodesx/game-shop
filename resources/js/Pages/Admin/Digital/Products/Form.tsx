@@ -3,6 +3,9 @@ import { Head, Link, useForm } from "@inertiajs/react";
 import { Filter, ImageIcon, Plus, Save, Sparkles, Trash2 } from "lucide-react";
 import { FormEvent, useState } from "react";
 
+import GameSearchSelect, {
+    type GameSelectOption,
+} from "../../../../Components/Admin/Form/GameSearchSelect";
 import ProductMediaUploader, {
     type ProductMediaItem,
 } from "../../../../Components/Admin/Form/ProductMediaUploader";
@@ -72,6 +75,7 @@ export default function Form({
     product,
     categories = [],
     games,
+    gamesMeta,
     platforms,
     sellers,
     attributes = [],
@@ -79,7 +83,8 @@ export default function Form({
 }: {
     product: any;
     categories: Array<{ id: number; parent_id?: number | null; name: string; slug: string }>;
-    games: any[];
+    games: GameSelectOption[];
+    gamesMeta: { per_page: number; total: number; has_more: boolean };
     platforms: any[];
     sellers: any[];
     attributes: AttributeDefinition[];
@@ -247,23 +252,15 @@ export default function Form({
                                 )}
                             </label>
 
-                            <label className="text-sm font-bold text-slate-200">
-                                بازی
-                                <select
-                                    className="mt-2 h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-3"
-                                    value={form.data.game_id}
-                                    onChange={(event) =>
-                                        form.setData("game_id", event.target.value)
-                                    }
-                                >
-                                    <option value="">انتخاب بازی</option>
-                                    {games.map((item) => (
-                                        <option key={item.id} value={item.id}>
-                                            {item.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
+                            <GameSearchSelect
+                                error={(form.errors as any).game_id}
+                                initialHasMore={Boolean(gamesMeta?.has_more)}
+                                initialOptions={games}
+                                initialTotal={Number(gamesMeta?.total ?? games.length)}
+                                onChange={(value) => form.setData("game_id", value)}
+                                selectedOption={product?.game ?? null}
+                                value={form.data.game_id}
+                            />
 
                             <label className="text-sm font-bold text-slate-200">
                                 پلتفرم

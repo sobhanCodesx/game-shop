@@ -7,21 +7,48 @@ import {
     Gamepad2,
     HelpCircle,
     MessageCircleMore,
+    Newspaper,
     Play,
     Radio,
     ShieldCheck,
     ShoppingBag,
     Store,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
+import ProductCard from "../../Components/Storefront/Product/ProductCard";
+import ContentCard from "../../Components/Storefront/Video/ContentCard";
 import Seo, { type SeoData } from "../../Components/Seo";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
-import type { SharedPageProps } from "../../types";
+import type {
+    FeedItemData,
+    SharedPageProps,
+    StorefrontContent,
+    StorefrontProduct,
+} from "../../types";
 
 const money = new Intl.NumberFormat("fa-IR");
 
-export default function Show({ product, seo }: { product: any; seo: SeoData }) {
+export default function Show({
+    product,
+    seo,
+    relatedProducts = [],
+    relatedFeed = [],
+    relatedVideos = [],
+    relatedGame = null,
+}: {
+    product: any;
+    seo: SeoData;
+    relatedProducts: StorefrontProduct[];
+    relatedFeed: FeedItemData[];
+    relatedVideos: StorefrontContent[];
+    relatedGame: {
+        id: number;
+        name: string;
+        slug: string;
+        channel_url: string;
+    } | null;
+}) {
     const { auth } = usePage<SharedPageProps>().props;
     const firstOffer =
         product.offers.find((offer: any) => offer.available)?.id ?? null;
@@ -451,7 +478,114 @@ export default function Show({ product, seo }: { product: any; seo: SeoData }) {
                         </div>
                     </section>
                 )}
+
+                {relatedProducts.length > 0 && (
+                    <RelatedSection
+                        href={relatedGame?.channel_url ?? "/digital"}
+                        title="محصولات مرتبط و پیشنهادی"
+                    >
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                            {relatedProducts.map((item) => (
+                                <ProductCard key={item.url} product={item} />
+                            ))}
+                        </div>
+                    </RelatedSection>
+                )}
+
+                {relatedVideos.length > 0 && (
+                    <RelatedSection
+                        href={relatedGame?.channel_url ?? "/videos"}
+                        title={
+                            relatedGame
+                                ? `ویدیوهای ${relatedGame.name}`
+                                : "ویدیوهای مرتبط"
+                        }
+                    >
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {relatedVideos.map((video) => (
+                                <ContentCard content={video} key={video.id} />
+                            ))}
+                        </div>
+                    </RelatedSection>
+                )}
+
+                {relatedFeed.length > 0 && (
+                    <RelatedSection
+                        href={relatedGame?.channel_url ?? "/feed"}
+                        title={
+                            relatedGame
+                                ? `فیدهای مرتبط با ${relatedGame.name}`
+                                : "فیدهای مرتبط"
+                        }
+                    >
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            {relatedFeed.map((item) => (
+                                <FeedLink item={item} key={item.id} />
+                            ))}
+                        </div>
+                    </RelatedSection>
+                )}
             </main>
         </StorefrontLayout>
+    );
+}
+
+
+function RelatedSection({
+    children,
+    href,
+    title,
+}: {
+    children: ReactNode;
+    href: string;
+    title: string;
+}) {
+    return (
+        <section className="pn-deferred-zone mt-8 sm:mt-10">
+            <header className="mb-5 flex items-center justify-between gap-3">
+                <h2 className="text-xl font-black sm:text-2xl">{title}</h2>
+                <Link
+                    className="inline-flex items-center gap-1 text-xs font-black text-indigo-500"
+                    href={href}
+                >
+                    دیدن همه <ArrowLeft size={15} />
+                </Link>
+            </header>
+            {children}
+        </section>
+    );
+}
+
+function FeedLink({ item }: { item: FeedItemData }) {
+    const media = item.media[0];
+    const image = media?.type === "image" ? media.url : media?.thumbnail;
+
+    return (
+        <Link
+            className="group overflow-hidden rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] transition hover:-translate-y-1 hover:border-indigo-500/40"
+            href={item.url}
+        >
+            <article>
+                {image ? (
+                    <img
+                        alt={media.alt}
+                        className="aspect-video w-full object-cover"
+                        decoding="async"
+                        loading="lazy"
+                        src={image}
+                    />
+                ) : (
+                    <span className="grid aspect-video place-items-center text-indigo-500">
+                        <Newspaper size={32} />
+                    </span>
+                )}
+                <div className="p-3">
+                    <small className="text-indigo-500">{item.author.name}</small>
+                    <h3 className="mt-1 line-clamp-2 text-sm font-black leading-6 group-hover:text-indigo-500">
+                        {item.title}
+                    </h3>
+                </div>
+            </article>
+        </Link>
     );
 }
