@@ -283,7 +283,7 @@ final class StorefrontRecommendationService
         return $values
             ->filter(fn ($item) => filled($item->value) && $item->attribute)
             ->map(fn ($item) => [
-                'slug' => mb_strtolower((string) ($item->attribute->slug ?: $item->attribute->name)),
+                'slug' => mb_strtolower((string) $item->attribute->slug),
                 'value' => mb_strtolower(trim((string) $item->value)),
             ])
             ->filter(fn (array $pair) => $pair['slug'] !== '' && $pair['value'] !== '')
@@ -303,7 +303,7 @@ final class StorefrontRecommendationService
 
         return $values
             ->filter(fn ($item) => filled($item->value) && $item->attribute)
-            ->map(fn ($item) => mb_strtolower((string) ($item->attribute->slug ?: $item->attribute->name))
+            ->map(fn ($item) => mb_strtolower((string) $item->attribute->slug)
                 .'|'.mb_strtolower(trim((string) $item->value)))
             ->intersect($keys)
             ->unique()
@@ -324,8 +324,8 @@ final class StorefrontRecommendationService
                             ->whereRaw('LOWER(value) = ?', [$pair['value']])
                             ->whereHas('attribute', function ($attributeQuery) use ($pair): void {
                                 $attributeQuery->whereRaw(
-                                    'LOWER(COALESCE(NULLIF(slug, ?), name)) = ?',
-                                    ['', $pair['slug']],
+                                    'LOWER(slug) = ?',
+                                    [$pair['slug']],
                                 );
                             });
                     });
