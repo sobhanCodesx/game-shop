@@ -7,8 +7,10 @@ use App\Models\Category;
 use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Platform;
+use App\Models\Product;
 use App\Models\ProductType;
 use App\Models\Role;
+use App\Models\SocialContent;
 use App\Models\TelegramBotSetting;
 use App\Models\Ticket;
 use App\Models\User;
@@ -601,6 +603,117 @@ class DigitalCommerceTest extends TestCase
         $this->assertTrue(
             $indexNames->contains('tickets_type_assignee_status_index'),
         );
+    }
+
+    public function test_digital_product_game_picker_searches_all_games_and_paginates(): void
+    {
+        [$seller] = $this->digitalProduct('game-picker-source');
+
+        foreach (range(1, 64) as $index) {
+            Game::factory()->create([
+                'name' => $index === 64
+                    ? 'Rare Search Game'
+                    : sprintf('Catalog Game %03d', $index),
+                'slug' => $index === 64
+                    ? 'rare-search-game'
+                    : sprintf('catalog-game-%03d', $index),
+                'status' => $index % 3 === 0
+                    ? 'draft'
+                    : ($index % 3 === 1 ? 'active' : 'hidden'),
+            ]);
+        }
+
+        $this->actingAs($seller)
+            ->get('/admin/digital-products/create')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Digital/Products/Form')
+                ->has('games', 30)
+                ->where('gamesMeta.per_page', 30)
+                ->where('gamesMeta.total', 65)
+                ->where('gamesMeta.has_more', true));
+
+        $this->actingAs($seller)
+            ->getJson('/admin/digital-products/game-options?page=2')
+            ->assertOk()
+            ->assertJsonCount(30, 'data')
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonPath('meta.last_page', 3)
+            ->assertJsonPath('meta.total', 65);
+
+        $this->actingAs($seller)
+            ->getJson('/admin/digital-products/game-options?q=Rare%20Search')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Rare Search Game')
+            ->assertJsonPath('data.0.status', 'draft')
+            ->assertJsonPath('meta.total', 1);
+    }
+
+    public function test_digital_product_page_surfaces_related_products_and_game_content(): void
+    {
+        [$seller, $product] = $this->digitalProduct('related-digital-source');
+
+        $relatedDigital = DigitalProduct::query()->create([
+            'game_id' => $product->game_id,
+            'platform_id' => $product->platform_id,
+            'seller_id' => $seller->id,
+            'title' => 'Related Digital Account',
+            'slug' => 'related-digital-account',
+            'short_description' => 'محصول دیجیتال مرتبط',
+            'support_days' => 7,
+            'status' => 'published',
+        ]);
+        $relatedDigital->offers()->create([
+            'code' => 'capacity_1',
+            'label' => 'ظرفیت ۱',
+            'price' => 1_250_000,
+            'stock' => 2,
+            'reserved_stock' => 0,
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+
+        $relatedPhysical = Product::factory()->create([
+            'game_id' => $product->game_id,
+            'title' => 'Related Physical Edition',
+            'slug' => 'related-physical-edition',
+            'status' => 'published',
+            'visibility' => 'public',
+        ]);
+
+        $post = SocialContent::withoutEvents(fn () => SocialContent::query()->create([
+            'game_id' => $product->game_id,
+            'type' => 'post',
+            'feed_type' => 'news',
+            'title' => 'خبر مرتبط بازی',
+            'slug' => 'digital-related-game-post',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]));
+        $video = SocialContent::withoutEvents(fn () => SocialContent::query()->create([
+            'game_id' => $product->game_id,
+            'type' => 'video',
+            'feed_type' => 'video',
+            'title' => 'ویدیوی مرتبط بازی',
+            'slug' => 'digital-related-game-video',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]));
+
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Show')
+                ->where('relatedGame.id', $product->game_id)
+                ->where('relatedGame.channel_url', '/channels/'.$product->game->slug)
+                ->has('relatedProducts', 2)
+                ->where('relatedProducts.0.url', '/digital/'.$relatedDigital->slug)
+                ->where('relatedProducts.1.url', '/products/'.$relatedPhysical->slug)
+                ->has('relatedFeed', 1)
+                ->where('relatedFeed.0.id', $post->id)
+                ->has('relatedVideos', 1)
+                ->where('relatedVideos.0.id', $video->id));
     }
 
     public function test_latest_price_inquiry_targets_only_the_linked_product_seller(): void
