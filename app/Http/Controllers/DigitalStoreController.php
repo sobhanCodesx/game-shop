@@ -109,7 +109,7 @@ class DigitalStoreController extends Controller
 
         $digitalProduct->load([
             'category:id,name,slug',
-            'game:id,name,slug,cover,background',
+            'game:id,name,slug,cover,background,status',
             'platform:id,name,slug',
             'offers',
             'media',
