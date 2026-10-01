@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\DigitalProductMediaStorage;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,42 @@ class DigitalProductController extends Controller
         return Inertia::render('Admin/Digital/Products/Form', $this->formData($request));
     }
 
+    public function gameOptions(Request $request): JsonResponse
+    {
+        $search = trim($request->string('q')->toString());
+        $page = max(1, $request->integer('page', 1));
+
+        $games = Game::query()
+            ->select(['id', 'name', 'slug', 'status'])
+            ->when(
+                $search !== '',
+                fn ($query) => $query->where(function ($gameQuery) use ($search): void {
+                    $gameQuery
+                        ->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('slug', 'like', '%'.$search.'%');
+                }),
+            )
+            ->orderBy('name')
+            ->orderBy('id')
+            ->paginate(30, ['*'], 'page', $page);
+
+        return response()->json([
+            'data' => $games->getCollection()->map(fn (Game $game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'slug' => $game->slug,
+                'status' => $game->status,
+            ])->values(),
+            'meta' => [
+                'current_page' => $games->currentPage(),
+                'last_page' => $games->lastPage(),
+                'per_page' => $games->perPage(),
+                'total' => $games->total(),
+                'has_more' => $games->hasMorePages(),
+            ],
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateProduct($request);
@@ -118,7 +155,7 @@ class DigitalProductController extends Controller
     public function edit(Request $request, DigitalProduct $digitalProduct): Response
     {
         $this->authorizeProduct($request->user(), $digitalProduct);
-        $digitalProduct->load(['offers', 'media', 'attributeValues.attribute.options']);
+        $digitalProduct->load(['game:id,name,slug,status', 'offers', 'media', 'attributeValues.attribute.options']);
 
         return Inertia::render('Admin/Digital/Products/Form', [
             ...$this->formData($request),
@@ -428,7 +465,16 @@ class DigitalProductController extends Controller
                 ->orderBy('sort_order')
                 ->orderBy('name')
                 ->get(['id', 'parent_id', 'name', 'slug']),
-            'games' => Game::query()->where('status', 'active')->orderBy('name')->get(['id', 'name']),
+            'games' => Game::query()
+                ->orderBy('name')
+                ->orderBy('id')
+                ->limit(30)
+                ->get(['id', 'name', 'slug', 'status']),
+            'gamesMeta' => [
+                'per_page' => 30,
+                'total' => Game::query()->count(),
+                'has_more' => Game::query()->count() > 30,
+            ],
             'platforms' => Platform::query()->where('status', 'active')->orderBy('sort_order')->get(['id', 'name']),
             'sellers' => $actor->role === 'digital-seller'
                 ? collect([$actor->only(['id', 'name', 'email'])])
@@ -469,6 +515,7 @@ class DigitalProductController extends Controller
                 ->groupBy('attribute_id')
                 ->map(fn ($items) => $items->pluck('value')->values())
                 ->all(),
+            'game' => $product->game?->only(['id', 'name', 'slug', 'status']),
             'media' => $product->media->map(fn ($media) => [
                 ...$media->only(['id', 'type', 'alt', 'is_primary']),
                 'url' => DigitalProductMediaStorage::url($media->path),
