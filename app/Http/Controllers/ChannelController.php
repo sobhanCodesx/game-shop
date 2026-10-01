@@ -183,6 +183,18 @@ class ChannelController extends Controller
                                 'url' => url($video['url']),
                             ])->all(),
                         ],
+                        [
+                            '@type' => 'ItemList',
+                            '@id' => $canonical.'#products',
+                            'name' => "محصولات و اکانت‌های {$game->name}",
+                            'numberOfItems' => (int) data_get($payload, 'products_count', 0),
+                            'itemListElement' => collect(data_get($payload, 'products', []))->values()->map(fn (array $product, int $index) => [
+                                '@type' => 'ListItem',
+                                'position' => $index + 1,
+                                'name' => $product['title'],
+                                'url' => url($product['url']),
+                            ])->all(),
+                        ],
                     ],
                 ],
             ]),
@@ -192,6 +204,7 @@ class ChannelController extends Controller
             'feed' => $payload['feed'],
             'products' => $payload['products'],
             'productsCount' => $payload['products_count'],
+            'digitalProductsCount' => $payload['digital_products_count'] ?? 0,
             'storeInfo' => $storeInfo,
         ]);
     }
