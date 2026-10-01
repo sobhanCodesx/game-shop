@@ -90,9 +90,28 @@ class DigitalCommerceTest extends TestCase
                 ->where('product.features.0.value', 'ترکیه')
                 ->where('product.seller.id', $seller->id)
                 ->where('product.seller.name', $seller->name)
+                ->where('product.game.channel_url', '/channels/'.$product->game->slug)
+                ->where('product.game.digital_products_url', '/digital?game='.$product->game->slug)
                 ->has('product.offers', 4)
                 ->where('product.offers.0.price', 1_000_000)
                 ->missing('product.offers.0.supplier_cost'));
+
+        $this->get('/digital?game='.$product->game->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Index')
+                ->where('products.total', 1)
+                ->where('products.data.0.id', $product->id)
+                ->where('selectedGame.slug', $product->game->slug));
+
+        $this->get('/channels/'.$product->game->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Channels/Show')
+                ->where('productsCount', 1)
+                ->where('digitalProductsCount', 1)
+                ->where('products.0.id', $product->id)
+                ->where('products.0.url', '/digital/'.$product->slug));
     }
 
     public function test_published_digital_product_is_visible_in_shop_and_category_even_when_out_of_stock(): void
