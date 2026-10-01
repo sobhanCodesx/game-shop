@@ -8,6 +8,7 @@ use App\Models\DigitalOffer;
 use App\Models\DigitalProduct;
 use App\Services\DigitalOrderService;
 use App\Services\DigitalProductMediaStorage;
+use App\Services\TicketService;
 use App\Services\MediaStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -101,6 +102,35 @@ class DigitalStoreController extends Controller
         return Inertia::render('Digital/Show', [
             'product' => $this->productPayload($digitalProduct, true),
         ]);
+    }
+
+    public function priceInquiry(
+        Request $request,
+        DigitalProduct $digitalProduct,
+        TicketService $tickets,
+    ): RedirectResponse {
+        abort_unless($digitalProduct->status === 'published', 404);
+
+        $existing = $request->user()
+            ->tickets()
+            ->where('type', 'digital_price')
+            ->where('digital_product_id', $digitalProduct->id)
+            ->whereIn('status', ['pending', 'open'])
+            ->latest('last_replied_at')
+            ->first();
+
+        if ($existing) {
+            return to_route('account.tickets.show', $existing)
+                ->with('info', 'استعلام قیمت باز برای این محصول از قبل وجود دارد؛ همان گفت‌وگو را ادامه دهید.');
+        }
+
+        $ticket = $tickets->createDigitalPriceInquiry(
+            $request->user(),
+            $digitalProduct,
+        );
+
+        return to_route('account.tickets.show', $ticket)
+            ->with('success', 'درخواست آخرین قیمت برای فروشنده ارسال شد. پاسخ را از همین تیکت دنبال کنید.');
     }
 
     public function order(
