@@ -1,17 +1,23 @@
-import { Button, Chip } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { Link, router, usePage } from "@inertiajs/react";
 import {
     ArrowLeft,
+    Building2,
     Check,
+    ChevronLeft,
     Clock3,
     Gamepad2,
     HelpCircle,
+    Layers3,
+    ListVideo,
     MessageCircleMore,
+    Newspaper,
     Play,
     Radio,
     ShieldCheck,
     ShoppingBag,
     Store,
+    Tags,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -26,15 +32,26 @@ const money = new Intl.NumberFormat("fa-IR");
 export default function Show({
     product,
     seo,
+    sameGameProducts = [],
     relatedProducts = [],
     gameVideos = [],
     gameFeed = [],
+    gamePlaylists = [],
 }: {
     product: any;
     seo: SeoData;
+    sameGameProducts: StorefrontProduct[];
     relatedProducts: StorefrontProduct[];
     gameVideos: StorefrontContent[];
     gameFeed: StorefrontContent[];
+    gamePlaylists: Array<{
+        id: number;
+        title: string;
+        slug: string;
+        url: string;
+        cover_url: string | null;
+        videos_count: number;
+    }>;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
     const firstOffer =
@@ -104,6 +121,40 @@ export default function Show({
             <Seo seo={seo} />
 
             <main className="mx-auto max-w-7xl px-3 pb-28 pt-4 sm:px-6 sm:pb-12 sm:pt-7 lg:py-10">
+                <nav
+                    aria-label="مسیر صفحه"
+                    className="mb-4 flex min-w-0 items-center gap-1.5 overflow-x-auto whitespace-nowrap text-[10px] font-bold text-[var(--store-muted)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mb-5 sm:text-xs"
+                >
+                    <Link
+                        className="shrink-0 transition hover:text-indigo-500"
+                        href="/"
+                    >
+                        خانه
+                    </Link>
+                    <ChevronLeft className="shrink-0 opacity-40" size={13} />
+                    <Link
+                        className="shrink-0 transition hover:text-indigo-500"
+                        href="/digital"
+                    >
+                        بازی‌های دیجیتال
+                    </Link>
+                    {product.game?.channel_url && (
+                        <>
+                            <ChevronLeft className="shrink-0 opacity-40" size={13} />
+                            <Link
+                                className="max-w-44 shrink-0 truncate transition hover:text-cyan-500 sm:max-w-64"
+                                href={product.game.channel_url}
+                            >
+                                {product.game.name}
+                            </Link>
+                        </>
+                    )}
+                    <ChevronLeft className="shrink-0 opacity-40" size={13} />
+                    <span className="max-w-52 truncate text-[var(--store-text)] sm:max-w-sm">
+                        {product.title}
+                    </span>
+                </nav>
+
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(380px,.92fr)] lg:items-start lg:gap-7">
                     <section className="min-w-0">
                         <div className="overflow-hidden rounded-[22px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_24px_70px_-55px_rgba(79,70,229,.8)] sm:rounded-[30px]">
@@ -197,19 +248,40 @@ export default function Show({
 
                                         {product.features.length > 0 && (
                                             <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                                                {product.features.map((feature: any) => (
-                                                    <div
-                                                        className="flex items-start justify-between gap-4 rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-3"
-                                                        key={feature.id}
-                                                    >
-                                                        <span className="text-xs font-bold text-[var(--store-muted)]">
-                                                            {feature.name}
-                                                        </span>
-                                                        <strong className="text-left text-sm">
-                                                            {feature.value}
-                                                        </strong>
-                                                    </div>
-                                                ))}
+                                                {product.features.map((feature: any) =>
+                                                    feature.filter_url ? (
+                                                        <Link
+                                                            className="group/feature flex items-start justify-between gap-4 rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-3 transition hover:border-indigo-500/40 hover:bg-indigo-500/[.04]"
+                                                            href={feature.filter_url}
+                                                            key={feature.id}
+                                                        >
+                                                            <span className="text-xs font-bold text-[var(--store-muted)]">
+                                                                {feature.name}
+                                                            </span>
+                                                            <span className="flex items-center gap-2 text-left">
+                                                                <strong className="text-sm">
+                                                                    {feature.value}
+                                                                </strong>
+                                                                <ArrowLeft
+                                                                    className="text-indigo-500 opacity-0 transition group-hover/feature:opacity-100"
+                                                                    size={13}
+                                                                />
+                                                            </span>
+                                                        </Link>
+                                                    ) : (
+                                                        <div
+                                                            className="flex items-start justify-between gap-4 rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-3"
+                                                            key={feature.id}
+                                                        >
+                                                            <span className="text-xs font-bold text-[var(--store-muted)]">
+                                                                {feature.name}
+                                                            </span>
+                                                            <strong className="text-left text-sm">
+                                                                {feature.value}
+                                                            </strong>
+                                                        </div>
+                                                    ),
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -253,15 +325,29 @@ export default function Show({
                                 <span className="text-[10px] font-black tracking-[.16em] text-indigo-500">
                                     PLAYNEXUS DIGITAL
                                 </span>
+                                {product.game?.channel_url && (
+                                    <Link
+                                        className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black text-cyan-500 transition hover:bg-cyan-500/15"
+                                        href={product.game.channel_url}
+                                    >
+                                        {product.game.name}
+                                    </Link>
+                                )}
                                 {product.category?.name && (
-                                    <Chip size="sm" variant="soft">
+                                    <Link
+                                        className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-[10px] font-black text-indigo-500 transition hover:bg-indigo-500/15"
+                                        href={product.category.url ?? product.category.digital_url}
+                                    >
                                         {product.category.name}
-                                    </Chip>
+                                    </Link>
                                 )}
                                 {product.platform?.name && (
-                                    <Chip size="sm" variant="soft">
+                                    <Link
+                                        className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[10px] font-black text-sky-500 transition hover:bg-sky-500/15"
+                                        href={product.platform.digital_products_url}
+                                    >
                                         {product.platform.name}
-                                    </Chip>
+                                    </Link>
                                 )}
                             </div>
 
@@ -406,6 +492,120 @@ export default function Show({
                     </section>
                 </div>
 
+                {(product.game?.channel_url ||
+                    product.game?.studio?.url ||
+                    product.category?.digital_url ||
+                    product.platform?.digital_products_url) && (
+                    <section className="mt-5 sm:mt-7">
+                        <div className="mb-3 flex items-center gap-2">
+                            <Layers3 className="text-indigo-500" size={18} />
+                            <div>
+                                <h2 className="text-sm font-black text-[var(--store-text)] sm:text-base">
+                                    مسیرهای مرتبط با این محصول
+                                </h2>
+                                <p className="mt-0.5 text-[10px] text-[var(--store-muted)] sm:text-[11px]">
+                                    سریع برو به بازی، استودیو، دسته و محصولات مرتبط.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+                            {product.game?.channel_url && (
+                                <Link
+                                    className="group rounded-[20px] border border-cyan-500/20 bg-cyan-500/[.05] p-3.5 transition hover:-translate-y-0.5 hover:border-cyan-500/45"
+                                    href={product.game.channel_url}
+                                >
+                                    <span className="grid size-9 place-items-center rounded-xl bg-cyan-500/10 text-cyan-500">
+                                        <Radio size={17} />
+                                    </span>
+                                    <strong className="mt-3 block line-clamp-1 text-sm">
+                                        کانال {product.game.name}
+                                    </strong>
+                                    <span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">
+                                        فید، ویدیو و همه محتوای بازی
+                                    </span>
+                                </Link>
+                            )}
+
+                            {product.game?.digital_products_url && (
+                                <Link
+                                    className="group rounded-[20px] border border-emerald-500/20 bg-emerald-500/[.05] p-3.5 transition hover:-translate-y-0.5 hover:border-emerald-500/45"
+                                    href={product.game.digital_products_url}
+                                >
+                                    <span className="grid size-9 place-items-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                                        <ShoppingBag size={17} />
+                                    </span>
+                                    <strong className="mt-3 block line-clamp-1 text-sm">
+                                        اکانت‌های {product.game.name}
+                                    </strong>
+                                    <span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">
+                                        همه نسخه‌ها و ظرفیت‌های همین بازی
+                                    </span>
+                                </Link>
+                            )}
+
+                            {product.game?.studio?.url && (
+                                <Link
+                                    className="group rounded-[20px] border border-violet-500/20 bg-violet-500/[.05] p-3.5 transition hover:-translate-y-0.5 hover:border-violet-500/45"
+                                    href={product.game.studio.url}
+                                >
+                                    <span className="grid size-9 place-items-center overflow-hidden rounded-xl bg-violet-500/10 text-violet-500">
+                                        {product.game.studio.logo_url ? (
+                                            <img
+                                                alt={product.game.studio.name}
+                                                className="size-full object-cover"
+                                                src={product.game.studio.logo_url}
+                                            />
+                                        ) : (
+                                            <Building2 size={17} />
+                                        )}
+                                    </span>
+                                    <strong className="mt-3 block line-clamp-1 text-sm">
+                                        {product.game.studio.name}
+                                    </strong>
+                                    <span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">
+                                        صفحه استودیو و بازی‌های مرتبط
+                                    </span>
+                                </Link>
+                            )}
+
+                            {product.category?.digital_url && (
+                                <Link
+                                    className="group rounded-[20px] border border-amber-500/20 bg-amber-500/[.05] p-3.5 transition hover:-translate-y-0.5 hover:border-amber-500/45"
+                                    href={product.category.digital_url}
+                                >
+                                    <span className="grid size-9 place-items-center rounded-xl bg-amber-500/10 text-amber-500">
+                                        <Tags size={17} />
+                                    </span>
+                                    <strong className="mt-3 block line-clamp-1 text-sm">
+                                        {product.category.name}
+                                    </strong>
+                                    <span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">
+                                        محصولات دیجیتال همین دسته
+                                    </span>
+                                </Link>
+                            )}
+
+                            {product.platform?.digital_products_url && (
+                                <Link
+                                    className="group rounded-[20px] border border-sky-500/20 bg-sky-500/[.05] p-3.5 transition hover:-translate-y-0.5 hover:border-sky-500/45"
+                                    href={product.platform.digital_products_url}
+                                >
+                                    <span className="grid size-9 place-items-center rounded-xl bg-sky-500/10 text-sky-500">
+                                        <Gamepad2 size={17} />
+                                    </span>
+                                    <strong className="mt-3 block line-clamp-1 text-sm">
+                                        {product.platform.name}
+                                    </strong>
+                                    <span className="mt-1 block text-[10px] leading-5 text-[var(--store-muted)]">
+                                        اکانت‌های این پلتفرم
+                                    </span>
+                                </Link>
+                            )}
+                        </div>
+                    </section>
+                )}
+
                 {product.game?.channel_url && (
                     <section className="relative mt-5 overflow-hidden rounded-[24px] border border-cyan-500/20 bg-slate-950 text-white shadow-[0_24px_80px_-55px_rgba(34,211,238,.8)] sm:mt-7 sm:rounded-[30px]">
                         {product.game.background_url && (
@@ -445,7 +645,7 @@ export default function Show({
                                 </div>
                             </div>
 
-                            <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col">
+                            <div className="flex max-w-md shrink-0 flex-wrap gap-2 sm:justify-end">
                                 <Link
                                     className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-400/10 px-5 text-sm font-black text-cyan-200 backdrop-blur transition hover:border-cyan-300/50 hover:bg-cyan-400/15"
                                     href={product.game.channel_url}
@@ -458,10 +658,70 @@ export default function Show({
                                         className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[.06] px-4 text-xs font-black text-slate-200 transition hover:bg-white/[.1]"
                                         href={product.game.digital_products_url}
                                     >
-                                        همه اکانت‌های این بازی
+                                        همه اکانت‌های بازی
                                     </Link>
                                 )}
+                                {gameVideos.length > 0 && product.game.videos_url && (
+                                    <Link
+                                        className="inline-flex h-10 items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[.06] px-3.5 text-xs font-black text-slate-200 transition hover:bg-white/[.1]"
+                                        href={product.game.videos_url}
+                                    >
+                                        <Play size={13} />
+                                        ویدیوها
+                                    </Link>
+                                )}
+                                {gameFeed.length > 0 && product.game.feed_url && (
+                                    <Link
+                                        className="inline-flex h-10 items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[.06] px-3.5 text-xs font-black text-slate-200 transition hover:bg-white/[.1]"
+                                        href={product.game.feed_url}
+                                    >
+                                        <Newspaper size={13} />
+                                        فید
+                                    </Link>
+                                )}
+                                {gamePlaylists.length > 0 &&
+                                    product.game.playlists_url && (
+                                        <Link
+                                            className="inline-flex h-10 items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[.06] px-3.5 text-xs font-black text-slate-200 transition hover:bg-white/[.1]"
+                                            href={product.game.playlists_url}
+                                        >
+                                            <ListVideo size={13} />
+                                            کالکشن‌ها
+                                        </Link>
+                                    )}
                             </div>
+                        </div>
+                    </section>
+                )}
+
+                {sameGameProducts.length > 0 && (
+                    <section className="mt-7 sm:mt-10">
+                        <div className="mb-4 flex items-end justify-between gap-3">
+                            <div>
+                                <p className="text-[10px] font-black tracking-[.16em] text-emerald-500">
+                                    SAME GAME
+                                </p>
+                                <h2 className="mt-1 text-xl font-black text-[var(--store-text)] sm:text-2xl">
+                                    اکانت‌های دیگر {product.game?.name ?? "همین بازی"}
+                                </h2>
+                                <p className="mt-1 text-xs leading-6 text-[var(--store-muted)]">
+                                    نسخه‌ها، پلتفرم‌ها و ظرفیت‌های دیگر همین بازی را مقایسه کن.
+                                </p>
+                            </div>
+                            {product.game?.digital_products_url && (
+                                <Link
+                                    className="shrink-0 text-xs font-black text-emerald-500 hover:text-emerald-400"
+                                    href={product.game.digital_products_url}
+                                >
+                                    همه اکانت‌ها
+                                </Link>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                            {sameGameProducts.slice(0, 8).map((item) => (
+                                <ProductCard key={item.id} product={item} />
+                            ))}
                         </div>
                     </section>
                 )}
@@ -474,17 +734,17 @@ export default function Show({
                                     RELATED STORE
                                 </p>
                                 <h2 className="mt-1 text-xl font-black text-[var(--store-text)] sm:text-2xl">
-                                    شاید این‌ها هم به کارت بیاد
+                                    محصولات مشابه
                                 </h2>
                                 <p className="mt-1 text-xs leading-6 text-[var(--store-muted)]">
-                                    براساس بازی، دسته‌بندی، پلتفرم و ویژگی‌های مشترک.
+                                    براساس دسته‌بندی، پلتفرم و ویژگی‌های مشترک؛ بدون تکرار اکانت‌های همین بازی.
                                 </p>
                             </div>
                             <Link
                                 className="shrink-0 text-xs font-black text-indigo-500 hover:text-indigo-400"
-                                href="/digital"
+                                href={product.category?.digital_url ?? "/digital"}
                             >
-                                همه محصولات
+                                محصولات بیشتر
                             </Link>
                         </div>
 
@@ -510,9 +770,9 @@ export default function Show({
                             {product.game?.channel_url && (
                                 <Link
                                     className="shrink-0 text-xs font-black text-cyan-500 hover:text-cyan-400"
-                                    href={product.game.channel_url}
+                                    href={product.game.videos_url ?? product.game.channel_url}
                                 >
-                                    کانال بازی
+                                    همه ویدیوها
                                 </Link>
                             )}
                         </div>
@@ -525,18 +785,87 @@ export default function Show({
                     </section>
                 )}
 
+                {gamePlaylists.length > 0 && (
+                    <section className="mt-8 sm:mt-11">
+                        <div className="mb-4 flex items-end justify-between gap-3">
+                            <div>
+                                <p className="text-[10px] font-black tracking-[.16em] text-violet-500">
+                                    GAME COLLECTIONS
+                                </p>
+                                <h2 className="mt-1 text-xl font-black text-[var(--store-text)] sm:text-2xl">
+                                    کالکشن‌های {product.game?.name ?? "این بازی"}
+                                </h2>
+                                <p className="mt-1 text-xs leading-6 text-[var(--store-muted)]">
+                                    مجموعه‌های ویدیویی مرتبط برای دیدن محتوای کامل‌تر بازی.
+                                </p>
+                            </div>
+                            {product.game?.playlists_url && (
+                                <Link
+                                    className="shrink-0 text-xs font-black text-violet-500 hover:text-violet-400"
+                                    href={product.game.playlists_url}
+                                >
+                                    همه کالکشن‌ها
+                                </Link>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                            {gamePlaylists.map((playlist) => (
+                                <Link
+                                    className="group overflow-hidden rounded-[20px] border border-[var(--store-border)] bg-[var(--store-surface)] transition hover:-translate-y-1 hover:border-violet-500/45"
+                                    href={playlist.url}
+                                    key={playlist.id}
+                                >
+                                    <div className="relative aspect-video overflow-hidden bg-[var(--store-surface-strong)]">
+                                        {playlist.cover_url ? (
+                                            <img
+                                                alt={playlist.title}
+                                                className="size-full object-cover transition duration-500 group-hover:scale-105"
+                                                loading="lazy"
+                                                src={playlist.cover_url}
+                                            />
+                                        ) : (
+                                            <span className="grid size-full place-items-center text-violet-500">
+                                                <ListVideo size={34} />
+                                            </span>
+                                        )}
+                                        <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-1 text-[9px] font-black text-white">
+                                            {money.format(playlist.videos_count)} ویدیو
+                                        </span>
+                                    </div>
+                                    <div className="p-3">
+                                        <strong className="line-clamp-2 text-sm leading-6 transition group-hover:text-violet-500">
+                                            {playlist.title}
+                                        </strong>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
                 {gameFeed.length > 0 && (
                     <section className="mt-8 rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:mt-11 sm:rounded-[30px] sm:p-6">
-                        <div className="mb-4">
-                            <p className="text-[10px] font-black tracking-[.16em] text-emerald-500">
-                                RELATED FEED
-                            </p>
-                            <h2 className="mt-1 text-xl font-black text-[var(--store-text)] sm:text-2xl">
-                                فید مرتبط با {product.game?.name ?? "این بازی"}
-                            </h2>
-                            <p className="mt-1 text-xs leading-6 text-[var(--store-muted)]">
-                                از محصول به محتوای بازی و از محتوا به کانال؛ لینک‌سازی داخلی مستقیم و قابل دنبال‌کردن.
-                            </p>
+                        <div className="mb-4 flex items-end justify-between gap-3">
+                            <div>
+                                <p className="text-[10px] font-black tracking-[.16em] text-emerald-500">
+                                    RELATED FEED
+                                </p>
+                                <h2 className="mt-1 text-xl font-black text-[var(--store-text)] sm:text-2xl">
+                                    فید مرتبط با {product.game?.name ?? "این بازی"}
+                                </h2>
+                                <p className="mt-1 text-xs leading-6 text-[var(--store-muted)]">
+                                    خبرها و پست‌های مرتبط با همین بازی، مستقیم از کانال PlayNexus.
+                                </p>
+                            </div>
+                            {product.game?.feed_url && (
+                                <Link
+                                    className="shrink-0 text-xs font-black text-emerald-500 hover:text-emerald-400"
+                                    href={product.game.feed_url}
+                                >
+                                    همه فیدها
+                                </Link>
+                            )}
                         </div>
 
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

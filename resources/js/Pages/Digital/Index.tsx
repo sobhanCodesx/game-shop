@@ -28,6 +28,7 @@ export default function Index({
     categories = [],
     selectedCategory = null,
     selectedGame = null,
+    selectedPlatform = null,
     filters = [],
     selectedFilters = {},
 }: {
@@ -35,6 +36,7 @@ export default function Index({
     categories: Array<{ id: number; name: string; slug: string }>;
     selectedCategory: string | null;
     selectedGame: { id: number; name: string; slug: string } | null;
+    selectedPlatform: { id: number; name: string; slug: string } | null;
     filters: FilterDefinition[];
     selectedFilters: Record<string, string[]>;
 }) {
@@ -50,6 +52,7 @@ export default function Index({
             {
                 category: selectedCategory ?? undefined,
                 game: selectedGame?.slug ?? undefined,
+                platform: selectedPlatform?.slug ?? undefined,
                 filters: cleaned,
             },
             {
@@ -66,6 +69,7 @@ export default function Index({
             {
                 category: category || undefined,
                 game: selectedGame?.slug ?? undefined,
+                platform: selectedPlatform?.slug ?? undefined,
                 filters: selectedFilters,
             },
             {
@@ -246,6 +250,34 @@ export default function Index({
                                 نمایش همه
                             </Link>
                         </div>
+                    </section>
+                )}
+
+                {selectedPlatform && (
+                    <section className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-indigo-500/20 bg-indigo-500/[.06] p-3.5">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-indigo-500/10 text-indigo-400">
+                                <Gamepad2 size={19} />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-black tracking-[.14em] text-indigo-400">
+                                    فیلتر پلتفرم
+                                </p>
+                                <strong className="mt-0.5 block truncate text-sm">
+                                    {selectedPlatform.name}
+                                </strong>
+                            </div>
+                        </div>
+                        <Link
+                            className="shrink-0 rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-3 py-2 text-[11px] font-black text-[var(--store-muted)] transition hover:text-[var(--store-text)]"
+                            href={
+                                selectedGame
+                                    ? `/digital?game=${encodeURIComponent(selectedGame.slug)}`
+                                    : "/digital"
+                            }
+                        >
+                            حذف فیلتر پلتفرم
+                        </Link>
                     </section>
                 )}
 
