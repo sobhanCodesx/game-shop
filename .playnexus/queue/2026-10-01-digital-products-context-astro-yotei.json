@@ -1,7 +1,0 @@
-{
-  "job_id": "digital-products-context-astro-yotei-20261001-v2",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query { search(query: \"ASTRO BOT\", first: 3) { games { id name } } }"
-  }
-}
