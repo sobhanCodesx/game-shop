@@ -10,9 +10,11 @@ use App\Models\Platform;
 use App\Models\ProductType;
 use App\Models\Role;
 use App\Models\SocialContent;
+use App\Models\Studio;
 use App\Models\TelegramBotSetting;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Models\VideoPlaylist;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -643,10 +645,66 @@ class DigitalCommerceTest extends TestCase
         $this->assertSame(0, $offer->fresh()->reserved_stock);
     }
 
-    public function test_digital_account_and_game_channel_link_to_each_other(): void
+    public function test_digital_product_builds_a_semantic_internal_link_hub(): void
     {
-        [, $product] = $this->digitalProduct('linked-channel-game');
+        $region = $this->digitalAttribute();
+        [$seller, $product] = $this->digitalProduct('linked-channel-game');
         $game = $product->game()->firstOrFail();
+        $platform = $product->platform()->firstOrFail();
+
+        $category = Category::query()->create([
+            'name' => 'اکانت ظرفیتی',
+            'slug' => 'capacity-link-hub',
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+        $product->update(['category_id' => $category->id]);
+        $product->attributeValues()->create([
+            'attribute_id' => $region->id,
+            'value' => 'turkey',
+        ]);
+
+        $studio = Studio::query()->create([
+            'name' => 'Linked Studio',
+            'slug' => 'linked-studio',
+            'status' => 'active',
+        ]);
+        $game->update(['studio_id' => $studio->id]);
+
+        $sameGame = DigitalProduct::query()->create([
+            'category_id' => $category->id,
+            'game_id' => $game->id,
+            'platform_id' => $platform->id,
+            'seller_id' => $seller->id,
+            'title' => 'Same Game Alternate Account',
+            'slug' => 'same-game-alternate-account',
+            'short_description' => 'نسخه دیگر همین بازی',
+            'support_days' => 7,
+            'status' => 'published',
+        ]);
+
+        foreach ($product->offers as $offer) {
+            $sameGame->offers()->create([
+                'code' => $offer->code,
+                'label' => $offer->label,
+                'price' => $offer->price,
+                'stock' => 2,
+                'reserved_stock' => 0,
+                'status' => 'active',
+                'sort_order' => $offer->sort_order,
+            ]);
+        }
+
+        [, $related] = $this->digitalProduct('related-link-hub-game');
+        $related->update(['category_id' => $category->id]);
+
+        $playlist = VideoPlaylist::query()->create([
+            'game_id' => $game->id,
+            'title' => 'راهنمای کامل بازی',
+            'slug' => 'complete-game-guide',
+            'visibility' => 'public',
+            'sort_order' => 1,
+        ]);
 
         $this->get('/digital/'.$product->slug)
             ->assertOk()
@@ -655,6 +713,30 @@ class DigitalCommerceTest extends TestCase
                 ->where('product.game.id', $game->id)
                 ->where('product.game.channel_url', '/channels/'.$game->slug)
                 ->where('product.game.digital_products_url', '/digital?game='.$game->slug)
+                ->where('product.game.feed_url', '/channels/'.$game->slug.'#feed')
+                ->where('product.game.videos_url', '/channels/'.$game->slug.'#videos')
+                ->where('product.game.playlists_url', '/channels/'.$game->slug.'#playlists')
+                ->where('product.game.products_url', '/channels/'.$game->slug.'#products')
+                ->where('product.game.studio.id', $studio->id)
+                ->where('product.game.studio.url', '/studios/'.$studio->slug)
+                ->where('product.category.url', '/categories/'.$category->slug)
+                ->where('product.category.digital_url', '/digital?category='.$category->slug)
+                ->where('product.platform.digital_products_url', '/digital?platform='.$platform->slug)
+                ->where(
+                    'product.features.0.filter_url',
+                    fn ($value) => is_string($value)
+                        && str_contains($value, 'filters')
+                        && str_contains($value, 'region')
+                        && str_contains($value, 'turkey'),
+                )
+                ->where('sameGameProducts.0.id', $sameGame->id)
+                ->where('sameGameProducts.0.url', '/digital/'.$sameGame->slug)
+                ->where('relatedProducts.0.id', $related->id)
+                ->where('gamePlaylists.0.id', $playlist->id)
+                ->where(
+                    'gamePlaylists.0.url',
+                    '/channels/'.$game->slug.'/playlists/'.$playlist->slug,
+                )
                 ->where('seo.canonical', route('digital.show', $product)));
 
         $this->get('/digital?game='.$game->slug)
@@ -663,18 +745,23 @@ class DigitalCommerceTest extends TestCase
                 ->component('Digital/Index')
                 ->where('selectedGame.id', $game->id)
                 ->where('selectedGame.slug', $game->slug)
-                ->where('products.total', 1)
-                ->where('products.data.0.id', $product->id));
+                ->where('products.total', 2));
+
+        $this->get('/digital?platform='.$platform->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Index')
+                ->where('selectedPlatform.id', $platform->id)
+                ->where('selectedPlatform.slug', $platform->slug)
+                ->where('products.total', 2));
 
         $this->get('/channels/'.$game->slug)
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Channels/Show')
                 ->where('channel.id', $game->id)
-                ->where('digitalProductsCount', 1)
-                ->where('productsCount', 1)
-                ->where('products.0.id', $product->id)
-                ->where('products.0.url', '/digital/'.$product->slug)
+                ->where('digitalProductsCount', 2)
+                ->where('productsCount', 2)
                 ->where('products.0.badge', 'دیجیتال'));
     }
 
