@@ -32,7 +32,9 @@ class ProductController extends Controller
         );
 
         $cached = $page->get($product);
-        $product->loadMissing('game:id,name,slug,cover');
+        $product->loadMissing('game:id,name,slug,cover,status');
+        $gameIsPublic = $product->game
+            && in_array($product->game->status, ['active', 'published'], true);
         $isPartner = $request->user()?->role === 'partner';
 
         $exchangeRequestId = null;
@@ -103,20 +105,20 @@ class ProductController extends Controller
             ],
             'exchangeRequestId' => $exchangeRequestId,
             'exchangeOfferAmount' => $exchangeOfferAmount,
-            'relatedGame' => $product->game ? [
+            'relatedGame' => $gameIsPublic ? [
                 'id' => $product->game->id,
                 'name' => $product->game->name,
                 'slug' => $product->game->slug,
                 'channel_url' => route('channels.show', $product->game->slug, false),
             ] : null,
-            'latestFeed' => $product->game
+            'latestFeed' => $gameIsPublic
                 ? $feed->channelPosts($request, $product->game, 4)
                 : $feed->latestPostsExcept($request, 0, 4),
             'latestVideos' => SocialContent::query()
                 ->published()
                 ->where('type', 'video')
                 ->when(
-                    $product->game_id,
+                    $gameIsPublic,
                     fn ($query) => $query->where('game_id', $product->game_id),
                 )
                 ->with('game:id,name,slug,cover')
