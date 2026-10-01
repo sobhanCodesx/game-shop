@@ -1,12 +1,14 @@
 import { Button, Chip } from "@heroui/react";
-import { Head, router, usePage } from "@inertiajs/react";
+import { Head, Link, router, usePage } from "@inertiajs/react";
 import {
+    ArrowLeft,
     Check,
     Clock3,
     Gamepad2,
     HelpCircle,
     MessageCircleMore,
     Play,
+    Radio,
     ShieldCheck,
     ShoppingBag,
     Store,
@@ -388,6 +390,56 @@ export default function Show({ product }: { product: any }) {
                         </div>
                     </section>
                 </div>
+
+                {product.game?.channel_url && (
+                    <section className="relative mt-5 overflow-hidden rounded-[24px] border border-cyan-500/20 bg-slate-950 text-white shadow-[0_24px_80px_-55px_rgba(34,211,238,.8)] sm:mt-7 sm:rounded-[30px]">
+                        {product.game.background_url && (
+                            <img
+                                aria-hidden="true"
+                                alt=""
+                                className="absolute inset-0 size-full object-cover opacity-35"
+                                src={product.game.background_url}
+                            />
+                        )}
+                        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,.98),rgba(2,6,23,.82)_48%,rgba(2,6,23,.48))]" />
+                        <div className="relative flex min-h-[170px] flex-col justify-between gap-5 p-5 sm:min-h-[190px] sm:flex-row sm:items-center sm:p-7">
+                            <div className="flex min-w-0 items-center gap-4">
+                                <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-[22px] border border-white/15 bg-white/10 shadow-xl shadow-black/30 sm:size-24">
+                                    {product.game.cover_url ? (
+                                        <img
+                                            alt={product.game.name}
+                                            className="size-full object-cover"
+                                            src={product.game.cover_url}
+                                        />
+                                    ) : (
+                                        <Gamepad2 className="text-cyan-300" size={34} />
+                                    )}
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="flex items-center gap-2 text-[10px] font-black tracking-[.18em] text-cyan-300">
+                                        <Radio size={13} />
+                                        GAME CHANNEL
+                                    </p>
+                                    <h2 className="mt-2 line-clamp-2 text-xl font-black sm:text-2xl">
+                                        همه‌چیز درباره {product.game.name}
+                                    </h2>
+                                    <p className="mt-2 max-w-2xl text-xs leading-6 text-slate-300 sm:text-sm">
+                                        ویدیوها، فیدها، کالکشن‌ها، اخبار و محصولات مرتبط این بازی
+                                        در کانال اختصاصی آن جمع شده‌اند.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <Link
+                                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-400/10 px-5 text-sm font-black text-cyan-200 backdrop-blur transition hover:border-cyan-300/50 hover:bg-cyan-400/15"
+                                href={product.game.channel_url}
+                            >
+                                ورود به کانال بازی
+                                <ArrowLeft size={17} />
+                            </Link>
+                        </div>
+                    </section>
+                )}
             </main>
         </StorefrontLayout>
     );
