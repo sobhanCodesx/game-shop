@@ -30,6 +30,7 @@ export default function Show({ product }: { product: any }) {
     const [offerId, setOfferId] = useState<number | null>(firstOffer);
     const [mediaId, setMediaId] = useState<number | null>(firstMedia?.id ?? null);
     const [ordering, setOrdering] = useState(false);
+    const [requestingPrice, setRequestingPrice] = useState(false);
     const [guide, setGuide] = useState(false);
 
     const offer = useMemo(
@@ -62,6 +63,22 @@ export default function Show({ product }: { product: any }) {
             `/digital/${product.slug}/orders`,
             { offer_id: offerId },
             { onFinish: () => setOrdering(false) },
+        );
+    };
+
+    const requestLatestPrice = () => {
+        if (!auth.user) {
+            router.visit(
+                `/login?redirect=${encodeURIComponent(window.location.pathname)}`,
+            );
+            return;
+        }
+
+        setRequestingPrice(true);
+        router.post(
+            `/digital/${product.slug}/price-inquiry`,
+            {},
+            { onFinish: () => setRequestingPrice(false) },
         );
     };
 
@@ -250,6 +267,36 @@ export default function Show({ product }: { product: any }) {
                                             تومان
                                         </small>
                                     </strong>
+                                </div>
+                            </div>
+
+                            <div className="mt-3 rounded-2xl border border-amber-500/20 bg-amber-500/[.06] p-3.5">
+                                <div className="flex items-start gap-2.5">
+                                    <MessageCircleMore
+                                        className="mt-0.5 shrink-0 text-amber-500"
+                                        size={17}
+                                    />
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-black leading-6 text-[var(--store-text)]">
+                                            قیمت‌ها ممکن است با نوسانات نرخ ارز تغییر کنند
+                                        </p>
+                                        <p className="mt-1 text-[11px] leading-6 text-[var(--store-muted)]">
+                                            برای دریافت آخرین قیمت و موجودی، استعلام قیمت ثبت کنید.
+                                            پاسخ فروشنده داخل همان تیکت برای شما ارسال می‌شود.
+                                        </p>
+                                        <Button
+                                            className="mt-2.5 h-9 px-4 text-xs font-black"
+                                            isDisabled={requestingPrice}
+                                            onPress={requestLatestPrice}
+                                            size="sm"
+                                            variant="secondary"
+                                        >
+                                            <MessageCircleMore size={15} />
+                                            {requestingPrice
+                                                ? "در حال ارسال..."
+                                                : "دریافت آخرین قیمت"}
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
