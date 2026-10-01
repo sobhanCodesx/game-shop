@@ -94,6 +94,7 @@ export default function ChannelShow({
     feed,
     products,
     productsCount,
+    digitalProductsCount,
     storeInfo,
 }: {
     seo: SeoData;
@@ -103,6 +104,7 @@ export default function ChannelShow({
     feed: FeedItemData[];
     products: StorefrontProduct[];
     productsCount: number;
+    digitalProductsCount: number;
     storeInfo: StoreInfo | null;
 }) {
     const { auth } = usePage<SharedPageProps>().props;
@@ -382,7 +384,7 @@ export default function ChannelShow({
                                 className="shrink-0 border-b-2 border-indigo-500 py-4"
                                 href="#products"
                             >
-                                خرید بازی
+                                خرید و اکانت‌ها
                             </a>
                         )}
                         {feed.length > 0 && (
@@ -426,22 +428,30 @@ export default function ChannelShow({
                                             PLAYNEXUS STORE
                                         </p>
                                         <h2 className="mt-1 text-xl font-black sm:text-2xl">
-                                            خرید {channel.name}
+                                            خرید و اکانت‌های {channel.name}
                                         </h2>
                                         <p className="mt-1.5 max-w-2xl text-xs leading-6 text-[var(--store-muted)] sm:text-sm">
-                                            نسخه‌ها و گزینه‌های موجود این بازی را با قیمت و موجودی به‌روز ببین.
+                                            نسخه‌ها و اکانت‌های دیجیتال متصل به همین بازی را یک‌جا ببین؛ هر کارت مستقیماً به صفحه همان محصول می‌رود.
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 self-start sm:self-auto">
+                                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
                                     <span className="rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-3 py-1.5 text-[11px] font-black text-[var(--store-muted)]">
                                         {productsCount.toLocaleString("fa-IR")} محصول
                                     </span>
+                                    {digitalProductsCount > 0 && (
+                                        <Link
+                                            className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-black text-emerald-400 transition hover:border-emerald-400/40 hover:bg-emerald-500/15"
+                                            href={`/digital?game=${encodeURIComponent(channel.slug)}`}
+                                        >
+                                            {digitalProductsCount.toLocaleString("fa-IR")} اکانت دیجیتال
+                                        </Link>
+                                    )}
                                     <Link
                                         className="rounded-full border border-indigo-400/20 bg-indigo-500/10 px-3 py-1.5 text-[11px] font-black text-indigo-400 transition hover:border-indigo-400/40 hover:bg-indigo-500/15"
                                         href={`/shop?game=${encodeURIComponent(channel.slug)}`}
                                     >
-                                        مشاهده همه
+                                        همه محصولات
                                     </Link>
                                 </div>
                             </div>

@@ -2,6 +2,8 @@
 
 namespace App\Services\Telegram;
 
+use App\Models\Ticket;
+use App\Services\TicketService;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
@@ -11,13 +13,22 @@ final class TelegramUserCommandRouter
     public function __construct(
         private readonly TelegramApiClient $telegram,
         private readonly TelegramUserLinkService $links,
+        private readonly TelegramBotSessionStore $sessions,
+        private readonly TicketService $tickets,
     ) {}
 
     public function handle(array $update): array
     {
-        $message = is_array($update['message'] ?? null) ? $update['message'] : [];
+        $callback = is_array($update['callback_query'] ?? null)
+            ? $update['callback_query']
+            : [];
+        $message = $callback !== []
+            ? (is_array($callback['message'] ?? null) ? $callback['message'] : [])
+            : (is_array($update['message'] ?? null) ? $update['message'] : []);
         $chat = is_array($message['chat'] ?? null) ? $message['chat'] : [];
-        $from = is_array($message['from'] ?? null) ? $message['from'] : [];
+        $from = $callback !== []
+            ? (is_array($callback['from'] ?? null) ? $callback['from'] : [])
+            : (is_array($message['from'] ?? null) ? $message['from'] : []);
 
         $chatId = isset($chat['id']) ? (string) $chat['id'] : '';
         $userId = isset($from['id']) ? (string) $from['id'] : '';
@@ -31,6 +42,9 @@ final class TelegramUserCommandRouter
         [$command, $payload] = $this->split($text);
 
         try {
+            if ($callback !== []) {
+                return $this->handleCallback($callback, $userId, $chatId);
+            }
             if ($command === '/start' && str_starts_with($payload, 'verifyphone_')) {
                 $user = $this->links->startPhoneVerification(
                     substr($payload, 12),
@@ -142,6 +156,52 @@ final class TelegramUserCommandRouter
 
             $user = $this->links->byTelegramUserId($userId);
 
+            if ($command === '/cancel' && $user) {
+                $this->sessions->clear($userId, $chatId);
+                $this->telegram->sendMessage(
+                    $chatId,
+                    'لغو شد. برای پاسخ دوباره از دکمه همان تیکت استفاده کن.',
+                );
+
+                return ['action' => 'seller_ticket_reply_cancelled'];
+            }
+
+            $session = $user ? $this->sessions->get($userId, $chatId) : null;
+            if (
+                $user
+                && $session?->state === 'seller_ticket_reply'
+                && $text !== ''
+                && ! str_starts_with($command, '/')
+            ) {
+                $context = is_array($session->context) ? $session->context : [];
+                $ticket = Ticket::query()->find((int) ($context['ticket_id'] ?? 0));
+                if (! $ticket) {
+                    $this->sessions->clear($userId, $chatId);
+                    throw new RuntimeException('تیکت پیدا نشد یا دیگر در دسترس نیست.');
+                }
+
+                $this->tickets->replyAsDigitalSeller($ticket, $user, $text);
+                $this->sessions->clear($userId, $chatId);
+
+                $this->telegram->sendMessage(
+                    $chatId,
+                    "✅ <b>پاسخ داخل تیکت ثبت شد</b>\n"
+                    ."مشتری همین حالا از داخل PlayNexus پاسخ شما را می‌بیند.",
+                    [
+                        'inline_keyboard' => [[[
+                            'text' => '💬 ارسال پاسخ دیگر',
+                            'callback_data' => 'seller_ticket_reply:'.$ticket->id,
+                        ]]],
+                    ],
+                );
+
+                return [
+                    'action' => 'seller_ticket_replied',
+                    'resource' => 'ticket',
+                    'resource_id' => $ticket->id,
+                ];
+            }
+
             if (
                 $command === '/start'
                 && $user
@@ -197,6 +257,79 @@ final class TelegramUserCommandRouter
 
             return ['action' => 'user_error'];
         }
+    }
+
+    private function handleCallback(
+        array $callback,
+        string $userId,
+        string $chatId,
+    ): array {
+        $callbackId = (string) ($callback['id'] ?? '');
+        $data = trim((string) ($callback['data'] ?? ''));
+
+        if (! preg_match('/^seller_ticket_reply:(\d+)$/', $data, $matches)) {
+            if ($callbackId !== '') {
+                $this->telegram->answerCallbackQuery($callbackId, 'این دکمه معتبر نیست.');
+            }
+
+            return ['action' => 'user_callback_ignored'];
+        }
+
+        $user = $this->links->byTelegramUserId($userId);
+        $ticket = Ticket::query()
+            ->with('digitalProduct:id,title,slug')
+            ->find((int) $matches[1]);
+
+        if (
+            ! $user
+            || ! $ticket
+            || $ticket->type !== 'digital_price'
+            || (int) $ticket->assigned_user_id !== (int) $user->id
+        ) {
+            if ($callbackId !== '') {
+                $this->telegram->answerCallbackQuery(
+                    $callbackId,
+                    'این تیکت به حساب فروشندگی شما اختصاص ندارد.',
+                );
+            }
+
+            return ['action' => 'seller_ticket_reply_denied'];
+        }
+
+        if ($ticket->status === 'closed') {
+            if ($callbackId !== '') {
+                $this->telegram->answerCallbackQuery($callbackId, 'این تیکت بسته شده است.');
+            }
+
+            return ['action' => 'seller_ticket_reply_closed'];
+        }
+
+        $this->sessions->put(
+            $userId,
+            $chatId,
+            'seller_ticket_reply',
+            ['ticket_id' => $ticket->id],
+            1800,
+        );
+
+        if ($callbackId !== '') {
+            $this->telegram->answerCallbackQuery($callbackId, 'پاسخت را همین‌جا بفرست.');
+        }
+
+        $this->telegram->sendMessage(
+            $chatId,
+            "✍️ <b>پاسخ به استعلام قیمت</b>\n"
+            ."محصول: <b>".$this->escape((string) ($ticket->digitalProduct?->title ?: $ticket->subject))."</b>\n"
+            ."تیکت: <code>".$this->escape((string) $ticket->number)."</code>\n\n"
+            ."قیمت یا پیام خودت را در یک پیام متنی بفرست. همان متن مستقیماً داخل تیکت مشتری ثبت می‌شود.\n"
+            ."برای لغو: <code>/cancel</code>",
+        );
+
+        return [
+            'action' => 'seller_ticket_reply_started',
+            'resource' => 'ticket',
+            'resource_id' => $ticket->id,
+        ];
     }
 
     private function sendPhoneVerificationPrompt(string $chatId, object $user): void

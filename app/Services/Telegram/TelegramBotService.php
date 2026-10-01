@@ -11,6 +11,7 @@ final class TelegramBotService
         private readonly TelegramBotSettings $settings,
         private readonly TelegramBotCommandRouter $router,
         private readonly TelegramUserCommandRouter $userRouter,
+        private readonly TelegramBotSessionStore $sessions,
     ) {}
 
     public function handleUpdate(array $update): void
@@ -56,6 +57,20 @@ final class TelegramBotService
 
     private function isUserAccountUpdate(array $update): bool
     {
+        $callback = is_array($update['callback_query'] ?? null)
+            ? $update['callback_query']
+            : [];
+
+        if (
+            $callback !== []
+            && str_starts_with(
+                (string) ($callback['data'] ?? ''),
+                'seller_ticket_reply:',
+            )
+        ) {
+            return true;
+        }
+
         $message = is_array($update['message'] ?? null) ? $update['message'] : [];
 
         if (is_array($message['contact'] ?? null)) {
@@ -63,11 +78,19 @@ final class TelegramBotService
         }
 
         $text = trim((string) ($message['text'] ?? ''));
-
-        return (bool) preg_match(
+        if ((bool) preg_match(
             '/^\/start(?:@[A-Za-z0-9_]+)?\s+(?:connect_|verifyphone_)[A-Za-z0-9]{32}$/',
             $text,
-        );
+        )) {
+            return true;
+        }
+
+        [$userId, $chatId, $chatType] = $this->actor($update);
+        if ($chatType !== 'private' || blank($userId) || blank($chatId)) {
+            return false;
+        }
+
+        return $this->sessions->get($userId, $chatId)?->state === 'seller_ticket_reply';
     }
 
     private function actor(array $update): array

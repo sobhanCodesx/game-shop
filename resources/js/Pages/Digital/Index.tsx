@@ -27,12 +27,14 @@ export default function Index({
     products,
     categories = [],
     selectedCategory = null,
+    selectedGame = null,
     filters = [],
     selectedFilters = {},
 }: {
     products: any;
     categories: Array<{ id: number; name: string; slug: string }>;
     selectedCategory: string | null;
+    selectedGame: { id: number; name: string; slug: string } | null;
     filters: FilterDefinition[];
     selectedFilters: Record<string, string[]>;
 }) {
@@ -47,6 +49,7 @@ export default function Index({
             "/digital",
             {
                 category: selectedCategory ?? undefined,
+                game: selectedGame?.slug ?? undefined,
                 filters: cleaned,
             },
             {
@@ -62,6 +65,7 @@ export default function Index({
             "/digital",
             {
                 category: category || undefined,
+                game: selectedGame?.slug ?? undefined,
                 filters: selectedFilters,
             },
             {
@@ -212,6 +216,38 @@ export default function Index({
                         </div>
                     </div>
                 </section>
+
+                {selectedGame && (
+                    <section className="mb-4 flex flex-col gap-3 rounded-2xl border border-cyan-500/20 bg-cyan-500/[.06] p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-cyan-500/10 text-cyan-400">
+                                <Gamepad2 size={19} />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-black tracking-[.14em] text-cyan-400">
+                                    مرتبط با کانال بازی
+                                </p>
+                                <strong className="mt-0.5 block truncate text-sm">
+                                    {selectedGame.name}
+                                </strong>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Link
+                                className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-[11px] font-black text-cyan-400 transition hover:bg-cyan-500/15"
+                                href={`/channels/${selectedGame.slug}`}
+                            >
+                                رفتن به کانال بازی
+                            </Link>
+                            <Link
+                                className="rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-3 py-2 text-[11px] font-black text-[var(--store-muted)] transition hover:text-[var(--store-text)]"
+                                href="/digital"
+                            >
+                                نمایش همه
+                            </Link>
+                        </div>
+                    </section>
+                )}
 
                 {categories.length > 0 && (
                     <div className="home-slider mb-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden">

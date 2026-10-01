@@ -23,8 +23,8 @@ class TicketController extends Controller
     public function index(Request $request): Response
     {
         $type = $request->string('type')->toString();
-        abort_unless(in_array($type, ['', 'support', 'exchange'], true), 404);
-        $tickets = Ticket::query()->with(['user:id,name,email', 'product.coverMedia', 'order:id,number'])->withCount('replies')
+        abort_unless(in_array($type, ['', 'support', 'exchange', 'digital_price'], true), 404);
+        $tickets = Ticket::query()->with(['user:id,name,email', 'product.coverMedia', 'digitalProduct.coverMedia', 'assignee:id,name', 'order:id,number'])->withCount('replies')
             ->when($type, fn ($q) => $q->where('type', $type))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
             ->latest('last_replied_at')->paginate(20)->withQueryString();
@@ -53,7 +53,7 @@ class TicketController extends Controller
 
     public function show(Ticket $ticket): Response
     {
-        $ticket->load(['user:id,name,email,phone,wallet_balance', 'order:id,number', 'orderItem', 'product.coverMedia', 'targetProduct:id,title', 'exchangeOrder:id,number', 'replies.user:id,name,is_admin', 'replies.attachments']);
+        $ticket->load(['user:id,name,email,phone,wallet_balance', 'order:id,number', 'orderItem', 'product.coverMedia', 'digitalProduct.coverMedia', 'assignee:id,name', 'targetProduct:id,title', 'exchangeOrder:id,number', 'replies.user:id,name,is_admin', 'replies.attachments']);
         $ticket->replies->each(fn ($reply) => $reply->attachments->each(fn ($attachment) => $attachment->setAttribute('url', MediaStorage::url($attachment->path))));
 
         return Inertia::render('Admin/Tickets/Show', [

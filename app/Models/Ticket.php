@@ -10,7 +10,7 @@ class Ticket extends Model
 {
     public const EXCHANGE_STATUSES = ['pending_review', 'offered', 'accepted', 'rejected', 'attached_to_order', 'received', 'completed', 'cancelled', 'expired'];
 
-    protected $fillable = ['number', 'user_id', 'order_id', 'order_item_id', 'product_id', 'target_product_id', 'trade_item_title', 'trade_item_description', 'trade_item_images', 'trade_item_metadata', 'subject', 'type', 'status', 'exchange_status', 'exchange_offer_amount', 'exchange_order_id', 'exchange_credit_applied', 'exchange_credit_expires_at', 'exchange_offer_responded_at', 'exchange_received_at', 'exchange_completed_at', 'exchange_credited_at', 'exchange_cancelled_at', 'exchange_expired_at', 'priority', 'last_replied_at', 'created_by'];
+    protected $fillable = ['number', 'user_id', 'order_id', 'order_item_id', 'product_id', 'digital_product_id', 'assigned_user_id', 'target_product_id', 'trade_item_title', 'trade_item_description', 'trade_item_images', 'trade_item_metadata', 'subject', 'type', 'status', 'exchange_status', 'exchange_offer_amount', 'exchange_order_id', 'exchange_credit_applied', 'exchange_credit_expires_at', 'exchange_offer_responded_at', 'exchange_received_at', 'exchange_completed_at', 'exchange_credited_at', 'exchange_cancelled_at', 'exchange_expired_at', 'priority', 'last_replied_at', 'created_by'];
 
     protected function casts(): array
     {
@@ -35,6 +35,16 @@ class Ticket extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function digitalProduct(): BelongsTo
+    {
+        return $this->belongsTo(DigitalProduct::class);
+    }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
     }
 
     public function targetProduct(): BelongsTo
