@@ -7,7 +7,9 @@ use App\Models\Category;
 use App\Models\DigitalOffer;
 use App\Models\DigitalProduct;
 use App\Models\Game;
+use App\Models\Platform;
 use App\Models\SocialContent;
+use App\Models\VideoPlaylist;
 use App\Services\DigitalOrderService;
 use App\Services\DigitalProductMediaStorage;
 use App\Services\TicketService;
@@ -34,12 +36,14 @@ class DigitalStoreController extends Controller
         $selectedFilters = $this->selectedFilters($request, $filterAttributes);
         $selectedCategory = trim($request->string('category')->toString());
         $selectedGame = trim($request->string('game')->toString());
+        $selectedPlatform = trim($request->string('platform')->toString());
 
         $query = DigitalProduct::query()
             ->published()
             ->with([
                 'category:id,name,slug',
-                'game:id,name,slug,cover,background,status',
+                'game:id,studio_id,name,slug,cover,background,status',
+            'game.studio:id,name,slug,logo,background,status',
                 'platform:id,name,slug',
                 'offers',
                 'coverMedia',
@@ -51,6 +55,13 @@ class DigitalStoreController extends Controller
                     fn ($gameQuery) => $gameQuery
                         ->whereIn('status', ['active', 'published'])
                         ->where('slug', $selectedGame),
+                ),
+            )
+            ->when(
+                $selectedPlatform !== '',
+                fn ($productQuery) => $productQuery->whereHas(
+                    'platform',
+                    fn ($platformQuery) => $platformQuery->where('slug', $selectedPlatform),
                 ),
             )
             ->when(
@@ -92,6 +103,12 @@ class DigitalStoreController extends Controller
                 ? Game::query()
                     ->where('slug', $selectedGame)
                     ->whereIn('status', ['active', 'published'])
+                    ->first(['id', 'name', 'slug'])
+                    ?->only(['id', 'name', 'slug'])
+                : null,
+            'selectedPlatform' => $selectedPlatform !== ''
+                ? Platform::query()
+                    ->where('slug', $selectedPlatform)
                     ->first(['id', 'name', 'slug'])
                     ?->only(['id', 'name', 'slug'])
                 : null,
@@ -139,9 +156,11 @@ class DigitalStoreController extends Controller
             ? url((string) data_get($product, 'game.channel_url'))
             : null;
 
+        $sameGameProducts = $this->sameGameProducts($digitalProduct);
         $relatedProducts = $this->relatedProducts($digitalProduct);
         $gameVideos = $this->gameContent($digitalProduct, 'video', 4);
         $gameFeed = $this->gameContent($digitalProduct, 'post', 4);
+        $gamePlaylists = $this->gamePlaylists($digitalProduct);
 
         return Inertia::render('Digital/Show', [
             ...Seo::page([
@@ -201,9 +220,11 @@ class DigitalStoreController extends Controller
                 ],
             ]),
             'product' => $product,
+            'sameGameProducts' => $sameGameProducts,
             'relatedProducts' => $relatedProducts,
             'gameVideos' => $gameVideos,
             'gameFeed' => $gameFeed,
+            'gamePlaylists' => $gamePlaylists,
         ]);
     }
 
@@ -262,6 +283,33 @@ class DigitalStoreController extends Controller
             );
     }
 
+    private function sameGameProducts(DigitalProduct $product): array
+    {
+        if (! $product->game_id) {
+            return [];
+        }
+
+        return DigitalProduct::query()
+            ->published()
+            ->where('game_id', $product->game_id)
+            ->where('id', '!=', $product->id)
+            ->with([
+                'category:id,name,slug',
+                'game:id,name,slug,cover,background,status',
+                'platform:id,name,slug',
+                'offers',
+                'coverMedia',
+                'attributeValues.attribute.options',
+            ])
+            ->orderByDesc('featured')
+            ->latest('id')
+            ->limit(8)
+            ->get()
+            ->map(fn (DigitalProduct $candidate) => $this->storefrontData->digitalProduct($candidate))
+            ->values()
+            ->all();
+    }
+
     private function relatedProducts(DigitalProduct $product): array
     {
         $attributePairs = $product->attributeValues
@@ -275,6 +323,10 @@ class DigitalStoreController extends Controller
         $query = DigitalProduct::query()
             ->published()
             ->where('id', '!=', $product->id)
+            ->when(
+                $product->game_id,
+                fn ($candidateQuery) => $candidateQuery->where('game_id', '!=', $product->game_id),
+            )
             ->with([
                 'category:id,name,slug',
                 'game:id,name,slug,cover,background,status',
@@ -284,16 +336,12 @@ class DigitalStoreController extends Controller
                 'attributeValues.attribute.options',
             ]);
 
-        $hasSimilaritySignal = filled($product->game_id)
-            || filled($product->category_id)
+        $hasSimilaritySignal = filled($product->category_id)
             || filled($product->platform_id)
             || $attributePairs->isNotEmpty();
 
         if ($hasSimilaritySignal) {
             $query->where(function ($related) use ($product, $attributePairs): void {
-                if ($product->game_id) {
-                    $related->orWhere('game_id', $product->game_id);
-                }
                 if ($product->category_id) {
                     $related->orWhere('category_id', $product->category_id);
                 }
@@ -320,9 +368,6 @@ class DigitalStoreController extends Controller
             ->map(function (DigitalProduct $candidate) use ($product, $attributePairs): array {
                 $score = 0;
 
-                if ($candidate->game_id === $product->game_id && $product->game_id) {
-                    $score += 100;
-                }
                 if ($candidate->category_id === $product->category_id && $product->category_id) {
                     $score += 45;
                 }
@@ -352,6 +397,39 @@ class DigitalStoreController extends Controller
             ->sortByDesc('score')
             ->take(10)
             ->pluck('product')
+            ->values()
+            ->all();
+    }
+
+    private function gamePlaylists(DigitalProduct $product): array
+    {
+        if (! $product->game_id) {
+            return [];
+        }
+
+        return VideoPlaylist::query()
+            ->publiclyVisible()
+            ->where('game_id', $product->game_id)
+            ->withCount([
+                'videos' => fn ($query) => $query
+                    ->published()
+                    ->where('type', 'video'),
+            ])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->limit(4)
+            ->get(['id', 'game_id', 'title', 'slug', 'logo'])
+            ->map(fn (VideoPlaylist $playlist) => [
+                'id' => $playlist->id,
+                'title' => $playlist->title,
+                'slug' => $playlist->slug,
+                'url' => route('channels.playlists.show', [
+                    'game' => $product->game?->slug,
+                    'playlist' => $playlist->slug,
+                ], false),
+                'cover_url' => MediaStorage::url($playlist->logo),
+                'videos_count' => (int) $playlist->videos_count,
+            ])
             ->values()
             ->all();
     }
@@ -399,7 +477,11 @@ class DigitalStoreController extends Controller
                 'support_days',
                 'featured',
             ]),
-            'category' => $product->category?->only(['id', 'name', 'slug']),
+            'category' => $product->category ? [
+                ...$product->category->only(['id', 'name', 'slug']),
+                'url' => route('categories.show', $product->category->slug, false),
+                'digital_url' => route('digital.index', ['category' => $product->category->slug], false),
+            ] : null,
             'game' => $product->game ? [
                 ...$product->game->only(['id', 'name', 'slug']),
                 'cover_url' => MediaStorage::url($product->game->cover),
@@ -410,8 +492,29 @@ class DigitalStoreController extends Controller
                 'digital_products_url' => in_array($product->game->status, ['active', 'published'], true)
                     ? route('digital.index', ['game' => $product->game->slug], false)
                     : null,
+                'feed_url' => in_array($product->game->status, ['active', 'published'], true)
+                    ? route('channels.show', $product->game->slug, false).'#feed'
+                    : null,
+                'videos_url' => in_array($product->game->status, ['active', 'published'], true)
+                    ? route('channels.show', $product->game->slug, false).'#videos'
+                    : null,
+                'playlists_url' => in_array($product->game->status, ['active', 'published'], true)
+                    ? route('channels.show', $product->game->slug, false).'#playlists'
+                    : null,
+                'products_url' => in_array($product->game->status, ['active', 'published'], true)
+                    ? route('channels.show', $product->game->slug, false).'#products'
+                    : null,
+                'studio' => $product->game->studio?->status === 'active' ? [
+                    ...$product->game->studio->only(['id', 'name', 'slug']),
+                    'url' => route('studios.show', $product->game->studio->slug, false),
+                    'logo_url' => MediaStorage::url($product->game->studio->logo),
+                    'background_url' => MediaStorage::url($product->game->studio->background),
+                ] : null,
             ] : null,
-            'platform' => $product->platform?->only(['id', 'name', 'slug']),
+            'platform' => $product->platform ? [
+                ...$product->platform->only(['id', 'name', 'slug']),
+                'digital_products_url' => route('digital.index', ['platform' => $product->platform->slug], false),
+            ] : null,
             'seller' => $detailed && $product->seller ? [
                 ...$product->seller->only(['id', 'name']),
                 'avatar_url' => MediaStorage::url($product->seller->avatar),
@@ -464,11 +567,29 @@ class DigitalStoreController extends Controller
                     ->filter()
                     ->values();
 
+                $rawValues = $values
+                    ->pluck('value')
+                    ->filter(fn ($value) => $value !== null && $value !== '')
+                    ->map(fn ($value) => (string) $value)
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $canFilter = (bool) $attribute->is_filterable
+                    && in_array($attribute->input_type, ['select', 'multi_select', 'boolean'], true)
+                    && ! in_array($attribute->slug, ['capacity', 'platform'], true)
+                    && $rawValues !== [];
+
                 return [
                     'id' => $attribute->id,
                     'name' => $attribute->title,
                     'slug' => $attribute->slug,
                     'value' => $labels->join('، '),
+                    'filter_url' => $canFilter
+                        ? route('digital.index', [
+                            'filters' => [$attribute->slug => $rawValues],
+                        ], false)
+                        : null,
                 ];
             })
             ->filter()
