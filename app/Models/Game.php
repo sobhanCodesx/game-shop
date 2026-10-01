@@ -43,11 +43,6 @@ class Game extends Model
         return $this->hasMany(DigitalProduct::class);
     }
 
-    public function digitalProducts(): HasMany
-    {
-        return $this->hasMany(DigitalProduct::class);
-    }
-
     public function videos(): HasMany
     {
         return $this->hasMany(SocialContent::class)->where('type', 'video');
