@@ -192,6 +192,19 @@ class FeedService
         return $this->mapItems($contents, $request->user());
     }
 
+    public function channelPosts(Request $request, Game $game, int $limit = 4): array
+    {
+        $contents = $this->feedQuery()
+            ->whereBelongsTo($game)
+            ->where('type', 'post')
+            ->latest('published_at')
+            ->latest('id')
+            ->limit($limit)
+            ->get();
+
+        return $this->mapItems($contents, $request->user());
+    }
+
     public function smartVideosForProfile(Request $request, array $profile, int $limit = 4): array
     {
         $gameIds = array_slice(array_keys($profile['game_scores'] ?? []), 0, 20);
