@@ -281,6 +281,86 @@ class DigitalCommerceTest extends TestCase
                 ->where('product.media.0.url', 'https://cdn.test/storage/'.$cover->path));
     }
 
+    public function test_digital_product_can_be_created_without_a_linked_game(): void
+    {
+        config()->set('digital_media.disk', 'downloads');
+        Storage::fake('downloads');
+
+        [$seller, $existing] = $this->digitalProduct('optional-game-source');
+        $platform = $existing->platform()->firstOrFail();
+
+        $response = $this->actingAs($seller)->post('/admin/digital-products', [
+            'game_id' => '',
+            'platform_id' => $platform->id,
+            'title' => 'Standalone Digital Account',
+            'short_description' => 'محصول دیجیتال بدون اتصال اجباری به بازی',
+            'support_days' => 7,
+            'status' => 'published',
+            'featured' => false,
+            'offers' => [
+                ['code' => 'capacity_1', 'label' => 'ظرفیت ۱', 'price' => 1_000_000, 'stock' => 1, 'status' => 'active'],
+                ['code' => 'capacity_2', 'label' => 'ظرفیت ۲', 'price' => 2_000_000, 'stock' => 1, 'status' => 'active'],
+                ['code' => 'capacity_3', 'label' => 'ظرفیت ۳', 'price' => 900_000, 'stock' => 1, 'status' => 'active'],
+                ['code' => 'full', 'label' => 'فول ظرفیت', 'price' => 3_000_000, 'stock' => 1, 'status' => 'active'],
+            ],
+            'attribute_values' => [],
+            'media' => [[
+                'type' => 'image',
+                'file' => UploadedFile::fake()->image('standalone.jpg', 1200, 800),
+                'alt' => 'کاور محصول مستقل',
+                'is_primary' => true,
+            ]],
+        ]);
+
+        $response->assertRedirect('/admin/digital-products');
+
+        $product = DigitalProduct::query()
+            ->where('title', 'Standalone Digital Account')
+            ->firstOrFail();
+
+        $this->assertNull($product->game_id);
+        $this->assertSame($platform->id, $product->platform_id);
+
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Show')
+                ->where('product.id', $product->id)
+                ->where('product.game', null)
+                ->where('product.platform.id', $platform->id));
+    }
+
+    public function test_unlinked_digital_product_requires_an_explicit_title(): void
+    {
+        [$seller, $existing] = $this->digitalProduct('optional-game-title');
+        $platform = $existing->platform()->firstOrFail();
+
+        $this->actingAs($seller)
+            ->from('/admin/digital-products/create')
+            ->post('/admin/digital-products', [
+                'game_id' => '',
+                'platform_id' => $platform->id,
+                'title' => '',
+                'support_days' => 7,
+                'status' => 'published',
+                'featured' => false,
+                'offers' => [
+                    ['code' => 'capacity_1', 'label' => 'ظرفیت ۱', 'price' => 1_000_000, 'stock' => 1, 'status' => 'active'],
+                    ['code' => 'capacity_2', 'label' => 'ظرفیت ۲', 'price' => 2_000_000, 'stock' => 1, 'status' => 'active'],
+                    ['code' => 'capacity_3', 'label' => 'ظرفیت ۳', 'price' => 900_000, 'stock' => 1, 'status' => 'active'],
+                    ['code' => 'full', 'label' => 'فول ظرفیت', 'price' => 3_000_000, 'stock' => 1, 'status' => 'active'],
+                ],
+                'attribute_values' => [],
+                'media' => [[
+                    'type' => 'image',
+                    'file' => UploadedFile::fake()->image('standalone-title.jpg', 1200, 800),
+                    'is_primary' => true,
+                ]],
+            ])
+            ->assertRedirect('/admin/digital-products/create')
+            ->assertSessionHasErrors('title');
+    }
+
     public function test_admin_digital_product_edit_uses_id_binding_and_listing_is_paginated(): void
     {
         [$seller, $product] = $this->digitalProduct('admin-edit');
