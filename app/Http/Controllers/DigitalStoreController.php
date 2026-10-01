@@ -6,6 +6,7 @@ use App\Models\Attribute;
 use App\Models\Category;
 use App\Models\DigitalOffer;
 use App\Models\DigitalProduct;
+use App\Models\Game;
 use App\Services\DigitalOrderService;
 use App\Services\DigitalProductMediaStorage;
 use App\Services\TicketService;
@@ -24,16 +25,24 @@ class DigitalStoreController extends Controller
         $filterAttributes = $this->filterAttributes();
         $selectedFilters = $this->selectedFilters($request, $filterAttributes);
         $selectedCategory = trim($request->string('category')->toString());
+        $selectedGame = trim($request->string('game')->toString());
 
         $query = DigitalProduct::query()
             ->published()
             ->with([
                 'category:id,name,slug',
-                'game:id,name,slug,cover,background',
+                'game:id,name,slug,cover,background,status',
                 'platform:id,name,slug',
                 'offers',
                 'coverMedia',
             ])
+            ->when(
+                $selectedGame !== '',
+                fn ($productQuery) => $productQuery->whereHas(
+                    'game',
+                    fn ($gameQuery) => $gameQuery->where('slug', $selectedGame),
+                ),
+            )
             ->when(
                 $selectedCategory !== '',
                 fn ($productQuery) => $productQuery->whereHas(
@@ -69,6 +78,13 @@ class DigitalStoreController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name', 'slug']),
             'selectedCategory' => $selectedCategory !== '' ? $selectedCategory : null,
+            'selectedGame' => $selectedGame !== ''
+                ? Game::query()
+                    ->where('slug', $selectedGame)
+                    ->whereIn('status', ['active', 'published'])
+                    ->first(['id', 'name', 'slug'])
+                    ?->only(['id', 'name', 'slug'])
+                : null,
             'filters' => $filterAttributes->map(fn ($attribute) => [
                 'id' => $attribute->id,
                 'title' => $attribute->title,
@@ -182,6 +198,9 @@ class DigitalStoreController extends Controller
                 ...$product->game->only(['id', 'name', 'slug']),
                 'cover_url' => MediaStorage::url($product->game->cover),
                 'background_url' => MediaStorage::url($product->game->background),
+                'channel_url' => in_array($product->game->status, ['active', 'published'], true)
+                    ? route('channels.show', $product->game->slug, false)
+                    : null,
             ] : null,
             'platform' => $product->platform?->only(['id', 'name', 'slug']),
             'seller' => $detailed && $product->seller ? [
