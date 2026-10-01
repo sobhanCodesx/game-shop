@@ -69,14 +69,15 @@ export default function Show({ product }: { product: any }) {
         <StorefrontLayout>
             <Head title={product.title} />
 
-            <main className="mx-auto max-w-7xl px-3 pb-28 pt-4 sm:px-6 sm:pb-12 sm:pt-7 lg:py-12">
-                <div className="grid gap-5 lg:grid-cols-[1.05fr_.95fr] lg:gap-7">
-                    <section className="order-2 min-w-0 lg:order-1">
-                        <div className="overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] sm:rounded-[30px]">
-                            <div className="relative aspect-[16/10] bg-[var(--store-bg)] sm:aspect-[16/11]">
+            <main className="mx-auto max-w-7xl px-3 pb-28 pt-4 sm:px-6 sm:pb-12 sm:pt-7 lg:py-10">
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(380px,.92fr)] lg:items-start lg:gap-7">
+                    <section className="min-w-0">
+                        <div className="overflow-hidden rounded-[22px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_24px_70px_-55px_rgba(79,70,229,.8)] sm:rounded-[30px]">
+                            <div className="relative aspect-[16/10] overflow-hidden bg-slate-950 sm:aspect-[16/11]">
                                 <div className="absolute inset-0 grid place-items-center">
-                                    <Gamepad2 className="text-indigo-400/50" size={48} />
+                                    <Gamepad2 className="text-indigo-400/40" size={48} />
                                 </div>
+
                                 {activeMedia?.type === "video" ? (
                                     <video
                                         className="relative size-full object-cover"
@@ -84,29 +85,34 @@ export default function Show({ product }: { product: any }) {
                                         preload="metadata"
                                         src={activeMedia.url}
                                     />
-                                ) : activeMedia?.url ? (
-                                    <img
-                                        className="relative size-full object-cover"
-                                        src={activeMedia.url}
-                                        alt={activeMedia.alt || product.title}
-                                        onError={(event) => {
-                                            event.currentTarget.style.display = "none";
-                                        }}
-                                    />
-                                ) : product.cover_url ? (
-                                    <img
-                                        className="relative size-full object-cover"
-                                        src={product.cover_url}
-                                        alt={product.title}
-                                        onError={(event) => {
-                                            event.currentTarget.style.display = "none";
-                                        }}
-                                    />
+                                ) : activeMedia?.url || product.cover_url ? (
+                                    <>
+                                        <img
+                                            aria-hidden="true"
+                                            className="absolute inset-0 size-full scale-110 object-cover opacity-35 blur-2xl"
+                                            src={activeMedia?.url ?? product.cover_url}
+                                            alt=""
+                                        />
+                                        <span className="absolute inset-0 bg-black/35" />
+                                        <img
+                                            className="relative size-full object-contain"
+                                            src={activeMedia?.url ?? product.cover_url}
+                                            alt={activeMedia?.alt || product.title}
+                                            onError={(event) => {
+                                                event.currentTarget.style.display = "none";
+                                            }}
+                                        />
+                                    </>
                                 ) : null}
+
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
+                                <span className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[10px] font-black text-white backdrop-blur-md">
+                                    مدیای محصول
+                                </span>
                             </div>
 
                             {product.media.length > 1 && (
-                                <div className="flex gap-2 overflow-x-auto p-3 sm:gap-3 sm:p-4">
+                                <div className="flex gap-2 overflow-x-auto p-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-3 sm:p-4">
                                     {product.media.map((media: any) => (
                                         <button
                                             className={`relative aspect-video w-24 shrink-0 overflow-hidden rounded-xl border transition sm:w-28 ${
@@ -136,7 +142,7 @@ export default function Show({ product }: { product: any }) {
                         </div>
 
                         {(product.short_description || product.features.length > 0) && (
-                            <div className="mt-4 rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:mt-5 sm:rounded-[28px] sm:p-6">
+                            <div className="mt-4 rounded-[22px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:mt-5 sm:rounded-[28px] sm:p-6">
                                 <details className="group">
                                     <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-black">
                                         <span>جزئیات و ویژگی‌های محصول</span>
@@ -178,7 +184,7 @@ export default function Show({ product }: { product: any }) {
                         )}
                     </section>
 
-                    <section className="order-1 h-fit rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_20px_70px_-55px_rgba(99,102,241,.7)] sm:rounded-[30px] sm:p-7 lg:order-2 lg:sticky lg:top-28">
+                    <section className="h-fit rounded-[22px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_24px_90px_-65px_rgba(99,102,241,.95)] sm:rounded-[30px] sm:p-6 lg:sticky lg:top-28">
                         <div className="flex items-center justify-between gap-3 border-b border-[var(--store-border)] pb-3">
                             <div className="flex min-w-0 items-center gap-3">
                                 <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-sm font-black text-indigo-300">
@@ -195,7 +201,7 @@ export default function Show({ product }: { product: any }) {
                                 <span className="min-w-0">
                                     <small className="flex items-center gap-1 text-[10px] font-bold text-[var(--store-muted)]">
                                         <Store size={12} />
-                                        فروشنده محصول
+                                        فروشنده
                                     </small>
                                     <strong className="mt-0.5 block truncate text-sm">
                                         {product.seller?.name ?? "PlayNexus"}
@@ -204,7 +210,7 @@ export default function Show({ product }: { product: any }) {
                             </div>
                             <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black text-emerald-500">
                                 <ShieldCheck size={13} />
-                                فروشنده تأییدشده
+                                تأییدشده
                             </span>
                         </div>
 
@@ -229,24 +235,26 @@ export default function Show({ product }: { product: any }) {
                                 {product.title}
                             </h1>
 
-                            <div className="mt-3 flex items-end justify-between gap-3 rounded-2xl border border-emerald-500/15 bg-emerald-500/[.06] px-3 py-3">
-                                <span className="text-xs font-bold text-[var(--store-muted)]">
-                                    {offer ? "قیمت انتخاب شما" : "شروع قیمت"}
-                                </span>
-                                <strong className="text-xl font-black text-emerald-500 sm:text-2xl">
-                                    {offer
-                                        ? money.format(offer.price)
-                                        : startingPrice !== null
-                                          ? money.format(startingPrice)
-                                          : "—"}
-                                    <small className="mr-1 text-[10px] font-bold">
-                                        تومان
-                                    </small>
-                                </strong>
+                            <div className="mt-3 rounded-2xl border border-emerald-500/15 bg-[linear-gradient(135deg,rgba(16,185,129,.09),rgba(99,102,241,.04))] p-3.5">
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="text-xs font-bold text-[var(--store-muted)]">
+                                        {offer ? "قیمت انتخاب شما" : "شروع قیمت"}
+                                    </span>
+                                    <strong className="text-2xl font-black text-emerald-500">
+                                        {offer
+                                            ? money.format(offer.price)
+                                            : startingPrice !== null
+                                              ? money.format(startingPrice)
+                                              : "—"}
+                                        <small className="mr-1 text-[10px] font-bold">
+                                            تومان
+                                        </small>
+                                    </strong>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between">
+                        <div className="mt-4 flex items-center justify-between gap-3">
                             <h2 className="text-sm font-black">ظرفیت را انتخاب کن</h2>
                             <button
                                 className="flex items-center gap-1 text-[11px] font-bold text-indigo-500"
@@ -254,7 +262,7 @@ export default function Show({ product }: { product: any }) {
                                 type="button"
                             >
                                 <HelpCircle size={14} />
-                                فرق ظرفیت‌ها
+                                راهنمای ظرفیت‌ها
                             </button>
                         </div>
 
@@ -266,16 +274,16 @@ export default function Show({ product }: { product: any }) {
                             </div>
                         )}
 
-                        <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
+                        <div className="mt-3 grid grid-cols-3 gap-2">
                             {product.offers.map((item: any) => (
                                 <button
-                                    className={`relative min-h-20 rounded-2xl border p-3 text-right transition ${
+                                    className={`relative min-h-[92px] rounded-2xl border p-2.5 text-right transition ${
                                         offerId === item.id
                                             ? "border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500/30"
                                             : "border-[var(--store-border)] bg-[var(--store-bg)]"
                                     } ${
                                         !item.available
-                                            ? "opacity-40"
+                                            ? "opacity-35"
                                             : "hover:border-indigo-500/50"
                                     }`}
                                     disabled={!item.available}
@@ -283,8 +291,8 @@ export default function Show({ product }: { product: any }) {
                                     onClick={() => setOfferId(item.id)}
                                     type="button"
                                 >
-                                    <div className="flex items-start justify-between gap-2">
-                                        <strong className="text-xs sm:text-sm">
+                                    <div className="flex items-start justify-between gap-1">
+                                        <strong className="text-[11px] leading-5 sm:text-xs">
                                             {item.label}
                                         </strong>
                                         {offerId === item.id && (
@@ -293,11 +301,11 @@ export default function Show({ product }: { product: any }) {
                                             </span>
                                         )}
                                     </div>
-                                    <p className="mt-1.5 text-sm font-black text-emerald-500 sm:text-base">
+                                    <p className="mt-1.5 whitespace-nowrap text-xs font-black text-emerald-500 sm:text-sm">
                                         {money.format(item.price)}
-                                        <small className="mr-1 text-[9px]">تومان</small>
+                                        <small className="mr-1 text-[8px]">تومان</small>
                                     </p>
-                                    <p className="mt-1 text-[10px] text-[var(--store-muted)]">
+                                    <p className="mt-1 text-[9px] text-[var(--store-muted)]">
                                         {item.available
                                             ? `${item.available_stock.toLocaleString("fa-IR")} موجود`
                                             : "ناموجود"}

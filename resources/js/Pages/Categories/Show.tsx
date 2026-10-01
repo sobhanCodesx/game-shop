@@ -1,4 +1,4 @@
-import { Button, Checkbox, Input } from "@heroui/react";
+import { Button, Input } from "@heroui/react";
 import { Link, router } from "@inertiajs/react";
 import {
     Filter,
@@ -23,6 +23,8 @@ type CatalogFilter = {
     slug: string;
     options: Array<{ title: string; value: string }>;
 };
+
+const faNumber = new Intl.NumberFormat("fa-IR");
 
 export default function CategoryShow({
     seo,
@@ -87,17 +89,14 @@ export default function CategoryShow({
         navigate(selectedAttributeFilters, { q: query.trim() || undefined });
     };
 
-    const toggleAttribute = (
-        slug: string,
-        value: string,
-        selected: boolean,
-    ) => {
+    const toggleAttribute = (slug: string, value: string) => {
         const current = selectedAttributeFilters[slug] ?? [];
+        const selected = current.includes(value);
         navigate({
             ...selectedAttributeFilters,
             [slug]: selected
-                ? Array.from(new Set([...current, value]))
-                : current.filter((item) => item !== value),
+                ? current.filter((item) => item !== value)
+                : Array.from(new Set([...current, value])),
         });
     };
 
@@ -110,12 +109,67 @@ export default function CategoryShow({
         );
     };
 
-    const filterPanel = (
+    const filterGroups = (
+        <div className="space-y-4">
+            {catalogFilters.map((filter) => (
+                <section
+                    className="rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)]/70 p-3"
+                    key={filter.slug}
+                >
+                    <div className="mb-2.5 flex items-center justify-between gap-2">
+                        <strong className="text-sm">{filter.title}</strong>
+                        {(selectedAttributeFilters[filter.slug] ?? []).length >
+                            0 && (
+                            <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-black text-indigo-500">
+                                {faNumber.format(
+                                    (
+                                        selectedAttributeFilters[filter.slug] ??
+                                        []
+                                    ).length,
+                                )}{" "}
+                                انتخاب
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        {filter.options.map((option) => {
+                            const selected = (
+                                selectedAttributeFilters[filter.slug] ?? []
+                            ).includes(option.value);
+
+                            return (
+                                <button
+                                    className={`rounded-full border px-3 py-2 text-xs font-black transition ${
+                                        selected
+                                            ? "border-indigo-500 bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
+                                            : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)] hover:border-indigo-500/40 hover:text-[var(--store-text)]"
+                                    }`}
+                                    key={option.value}
+                                    onClick={() =>
+                                        toggleAttribute(
+                                            filter.slug,
+                                            option.value,
+                                        )
+                                    }
+                                    type="button"
+                                >
+                                    {option.title}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </section>
+            ))}
+        </div>
+    );
+
+    const desktopFilterPanel = (
         <div className="space-y-5">
             <div className="flex items-center justify-between gap-3">
                 <strong className="flex items-center gap-2 text-sm">
                     <Filter className="text-indigo-500" size={17} />
-                    فیلتر محصولات
+                    فیلتر دقیق
                 </strong>
                 {hasAnyFilters && (
                     <Button size="sm" variant="ghost" onPress={clearAll}>
@@ -126,35 +180,7 @@ export default function CategoryShow({
             </div>
 
             {catalogFilters.length > 0 ? (
-                catalogFilters.map((filter) => (
-                    <div
-                        className="border-t border-[var(--store-border)] pt-4 first:border-t-0 first:pt-0"
-                        key={filter.slug}
-                    >
-                        <p className="mb-2 text-sm font-black">{filter.title}</p>
-                        <div className="space-y-2">
-                            {filter.options.map((option) => (
-                                <Checkbox
-                                    key={option.value}
-                                    isSelected={(
-                                        selectedAttributeFilters[filter.slug] ?? []
-                                    ).includes(option.value)}
-                                    onChange={(selected) =>
-                                        toggleAttribute(
-                                            filter.slug,
-                                            option.value,
-                                            selected,
-                                        )
-                                    }
-                                >
-                                    <span className="text-sm">
-                                        {option.title}
-                                    </span>
-                                </Checkbox>
-                            ))}
-                        </div>
-                    </div>
-                ))
+                filterGroups
             ) : (
                 <p className="text-xs leading-6 text-[var(--store-muted)]">
                     برای این دسته فیلتر ویژگی فعالی وجود ندارد.
@@ -168,7 +194,7 @@ export default function CategoryShow({
             <Seo seo={seo} />
 
             <main className="mx-auto max-w-7xl px-3 pb-28 pt-4 sm:px-4 sm:pb-12 md:pt-7">
-                <header className="relative mb-4 overflow-hidden rounded-[24px] border border-indigo-500/20 bg-[radial-gradient(circle_at_8%_0%,rgba(99,102,241,.18),transparent_44%),var(--store-surface)] p-4 sm:p-6">
+                <header className="relative mb-4 overflow-hidden rounded-[22px] border border-indigo-500/20 bg-[radial-gradient(circle_at_8%_0%,rgba(99,102,241,.16),transparent_44%),var(--store-surface)] p-4 sm:rounded-[26px] sm:p-6">
                     {category.image_url && (
                         <img
                             alt=""
@@ -197,7 +223,7 @@ export default function CategoryShow({
                             )}
                         </div>
                         <span className="shrink-0 rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-3 py-1.5 text-[10px] font-black text-[var(--store-muted)]">
-                            {new Intl.NumberFormat("fa-IR").format(products.total)} محصول
+                            {faNumber.format(products.total)} محصول
                         </span>
                     </div>
                 </header>
@@ -206,7 +232,7 @@ export default function CategoryShow({
                     <section className="home-slider mb-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         {category.children.map((child) => (
                             <Link
-                                className="flex shrink-0 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] px-3 py-2 text-xs font-black transition hover:border-indigo-500/50"
+                                className="flex shrink-0 items-center gap-2 rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] px-3.5 py-2 text-xs font-black transition hover:border-indigo-500/50"
                                 href={`/categories/${child.slug}${tradeActive ? "?trade=1" : ""}`}
                                 key={child.id}
                             >
@@ -241,7 +267,7 @@ export default function CategoryShow({
 
                         <select
                             aria-label="مرتب‌سازی"
-                            className="min-h-10 rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] px-2.5 text-xs text-[var(--store-text)] max-sm:col-span-1"
+                            className="min-h-10 rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)] px-2.5 text-xs text-[var(--store-text)]"
                             value={filters.sort ?? "latest"}
                             onChange={(event) =>
                                 navigate(selectedAttributeFilters, {
@@ -281,47 +307,33 @@ export default function CategoryShow({
                     </form>
                 </section>
 
-                <div className="mb-4 flex items-center justify-between gap-2 lg:hidden">
+                <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] px-3 py-2.5 lg:hidden">
+                    <div>
+                        <strong className="block text-sm">
+                            {faNumber.format(products.total)} نتیجه
+                        </strong>
+                        <span className="text-[10px] text-[var(--store-muted)]">
+                            محصولات همین دسته، بدون حواس‌پرتی
+                        </span>
+                    </div>
                     <Button
                         size="sm"
-                        variant={
-                            mobileFiltersOpen || hasAttributeFilters
-                                ? "primary"
-                                : "secondary"
-                        }
-                        onPress={() => setMobileFiltersOpen((value) => !value)}
+                        variant={hasAttributeFilters ? "primary" : "secondary"}
+                        onPress={() => setMobileFiltersOpen(true)}
                     >
                         <SlidersHorizontal size={15} />
-                        فیلتر ویژگی‌ها
+                        فیلتر
                         {activeFilterCount > 0 && (
                             <span className="rounded-full bg-white/20 px-1.5 text-[10px]">
-                                {new Intl.NumberFormat("fa-IR").format(
-                                    activeFilterCount,
-                                )}
+                                {faNumber.format(activeFilterCount)}
                             </span>
                         )}
                     </Button>
-
-                    {hasAnyFilters && (
-                        <button
-                            className="text-[11px] font-black text-rose-400"
-                            onClick={clearAll}
-                            type="button"
-                        >
-                            حذف همه فیلترها
-                        </button>
-                    )}
                 </div>
-
-                {mobileFiltersOpen && (
-                    <section className="mb-4 rounded-[20px] border border-indigo-500/20 bg-[var(--store-surface)] p-4 lg:hidden">
-                        {filterPanel}
-                    </section>
-                )}
 
                 <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
                     <aside className="hidden h-fit rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-5 lg:sticky lg:top-28 lg:block">
-                        {filterPanel}
+                        {desktopFilterPanel}
                     </aside>
 
                     <section className="min-w-0">
@@ -330,10 +342,7 @@ export default function CategoryShow({
                                 محصولات {category.name}
                             </strong>
                             <span className="text-[10px] font-bold text-[var(--store-muted)]">
-                                {new Intl.NumberFormat("fa-IR").format(
-                                    products.total,
-                                )}{" "}
-                                نتیجه
+                                {faNumber.format(products.total)} نتیجه
                             </span>
                         </div>
 
@@ -365,6 +374,62 @@ export default function CategoryShow({
                     </section>
                 </div>
             </main>
+
+            {mobileFiltersOpen && (
+                <div className="fixed inset-0 z-[90] lg:hidden">
+                    <button
+                        aria-label="بستن فیلترها"
+                        className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+                        onClick={() => setMobileFiltersOpen(false)}
+                        type="button"
+                    />
+                    <section className="absolute inset-x-0 bottom-0 max-h-[76dvh] overflow-hidden rounded-t-[28px] border-t border-indigo-500/20 bg-[var(--store-surface)] shadow-[0_-30px_90px_-40px_rgba(79,70,229,.9)]">
+                        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--store-border)] bg-[var(--store-surface)]/95 px-4 py-3.5 backdrop-blur-xl">
+                            <div>
+                                <strong className="flex items-center gap-2 text-base">
+                                    <SlidersHorizontal
+                                        size={18}
+                                        className="text-indigo-500"
+                                    />
+                                    فیلتر {category.name}
+                                </strong>
+                                <span className="mt-0.5 block text-[10px] text-[var(--store-muted)]">
+                                    فقط ویژگی‌هایی که واقعاً در این دسته وجود دارند
+                                </span>
+                            </div>
+                            <button
+                                className="grid size-9 place-items-center rounded-xl border border-[var(--store-border)] bg-[var(--store-bg)]"
+                                onClick={() => setMobileFiltersOpen(false)}
+                                type="button"
+                            >
+                                <X size={17} />
+                            </button>
+                        </header>
+
+                        <div className="overflow-y-auto px-4 pb-8 pt-4">
+                            {catalogFilters.length > 0 ? (
+                                filterGroups
+                            ) : (
+                                <p className="rounded-2xl border border-dashed border-[var(--store-border)] p-5 text-center text-xs text-[var(--store-muted)]">
+                                    برای این دسته فیلتر ویژگی فعالی وجود ندارد.
+                                </p>
+                            )}
+
+                            {hasAnyFilters && (
+                                <Button
+                                    className="mt-4"
+                                    fullWidth
+                                    variant="secondary"
+                                    onPress={clearAll}
+                                >
+                                    <X size={15} />
+                                    پاک کردن همه فیلترها
+                                </Button>
+                            )}
+                        </div>
+                    </section>
+                </div>
+            )}
         </StorefrontLayout>
     );
 }

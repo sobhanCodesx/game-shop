@@ -3382,7 +3382,7 @@ export default function Home({
                     url: settings.announcement_url,
                 }}
                 categories={categories}
-                stories={usesFullPageTemplate ? [] : storefront.stories}
+                stories={storefront.stories}
                 onToggleTheme={toggleTheme}
                 theme={theme}
                 user={auth.user}
