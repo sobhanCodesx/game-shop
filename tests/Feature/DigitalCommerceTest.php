@@ -617,9 +617,11 @@ class DigitalCommerceTest extends TestCase
                 'slug' => $index === 64
                     ? 'rare-search-game'
                     : sprintf('catalog-game-%03d', $index),
-                'status' => $index % 3 === 0
+                'status' => $index === 64
                     ? 'draft'
-                    : ($index % 3 === 1 ? 'active' : 'hidden'),
+                    : ($index % 3 === 0
+                        ? 'draft'
+                        : ($index % 3 === 1 ? 'active' : 'hidden')),
             ]);
         }
 
