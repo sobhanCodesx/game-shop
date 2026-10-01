@@ -10,6 +10,7 @@ use App\Services\MediaStorage;
 use App\Services\ProductPageDataService;
 use App\Services\ProductPriceService;
 use App\Services\StorefrontDataService;
+use App\Services\StorefrontRecommendationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -23,6 +24,7 @@ class ProductController extends Controller
         ProductPageDataService $page,
         FeedService $feed,
         StorefrontDataService $storefront,
+        StorefrontRecommendationService $recommendations,
     ): Response {
         abort_unless(
             Product::query()->publiclyVisible()->whereKey($product->getKey())->exists(),
@@ -30,6 +32,7 @@ class ProductController extends Controller
         );
 
         $cached = $page->get($product);
+        $product->loadMissing('game:id,name,slug,cover');
         $isPartner = $request->user()?->role === 'partner';
 
         $exchangeRequestId = null;
@@ -100,10 +103,22 @@ class ProductController extends Controller
             ],
             'exchangeRequestId' => $exchangeRequestId,
             'exchangeOfferAmount' => $exchangeOfferAmount,
-            'latestFeed' => $feed->latestPostsExcept($request, 0),
+            'relatedGame' => $product->game ? [
+                'id' => $product->game->id,
+                'name' => $product->game->name,
+                'slug' => $product->game->slug,
+                'channel_url' => route('channels.show', $product->game->slug, false),
+            ] : null,
+            'latestFeed' => $product->game
+                ? $feed->channelPosts($request, $product->game, 4)
+                : $feed->latestPostsExcept($request, 0, 4),
             'latestVideos' => SocialContent::query()
                 ->published()
                 ->where('type', 'video')
+                ->when(
+                    $product->game_id,
+                    fn ($query) => $query->where('game_id', $product->game_id),
+                )
                 ->with('game:id,name,slug,cover')
                 ->latest('published_at')
                 ->latest('id')
@@ -111,23 +126,11 @@ class ProductController extends Controller
                 ->get()
                 ->map(fn (SocialContent $video) => $storefront->content($video))
                 ->values(),
-            'latestProducts' => Product::query()
-                ->publiclyVisible()
-                ->where('id', '!=', $product->id)
-                ->with([
-                    'category:id,name',
-                    'type:id,title',
-                    'game:id,name,developer,publisher',
-                    'platforms:id,name',
-                    'attributeValues.attribute:id,name,slug',
-                    'coverMedia',
-                    'variants:id,product_id,status',
-                ])
-                ->latest()
-                ->limit(4)
-                ->get()
-                ->map(fn (Product $related) => $storefront->product($related, $request->user()))
-                ->values(),
+            'latestProducts' => $recommendations->forProduct(
+                $product,
+                $request->user(),
+                10,
+            ),
         ]);
     }
 
