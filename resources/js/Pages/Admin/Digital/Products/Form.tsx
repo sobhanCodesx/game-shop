@@ -172,7 +172,12 @@ function GamePicker({
 
     return (
         <div className="md:col-span-1">
-            <label className="text-sm font-bold text-slate-200">بازی</label>
+            <div className="flex items-center justify-between gap-3">
+                <label className="text-sm font-bold text-slate-200">بازی</label>
+                <span className="rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[9px] font-black text-slate-400">
+                    اختیاری
+                </span>
+            </div>
 
             <div className="mt-2 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950">
                 <div className="flex items-center gap-2 border-b border-slate-800 px-3">
@@ -193,6 +198,14 @@ function GamePicker({
                         />
                     )}
                 </div>
+
+                {!selected && (
+                    <div className="border-b border-slate-800 bg-slate-900/60 px-3 py-2.5">
+                        <p className="text-[10px] leading-5 text-slate-400">
+                            می‌توانی محصول را بدون اتصال به بازی بسازی. در این حالت عنوان محصول را خودت وارد کن.
+                        </p>
+                    </div>
+                )}
 
                 {selected && (
                     <div className="border-b border-indigo-500/20 bg-indigo-500/[.08] px-3 py-2.5">
@@ -438,7 +451,7 @@ export default function Form({
     return (
         <AdminLayout
             title={product ? "ویرایش بازی دیجیتال" : "بازی دیجیتال جدید"}
-            description="بازی، مدیا، ویژگی‌های ازپیش‌تعریف‌شده و قیمت ظرفیت‌ها."
+            description="بازی اختیاری است؛ مدیا، ویژگی‌های ازپیش‌تعریف‌شده و قیمت ظرفیت‌ها را تنظیم کن."
         >
             <Head title={product ? "ویرایش بازی دیجیتال" : "بازی دیجیتال جدید"} />
 
