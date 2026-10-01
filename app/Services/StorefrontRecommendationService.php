@@ -110,6 +110,8 @@ final class StorefrontRecommendationService
             ]);
         }
 
+        $this->fillFallback($ranked, $product->id, null, $user, $limit);
+
         return $this->finish($ranked, $limit);
     }
 
@@ -210,7 +212,59 @@ final class StorefrontRecommendationService
             ]);
         }
 
+        $this->fillFallback($ranked, null, $product->id, $user, $limit);
+
         return $this->finish($ranked, $limit);
+    }
+
+    private function fillFallback(
+        Collection $ranked,
+        ?int $excludeProductId,
+        ?int $excludeDigitalId,
+        ?User $user,
+        int $limit,
+    ): void {
+        if ($ranked->unique('key')->count() >= $limit) {
+            return;
+        }
+
+        $physical = Product::query()
+            ->publiclyVisible()
+            ->when($excludeProductId, fn ($query) => $query->whereKeyNot($excludeProductId))
+            ->with($this->physicalRelations())
+            ->latest('id')
+            ->limit($limit)
+            ->get();
+
+        foreach ($physical as $candidate) {
+            $ranked->push([
+                'key' => 'p:'.$candidate->id,
+                'score' => 0,
+                'id' => $candidate->id,
+                'payload' => $this->storefront->product($candidate, $user),
+            ]);
+        }
+
+        if ($ranked->unique('key')->count() >= $limit) {
+            return;
+        }
+
+        $digital = DigitalProduct::query()
+            ->published()
+            ->when($excludeDigitalId, fn ($query) => $query->whereKeyNot($excludeDigitalId))
+            ->with($this->digitalRelations())
+            ->latest('id')
+            ->limit($limit)
+            ->get();
+
+        foreach ($digital as $candidate) {
+            $ranked->push([
+                'key' => 'd:'.$candidate->id,
+                'score' => 0,
+                'id' => $candidate->id,
+                'payload' => $this->storefront->digitalProduct($candidate),
+            ]);
+        }
     }
 
     private function finish(Collection $ranked, int $limit): array
