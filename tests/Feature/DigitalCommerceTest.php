@@ -12,6 +12,7 @@ use App\Models\Role;
 use App\Models\TelegramBotSetting;
 use App\Models\Ticket;
 use App\Models\User;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -582,6 +583,32 @@ class DigitalCommerceTest extends TestCase
                 ->where('products.0.id', $product->id)
                 ->where('products.0.url', '/digital/'.$product->slug)
                 ->where('products.0.badge', 'دیجیتال'));
+    }
+
+    public function test_price_ticket_migration_recovers_from_partially_existing_production_schema(): void
+    {
+        // Reproduce the production drift that triggered the failed deploy:
+        // digital_product_id exists, while the newer assignee/index pieces do not.
+        Schema::table('tickets', function (Blueprint $table): void {
+            $table->dropIndex('tickets_type_assignee_status_index');
+            $table->dropConstrainedForeignId('assigned_user_id');
+        });
+
+        $this->assertTrue(Schema::hasColumn('tickets', 'digital_product_id'));
+        $this->assertFalse(Schema::hasColumn('tickets', 'assigned_user_id'));
+
+        $migration = require database_path(
+            'migrations/2026_10_01_041500_add_digital_price_inquiries_to_tickets.php',
+        );
+
+        $migration->up();
+        $migration->up();
+
+        $this->assertTrue(Schema::hasColumn('tickets', 'digital_product_id'));
+        $this->assertTrue(Schema::hasColumn('tickets', 'assigned_user_id'));
+        $this->assertTrue(
+            Schema::hasIndex('tickets', 'tickets_type_assignee_status_index'),
+        );
     }
 
     public function test_latest_price_inquiry_targets_only_the_linked_product_seller(): void
