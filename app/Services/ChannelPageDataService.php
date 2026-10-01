@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Product;
 use App\Models\SocialContent;
@@ -105,6 +106,7 @@ final class ChannelPageDataService
         $game = Game::query()->find($gameId);
         $payload['products'] = [];
         $payload['products_count'] = 0;
+        $payload['digital_products_count'] = 0;
 
         if ($game) {
             $payload['channel']['subscribers_count'] = $game->subscribers()->count();
@@ -117,8 +119,29 @@ final class ChannelPageDataService
                 ->publiclyVisible()
                 ->whereBelongsTo($game);
 
-            $payload['products_count'] = (clone $productQuery)->count();
-            $payload['products'] = $productQuery
+            $digitalProductQuery = DigitalProduct::query()
+                ->published()
+                ->whereBelongsTo($game);
+
+            $physicalCount = (clone $productQuery)->count();
+            $digitalCount = (clone $digitalProductQuery)->count();
+
+            $digitalProducts = $digitalProductQuery
+                ->with([
+                    'category:id,name,slug',
+                    'game:id,name,slug,cover,background',
+                    'platform:id,name,slug',
+                    'offers',
+                    'coverMedia',
+                    'attributeValues.attribute.options',
+                ])
+                ->orderByDesc('featured')
+                ->orderByDesc('id')
+                ->limit(12)
+                ->get()
+                ->map(fn (DigitalProduct $product) => $this->data->digitalProduct($product));
+
+            $physicalProducts = $productQuery
                 ->with([
                     'category:id,name', 'type:id,title', 'game:id,name,developer,publisher',
                     'platforms:id,name', 'attributeValues.attribute:id,name,slug',
@@ -129,7 +152,13 @@ final class ChannelPageDataService
                 ->orderByDesc('id')
                 ->limit(12)
                 ->get()
-                ->map(fn (Product $product) => $this->data->product($product, $user))
+                ->map(fn (Product $product) => $this->data->product($product, $user));
+
+            $payload['digital_products_count'] = $digitalCount;
+            $payload['products_count'] = $physicalCount + $digitalCount;
+            $payload['products'] = $digitalProducts
+                ->concat($physicalProducts)
+                ->take(12)
                 ->values()
                 ->all();
         }
