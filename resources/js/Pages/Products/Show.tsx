@@ -65,6 +65,12 @@ interface Props {
     latestFeed: FeedItemData[];
     latestVideos: StorefrontContent[];
     latestProducts: StorefrontProduct[];
+    relatedGame: {
+        id: number;
+        name: string;
+        slug: string;
+        channel_url: string;
+    } | null;
     product: {
         id: number;
         title: string;
@@ -267,6 +273,7 @@ export default function ProductShow({
     latestFeed,
     latestVideos,
     latestProducts,
+    relatedGame,
 }: Props) {
     const { flash } = usePage<SharedPageProps>().props;
     const primary =
@@ -941,7 +948,14 @@ export default function ProductShow({
                         </section>
                     )}
                     {latestFeed.length > 0 && (
-                        <RelatedSection href="/feed" title="تازه‌های فید">
+                        <RelatedSection
+                            href={relatedGame?.channel_url ?? "/feed"}
+                            title={
+                                relatedGame
+                                    ? `فیدهای مرتبط با ${relatedGame.name}`
+                                    : "تازه‌های فید"
+                            }
+                        >
                             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                 {latestFeed.map((item) => (
                                     <FeedLink item={item} key={item.id} />
@@ -950,7 +964,14 @@ export default function ProductShow({
                         </RelatedSection>
                     )}
                     {latestVideos.length > 0 && (
-                        <RelatedSection href="/videos" title="ویدیوهای تازه">
+                        <RelatedSection
+                            href={relatedGame?.channel_url ?? "/videos"}
+                            title={
+                                relatedGame
+                                    ? `ویدیوهای ${relatedGame.name}`
+                                    : "ویدیوهای تازه"
+                            }
+                        >
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                 {latestVideos.map((video) => (
                                     <ContentCard
@@ -962,8 +983,11 @@ export default function ProductShow({
                         </RelatedSection>
                     )}
                     {latestProducts.length > 0 && (
-                        <RelatedSection href="/shop" title="آخرین محصولات">
-                            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <RelatedSection
+                            href={relatedGame?.channel_url ?? "/shop"}
+                            title="محصولات مرتبط و پیشنهادی"
+                        >
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                                 {latestProducts.map((item) => (
                                     <ProductCard key={item.id} product={item} />
                                 ))}
