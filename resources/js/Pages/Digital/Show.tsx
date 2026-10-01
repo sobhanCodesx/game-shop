@@ -65,51 +65,62 @@ export default function Show({ product }: { product: any }) {
         );
     };
 
+    const mediaUrl =
+        activeMedia?.url ||
+        product.cover_url ||
+        product.game?.cover_url ||
+        null;
+
     return (
         <StorefrontLayout>
             <Head title={product.title} />
 
             <main className="mx-auto max-w-7xl px-3 pb-28 pt-4 sm:px-6 sm:pb-12 sm:pt-7 lg:py-12">
                 <div className="grid gap-5 lg:grid-cols-[1.05fr_.95fr] lg:gap-7">
-                    <section className="order-2 min-w-0 lg:order-1">
-                        <div className="overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] sm:rounded-[30px]">
-                            <div className="relative aspect-[16/10] bg-[var(--store-bg)] sm:aspect-[16/11]">
+                    <section className="min-w-0">
+                        <div className="overflow-hidden rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] shadow-[0_18px_60px_-45px_rgba(99,102,241,.55)] sm:rounded-[30px]">
+                            <div className="relative aspect-[16/10] overflow-hidden bg-[#090d18] sm:aspect-[16/11]">
                                 <div className="absolute inset-0 grid place-items-center">
-                                    <Gamepad2 className="text-indigo-400/50" size={48} />
+                                    <Gamepad2 className="text-indigo-400/40" size={48} />
                                 </div>
+
+                                {mediaUrl && activeMedia?.type !== "video" && (
+                                    <img
+                                        aria-hidden="true"
+                                        className="absolute inset-0 size-full scale-110 object-cover opacity-20 blur-2xl"
+                                        src={mediaUrl}
+                                        alt=""
+                                    />
+                                )}
+
                                 {activeMedia?.type === "video" ? (
                                     <video
-                                        className="relative size-full object-cover"
+                                        className="relative size-full object-contain"
                                         controls
                                         preload="metadata"
                                         src={activeMedia.url}
                                     />
-                                ) : activeMedia?.url ? (
+                                ) : mediaUrl ? (
                                     <img
-                                        className="relative size-full object-cover"
-                                        src={activeMedia.url}
-                                        alt={activeMedia.alt || product.title}
-                                        onError={(event) => {
-                                            event.currentTarget.style.display = "none";
-                                        }}
-                                    />
-                                ) : product.cover_url ? (
-                                    <img
-                                        className="relative size-full object-cover"
-                                        src={product.cover_url}
-                                        alt={product.title}
+                                        className="relative size-full object-contain"
+                                        src={mediaUrl}
+                                        alt={activeMedia?.alt || product.title}
                                         onError={(event) => {
                                             event.currentTarget.style.display = "none";
                                         }}
                                     />
                                 ) : null}
+
+                                <span className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] font-black text-white backdrop-blur">
+                                    تصویر محصول
+                                </span>
                             </div>
 
                             {product.media.length > 1 && (
-                                <div className="flex gap-2 overflow-x-auto p-3 sm:gap-3 sm:p-4">
+                                <div className="home-slider flex gap-2 overflow-x-auto p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-3 sm:p-4">
                                     {product.media.map((media: any) => (
                                         <button
-                                            className={`relative aspect-video w-24 shrink-0 overflow-hidden rounded-xl border transition sm:w-28 ${
+                                            className={`relative aspect-video w-24 shrink-0 overflow-hidden rounded-xl border bg-[var(--store-bg)] transition sm:w-28 ${
                                                 mediaId === media.id
                                                     ? "border-indigo-500 ring-2 ring-indigo-500/20"
                                                     : "border-[var(--store-border)]"
@@ -178,7 +189,7 @@ export default function Show({ product }: { product: any }) {
                         )}
                     </section>
 
-                    <section className="order-1 h-fit rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_20px_70px_-55px_rgba(99,102,241,.7)] sm:rounded-[30px] sm:p-7 lg:order-2 lg:sticky lg:top-28">
+                    <section className="h-fit rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 shadow-[0_20px_70px_-55px_rgba(99,102,241,.7)] sm:rounded-[30px] sm:p-7 lg:sticky lg:top-28">
                         <div className="flex items-center justify-between gap-3 border-b border-[var(--store-border)] pb-3">
                             <div className="flex min-w-0 items-center gap-3">
                                 <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-sm font-black text-indigo-300">
@@ -204,7 +215,7 @@ export default function Show({ product }: { product: any }) {
                             </div>
                             <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black text-emerald-500">
                                 <ShieldCheck size={13} />
-                                فروشنده تأییدشده
+                                تأییدشده
                             </span>
                         </div>
 
@@ -229,7 +240,7 @@ export default function Show({ product }: { product: any }) {
                                 {product.title}
                             </h1>
 
-                            <div className="mt-3 flex items-end justify-between gap-3 rounded-2xl border border-emerald-500/15 bg-emerald-500/[.06] px-3 py-3">
+                            <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/15 bg-emerald-500/[.06] px-3 py-3">
                                 <span className="text-xs font-bold text-[var(--store-muted)]">
                                     {offer ? "قیمت انتخاب شما" : "شروع قیمت"}
                                 </span>
@@ -307,7 +318,7 @@ export default function Show({ product }: { product: any }) {
                         </div>
 
                         <Button
-                            className="mt-4 h-13 text-sm font-black sm:h-14 sm:text-base"
+                            className="mt-4 h-14 text-sm font-black sm:text-base"
                             fullWidth
                             isDisabled={!offer || ordering}
                             onPress={order}
