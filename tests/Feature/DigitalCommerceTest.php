@@ -9,10 +9,13 @@ use App\Models\Game;
 use App\Models\Platform;
 use App\Models\ProductType;
 use App\Models\Role;
+use App\Models\TelegramBotSetting;
+use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -525,6 +528,80 @@ class DigitalCommerceTest extends TestCase
         $this->assertSame('cancelled', $order->fresh()->order_status);
         $this->assertSame(5, $offer->fresh()->stock);
         $this->assertSame(0, $offer->fresh()->reserved_stock);
+    }
+
+    public function test_latest_price_inquiry_targets_only_the_linked_product_seller(): void
+    {
+        [$seller, $product] = $this->digitalProduct('latest-price-inquiry');
+        $seller->forceFill([
+            'telegram_user_id' => '555555555',
+            'telegram_chat_id' => '555555555',
+            'telegram_linked_at' => now(),
+        ])->save();
+
+        TelegramBotSetting::query()->create([
+            'bot_token' => '123456:test-token',
+            'admin_user_id' => '777777777',
+            'enabled' => true,
+            'write_enabled' => true,
+            'publish_enabled' => true,
+            'destructive_enabled' => false,
+            'media_enabled' => true,
+            'transport_mode' => 'direct',
+            'api_base_url' => 'https://api.telegram.org',
+            'bot_username' => 'playnexus_admin_bot',
+            'webhook_secret' => 'webhook-secret',
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        $customer = User::factory()->create(['status' => 'active']);
+
+        $this->actingAs($customer)
+            ->post('/digital/'.$product->slug.'/price-inquiry')
+            ->assertRedirect();
+
+        $ticket = Ticket::query()
+            ->where('user_id', $customer->id)
+            ->where('digital_product_id', $product->id)
+            ->firstOrFail();
+
+        $this->assertSame('digital_price', $ticket->type);
+        $this->assertSame($seller->id, $ticket->assigned_user_id);
+        $this->assertSame('pending', $ticket->status);
+        $this->assertDatabaseHas('ticket_replies', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $customer->id,
+            'is_admin' => false,
+        ]);
+
+        Http::assertSent(function ($request) use ($ticket, $product): bool {
+            $button = $request->data()['reply_markup']['inline_keyboard'][0][0] ?? [];
+
+            return str_ends_with($request->url(), '/sendMessage')
+                && ($request->data()['chat_id'] ?? null) === '555555555'
+                && str_contains((string) ($request->data()['text'] ?? ''), $product->title)
+                && ($button['callback_data'] ?? null) === 'seller_ticket_reply:'.$ticket->id;
+        });
+
+        $this->actingAs($customer)
+            ->post('/digital/'.$product->slug.'/price-inquiry')
+            ->assertRedirect(route('account.tickets.show', $ticket));
+
+        $this->assertSame(
+            1,
+            Ticket::query()
+                ->where('user_id', $customer->id)
+                ->where('digital_product_id', $product->id)
+                ->whereIn('status', ['pending', 'open'])
+                ->count(),
+        );
+        Http::assertSentCount(1);
     }
 
     private function digitalAttribute(): Attribute
