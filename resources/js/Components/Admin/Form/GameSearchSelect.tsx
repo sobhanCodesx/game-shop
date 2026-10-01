@@ -66,6 +66,7 @@ export default function GameSearchSelect({
     );
     const [total, setTotal] = useState(initialTotal);
     const [loading, setLoading] = useState(false);
+    const [requestError, setRequestError] = useState(false);
 
     const selected = useMemo(
         () =>
@@ -92,6 +93,7 @@ export default function GameSearchSelect({
 
     const loadPage = async (targetPage: number, query = search) => {
         setLoading(true);
+        setRequestError(false);
 
         try {
             const params = new URLSearchParams({
@@ -103,7 +105,7 @@ export default function GameSearchSelect({
             }
 
             const response = await fetch(
-                \`/admin/digital-products/game-options?\${params.toString()}\`,
+                `/admin/digital-products/game-options?${params.toString()}`,
                 {
                     credentials: "same-origin",
                     headers: {
@@ -122,6 +124,8 @@ export default function GameSearchSelect({
             setPage(payload.meta.current_page);
             setLastPage(payload.meta.last_page);
             setTotal(payload.meta.total);
+        } catch {
+            setRequestError(true);
         } finally {
             setLoading(false);
         }
@@ -183,6 +187,11 @@ export default function GameSearchSelect({
                                 />
                             )}
                         </div>
+                        {requestError && (
+                            <p className="mt-2 text-[10px] font-bold text-rose-400">
+                                دریافت فهرست بازی‌ها ناموفق بود؛ دوباره تلاش کن.
+                            </p>
+                        )}
                         <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
                             <span>{total.toLocaleString("fa-IR")} بازی</span>
                             <span>
