@@ -42,8 +42,7 @@ class DigitalStoreController extends Controller
             ->published()
             ->with([
                 'category:id,name,slug',
-                'game:id,studio_id,name,slug,cover,background,status',
-            'game.studio:id,name,slug,logo,background,status',
+                'game:id,name,slug,cover,background,status',
                 'platform:id,name,slug',
                 'offers',
                 'coverMedia',
@@ -134,7 +133,8 @@ class DigitalStoreController extends Controller
 
         $digitalProduct->load([
             'category:id,name,slug',
-            'game:id,name,slug,cover,background,status',
+            'game:id,studio_id,name,slug,cover,background,status',
+            'game.studio:id,name,slug,logo,background,status',
             'platform:id,name,slug',
             'offers',
             'media',
