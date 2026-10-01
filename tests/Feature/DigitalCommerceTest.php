@@ -9,6 +9,7 @@ use App\Models\Game;
 use App\Models\Platform;
 use App\Models\ProductType;
 use App\Models\Role;
+use App\Models\SocialContent;
 use App\Models\TelegramBotSetting;
 use App\Models\Ticket;
 use App\Models\User;
@@ -329,6 +330,99 @@ class DigitalCommerceTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Digital/Show')
                 ->where('product.id', $product->id));
+    }
+
+    public function test_admin_game_picker_searches_all_non_deleted_games_with_pagination(): void
+    {
+        [$seller] = $this->digitalProduct('picker-access');
+
+        foreach (range(1, 31) as $index) {
+            Game::factory()->create([
+                'name' => sprintf('Catalog Game %02d', $index),
+                'slug' => 'catalog-game-'.$index,
+                'status' => $index === 31 ? 'draft' : 'active',
+            ]);
+        }
+
+        Game::factory()->create([
+            'name' => 'Hidden Search Needle',
+            'slug' => 'hidden-search-needle',
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($seller)
+            ->getJson('/admin/digital-products/game-options?page=1&per_page=25')
+            ->assertOk()
+            ->assertJsonPath('meta.per_page', 25)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonCount(25, 'data');
+
+        $this->actingAs($seller)
+            ->getJson('/admin/digital-products/game-options?q=Needle')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'Hidden Search Needle')
+            ->assertJsonPath('data.0.status', 'draft');
+    }
+
+    public function test_digital_product_page_links_similar_products_and_game_content(): void
+    {
+        $region = $this->digitalAttribute();
+        $category = Category::query()->create([
+            'name' => 'اکانت ظرفیتی',
+            'slug' => 'capacity-accounts-related',
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+
+        [, $product] = $this->digitalProduct('related-main-game');
+        $product->update(['category_id' => $category->id]);
+        $product->attributeValues()->create([
+            'attribute_id' => $region->id,
+            'value' => 'turkey',
+        ]);
+
+        [, $related] = $this->digitalProduct('related-other-game');
+        $related->update(['category_id' => $category->id]);
+        $related->attributeValues()->create([
+            'attribute_id' => $region->id,
+            'value' => 'turkey',
+        ]);
+
+        $video = SocialContent::query()->create([
+            'user_id' => $related->seller_id,
+            'game_id' => $product->game_id,
+            'type' => 'video',
+            'title' => 'ویدیوی مرتبط تست',
+            'slug' => 'related-video-test',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+            'allow_comments' => true,
+            'views' => 12,
+        ]);
+
+        $feed = SocialContent::query()->create([
+            'user_id' => $related->seller_id,
+            'game_id' => $product->game_id,
+            'type' => 'post',
+            'title' => 'فید مرتبط تست',
+            'slug' => 'related-feed-test',
+            'status' => 'published',
+            'published_at' => now(),
+            'allow_comments' => true,
+            'views' => 4,
+        ]);
+
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Show')
+                ->where('relatedProducts.0.id', $related->id)
+                ->where('relatedProducts.0.url', '/digital/'.$related->slug)
+                ->where('gameVideos.0.id', $video->id)
+                ->where('gameVideos.0.url', '/videos/'.$video->slug)
+                ->where('gameFeed.0.id', $feed->id)
+                ->where('gameFeed.0.url', '/posts/'.$feed->slug));
     }
 
     public function test_editing_digital_product_with_new_image_upload_succeeds(): void
