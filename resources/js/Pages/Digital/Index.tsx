@@ -1,6 +1,7 @@
-import { Button, Checkbox } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { Head, Link, router } from "@inertiajs/react";
 import {
+    Check,
     Filter,
     Gamepad2,
     ShieldCheck,
@@ -38,7 +39,10 @@ export default function Index({
 }) {
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-    const applyFilters = (next: Record<string, string[]>) => {
+    const applyFilters = (
+        next: Record<string, string[]>,
+        category = selectedCategory,
+    ) => {
         const cleaned = Object.fromEntries(
             Object.entries(next).filter(([, values]) => values.length > 0),
         );
@@ -46,7 +50,7 @@ export default function Index({
         router.get(
             "/digital",
             {
-                category: selectedCategory ?? undefined,
+                category: category || undefined,
                 filters: cleaned,
             },
             {
@@ -58,27 +62,18 @@ export default function Index({
     };
 
     const changeCategory = (category: string) => {
-        router.get(
-            "/digital",
-            {
-                category: category || undefined,
-                filters: selectedFilters,
-            },
-            {
-                preserveScroll: true,
-                preserveState: true,
-                replace: true,
-            },
-        );
+        applyFilters(selectedFilters, category || null);
     };
 
-    const toggle = (slug: string, value: string, selected: boolean) => {
+    const toggle = (slug: string, value: string) => {
         const current = selectedFilters[slug] ?? [];
+        const isSelected = current.includes(value);
+
         applyFilters({
             ...selectedFilters,
-            [slug]: selected
-                ? Array.from(new Set([...current, value]))
-                : current.filter((item) => item !== value),
+            [slug]: isSelected
+                ? current.filter((item) => item !== value)
+                : Array.from(new Set([...current, value])),
         });
     };
 
@@ -92,12 +87,37 @@ export default function Index({
     );
     const hasSidebar = categories.length > 0 || filters.length > 0;
 
-    const filterPanel = (
+    const optionButton = (
+        filter: FilterDefinition,
+        option: { title: string; value: string },
+    ) => {
+        const selected = (selectedFilters[filter.slug] ?? []).includes(
+            option.value,
+        );
+
+        return (
+            <button
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-black transition ${
+                    selected
+                        ? "border-indigo-500 bg-indigo-500 text-white shadow-md shadow-indigo-500/15"
+                        : "border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-text)] hover:border-indigo-500/50"
+                }`}
+                key={option.value}
+                onClick={() => toggle(filter.slug, option.value)}
+                type="button"
+            >
+                {selected && <Check size={13} strokeWidth={3} />}
+                {option.title}
+            </button>
+        );
+    };
+
+    const desktopFilterPanel = (
         <div className="space-y-5">
             <div className="flex items-center justify-between gap-3">
                 <strong className="flex items-center gap-2 text-sm">
                     <Filter size={17} className="text-indigo-500" />
-                    فیلترها
+                    فیلتر دقیق
                 </strong>
                 {hasFilters && (
                     <Button size="sm" variant="ghost" onPress={clearFilters}>
@@ -129,24 +149,14 @@ export default function Index({
 
             {filters.map((filter) => (
                 <div
-                    className="border-t border-[var(--store-border)] pt-4 first:border-t-0 first:pt-0"
+                    className="border-t border-[var(--store-border)] pt-4"
                     key={filter.id}
                 >
                     <p className="mb-2 text-sm font-black">{filter.title}</p>
-                    <div className="space-y-2">
-                        {filter.options.map((option) => (
-                            <Checkbox
-                                key={option.value}
-                                isSelected={(
-                                    selectedFilters[filter.slug] ?? []
-                                ).includes(option.value)}
-                                onChange={(selected) =>
-                                    toggle(filter.slug, option.value, selected)
-                                }
-                            >
-                                <span className="text-sm">{option.title}</span>
-                            </Checkbox>
-                        ))}
+                    <div className="flex flex-wrap gap-2">
+                        {filter.options.map((option) =>
+                            optionButton(filter, option),
+                        )}
                     </div>
                 </div>
             ))}
@@ -158,20 +168,20 @@ export default function Index({
             <Head title="بازی‌های دیجیتال" />
 
             <main className="mx-auto max-w-7xl px-3 pb-28 pt-4 sm:px-6 sm:pb-12 lg:pt-8">
-                <section className="mb-4 rounded-[24px] border border-indigo-500/20 bg-[radial-gradient(circle_at_10%_0%,rgba(99,102,241,.18),transparent_38%),var(--store-surface)] p-4 sm:mb-6 sm:p-6">
+                <section className="mb-3 rounded-[22px] border border-indigo-500/20 bg-[radial-gradient(circle_at_10%_0%,rgba(99,102,241,.16),transparent_40%),var(--store-surface)] p-3.5 sm:mb-6 sm:p-6">
                     <div className="flex items-center gap-3">
-                        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 sm:size-13">
-                            <Gamepad2 size={22} />
+                        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 sm:size-13">
+                            <Gamepad2 size={21} />
                         </span>
                         <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-black tracking-[.16em] text-indigo-500">
+                            <p className="text-[9px] font-black tracking-[.16em] text-indigo-500 sm:text-[10px]">
                                 PLAYNEXUS DIGITAL
                             </p>
-                            <h1 className="mt-1 text-2xl font-black sm:text-3xl">
+                            <h1 className="mt-0.5 text-xl font-black sm:text-3xl">
                                 بازی‌های دیجیتال
                             </h1>
                             <p className="mt-1 hidden text-xs text-[var(--store-muted)] sm:block">
-                                بازی را پیدا کن، ظرفیت را انتخاب کن و مستقیم سفارش بده.
+                                بازی را پیدا کن، ظرفیت مناسب را انتخاب کن و سفارش بده.
                             </p>
                         </div>
                         <div className="hidden shrink-0 items-center gap-2 text-[10px] font-bold text-[var(--store-muted)] md:flex">
@@ -190,7 +200,7 @@ export default function Index({
                 {categories.length > 0 && (
                     <div className="home-slider mb-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden">
                         <button
-                            className={`shrink-0 rounded-full border px-3 py-2 text-xs font-black transition ${
+                            className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black transition ${
                                 !selectedCategory
                                     ? "border-indigo-500 bg-indigo-500 text-white"
                                     : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)]"
@@ -202,7 +212,7 @@ export default function Index({
                         </button>
                         {categories.map((category) => (
                             <button
-                                className={`shrink-0 rounded-full border px-3 py-2 text-xs font-black transition ${
+                                className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black transition ${
                                     selectedCategory === category.slug
                                         ? "border-indigo-500 bg-indigo-500 text-white"
                                         : "border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)]"
@@ -218,13 +228,18 @@ export default function Index({
                 )}
 
                 <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] px-3 py-2.5 lg:hidden">
-                    <span className="text-xs font-bold text-[var(--store-muted)]">
-                        {money.format(products.total)} محصول
-                    </span>
+                    <div>
+                        <strong className="block text-xs">
+                            {money.format(products.total)} محصول
+                        </strong>
+                        <span className="mt-0.5 block text-[9px] text-[var(--store-muted)]">
+                            محصولات همین پایین آماده انتخاب‌اند
+                        </span>
+                    </div>
                     <Button
                         size="sm"
-                        variant={mobileFiltersOpen || hasFilters ? "primary" : "secondary"}
-                        onPress={() => setMobileFiltersOpen((value) => !value)}
+                        variant={hasFilters ? "primary" : "secondary"}
+                        onPress={() => setMobileFiltersOpen(true)}
                     >
                         <SlidersHorizontal size={15} />
                         فیلتر
@@ -236,16 +251,10 @@ export default function Index({
                     </Button>
                 </div>
 
-                {mobileFiltersOpen && hasSidebar && (
-                    <section className="mb-4 rounded-[22px] border border-indigo-500/20 bg-[var(--store-surface)] p-4 lg:hidden">
-                        {filterPanel}
-                    </section>
-                )}
-
                 <div className="grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
                     {hasSidebar && (
                         <aside className="hidden h-fit rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-5 lg:sticky lg:top-28 lg:block">
-                            {filterPanel}
+                            {desktopFilterPanel}
                         </aside>
                     )}
 
@@ -349,6 +358,98 @@ export default function Index({
                     </section>
                 </div>
             </main>
+
+            {mobileFiltersOpen && (
+                <div className="fixed inset-0 z-[100] flex items-end lg:hidden">
+                    <button
+                        aria-label="بستن فیلترها"
+                        className="absolute inset-0 bg-black/65 backdrop-blur-[2px]"
+                        onClick={() => setMobileFiltersOpen(false)}
+                        type="button"
+                    />
+                    <section
+                        aria-label="فیلتر محصولات"
+                        className="relative z-10 max-h-[78dvh] w-full overflow-y-auto rounded-t-[30px] border border-b-0 border-[var(--store-border)] bg-[var(--store-surface)] shadow-2xl"
+                    >
+                        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--store-border)] bg-[var(--store-surface)] px-4 py-3">
+                            <div>
+                                <strong className="flex items-center gap-2">
+                                    <SlidersHorizontal
+                                        size={18}
+                                        className="text-indigo-500"
+                                    />
+                                    فیلتر محصولات
+                                </strong>
+                                <span className="mt-0.5 block text-[10px] text-[var(--store-muted)]">
+                                    فقط گزینه‌ای را بزن که واقعاً لازم داری
+                                </span>
+                            </div>
+                            <button
+                                className="grid size-9 place-items-center rounded-xl bg-[var(--store-bg)]"
+                                onClick={() => setMobileFiltersOpen(false)}
+                                type="button"
+                            >
+                                <X size={18} />
+                            </button>
+                        </header>
+
+                        <div className="space-y-5 p-4 pb-5">
+                            {filters.length ? (
+                                filters.map((filter) => (
+                                    <div key={filter.id}>
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <strong className="text-sm">
+                                                {filter.title}
+                                            </strong>
+                                            {(selectedFilters[filter.slug] ?? [])
+                                                .length > 0 && (
+                                                <span className="text-[10px] font-black text-indigo-500">
+                                                    {money.format(
+                                                        (
+                                                            selectedFilters[
+                                                                filter.slug
+                                                            ] ?? []
+                                                        ).length,
+                                                    )}{" "}
+                                                    انتخاب
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {filter.options.map((option) =>
+                                                optionButton(filter, option),
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="rounded-2xl bg-[var(--store-bg)] p-4 text-center text-xs text-[var(--store-muted)]">
+                                    برای محصولات این بخش فیلتر بیشتری ثبت نشده است.
+                                </p>
+                            )}
+                        </div>
+
+                        <footer className="sticky bottom-0 flex items-center gap-2 border-t border-[var(--store-border)] bg-[var(--store-surface)] p-3">
+                            {hasFilters && (
+                                <Button
+                                    className="shrink-0"
+                                    variant="secondary"
+                                    onPress={clearFilters}
+                                >
+                                    پاک کردن
+                                </Button>
+                            )}
+                            <Button
+                                className="flex-1"
+                                variant="primary"
+                                onPress={() => setMobileFiltersOpen(false)}
+                            >
+                                نمایش {money.format(products.total)} محصول
+                            </Button>
+                        </footer>
+                    </section>
+                </div>
+            )}
         </StorefrontLayout>
     );
 }
