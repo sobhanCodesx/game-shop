@@ -141,6 +141,8 @@ class DigitalStoreController extends Controller
         $gameUrl = data_get($product, 'game.channel_url')
             ? url((string) data_get($product, 'game.channel_url'))
             : null;
+        $gameIsPublic = $digitalProduct->game
+            && in_array($digitalProduct->game->status, ['active', 'published'], true);
 
         return Inertia::render('Digital/Show', [
             ...Seo::page([
@@ -200,7 +202,7 @@ class DigitalStoreController extends Controller
                 ],
             ]),
             'product' => $product,
-            'relatedGame' => $digitalProduct->game ? [
+            'relatedGame' => $gameIsPublic ? [
                 'id' => $digitalProduct->game->id,
                 'name' => $digitalProduct->game->name,
                 'slug' => $digitalProduct->game->slug,
@@ -211,13 +213,17 @@ class DigitalStoreController extends Controller
                 $request->user(),
                 10,
             ),
-            'relatedFeed' => $digitalProduct->game
+            'relatedFeed' => $gameIsPublic
                 ? $feed->channelPosts($request, $digitalProduct->game, 4)
                 : [],
             'relatedVideos' => SocialContent::query()
                 ->published()
                 ->where('type', 'video')
-                ->where('game_id', $digitalProduct->game_id)
+                ->when(
+                    $gameIsPublic,
+                    fn ($query) => $query->where('game_id', $digitalProduct->game_id),
+                    fn ($query) => $query->whereRaw('1 = 0'),
+                )
                 ->with('game:id,name,slug,cover')
                 ->latest('published_at')
                 ->latest('id')
