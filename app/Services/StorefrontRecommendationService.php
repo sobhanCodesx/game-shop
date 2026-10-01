@@ -19,9 +19,9 @@ final class StorefrontRecommendationService
         int $limit = 10,
     ): array {
         $limit = max(1, min(10, $limit));
-        $product->loadMissing(['attributeValues', 'platforms']);
+        $product->loadMissing(['attributeValues.attribute', 'platforms']);
 
-        $pairs = $this->attributePairs($product->attributeValues);
+        $pairs = $this->semanticPairs($product->attributeValues);
         $platformIds = $product->platforms->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         $physical = Product::query()
@@ -46,7 +46,7 @@ final class StorefrontRecommendationService
                         );
                     }
 
-                    $this->orWhereAttributePairs($related, 'attributeValues', $pairs);
+                    $this->orWhereSemanticPairs($related, 'attributeValues', $pairs);
                 }),
             )
             ->latest('id')
@@ -71,7 +71,7 @@ final class StorefrontRecommendationService
                         $related->orWhereIn('platform_id', $platformIds);
                     }
 
-                    $this->orWhereAttributePairs($related, 'attributeValues', $pairs);
+                    $this->orWhereSemanticPairs($related, 'attributeValues', $pairs);
                 }),
             )
             ->latest('id')
@@ -119,9 +119,9 @@ final class StorefrontRecommendationService
         int $limit = 10,
     ): array {
         $limit = max(1, min(10, $limit));
-        $product->loadMissing('attributeValues');
+        $product->loadMissing('attributeValues.attribute');
 
-        $pairs = $this->attributePairs($product->attributeValues);
+        $pairs = $this->semanticPairs($product->attributeValues);
         $platformIds = $product->platform_id ? [(int) $product->platform_id] : [];
 
         $digital = DigitalProduct::query()
@@ -143,7 +143,7 @@ final class StorefrontRecommendationService
                         $related->orWhere('platform_id', $product->platform_id);
                     }
 
-                    $this->orWhereAttributePairs($related, 'attributeValues', $pairs);
+                    $this->orWhereSemanticPairs($related, 'attributeValues', $pairs);
                 }),
             )
             ->latest('id')
@@ -171,7 +171,7 @@ final class StorefrontRecommendationService
                         );
                     }
 
-                    $this->orWhereAttributePairs($related, 'attributeValues', $pairs);
+                    $this->orWhereSemanticPairs($related, 'attributeValues', $pairs);
                 }),
             )
             ->latest('id')
@@ -278,15 +278,16 @@ final class StorefrontRecommendationService
         return $score;
     }
 
-    private function attributePairs(Collection $values): array
+    private function semanticPairs(Collection $values): array
     {
         return $values
-            ->filter(fn ($item) => filled($item->value))
+            ->filter(fn ($item) => filled($item->value) && $item->attribute)
             ->map(fn ($item) => [
-                'attribute_id' => (int) $item->attribute_id,
-                'value' => (string) $item->value,
+                'slug' => mb_strtolower((string) ($item->attribute->slug ?: $item->attribute->name)),
+                'value' => mb_strtolower(trim((string) $item->value)),
             ])
-            ->unique(fn (array $pair) => $pair['attribute_id'].'|'.$pair['value'])
+            ->filter(fn (array $pair) => $pair['slug'] !== '' && $pair['value'] !== '')
+            ->unique(fn (array $pair) => $pair['slug'].'|'.$pair['value'])
             ->values()
             ->all();
     }
@@ -298,16 +299,18 @@ final class StorefrontRecommendationService
         }
 
         $keys = collect($pairs)
-            ->map(fn (array $pair) => $pair['attribute_id'].'|'.$pair['value']);
+            ->map(fn (array $pair) => $pair['slug'].'|'.$pair['value']);
 
         return $values
-            ->map(fn ($item) => (int) $item->attribute_id.'|'.(string) $item->value)
+            ->filter(fn ($item) => filled($item->value) && $item->attribute)
+            ->map(fn ($item) => mb_strtolower((string) ($item->attribute->slug ?: $item->attribute->name))
+                .'|'.mb_strtolower(trim((string) $item->value)))
             ->intersect($keys)
             ->unique()
             ->count();
     }
 
-    private function orWhereAttributePairs($query, string $relation, array $pairs): void
+    private function orWhereSemanticPairs($query, string $relation, array $pairs): void
     {
         if ($pairs === []) {
             return;
@@ -318,8 +321,13 @@ final class StorefrontRecommendationService
                 foreach ($pairs as $pair) {
                     $pairQuery->orWhere(function ($single) use ($pair): void {
                         $single
-                            ->where('attribute_id', $pair['attribute_id'])
-                            ->where('value', $pair['value']);
+                            ->whereRaw('LOWER(value) = ?', [$pair['value']])
+                            ->whereHas('attribute', function ($attributeQuery) use ($pair): void {
+                                $attributeQuery->whereRaw(
+                                    'LOWER(COALESCE(NULLIF(slug, ?), name)) = ?',
+                                    ['', $pair['slug']],
+                                );
+                            });
                     });
                 }
             });
