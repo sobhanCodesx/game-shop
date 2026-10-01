@@ -109,7 +109,11 @@ final class TelegramAdminNotificationService
     public function newTicket(Ticket $ticket, string $message): void
     {
         $ticket->loadMissing('user:id,name,email,phone');
-        $type = $ticket->type === 'exchange' ? 'معاوضه' : 'پشتیبانی';
+        $type = match ($ticket->type) {
+            'exchange' => 'معاوضه',
+            'digital_price' => 'استعلام قیمت دیجیتال',
+            default => 'پشتیبانی',
+        };
 
         $text = "🎫 <b>تیکت جدید نیازمند پاسخ</b>\n"
             ."━━━━━━━━━━━━━━━━━━\n"
