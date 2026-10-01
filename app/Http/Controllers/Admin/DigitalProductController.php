@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\DigitalProductMediaStorage;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -75,6 +76,39 @@ class DigitalProductController extends Controller
     public function create(Request $request): Response
     {
         return Inertia::render('Admin/Digital/Products/Form', $this->formData($request));
+    }
+
+    public function games(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->query('q', ''));
+        $perPage = min(40, max(10, (int) $request->integer('per_page', 20)));
+
+        $games = Game::query()
+            ->select(['id', 'name', 'slug', 'status', 'developer', 'publisher'])
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($searchQuery) use ($search): void {
+                    $searchQuery
+                        ->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('slug', 'like', '%'.$search.'%')
+                        ->orWhere('developer', 'like', '%'.$search.'%')
+                        ->orWhere('publisher', 'like', '%'.$search.'%');
+                });
+            })
+            ->orderBy('name')
+            ->orderBy('id')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return response()->json([
+            'data' => $games->items(),
+            'meta' => [
+                'current_page' => $games->currentPage(),
+                'last_page' => $games->lastPage(),
+                'per_page' => $games->perPage(),
+                'total' => $games->total(),
+                'has_more' => $games->hasMorePages(),
+            ],
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -428,7 +462,11 @@ class DigitalProductController extends Controller
                 ->orderBy('sort_order')
                 ->orderBy('name')
                 ->get(['id', 'parent_id', 'name', 'slug']),
-            'games' => Game::query()->where('status', 'active')->orderBy('name')->get(['id', 'name']),
+            'selectedGame' => $request->route('digitalProduct') instanceof DigitalProduct
+                ? Game::query()
+                    ->whereKey($request->route('digitalProduct')->game_id)
+                    ->first(['id', 'name', 'slug', 'status', 'developer', 'publisher'])
+                : null,
             'platforms' => Platform::query()->where('status', 'active')->orderBy('sort_order')->get(['id', 'name']),
             'sellers' => $actor->role === 'digital-seller'
                 ? collect([$actor->only(['id', 'name', 'email'])])
