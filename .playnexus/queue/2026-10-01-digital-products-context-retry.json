@@ -1,7 +1,0 @@
-{
-  "job_id": "digital-products-context-retry-20261001",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query { search(query: \"ASTRO BOT\", first: 1) { games { id name } } }"
-  }
-}
