@@ -2,10 +2,14 @@
 
 namespace App\Services\Telegram;
 
+use App\Models\TelegramBotSetting;
+use App\Models\Ticket;
 use App\Models\User;
+use App\Services\TicketService;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 
 final class TelegramBotCommandRouter
 {
@@ -53,6 +57,7 @@ final class TelegramBotCommandRouter
         private readonly TelegramBotSessionStore $sessions,
         private readonly TelegramMediaTransferService $mediaTransfer,
         private readonly TelegramContentWizard $wizard,
+        private readonly TicketService $tickets,
     ) {}
 
     public function handle(array $update): array
@@ -100,6 +105,19 @@ final class TelegramBotCommandRouter
         }
 
         $session = $this->sessions->get($userId, $chatId);
+
+        if (
+            ! str_starts_with($text, '/')
+            && $session?->state === 'awaiting_admin_ticket_reply'
+        ) {
+            return $this->handleAdminTicketReplyText(
+                $userId,
+                $chatId,
+                $session->context ?? [],
+                $text,
+            );
+        }
+
         if (! str_starts_with($text, '/') && $this->wizard->handles($session)) {
             return $this->wizard->handleText($userId, $chatId, $session, $text);
         }
@@ -255,6 +273,16 @@ final class TelegramBotCommandRouter
             }
 
             return $this->showResourceHub($chatId, $this->resource($target), $messageId);
+        }
+
+        if ($action === 'admin-ticket-reply') {
+            $ticketId = $this->positiveInt($parts[1] ?? null);
+
+            return $this->startAdminTicketReply(
+                $userId,
+                $chatId,
+                $ticketId,
+            );
         }
 
         if ($action === 'users') {
@@ -500,6 +528,175 @@ final class TelegramBotCommandRouter
         $this->send($chatId, 'این دکمه دیگر معتبر نیست. <code>/menu</code> را باز کن.', $this->menuKeyboard());
 
         return ['action' => 'unknown_callback'];
+    }
+
+    private function startAdminTicketReply(
+        string $userId,
+        string $chatId,
+        int $ticketId,
+    ): array {
+        $settings = $this->settings->resolved();
+        if (! ($settings['write_enabled'] ?? false)) {
+            throw new RuntimeException('دسترسی نوشتن ربات غیرفعال است.');
+        }
+
+        $ticket = Ticket::query()
+            ->with('user:id,name')
+            ->find($ticketId);
+
+        if (! $ticket) {
+            throw new RuntimeException('تیکت پیدا نشد یا دیگر در دسترس نیست.');
+        }
+
+        if ($ticket->status === 'closed') {
+            throw new RuntimeException('این تیکت بسته شده است.');
+        }
+
+        $this->sessions->put(
+            $userId,
+            $chatId,
+            'awaiting_admin_ticket_reply',
+            ['ticket_id' => $ticket->id],
+            1800,
+        );
+
+        $this->send(
+            $chatId,
+            "✍️ <b>پاسخ مستقیم به تیکت</b>
+"
+            ."تیکت: <code>".$this->formatter->escape((string) $ticket->number)."</code>
+"
+            ."کاربر: <b>".$this->formatter->escape((string) ($ticket->user?->name ?: 'بدون نام'))."</b>
+"
+            ."موضوع: <b>".$this->formatter->escape((string) $ticket->subject)."</b>
+
+"
+            ."پیام بعدی تو مستقیماً به‌عنوان پاسخ ادمین داخل همین تیکت ثبت می‌شود.
+"
+            ."برای لغو: <code>/cancel</code>",
+            [
+                'inline_keyboard' => [[[
+                    'text' => '💬 باز کردن تیکت در پنل',
+                    'url' => route('admin.tickets.show', $ticket),
+                ]]],
+            ],
+        );
+
+        return [
+            'action' => 'admin_ticket_reply_started',
+            'resource' => 'ticket',
+            'resource_id' => $ticket->id,
+        ];
+    }
+
+    private function handleAdminTicketReplyText(
+        string $userId,
+        string $chatId,
+        array $context,
+        string $text,
+    ): array {
+        $ticket = Ticket::query()->find((int) ($context['ticket_id'] ?? 0));
+
+        if (! $ticket) {
+            $this->sessions->clear($userId, $chatId);
+            $this->send($chatId, '⚠️ تیکت پیدا نشد؛ از اعلان تیکت دوباره وارد پاسخ شو.');
+
+            return ['action' => 'admin_ticket_reply_missing'];
+        }
+
+        try {
+            $admin = $this->resolveTelegramAdmin($userId);
+            $this->tickets->replyAsTelegramAdmin($ticket, $admin, $text);
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->send(
+                $chatId,
+                "⚠️ <b>پاسخ ثبت نشد</b>
+"
+                .$this->formatter->escape(Str::limit($exception->getMessage(), 300))
+                ."
+
+متن هنوز در حالت پاسخ باقی مانده؛ اصلاحش کن و دوباره بفرست یا <code>/cancel</code> بزن.",
+            );
+
+            return [
+                'action' => 'admin_ticket_reply_failed',
+                'resource' => 'ticket',
+                'resource_id' => $ticket->id,
+            ];
+        }
+
+        // Clear before talking to Telegram again. If Telegram itself is
+        // temporarily unavailable, a webhook retry cannot duplicate the
+        // already committed ticket reply.
+        $this->sessions->clear($userId, $chatId);
+
+        try {
+            $this->send(
+                $chatId,
+                "✅ <b>پاسخ با موفقیت داخل تیکت ثبت شد</b>
+"
+                ."کاربر از داخل PlayNexus همین پاسخ را می‌بیند.",
+                [
+                    'inline_keyboard' => [
+                        [[
+                            'text' => '✍️ پاسخ دیگر',
+                            'callback_data' => 'admin-ticket-reply:'.$ticket->id,
+                        ]],
+                        [[
+                            'text' => '💬 مشاهده تیکت',
+                            'url' => route('admin.tickets.show', $ticket),
+                        ]],
+                    ],
+                ],
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        return [
+            'action' => 'admin_ticket_replied',
+            'resource' => 'ticket',
+            'resource_id' => $ticket->id,
+        ];
+    }
+
+    private function resolveTelegramAdmin(string $telegramUserId): User
+    {
+        $admin = User::query()
+            ->where('telegram_user_id', $telegramUserId)
+            ->where('is_admin', true)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $admin) {
+            $editorId = TelegramBotSetting::query()->value('updated_by');
+
+            if ($editorId) {
+                $admin = User::query()
+                    ->whereKey($editorId)
+                    ->where('is_admin', true)
+                    ->where('status', 'active')
+                    ->first();
+            }
+        }
+
+        if (! $admin) {
+            $admin = User::query()
+                ->where('is_admin', true)
+                ->where('status', 'active')
+                ->orderByRaw("CASE WHEN role = 'super-admin' THEN 0 ELSE 1 END")
+                ->orderBy('id')
+                ->first();
+        }
+
+        if (! $admin) {
+            throw new RuntimeException(
+                'برای ثبت پاسخ، هیچ حساب ادمین فعال PlayNexus پیدا نشد.',
+            );
+        }
+
+        return $admin;
     }
 
     private function showCreateMenu(string $chatId, ?int $messageId = null): array
