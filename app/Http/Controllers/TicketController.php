@@ -7,6 +7,7 @@ use App\Http\Requests\StoreTicketRequest;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Ticket;
+use App\Services\DigitalProductMediaStorage;
 use App\Services\ExchangeService;
 use App\Services\MediaStorage;
 use App\Services\TicketService;
@@ -21,8 +22,8 @@ class TicketController extends Controller
 {
     public function index(Request $request): Response
     {
-        $tickets = $request->user()->tickets()->with(['product.coverMedia', 'order:id,number'])->withCount('replies')->latest('last_replied_at')->paginate(12)->withQueryString();
-        $tickets->through(fn (Ticket $ticket) => [...$ticket->toArray(), 'cover_url' => MediaStorage::url($ticket->product?->coverMedia?->path)]);
+        $tickets = $request->user()->tickets()->with(['product.coverMedia', 'digitalProduct.coverMedia', 'order:id,number'])->withCount('replies')->latest('last_replied_at')->paginate(12)->withQueryString();
+        $tickets->through(fn (Ticket $ticket) => [...$ticket->toArray(), 'cover_url' => MediaStorage::url($ticket->product?->coverMedia?->path) ?: DigitalProductMediaStorage::url($ticket->digitalProduct?->coverMedia?->path)]);
 
         return Inertia::render('Account/Tickets/Index', ['tickets' => $tickets, 'stats' => ['pending' => $request->user()->tickets()->where('status', 'pending')->count(), 'open' => $request->user()->tickets()->where('status', 'open')->count(), 'closed' => $request->user()->tickets()->where('status', 'closed')->count()]]);
     }
@@ -63,7 +64,7 @@ class TicketController extends Controller
     public function show(Request $request, Ticket $ticket): Response
     {
         abort_unless($ticket->user_id === $request->user()->id, 404);
-        $ticket->load(['order:id,number', 'orderItem', 'product.coverMedia', 'targetProduct:id,title,slug', 'exchangeOrder:id,number', 'replies.user:id,name,is_admin', 'replies.attachments']);
+        $ticket->load(['order:id,number', 'orderItem', 'product.coverMedia', 'digitalProduct.coverMedia', 'assignee:id,name', 'targetProduct:id,title,slug', 'exchangeOrder:id,number', 'replies.user:id,name,is_admin', 'replies.attachments']);
         $ticket->replies->each(fn ($reply) => $reply->attachments->each(fn ($attachment) => $attachment->setAttribute('url', MediaStorage::url($attachment->path))));
 
         return Inertia::render('Account/Tickets/Show', ['ticket' => [...$ticket->toArray(), 'cover_url' => MediaStorage::url($ticket->product?->coverMedia?->path)]]);
