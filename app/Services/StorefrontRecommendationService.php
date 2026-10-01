@@ -355,7 +355,7 @@ final class StorefrontRecommendationService
             'platform:id,name',
             'offers',
             'coverMedia',
-            'attributeValues.attribute:id,name,slug',
+            'attributeValues.attribute:id,title,slug',
             'attributeValues.attribute.options:id,attribute_id,title,value,status',
         ];
     }
