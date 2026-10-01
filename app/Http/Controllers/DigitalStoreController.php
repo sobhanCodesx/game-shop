@@ -42,7 +42,9 @@ class DigitalStoreController extends Controller
                 $selectedGame !== '',
                 fn ($productQuery) => $productQuery->whereHas(
                     'game',
-                    fn ($gameQuery) => $gameQuery->where('slug', $selectedGame),
+                    fn ($gameQuery) => $gameQuery
+                        ->whereIn('status', ['active', 'published'])
+                        ->where('slug', $selectedGame),
                 ),
             )
             ->when(
@@ -273,9 +275,9 @@ class DigitalStoreController extends Controller
                 'channel_url' => in_array($product->game->status, ['active', 'published'], true)
                     ? route('channels.show', $product->game->slug, false)
                     : null,
-                'digital_products_url' => route('digital.index', [
-                    'game' => $product->game->slug,
-                ], false),
+                'digital_products_url' => in_array($product->game->status, ['active', 'published'], true)
+                    ? route('digital.index', ['game' => $product->game->slug], false)
+                    : null,
             ] : null,
             'platform' => $product->platform?->only(['id', 'name', 'slug']),
             'seller' => $detailed && $product->seller ? [
