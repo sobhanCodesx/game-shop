@@ -1,7 +1,18 @@
 import { Button, Card, Checkbox, Chip, Input } from "@heroui/react";
 import { Head, Link, useForm } from "@inertiajs/react";
-import { Filter, ImageIcon, Plus, Save, Sparkles, Trash2 } from "lucide-react";
-import { FormEvent, useState } from "react";
+import {
+    ChevronLeft,
+    ChevronRight,
+    Filter,
+    ImageIcon,
+    LoaderCircle,
+    Plus,
+    Save,
+    Search,
+    Sparkles,
+    Trash2,
+} from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import ProductMediaUploader, {
     type ProductMediaItem,
@@ -39,6 +50,20 @@ type FeatureRow = {
     value: string;
 };
 
+type GameOption = {
+    id: number;
+    name: string;
+    slug?: string;
+    status?: string;
+};
+
+type GameOptionsMeta = {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+};
+
 type FormData = {
     category_id: string;
     game_id: string;
@@ -68,10 +93,222 @@ const defaultOffers: Offer[] = [
     { code: "full", label: "فول ظرفیت", price: 0, stock: 0, status: "active" },
 ];
 
+function GamePicker({
+    value,
+    onChange,
+    initialOptions,
+    initialMeta,
+    selectedGame,
+    error,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    initialOptions: GameOption[];
+    initialMeta: GameOptionsMeta;
+    selectedGame?: GameOption | null;
+    error?: string;
+}) {
+    const [query, setQuery] = useState("");
+    const [page, setPage] = useState(1);
+    const [options, setOptions] = useState<GameOption[]>(initialOptions);
+    const [meta, setMeta] = useState<GameOptionsMeta>(initialMeta);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const timer = window.setTimeout(async () => {
+            setLoading(true);
+
+            try {
+                const params = new URLSearchParams({
+                    page: String(page),
+                    per_page: "25",
+                });
+                if (query.trim()) params.set("q", query.trim());
+
+                const response = await fetch(
+                    `/admin/digital-products/game-options?${params.toString()}`,
+                    {
+                        headers: { Accept: "application/json" },
+                        signal: controller.signal,
+                    },
+                );
+
+                if (!response.ok) throw new Error("game-options");
+
+                const payload = await response.json();
+                setOptions(Array.isArray(payload.data) ? payload.data : []);
+                setMeta(payload.meta ?? initialMeta);
+            } catch (exception) {
+                if ((exception as Error).name !== "AbortError") {
+                    setOptions([]);
+                }
+            } finally {
+                if (!controller.signal.aborted) setLoading(false);
+            }
+        }, 260);
+
+        return () => {
+            window.clearTimeout(timer);
+            controller.abort();
+        };
+    }, [query, page]);
+
+    const selected = useMemo(
+        () =>
+            options.find((item) => String(item.id) === value) ??
+            (selectedGame && String(selectedGame.id) === value
+                ? selectedGame
+                : null),
+        [options, selectedGame, value],
+    );
+
+    const statusText = (status?: string) => {
+        if (!status) return null;
+        if (status === "active" || status === "published") return "فعال";
+        if (status === "draft") return "پیش‌نویس";
+        return status;
+    };
+
+    return (
+        <div className="md:col-span-1">
+            <label className="text-sm font-bold text-slate-200">بازی</label>
+
+            <div className="mt-2 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950">
+                <div className="flex items-center gap-2 border-b border-slate-800 px-3">
+                    <Search className="shrink-0 text-slate-500" size={17} />
+                    <input
+                        className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                        placeholder="نام بازی، اسلاگ، سازنده یا ناشر را جستجو کن..."
+                        value={query}
+                        onChange={(event) => {
+                            setQuery(event.target.value);
+                            setPage(1);
+                        }}
+                    />
+                    {loading && (
+                        <LoaderCircle
+                            className="animate-spin text-indigo-400"
+                            size={17}
+                        />
+                    )}
+                </div>
+
+                {selected && (
+                    <div className="border-b border-indigo-500/20 bg-indigo-500/[.08] px-3 py-2.5">
+                        <p className="text-[10px] font-bold text-indigo-300">
+                            بازی انتخاب‌شده
+                        </p>
+                        <div className="mt-1 flex items-center justify-between gap-3">
+                            <strong className="truncate text-sm text-white">
+                                {selected.name}
+                            </strong>
+                            <button
+                                className="shrink-0 text-[10px] font-bold text-slate-400 hover:text-white"
+                                onClick={() => onChange("")}
+                                type="button"
+                            >
+                                حذف انتخاب
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="max-h-64 overflow-y-auto p-2">
+                    {!loading && options.length === 0 && (
+                        <p className="px-3 py-8 text-center text-xs text-slate-500">
+                            بازی‌ای پیدا نشد.
+                        </p>
+                    )}
+
+                    {options.map((item) => {
+                        const active = String(item.id) === value;
+
+                        return (
+                            <button
+                                className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-right transition ${
+                                    active
+                                        ? "bg-indigo-500 text-white"
+                                        : "text-slate-200 hover:bg-slate-900"
+                                }`}
+                                key={item.id}
+                                onClick={() => onChange(String(item.id))}
+                                type="button"
+                            >
+                                <span className="min-w-0">
+                                    <strong className="block truncate text-sm">
+                                        {item.name}
+                                    </strong>
+                                    {item.slug && (
+                                        <small
+                                            className={`mt-0.5 block truncate text-[10px] ${
+                                                active
+                                                    ? "text-indigo-100"
+                                                    : "text-slate-500"
+                                            }`}
+                                            dir="ltr"
+                                        >
+                                            {item.slug}
+                                        </small>
+                                    )}
+                                </span>
+                                {statusText(item.status) && (
+                                    <span
+                                        className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${
+                                            active
+                                                ? "bg-white/15 text-white"
+                                                : "bg-slate-800 text-slate-400"
+                                        }`}
+                                    >
+                                        {statusText(item.status)}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-slate-800 px-3 py-2">
+                    <button
+                        className="inline-flex size-9 items-center justify-center rounded-xl border border-slate-800 text-slate-300 disabled:opacity-30"
+                        disabled={page <= 1 || loading}
+                        onClick={() => setPage((current) => Math.max(1, current - 1))}
+                        type="button"
+                    >
+                        <ChevronRight size={16} />
+                    </button>
+                    <span className="text-[11px] font-bold text-slate-500">
+                        صفحه {formatter.format(meta.current_page)} از{" "}
+                        {formatter.format(Math.max(1, meta.last_page))}
+                        <span className="mr-2">
+                            • {formatter.format(meta.total)} بازی
+                        </span>
+                    </span>
+                    <button
+                        className="inline-flex size-9 items-center justify-center rounded-xl border border-slate-800 text-slate-300 disabled:opacity-30"
+                        disabled={page >= meta.last_page || loading}
+                        onClick={() =>
+                            setPage((current) =>
+                                Math.min(meta.last_page, current + 1),
+                            )
+                        }
+                        type="button"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {error && <p className="mt-2 text-xs text-rose-400">{error}</p>}
+        </div>
+    );
+}
+
 export default function Form({
     product,
     categories = [],
     games,
+    gameOptionsMeta,
     platforms,
     sellers,
     attributes = [],
@@ -79,7 +316,8 @@ export default function Form({
 }: {
     product: any;
     categories: Array<{ id: number; parent_id?: number | null; name: string; slug: string }>;
-    games: any[];
+    games: GameOption[];
+    gameOptionsMeta: GameOptionsMeta;
     platforms: any[];
     sellers: any[];
     attributes: AttributeDefinition[];
@@ -247,23 +485,14 @@ export default function Form({
                                 )}
                             </label>
 
-                            <label className="text-sm font-bold text-slate-200">
-                                بازی
-                                <select
-                                    className="mt-2 h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-3"
-                                    value={form.data.game_id}
-                                    onChange={(event) =>
-                                        form.setData("game_id", event.target.value)
-                                    }
-                                >
-                                    <option value="">انتخاب بازی</option>
-                                    {games.map((item) => (
-                                        <option key={item.id} value={item.id}>
-                                            {item.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
+                            <GamePicker
+                                error={(form.errors as any).game_id}
+                                initialMeta={gameOptionsMeta}
+                                initialOptions={games}
+                                onChange={(value) => form.setData("game_id", value)}
+                                selectedGame={product?.game ?? null}
+                                value={form.data.game_id}
+                            />
 
                             <label className="text-sm font-bold text-slate-200">
                                 پلتفرم

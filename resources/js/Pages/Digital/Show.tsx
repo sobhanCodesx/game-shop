@@ -16,12 +16,26 @@ import {
 import { useMemo, useState } from "react";
 
 import Seo, { type SeoData } from "../../Components/Seo";
+import ProductCard from "../../Components/Storefront/Product/ProductCard";
+import ContentCard from "../../Components/Storefront/Video/ContentCard";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
-import type { SharedPageProps } from "../../types";
+import type { SharedPageProps, StorefrontContent, StorefrontProduct } from "../../types";
 
 const money = new Intl.NumberFormat("fa-IR");
 
-export default function Show({ product, seo }: { product: any; seo: SeoData }) {
+export default function Show({
+    product,
+    seo,
+    relatedProducts = [],
+    gameVideos = [],
+    gameFeed = [],
+}: {
+    product: any;
+    seo: SeoData;
+    relatedProducts: StorefrontProduct[];
+    gameVideos: StorefrontContent[];
+    gameFeed: StorefrontContent[];
+}) {
     const { auth } = usePage<SharedPageProps>().props;
     const firstOffer =
         product.offers.find((offer: any) => offer.available)?.id ?? null;
@@ -448,6 +462,87 @@ export default function Show({ product, seo }: { product: any; seo: SeoData }) {
                                     </Link>
                                 )}
                             </div>
+                        </div>
+                    </section>
+                )}
+
+                {relatedProducts.length > 0 && (
+                    <section className="mt-7 sm:mt-10">
+                        <div className="mb-4 flex items-end justify-between gap-3">
+                            <div>
+                                <p className="text-[10px] font-black tracking-[.16em] text-indigo-500">
+                                    RELATED STORE
+                                </p>
+                                <h2 className="mt-1 text-xl font-black text-[var(--store-text)] sm:text-2xl">
+                                    شاید این‌ها هم به کارت بیاد
+                                </h2>
+                                <p className="mt-1 text-xs leading-6 text-[var(--store-muted)]">
+                                    براساس بازی، دسته‌بندی، پلتفرم و ویژگی‌های مشترک.
+                                </p>
+                            </div>
+                            <Link
+                                className="shrink-0 text-xs font-black text-indigo-500 hover:text-indigo-400"
+                                href="/digital"
+                            >
+                                همه محصولات
+                            </Link>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                            {relatedProducts.slice(0, 10).map((item) => (
+                                <ProductCard key={item.id} product={item} />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {gameVideos.length > 0 && (
+                    <section className="mt-8 sm:mt-11">
+                        <div className="mb-4 flex items-end justify-between gap-3">
+                            <div>
+                                <p className="text-[10px] font-black tracking-[.16em] text-cyan-500">
+                                    GAME VIDEOS
+                                </p>
+                                <h2 className="mt-1 text-xl font-black text-[var(--store-text)] sm:text-2xl">
+                                    ویدیوهای {product.game?.name ?? "این بازی"}
+                                </h2>
+                            </div>
+                            {product.game?.channel_url && (
+                                <Link
+                                    className="shrink-0 text-xs font-black text-cyan-500 hover:text-cyan-400"
+                                    href={product.game.channel_url}
+                                >
+                                    کانال بازی
+                                </Link>
+                            )}
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {gameVideos.slice(0, 4).map((item) => (
+                                <ContentCard content={item} key={item.id} />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {gameFeed.length > 0 && (
+                    <section className="mt-8 rounded-[24px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:mt-11 sm:rounded-[30px] sm:p-6">
+                        <div className="mb-4">
+                            <p className="text-[10px] font-black tracking-[.16em] text-emerald-500">
+                                RELATED FEED
+                            </p>
+                            <h2 className="mt-1 text-xl font-black text-[var(--store-text)] sm:text-2xl">
+                                فید مرتبط با {product.game?.name ?? "این بازی"}
+                            </h2>
+                            <p className="mt-1 text-xs leading-6 text-[var(--store-muted)]">
+                                از محصول به محتوای بازی و از محتوا به کانال؛ لینک‌سازی داخلی مستقیم و قابل دنبال‌کردن.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {gameFeed.slice(0, 4).map((item) => (
+                                <ContentCard content={item} key={item.id} />
+                            ))}
                         </div>
                     </section>
                 )}

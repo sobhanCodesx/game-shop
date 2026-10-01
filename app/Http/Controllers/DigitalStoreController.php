@@ -7,10 +7,12 @@ use App\Models\Category;
 use App\Models\DigitalOffer;
 use App\Models\DigitalProduct;
 use App\Models\Game;
+use App\Models\SocialContent;
 use App\Services\DigitalOrderService;
 use App\Services\DigitalProductMediaStorage;
 use App\Services\TicketService;
 use App\Services\MediaStorage;
+use App\Services\StorefrontDataService;
 use App\Support\Seo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +24,10 @@ use Inertia\Response;
 
 class DigitalStoreController extends Controller
 {
+    public function __construct(
+        private readonly StorefrontDataService $storefrontData,
+    ) {}
+
     public function index(Request $request): Response
     {
         $filterAttributes = $this->filterAttributes();
@@ -133,6 +139,10 @@ class DigitalStoreController extends Controller
             ? url((string) data_get($product, 'game.channel_url'))
             : null;
 
+        $relatedProducts = $this->relatedProducts($digitalProduct);
+        $gameVideos = $this->gameContent($digitalProduct, 'video', 4);
+        $gameFeed = $this->gameContent($digitalProduct, 'post', 4);
+
         return Inertia::render('Digital/Show', [
             ...Seo::page([
                 'title' => $digitalProduct->title,
@@ -191,6 +201,9 @@ class DigitalStoreController extends Controller
                 ],
             ]),
             'product' => $product,
+            'relatedProducts' => $relatedProducts,
+            'gameVideos' => $gameVideos,
+            'gameFeed' => $gameFeed,
         ]);
     }
 
@@ -247,6 +260,125 @@ class DigitalStoreController extends Controller
                 'success',
                 'سفارش دیجیتال ثبت شد؛ ادامه خرید از همین گفت‌وگو انجام می‌شود.',
             );
+    }
+
+    private function relatedProducts(DigitalProduct $product): array
+    {
+        $attributePairs = $product->attributeValues
+            ->map(fn ($value) => [
+                'attribute_id' => (int) $value->attribute_id,
+                'value' => (string) $value->value,
+            ])
+            ->unique(fn (array $item) => $item['attribute_id'].'|'.$item['value'])
+            ->values();
+
+        $query = DigitalProduct::query()
+            ->published()
+            ->where('id', '!=', $product->id)
+            ->with([
+                'category:id,name,slug',
+                'game:id,name,slug,cover,background,status',
+                'platform:id,name,slug',
+                'offers',
+                'coverMedia',
+                'attributeValues.attribute.options',
+            ]);
+
+        $hasSimilaritySignal = filled($product->game_id)
+            || filled($product->category_id)
+            || filled($product->platform_id)
+            || $attributePairs->isNotEmpty();
+
+        if ($hasSimilaritySignal) {
+            $query->where(function ($related) use ($product, $attributePairs): void {
+                if ($product->game_id) {
+                    $related->orWhere('game_id', $product->game_id);
+                }
+                if ($product->category_id) {
+                    $related->orWhere('category_id', $product->category_id);
+                }
+                if ($product->platform_id) {
+                    $related->orWhere('platform_id', $product->platform_id);
+                }
+
+                foreach ($attributePairs as $pair) {
+                    $related->orWhereHas(
+                        'attributeValues',
+                        fn ($values) => $values
+                            ->where('attribute_id', $pair['attribute_id'])
+                            ->where('value', $pair['value']),
+                    );
+                }
+            });
+        }
+
+        return $query
+            ->orderByDesc('featured')
+            ->latest('id')
+            ->limit(40)
+            ->get()
+            ->map(function (DigitalProduct $candidate) use ($product, $attributePairs): array {
+                $score = 0;
+
+                if ($candidate->game_id === $product->game_id && $product->game_id) {
+                    $score += 100;
+                }
+                if ($candidate->category_id === $product->category_id && $product->category_id) {
+                    $score += 45;
+                }
+                if ($candidate->platform_id === $product->platform_id && $product->platform_id) {
+                    $score += 30;
+                }
+
+                $candidatePairs = $candidate->attributeValues
+                    ->map(fn ($value) => (int) $value->attribute_id.'|'.(string) $value->value)
+                    ->flip();
+
+                foreach ($attributePairs as $pair) {
+                    if ($candidatePairs->has($pair['attribute_id'].'|'.$pair['value'])) {
+                        $score += 15;
+                    }
+                }
+
+                if ($candidate->featured) {
+                    $score += 5;
+                }
+
+                return [
+                    'score' => $score,
+                    'product' => $this->storefrontData->digitalProduct($candidate),
+                ];
+            })
+            ->sortByDesc('score')
+            ->take(10)
+            ->pluck('product')
+            ->values()
+            ->all();
+    }
+
+    private function gameContent(
+        DigitalProduct $product,
+        string $type,
+        int $limit,
+    ): array {
+        if (! $product->game_id) {
+            return [];
+        }
+
+        return SocialContent::query()
+            ->published()
+            ->where('game_id', $product->game_id)
+            ->where('type', $type)
+            ->with([
+                'media',
+                'game:id,name,slug,cover',
+            ])
+            ->latest('published_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (SocialContent $content) => $this->storefrontData->content($content))
+            ->values()
+            ->all();
     }
 
     private function productPayload(

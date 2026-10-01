@@ -1090,6 +1090,106 @@ class TelegramAdminBotTest extends TestCase
         });
     }
 
+    public function test_bot_owner_can_reply_to_customer_ticket_without_duplicate_replies(): void
+    {
+        $admin = User::factory()->create([
+            'name' => 'ادمین تلگرام',
+            'is_admin' => true,
+            'status' => 'active',
+            'role' => 'super-admin',
+            'telegram_user_id' => '777777777',
+            'telegram_chat_id' => '777777777',
+            'telegram_linked_at' => now(),
+        ]);
+        $customer = User::factory()->create([
+            'name' => 'مشتری تیکت',
+            'is_admin' => false,
+            'status' => 'active',
+        ]);
+
+        $setting = $this->configureBot();
+        $setting->forceFill([
+            'write_enabled' => true,
+            'updated_by' => $admin->id,
+        ])->save();
+
+        $ticket = Ticket::query()->create([
+            'number' => 'TK-TELEGRAM-REPLY',
+            'user_id' => $customer->id,
+            'subject' => 'پشتیبانی خرید',
+            'type' => 'support',
+            'status' => 'pending',
+            'priority' => 'normal',
+            'last_replied_at' => now(),
+            'created_by' => $customer->id,
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        app(TelegramAdminNotificationService::class)
+            ->newTicket($ticket, 'لطفاً راهنمایی کنید.');
+
+        Http::assertSent(function ($request) use ($ticket): bool {
+            $callbacks = $this->callbackDataFromRequest($request->data());
+
+            return str_ends_with($request->url(), '/sendMessage')
+                && in_array(
+                    'admin-ticket-reply:'.$ticket->id,
+                    $callbacks,
+                    true,
+                );
+        });
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson(
+            '/api/telegram/webhook',
+            $this->telegramCallback(
+                3300,
+                '777777777',
+                'admin-ticket-reply:'.$ticket->id,
+            ),
+        )->assertOk();
+
+        $session = app(TelegramBotSessionStore::class)
+            ->get('777777777', '777777777');
+        $this->assertNotNull($session);
+        $this->assertSame('awaiting_admin_ticket_reply', $session->state);
+
+        $replyUpdate = $this->telegramUpdate(
+            3301,
+            '777777777',
+            'سلام، درخواست شما بررسی شد و از همین تیکت ادامه می‌دهیم.',
+        );
+
+        foreach ([1, 2] as $attempt) {
+            $this->withHeaders([
+                'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+            ])->postJson('/api/telegram/webhook', $replyUpdate)->assertOk();
+        }
+
+        $this->assertDatabaseHas('ticket_replies', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $admin->id,
+            'is_admin' => true,
+            'message' => 'سلام، درخواست شما بررسی شد و از همین تیکت ادامه می‌دهیم.',
+        ]);
+        $this->assertSame(
+            1,
+            $ticket->replies()->where('user_id', $admin->id)->count(),
+        );
+        $this->assertSame('open', $ticket->fresh()->status);
+        $this->assertNull(
+            app(TelegramBotSessionStore::class)
+                ->get('777777777', '777777777'),
+        );
+    }
+
     public function test_new_user_notification_is_sent_to_the_owner_without_breaking_registration_flow(): void
     {
         $this->configureBot();

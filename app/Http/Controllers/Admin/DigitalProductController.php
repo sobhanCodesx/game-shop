@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\DigitalProductMediaStorage;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -118,7 +119,12 @@ class DigitalProductController extends Controller
     public function edit(Request $request, DigitalProduct $digitalProduct): Response
     {
         $this->authorizeProduct($request->user(), $digitalProduct);
-        $digitalProduct->load(['offers', 'media', 'attributeValues.attribute.options']);
+        $digitalProduct->load([
+            'game:id,name,slug,status',
+            'offers',
+            'media',
+            'attributeValues.attribute.options',
+        ]);
 
         return Inertia::render('Admin/Digital/Products/Form', [
             ...$this->formData($request),
@@ -156,6 +162,43 @@ class DigitalProductController extends Controller
 
         return to_route('admin.digital-products.index')
             ->with('success', 'محصول دیجیتال به‌روزرسانی شد.');
+    }
+
+    public function gameOptions(Request $request): JsonResponse
+    {
+        $search = trim($request->string('q')->toString());
+        $perPage = min(50, max(10, $request->integer('per_page', 25)));
+
+        $games = Game::query()
+            ->when(
+                $search !== '',
+                fn ($query) => $query->where(function ($gameQuery) use ($search): void {
+                    $gameQuery
+                        ->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('slug', 'like', '%'.$search.'%')
+                        ->orWhere('developer', 'like', '%'.$search.'%')
+                        ->orWhere('publisher', 'like', '%'.$search.'%');
+                }),
+            )
+            ->orderBy('name')
+            ->paginate($perPage, ['id', 'name', 'slug', 'status'])
+            ->withQueryString();
+
+        return response()->json([
+            'data' => collect($games->items())->map(fn (Game $game) => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'slug' => $game->slug,
+                'status' => $game->status,
+            ])->values(),
+            'meta' => [
+                'current_page' => $games->currentPage(),
+                'last_page' => $games->lastPage(),
+                'per_page' => $games->perPage(),
+                'total' => $games->total(),
+                'has_more' => $games->hasMorePages(),
+            ],
+        ]);
     }
 
     private function validateProduct(Request $request): array
@@ -428,7 +471,16 @@ class DigitalProductController extends Controller
                 ->orderBy('sort_order')
                 ->orderBy('name')
                 ->get(['id', 'parent_id', 'name', 'slug']),
-            'games' => Game::query()->where('status', 'active')->orderBy('name')->get(['id', 'name']),
+            'games' => Game::query()
+                ->orderBy('name')
+                ->limit(25)
+                ->get(['id', 'name', 'slug', 'status']),
+            'gameOptionsMeta' => [
+                'current_page' => 1,
+                'last_page' => max(1, (int) ceil(Game::query()->count() / 25)),
+                'per_page' => 25,
+                'total' => Game::query()->count(),
+            ],
             'platforms' => Platform::query()->where('status', 'active')->orderBy('sort_order')->get(['id', 'name']),
             'sellers' => $actor->role === 'digital-seller'
                 ? collect([$actor->only(['id', 'name', 'email'])])
@@ -462,6 +514,7 @@ class DigitalProductController extends Controller
                 'id', 'category_id', 'game_id', 'platform_id', 'seller_id', 'title',
                 'short_description', 'support_days', 'status', 'featured',
             ]),
+            'game' => $product->game?->only(['id', 'name', 'slug', 'status']),
             'offers' => $product->offers->map(fn ($offer) => $offer->only([
                 'id', 'code', 'label', 'price', 'stock', 'status',
             ]))->values(),

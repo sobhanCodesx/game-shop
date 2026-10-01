@@ -126,10 +126,16 @@ final class TelegramAdminNotificationService
             ."⏱ منتظر اقدام پشتیبانی";
 
         $this->send($text, [
-            'inline_keyboard' => [[[
-                'text' => '💬 باز کردن تیکت',
-                'url' => route('admin.tickets.show', $ticket),
-            ]]],
+            'inline_keyboard' => [
+                [[
+                    'text' => '✍️ پاسخ مستقیم از تلگرام',
+                    'callback_data' => 'admin-ticket-reply:'.$ticket->id,
+                ]],
+                [[
+                    'text' => '💬 باز کردن تیکت',
+                    'url' => route('admin.tickets.show', $ticket),
+                ]],
+            ],
         ]);
     }
 
@@ -146,10 +152,16 @@ final class TelegramAdminNotificationService
             ."⏱ منتظر پاسخ پشتیبانی";
 
         $this->send($text, [
-            'inline_keyboard' => [[[
-                'text' => '↩️ پاسخ به تیکت',
-                'url' => route('admin.tickets.show', $ticket),
-            ]]],
+            'inline_keyboard' => [
+                [[
+                    'text' => '✍️ پاسخ مستقیم از تلگرام',
+                    'callback_data' => 'admin-ticket-reply:'.$ticket->id,
+                ]],
+                [[
+                    'text' => '↩️ باز کردن تیکت',
+                    'url' => route('admin.tickets.show', $ticket),
+                ]],
+            ],
         ]);
     }
 
