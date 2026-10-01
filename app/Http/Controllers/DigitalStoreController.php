@@ -11,9 +11,11 @@ use App\Services\DigitalOrderService;
 use App\Services\DigitalProductMediaStorage;
 use App\Services\TicketService;
 use App\Services\MediaStorage;
+use App\Support\Seo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -115,8 +117,78 @@ class DigitalStoreController extends Controller
             'attributeValues.attribute.options',
         ]);
 
+        $product = $this->productPayload($digitalProduct, true);
+        $canonical = route('digital.show', $digitalProduct);
+        $description = Str::limit(
+            $digitalProduct->short_description
+                ?: "خرید {$digitalProduct->title} با مشاهده ظرفیت‌ها، موجودی و پشتیبانی فروشنده در PlayNexus.",
+            160,
+            '…',
+        );
+        $image = (string) ($product['cover_url'] ?: config('seo.default_image', '/logo.png'));
+        $image = str_starts_with($image, 'http') ? $image : url($image);
+        $gameUrl = data_get($product, 'game.channel_url')
+            ? url((string) data_get($product, 'game.channel_url'))
+            : null;
+
         return Inertia::render('Digital/Show', [
-            'product' => $this->productPayload($digitalProduct, true),
+            ...Seo::page([
+                'title' => $digitalProduct->title,
+                'description' => $description,
+                'canonical' => $canonical,
+                'robots' => 'index, follow, max-image-preview:large, max-snippet:-1',
+                'type' => 'product',
+                'image' => $image,
+                'imageAlt' => $digitalProduct->title,
+                'structuredData' => [
+                    '@context' => 'https://schema.org',
+                    '@graph' => [
+                        [
+                            '@type' => 'Product',
+                            '@id' => $canonical.'#product',
+                            'name' => $digitalProduct->title,
+                            'url' => $canonical,
+                            'description' => $description,
+                            'image' => $image,
+                            ...($digitalProduct->category?->name
+                                ? ['category' => $digitalProduct->category->name]
+                                : []),
+                            ...($gameUrl
+                                ? ['isRelatedTo' => [
+                                    '@type' => 'VideoGame',
+                                    'name' => $digitalProduct->game?->name,
+                                    'url' => $gameUrl,
+                                ]]
+                                : []),
+                        ],
+                        [
+                            '@type' => 'BreadcrumbList',
+                            '@id' => $canonical.'#breadcrumb',
+                            'itemListElement' => array_values(array_filter([
+                                [
+                                    '@type' => 'ListItem',
+                                    'position' => 1,
+                                    'name' => 'خانه',
+                                    'item' => route('home'),
+                                ],
+                                $gameUrl ? [
+                                    '@type' => 'ListItem',
+                                    'position' => 2,
+                                    'name' => $digitalProduct->game?->name,
+                                    'item' => $gameUrl,
+                                ] : null,
+                                [
+                                    '@type' => 'ListItem',
+                                    'position' => $gameUrl ? 3 : 2,
+                                    'name' => $digitalProduct->title,
+                                    'item' => $canonical,
+                                ],
+                            ])),
+                        ],
+                    ],
+                ],
+            ]),
+            'product' => $product,
         ]);
     }
 
@@ -201,6 +273,9 @@ class DigitalStoreController extends Controller
                 'channel_url' => in_array($product->game->status, ['active', 'published'], true)
                     ? route('channels.show', $product->game->slug, false)
                     : null,
+                'digital_products_url' => route('digital.index', [
+                    'game' => $product->game->slug,
+                ], false),
             ] : null,
             'platform' => $product->platform?->only(['id', 'name', 'slug']),
             'seller' => $detailed && $product->seller ? [
