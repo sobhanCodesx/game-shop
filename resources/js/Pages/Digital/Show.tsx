@@ -1,5 +1,5 @@
 import { Button, Chip } from "@heroui/react";
-import { Head, Link, router, usePage } from "@inertiajs/react";
+import { Link, router, usePage } from "@inertiajs/react";
 import {
     ArrowLeft,
     Check,
@@ -15,12 +15,13 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import Seo, { type SeoData } from "../../Components/Seo";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import type { SharedPageProps } from "../../types";
 
 const money = new Intl.NumberFormat("fa-IR");
 
-export default function Show({ product }: { product: any }) {
+export default function Show({ product, seo }: { product: any; seo: SeoData }) {
     const { auth } = usePage<SharedPageProps>().props;
     const firstOffer =
         product.offers.find((offer: any) => offer.available)?.id ?? null;
@@ -86,7 +87,7 @@ export default function Show({ product }: { product: any }) {
 
     return (
         <StorefrontLayout>
-            <Head title={product.title} />
+            <Seo seo={seo} />
 
             <main className="mx-auto max-w-7xl px-3 pb-28 pt-4 sm:px-6 sm:pb-12 sm:pt-7 lg:py-10">
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(380px,.92fr)] lg:items-start lg:gap-7">
@@ -430,13 +431,23 @@ export default function Show({ product }: { product: any }) {
                                 </div>
                             </div>
 
-                            <Link
-                                className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-400/10 px-5 text-sm font-black text-cyan-200 backdrop-blur transition hover:border-cyan-300/50 hover:bg-cyan-400/15"
-                                href={product.game.channel_url}
-                            >
-                                ورود به کانال بازی
-                                <ArrowLeft size={17} />
-                            </Link>
+                            <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col">
+                                <Link
+                                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-400/10 px-5 text-sm font-black text-cyan-200 backdrop-blur transition hover:border-cyan-300/50 hover:bg-cyan-400/15"
+                                    href={product.game.channel_url}
+                                >
+                                    ورود به کانال بازی
+                                    <ArrowLeft size={17} />
+                                </Link>
+                                {product.game.digital_products_url && (
+                                    <Link
+                                        className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[.06] px-4 text-xs font-black text-slate-200 transition hover:bg-white/[.1]"
+                                        href={product.game.digital_products_url}
+                                    >
+                                        همه اکانت‌های این بازی
+                                    </Link>
+                                )}
+                            </div>
                         </div>
                     </section>
                 )}
