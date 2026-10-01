@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\DigitalProduct;
+use App\Models\Game;
 use App\Models\MobileVerificationCode;
+use App\Models\Platform;
 use App\Models\TelegramBotSetting;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Notifications\Channels\TelegramChannel;
 use App\Services\MobileCodeService;
@@ -257,6 +261,170 @@ class TelegramUserNotificationsTest extends TestCase
                 && str_contains((string) ($request->data()['caption'] ?? ''), 'سفارش شما ارسال شد')
                 && str_contains((string) ($markup['url'] ?? ''), '/orders/10');
         });
+    }
+
+    public function test_linked_digital_seller_can_reply_to_assigned_price_ticket_from_telegram(): void
+    {
+        $this->configureBot();
+
+        $seller = User::factory()->create([
+            'name' => 'فروشنده دیجیتال',
+            'status' => 'active',
+            'role' => 'digital-seller',
+            'is_admin' => true,
+            'telegram_user_id' => '777777777',
+            'telegram_chat_id' => '777777777',
+            'telegram_linked_at' => now(),
+        ]);
+        $customer = User::factory()->create([
+            'name' => 'خریدار',
+            'status' => 'active',
+        ]);
+        $game = Game::factory()->create([
+            'name' => 'Telegram Ticket Game',
+            'slug' => 'telegram-ticket-game',
+        ]);
+        $platform = Platform::factory()->create([
+            'name' => 'PS5 Telegram',
+            'slug' => 'ps5-telegram-ticket',
+        ]);
+        $product = DigitalProduct::query()->create([
+            'game_id' => $game->id,
+            'platform_id' => $platform->id,
+            'seller_id' => $seller->id,
+            'title' => 'Telegram Ticket Game PS5',
+            'slug' => 'telegram-ticket-game-ps5',
+            'status' => 'published',
+        ]);
+        $ticket = Ticket::query()->create([
+            'number' => 'TK-SELLER-1',
+            'user_id' => $customer->id,
+            'digital_product_id' => $product->id,
+            'assigned_user_id' => $seller->id,
+            'subject' => 'استعلام آخرین قیمت',
+            'type' => 'digital_price',
+            'status' => 'pending',
+            'priority' => 'normal',
+            'last_replied_at' => now(),
+            'created_by' => $customer->id,
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        $headers = ['X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret'];
+
+        $this->withHeaders($headers)->postJson('/api/telegram/webhook', [
+            'update_id' => 9901,
+            'callback_query' => [
+                'id' => 'seller-callback-1',
+                'from' => ['id' => 777777777, 'is_bot' => false, 'first_name' => 'Seller'],
+                'message' => [
+                    'message_id' => 100,
+                    'chat' => ['id' => 777777777, 'type' => 'private'],
+                ],
+                'data' => 'seller_ticket_reply:'.$ticket->id,
+            ],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('telegram_bot_sessions', [
+            'user_id' => '777777777',
+            'chat_id' => '777777777',
+            'state' => 'seller_ticket_reply',
+        ]);
+
+        $reply = 'قیمت امروز ۳٬۰۰۰٬۰۰۰ تومان است و موجودی داریم.';
+
+        $this->withHeaders($headers)->postJson('/api/telegram/webhook', [
+            'update_id' => 9902,
+            'message' => [
+                'message_id' => 101,
+                'date' => now()->timestamp,
+                'chat' => ['id' => 777777777, 'type' => 'private'],
+                'from' => ['id' => 777777777, 'is_bot' => false, 'first_name' => 'Seller'],
+                'text' => $reply,
+            ],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('ticket_replies', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $seller->id,
+            'message' => $reply,
+            'is_admin' => true,
+        ]);
+        $this->assertDatabaseMissing('telegram_bot_sessions', [
+            'user_id' => '777777777',
+            'chat_id' => '777777777',
+        ]);
+        $this->assertSame('open', $ticket->fresh()->status);
+
+        Http::assertSent(fn ($request): bool =>
+            str_ends_with($request->url(), '/sendMessage')
+            && str_contains((string) ($request->data()['text'] ?? ''), 'پاسخ داخل تیکت ثبت شد')
+        );
+    }
+
+    public function test_seller_cannot_open_another_sellers_price_ticket_from_telegram(): void
+    {
+        $this->configureBot();
+
+        $seller = User::factory()->create([
+            'status' => 'active',
+            'telegram_user_id' => '888000111',
+            'telegram_chat_id' => '888000111',
+            'telegram_linked_at' => now(),
+        ]);
+        $otherSeller = User::factory()->create(['status' => 'active']);
+        $customer = User::factory()->create(['status' => 'active']);
+        $game = Game::factory()->create();
+        $product = DigitalProduct::query()->create([
+            'game_id' => $game->id,
+            'seller_id' => $otherSeller->id,
+            'title' => 'Other Seller Product',
+            'slug' => 'other-seller-product',
+            'status' => 'published',
+        ]);
+        $ticket = Ticket::query()->create([
+            'number' => 'TK-SELLER-DENY',
+            'user_id' => $customer->id,
+            'digital_product_id' => $product->id,
+            'assigned_user_id' => $otherSeller->id,
+            'subject' => 'استعلام قیمت',
+            'type' => 'digital_price',
+            'status' => 'pending',
+            'priority' => 'normal',
+            'last_replied_at' => now(),
+            'created_by' => $customer->id,
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => true]),
+        ]);
+
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->postJson('/api/telegram/webhook', [
+            'update_id' => 9903,
+            'callback_query' => [
+                'id' => 'seller-callback-denied',
+                'from' => ['id' => 888000111, 'is_bot' => false, 'first_name' => 'Seller'],
+                'message' => [
+                    'message_id' => 102,
+                    'chat' => ['id' => 888000111, 'type' => 'private'],
+                ],
+                'data' => 'seller_ticket_reply:'.$ticket->id,
+            ],
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('telegram_bot_sessions', [
+            'user_id' => '888000111',
+            'chat_id' => '888000111',
+            'state' => 'seller_ticket_reply',
+        ]);
     }
 
     private function configureBot(): TelegramBotSetting
