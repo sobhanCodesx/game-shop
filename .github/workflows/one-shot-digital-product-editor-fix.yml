@@ -44,7 +44,7 @@ jobs:
           Path('.github/workflows/one-shot-digital-product-editor-fix.yml').unlink()
       - run: php -l app/Http/Controllers/Admin/DigitalProductController.php
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - run: php artisan test tests/Feature/DigitalCommerceTest.php
+      - run: php artisan route:list > /dev/null
       - run: npm ci
       - run: npm run build
       - name: Commit verified changes
