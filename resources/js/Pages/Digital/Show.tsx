@@ -32,6 +32,13 @@ import type {
 } from "../../types";
 
 const money = new Intl.NumberFormat("fa-IR");
+const priceFreshness = new Intl.DateTimeFormat("fa-IR", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tehran",
+});
 
 function SectionHeading({
     eyebrow,
@@ -132,6 +139,18 @@ export default function Show({
               ? Math.min(...pricedOffers.map((item: any) => Number(item.price)))
               : null;
 
+    const latestOfferUpdate = useMemo(() => {
+        const timestamps = product.offers
+            .map((item: any) => Date.parse(item.updated_at ?? ""))
+            .filter((timestamp: number) => Number.isFinite(timestamp));
+
+        return timestamps.length > 0 ? Math.max(...timestamps) : null;
+    }, [product.offers]);
+    const latestOfferUpdateLabel =
+        latestOfferUpdate !== null
+            ? priceFreshness.format(new Date(latestOfferUpdate))
+            : null;
+
     const sellerInitial = product.seller?.name?.trim()?.charAt(0) || "P";
     const hasPurchasableOffer = availableOffers.length > 0;
     const offerGridClass =
@@ -175,7 +194,7 @@ export default function Show({
         <StorefrontLayout commerceFocus>
             <Seo seo={seo} />
 
-            <main className="mx-auto max-w-7xl px-3 pb-32 pt-3 sm:px-6 sm:pb-14 sm:pt-7 lg:py-10">
+            <main className="mx-auto max-w-7xl px-3 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pb-14 sm:pt-7 lg:py-10">
                 <nav aria-label="مسیر صفحه" className="mb-3 sm:mb-5">
                     <Link
                         className="inline-flex items-center gap-1.5 rounded-xl px-1 py-1 text-[11px] font-black text-[var(--store-muted)] transition hover:text-indigo-500 sm:hidden"
@@ -386,6 +405,15 @@ export default function Show({
                                         </small>
                                     </strong>
                                 </div>
+                                {latestOfferUpdateLabel && (
+                                    <div className="mt-2 flex items-center gap-1.5 border-t border-emerald-500/10 pt-2 text-[9px] font-bold text-[var(--store-muted)] sm:text-[10px]">
+                                        <Clock3 size={11} />
+                                        آخرین بروزرسانی قیمت و موجودی:
+                                        <span className="text-[var(--store-text)]">
+                                            {latestOfferUpdateLabel}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="mt-3 flex flex-col items-stretch gap-3 rounded-2xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(245,158,11,.08),rgba(249,115,22,.035))] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -395,16 +423,27 @@ export default function Show({
                                         size={16}
                                     />
                                     <div className="min-w-0">
+                                        <span className="mb-1 inline-flex rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[8px] font-black text-amber-500">
+                                            {hasPurchasableOffer
+                                                ? "پیشنهاد قبل از سفارش"
+                                                : "قیمت نیاز به تأیید دارد"}
+                                        </span>
                                         <strong className="block text-[11px] font-black leading-5 text-[var(--store-text)] sm:text-xs">
-                                            قبل از خرید قیمت را تأیید کن
+                                            {hasPurchasableOffer
+                                                ? "قیمت امروز را با فروشنده تأیید کن"
+                                                : "قیمت و موجودی امروز را استعلام کن"}
                                         </strong>
-                                        <p className="mt-0.5 text-[10px] font-bold leading-5 text-[var(--store-muted)] sm:text-[11px]">
-                                            به‌دلیل نوسان ارز و موجودی ظرفیت‌ها، قیمت نهایی ممکن است تغییر کند.
+                                        <p
+                                            className="mt-0.5 text-[10px] font-bold leading-5 text-[var(--store-muted)] sm:text-[11px]"
+                                            id="price-inquiry-explanation"
+                                        >
+                                            مبلغ بالا آخرین قیمت ثبت‌شده است؛ نوسان ارز و موجودی ظرفیت‌ها می‌تواند قیمت امروز را تغییر دهد.
                                         </p>
                                     </div>
                                 </div>
                                 <button
-                                    aria-label="استعلام آخرین قیمت و موجودی"
+                                    aria-describedby="price-inquiry-explanation"
+                                    aria-label="تأیید قیمت و موجودی امروز با فروشنده"
                                     className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-3 text-[10px] font-black text-white shadow-[0_8px_24px_-12px_rgba(245,158,11,.9)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(245,158,11,.95)] disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:text-[11px]"
                                     disabled={requestingPrice}
                                     onClick={requestLatestPrice}
@@ -412,13 +451,13 @@ export default function Show({
                                 >
                                     {!requestingPrice && (
                                         <span className="relative flex size-2" aria-hidden="true">
-                                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-white/70 opacity-60 motion-reduce:hidden" />
+                                            <span className="absolute inline-flex size-full animate-pulse rounded-full bg-white/60 motion-reduce:hidden" />
                                             <span className="relative inline-flex size-2 rounded-full bg-white" />
                                         </span>
                                     )}
                                     {requestingPrice
                                         ? "در حال ارسال..."
-                                        : "استعلام قیمت و موجودی"}
+                                        : "تأیید قیمت و موجودی امروز"}
                                 </button>
                             </div>
                         </div>
