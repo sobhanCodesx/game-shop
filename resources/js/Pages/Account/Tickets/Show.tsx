@@ -28,15 +28,26 @@ export default function Show({ ticket }: { ticket: any }) {
     });
     useEffect(() => {
         let timer: number | undefined;
+        let refreshing = false;
 
         const refresh = () => {
-            if (document.visibilityState === "visible" && navigator.onLine) {
-                router.reload({
-                    only: ["ticket"],
-                    preserveScroll: true,
-                    preserveState: true,
-                });
+            if (
+                refreshing ||
+                document.visibilityState !== "visible" ||
+                !navigator.onLine
+            ) {
+                return;
             }
+
+            refreshing = true;
+            router.reload({
+                only: ["ticket"],
+                preserveScroll: true,
+                preserveState: true,
+                onFinish: () => {
+                    refreshing = false;
+                },
+            });
         };
         const schedule = () => {
             window.clearTimeout(timer);
@@ -45,7 +56,7 @@ export default function Show({ ticket }: { ticket: any }) {
                     refresh();
                     schedule();
                 },
-                document.visibilityState === "visible" ? 12_000 : 60_000,
+                document.visibilityState === "visible" ? 2_500 : 60_000,
             );
         };
         const onVisibility = () => {
