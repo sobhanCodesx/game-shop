@@ -556,7 +556,7 @@ export default function Form({
                                 </label>
                             )}
 
-                            <div>
+                            <div className="md:col-span-2">
                             <label className="mb-2 block text-sm font-bold text-slate-200">عنوان محصول</label>
                             <Input
                                 aria-label="عنوان محصول"
