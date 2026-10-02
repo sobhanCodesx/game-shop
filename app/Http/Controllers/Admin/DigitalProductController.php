@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\DigitalProductMediaStorage;
 use App\Services\MediaOptimizationService;
 use App\Services\MediaStorage;
+use App\Support\RichText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -109,15 +110,15 @@ class DigitalProductController extends Controller
                 'seller_id' => $sellerId,
                 'title' => $title,
                 'slug' => $slug,
-                'short_description' => $data['short_description'] ?? null,
+                'short_description' => RichText::sanitize($data['short_description'] ?? null),
                 'support_days' => $data['support_days'],
                 'status' => $data['status'],
                 'featured' => (bool) ($data['featured'] ?? false),
             ]);
 
-            $this->syncOffers($product, $data['offers']);
+            $this->syncOffers($product, $data['offers'] ?? []);
             $this->syncAttributeValues($product, $data['attribute_values'] ?? []);
-            $this->syncMedia($product, $data['media']);
+            $this->syncMedia($product, $data['media'] ?? []);
         });
 
         return to_route('admin.digital-products.index')
@@ -165,15 +166,15 @@ class DigitalProductController extends Controller
                 'platform_id' => $data['platform_id'],
                 'seller_id' => $actor->role === 'digital-seller' ? $actor->id : (int) $data['seller_id'],
                 'title' => $title,
-                'short_description' => $data['short_description'] ?? null,
+                'short_description' => RichText::sanitize($data['short_description'] ?? null),
                 'support_days' => $data['support_days'],
                 'status' => $data['status'],
                 'featured' => (bool) ($data['featured'] ?? false),
             ]);
 
-            $this->syncOffers($digitalProduct, $data['offers']);
+            $this->syncOffers($digitalProduct, $data['offers'] ?? []);
             $this->syncAttributeValues($digitalProduct, $data['attribute_values'] ?? []);
-            $this->syncMedia($digitalProduct, $data['media']);
+            $this->syncMedia($digitalProduct, $data['media'] ?? []);
         });
 
         return to_route('admin.digital-products.index')
@@ -241,12 +242,12 @@ class DigitalProductController extends Controller
             'platform_id' => ['required', 'integer', Rule::exists('platforms', 'id')->whereNull('deleted_at')],
             'seller_id' => $sellerRule,
             'title' => ['nullable', 'string', 'max:255'],
-            'short_description' => ['nullable', 'string', 'max:500'],
-            'support_days' => ['required', 'integer', 'min:0', 'max:365'],
+            'short_description' => ['nullable', 'string', 'max:50000'],
+            'support_days' => ['required', 'integer', 'min:0', 'max:3650'],
             'status' => ['required', Rule::in(['draft', 'published', 'hidden'])],
             'featured' => ['boolean'],
 
-            'offers' => ['required', 'array', 'size:4'],
+            'offers' => ['nullable', 'array', 'max:4'],
             'offers.*.code' => ['required', Rule::in(['capacity_1', 'capacity_2', 'capacity_3', 'full']), 'distinct'],
             'offers.*.label' => ['required', 'string', 'max:80'],
             'offers.*.price' => ['required', 'integer', 'min:0'],
@@ -257,7 +258,7 @@ class DigitalProductController extends Controller
             'attribute_values.*' => ['nullable', 'array'],
             'attribute_values.*.*' => ['nullable', 'string', 'max:100'],
 
-            'media' => ['required', 'array', 'min:1', 'max:12'],
+            'media' => ['nullable', 'array', 'max:12'],
             'media.*.id' => ['nullable', 'integer'],
             'media.*.type' => ['required', Rule::in(['image', 'video'])],
             'media.*.file' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime', 'max:2097152'],
@@ -265,21 +266,10 @@ class DigitalProductController extends Controller
             'media.*.is_primary' => ['boolean'],
         ]);
 
-        foreach ($data['offers'] as $index => $offer) {
-            if (($offer['status'] ?? null) === 'active' && (int) ($offer['price'] ?? 0) < 1) {
-                throw ValidationException::withMessages([
-                    "offers.{$index}.price" => 'قیمت فروش ظرفیت فعال باید بیشتر از صفر باشد.',
-                ]);
-            }
-        }
 
         $data['attribute_values'] = $this->validateAttributeValues($data['attribute_values'] ?? []);
 
-        $hasImage = false;
-        foreach ($data['media'] as $index => $media) {
-            if (($media['type'] ?? null) === 'image') {
-                $hasImage = true;
-            }
+        foreach ($data['media'] ?? [] as $index => $media) {
 
             if (empty($media['id']) && empty($media['file'])) {
                 throw ValidationException::withMessages([
@@ -303,11 +293,6 @@ class DigitalProductController extends Controller
             }
         }
 
-        if (! $hasImage) {
-            throw ValidationException::withMessages([
-                'media' => 'حداقل یک تصویر برای محصول دیجیتال لازم است.',
-            ]);
-        }
 
         return $data;
     }
@@ -369,11 +354,6 @@ class DigitalProductController extends Controller
                 }
             }
 
-            if ($attribute->is_required && count($items) === 0) {
-                throw ValidationException::withMessages([
-                    "attribute_values.{$attribute->id}" => "ویژگی {$attribute->title} الزامی است.",
-                ]);
-            }
 
             if ($attribute->input_type !== 'multi_select' && count($items) > 1) {
                 throw ValidationException::withMessages([
