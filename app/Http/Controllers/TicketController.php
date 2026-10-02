@@ -64,10 +64,35 @@ class TicketController extends Controller
     public function show(Request $request, Ticket $ticket): Response
     {
         abort_unless($ticket->user_id === $request->user()->id, 404);
-        $ticket->load(['order:id,number', 'orderItem', 'product.coverMedia', 'digitalProduct.coverMedia', 'assignee:id,name', 'targetProduct:id,title,slug', 'exchangeOrder:id,number', 'replies.user:id,name,is_admin', 'replies.attachments']);
+        $ticket->load([
+            'order:id,number',
+            'orderItem',
+            'product.coverMedia',
+            'digitalProduct.coverMedia',
+            'assignee:id,name,avatar',
+            'targetProduct:id,title,slug',
+            'exchangeOrder:id,number',
+            'replies.user:id,name,is_admin',
+            'replies.attachments',
+        ]);
         $ticket->replies->each(fn ($reply) => $reply->attachments->each(fn ($attachment) => $attachment->setAttribute('url', MediaStorage::url($attachment->path))));
 
-        return Inertia::render('Account/Tickets/Show', ['ticket' => [...$ticket->toArray(), 'cover_url' => MediaStorage::url($ticket->product?->coverMedia?->path)]]);
+        $coverUrl = MediaStorage::url($ticket->product?->coverMedia?->path)
+            ?: DigitalProductMediaStorage::url($ticket->digitalProduct?->coverMedia?->path);
+        $assignee = $ticket->assignee
+            ? [
+                ...$ticket->assignee->toArray(),
+                'avatar_url' => MediaStorage::url($ticket->assignee->avatar),
+            ]
+            : null;
+
+        return Inertia::render('Account/Tickets/Show', [
+            'ticket' => [
+                ...$ticket->toArray(),
+                'cover_url' => $coverUrl,
+                'assignee' => $assignee,
+            ],
+        ]);
     }
 
     public function reply(ReplyTicketRequest $request, Ticket $ticket, TicketService $service): RedirectResponse

@@ -5,15 +5,69 @@ export default function AttachmentPicker({
     files,
     onChange,
     error,
+    compact = false,
 }: {
     files: File[];
     onChange: (files: File[]) => void;
     error?: string;
+    compact?: boolean;
 }) {
     const add = (selected: FileList | null) => {
         if (!selected) return;
         onChange([...files, ...Array.from(selected)].slice(0, 5));
     };
+
+    if (compact) {
+        return (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+                <label className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border border-[var(--store-border)] bg-[var(--store-bg)] px-3 py-1.5 text-xs font-bold text-[var(--store-muted)] transition hover:border-indigo-500/40 hover:text-indigo-500">
+                    <Paperclip size={15} />
+                    <span>فایل</span>
+                    <input
+                        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                        className="hidden"
+                        multiple
+                        onChange={(e) => {
+                            add(e.target.files);
+                            e.currentTarget.value = "";
+                        }}
+                        type="file"
+                    />
+                </label>
+
+                {files.map((file, index) => (
+                    <span
+                        className="inline-flex max-w-[180px] items-center gap-1 rounded-full bg-indigo-500/10 py-1 pl-1.5 pr-2.5 text-[11px] font-bold text-indigo-500"
+                        key={`${file.name}-${index}`}
+                    >
+                        <span className="truncate">{file.name}</span>
+                        <button
+                            aria-label={`حذف ${file.name}`}
+                            className="grid size-5 shrink-0 place-items-center rounded-full hover:bg-indigo-500/10"
+                            onClick={() =>
+                                onChange(files.filter((_, i) => i !== index))
+                            }
+                            type="button"
+                        >
+                            <X size={12} />
+                        </button>
+                    </span>
+                ))}
+
+                {files.length === 0 && (
+                    <span className="text-[10px] text-[var(--store-muted)] opacity-70">
+                        عکس یا ویدیو · حداکثر ۵ فایل
+                    </span>
+                )}
+                {error && (
+                    <p className="basis-full text-xs font-bold text-red-500">
+                        {error}
+                    </p>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div className="mt-3">
             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-indigo-500/40 px-4 py-3 text-sm font-bold text-indigo-500">
@@ -60,7 +114,7 @@ export default function AttachmentPicker({
 export function ReplyAttachments({ attachments }: { attachments?: any[] }) {
     if (!attachments?.length) return null;
     return (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {attachments.map((item) => (
                 <MediaModal item={item} key={item.id} />
             ))}
@@ -78,7 +132,7 @@ function MediaModal({ item }: { item: any }) {
                     <button
                         {...triggerProps}
                         aria-label={`نمایش ${item.original_name}`}
-                        className="group relative min-h-36 overflow-hidden rounded-2xl border border-white/10 bg-black text-white shadow-sm"
+                        className="group relative min-h-32 overflow-hidden rounded-2xl border border-white/10 bg-black text-white shadow-sm sm:min-h-36"
                         type="button"
                     >
                         {isVideo ? (
