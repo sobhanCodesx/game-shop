@@ -50,7 +50,8 @@ class DigitalProductController extends Controller
         $sellerId=$actor->role==='digital-seller'?$actor->id:(int)$data['seller_id'];
         $game=filled($data['game_id']??null)?Game::query()->findOrFail((int)$data['game_id']):null;
         $platform=Platform::query()->findOrFail($data['platform_id']);
-        $title=trim((string)($data['title']??''))?:($game?"{$game->name} - {$platform->name}":'محصول دیجیتال');
+        $title=trim((string)($data['title']??''))?:($game?"{$game->name} - {$platform->name}":'');
+        if($title==='') throw ValidationException::withMessages(['title'=>'اگر بازی انتخاب نمی‌کنی، فقط عنوان محصول را وارد کن.']);
         $slugBase=Str::slug($title)?:'digital-game'; $slug=$slugBase;
         for($i=2;DigitalProduct::withTrashed()->where('slug',$slug)->exists();$i++) $slug=$slugBase.'-'.$i;
         DB::transaction(function()use($data,$sellerId,$title,$slug):void{
@@ -70,7 +71,8 @@ class DigitalProductController extends Controller
     {
         $this->authorizeProduct($request->user(),$digitalProduct); $data=$this->validateProduct($request); $actor=$request->user();
         $game=filled($data['game_id']??null)?Game::query()->findOrFail((int)$data['game_id']):null; $platform=Platform::query()->findOrFail($data['platform_id']);
-        $title=trim((string)($data['title']??''))?:($game?"{$game->name} - {$platform->name}":'محصول دیجیتال');
+        $title=trim((string)($data['title']??''))?:($game?"{$game->name} - {$platform->name}":'');
+        if($title==='') throw ValidationException::withMessages(['title'=>'اگر بازی انتخاب نمی‌کنی، فقط عنوان محصول را وارد کن.']);
         DB::transaction(function()use($data,$digitalProduct,$actor,$title):void{
             $digitalProduct->update(['category_id'=>$data['category_id']??null,'game_id'=>$data['game_id']??null,'platform_id'=>$data['platform_id'],'seller_id'=>$actor->role==='digital-seller'?$actor->id:(int)$data['seller_id'],'title'=>$title,'short_description'=>RichText::sanitize($data['short_description']??null),'support_days'=>$data['support_days']??0,'status'=>$data['status']??'published','featured'=>(bool)($data['featured']??false)]);
             $this->syncOffers($digitalProduct,$data['offers']??[]); $this->syncAttributeValues($digitalProduct,$data['attribute_values']??[]); $this->syncMedia($digitalProduct,$data['media']??[]);

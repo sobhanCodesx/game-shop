@@ -1,24 +1,23 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('digital_products', function (Blueprint $table): void {
-            $table->text('title')->change();
-            $table->longText('short_description')->nullable()->change();
-        });
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE digital_products MODIFY title TEXT NOT NULL');
+            DB::statement('ALTER TABLE digital_products MODIFY short_description LONGTEXT NULL');
+        }
     }
 
     public function down(): void
     {
-        Schema::table('digital_products', function (Blueprint $table): void {
-            $table->string('title')->change();
-            $table->text('short_description')->nullable()->change();
-        });
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE digital_products MODIFY title VARCHAR(255) NOT NULL');
+            DB::statement('ALTER TABLE digital_products MODIFY short_description TEXT NULL');
+        }
     }
 };
