@@ -24,10 +24,11 @@ final class Seo
         $title = $pageTitle === '' || $pageTitle === $brand
             ? $brand
             : "{$pageTitle} - {$brand}";
+        $description = self::plainText((string) $data['description']);
 
         $seo = [
             'title' => $title,
-            'description' => (string) $data['description'],
+            'description' => $description,
             'canonical' => (string) $data['canonical'],
             'robots' => (string) ($data['robots'] ?? 'index, follow'),
             'type' => (string) ($data['type'] ?? 'website'),
@@ -36,7 +37,7 @@ final class Seo
             'image' => (string) $data['image'],
             'imageAlt' => (string) ($data['imageAlt'] ?? $data['title']),
             'absoluteTitle' => (bool) ($data['absoluteTitle'] ?? true),
-            'structuredData' => $data['structuredData'] ?? null,
+            'structuredData' => self::normalizeStructuredData($data['structuredData'] ?? null),
         ];
 
         if (isset($data['heading'])) {
@@ -80,6 +81,13 @@ final class Seo
             self::meta('twitter:image:alt', 'name', 'twitter:image:alt', (string) $seo['imageAlt']),
         ];
 
+        if ($seo['type'] === 'product' && filled($seo['image'])) {
+            $tags[] = sprintf(
+                '<link data-inertia="product-image-preload" rel="preload" as="image" href="%s" fetchpriority="high">',
+                self::escape((string) $seo['image']),
+            );
+        }
+
         if (is_array($seo['structuredData'])) {
             $json = json_encode(
                 $seo['structuredData'],
@@ -103,6 +111,34 @@ final class Seo
         }
 
         return $tags;
+    }
+
+    private static function plainText(string $value): string
+    {
+        $value = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return trim((string) preg_replace('/\s+/u', ' ', $value));
+    }
+
+    private static function normalizeStructuredData(mixed $value, ?string $key = null): mixed
+    {
+        if (is_array($value)) {
+            $normalized = [];
+            foreach ($value as $childKey => $childValue) {
+                $normalized[$childKey] = self::normalizeStructuredData(
+                    $childValue,
+                    is_string($childKey) ? $childKey : null,
+                );
+            }
+
+            return $normalized;
+        }
+
+        if ($key === 'description' && is_string($value)) {
+            return self::plainText($value);
+        }
+
+        return $value;
     }
 
     private static function element(string $key, string $tag, string $content): string
