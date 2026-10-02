@@ -1,7 +1,7 @@
-name: Fix digital product title full width
+name: Fix digital product title mobile full width
 on:
   push:
-    branches: [fix/digital-title-full-width]
+    branches: [fix/digital-title-mobile-full-width]
 permissions:
   contents: write
 jobs:
@@ -10,17 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Make title field full width
+      - name: Make title field truly full width
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('resources/js/Pages/Admin/Digital/Products/Form.tsx')
           s=p.read_text()
-          needle='''                            <div>\n                            <label className="mb-2 block text-sm font-bold text-slate-200">عنوان محصول</label>'''
-          replacement='''                            <div className="md:col-span-2">\n                            <label className="mb-2 block text-sm font-bold text-slate-200">عنوان محصول</label>'''
-          if needle not in s:
-              raise SystemExit('title wrapper not found')
-          s=s.replace(needle,replacement,1)
+          old='''                            <div className="md:col-span-2">\n                            <label className="mb-2 block text-sm font-bold text-slate-200">عنوان محصول</label>\n                            <Input\n                                aria-label="عنوان محصول"'''
+          new='''                            <div className="col-span-full w-full min-w-0">\n                            <label className="mb-2 block text-sm font-bold text-slate-200">عنوان محصول</label>\n                            <Input\n                                className="w-full max-w-none"\n                                classNames={{ base: "w-full max-w-none", mainWrapper: "w-full max-w-none", inputWrapper: "w-full max-w-none" }}\n                                aria-label="عنوان محصول"'''
+          if old not in s:
+              raise SystemExit('title field pattern not found')
+          s=s.replace(old,new,1)
           p.write_text(s)
           PY
       - name: Verify frontend build
@@ -32,5 +32,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add resources/js/Pages/Admin/Digital/Products/Form.tsx
-          git commit -m "Make digital product title full width"
+          git commit -m "Make digital product title truly full width"
           git push
