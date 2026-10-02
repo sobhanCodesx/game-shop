@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Platform;
+use App\Models\SocialContent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -114,6 +115,39 @@ class DigitalProductSeoTest extends TestCase
                 ->component('Digital/Show')
                 ->where('seo.description', $expected)
                 ->where('seo.structuredData.@graph.0.description', $expected));
+    }
+
+    public function test_digital_product_server_head_prioritizes_the_product_image(): void
+    {
+        $product = $this->digitalProduct();
+
+        $response = $this->get('/digital/'.$product->slug)->assertOk();
+        $head = collect($response->viewData('page')['props']['head'] ?? []);
+
+        $this->assertTrue(
+            $head->contains(fn ($tag) => str_contains((string) $tag, 'data-inertia="product-image-preload"')),
+        );
+    }
+
+    public function test_digital_product_page_omits_hidden_story_payload(): void
+    {
+        $product = $this->digitalProduct();
+
+        SocialContent::query()->create([
+            'game_id' => $product->game_id,
+            'type' => 'short',
+            'title' => 'استوری تست سرعت',
+            'slug' => 'digital-product-speed-story',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+            'video_path' => 'shorts/digital-product-speed-story.mp4',
+        ]);
+
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Show')
+                ->where('storefront.stories', []));
     }
 
     public function test_digital_store_routes_are_part_of_the_public_ssr_surface(): void
