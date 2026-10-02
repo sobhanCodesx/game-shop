@@ -87,6 +87,16 @@ export default function Seo({ seo }: { seo: SeoData }) {
                 name="twitter:image:alt"
             />
 
+            {seo.type === "product" && seo.image && (
+                <link
+                    as="image"
+                    fetchPriority="high"
+                    head-key="product-image-preload"
+                    href={seo.image}
+                    rel="preload"
+                />
+            )}
+
             {seo.video && (
                 <link
                     as="image"

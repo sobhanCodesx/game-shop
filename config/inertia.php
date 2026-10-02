@@ -35,6 +35,8 @@ return [
             'categories/*',
             'channels/*',
             'collections/*',
+            'digital',
+            'digital/*',
             'discover',
             'exchange-products',
             'feed',

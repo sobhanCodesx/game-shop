@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Product;
 use App\Models\SocialContent;
@@ -82,7 +83,7 @@ class SitemapController extends Controller
     private function urls(string $type): iterable
     {
         if ($type === 'static') {
-            foreach (['home', 'android.app', 'shop.index', 'exchange-products.index', 'discover', 'game-radar.index', 'offers.index', 'videos.index', 'channels.index', 'studios.index'] as $routeName) {
+            foreach (['home', 'android.app', 'shop.index', 'digital.index', 'exchange-products.index', 'discover', 'game-radar.index', 'offers.index', 'videos.index', 'channels.index', 'studios.index'] as $routeName) {
                 yield ['loc' => route($routeName)];
             }
 
@@ -97,6 +98,10 @@ class SitemapController extends Controller
         if ($type === 'products') {
             foreach (Product::query()->publiclyVisible()->orderBy('id')->cursor() as $product) {
                 yield $this->entry(route('products.show', $product->slug), $product->updated_at);
+            }
+
+            foreach (DigitalProduct::query()->published()->orderBy('id')->cursor() as $product) {
+                yield $this->entry(route('digital.show', $product->slug), $product->updated_at);
             }
 
             return;
@@ -212,7 +217,10 @@ class SitemapController extends Controller
     private function lastModified(string $type): ?string
     {
         $value = match ($type) {
-            'products' => Product::query()->publiclyVisible()->max('updated_at'),
+            'products' => collect([
+                Product::query()->publiclyVisible()->max('updated_at'),
+                DigitalProduct::query()->published()->max('updated_at'),
+            ])->filter()->max(),
             'categories' => Category::query()->where('status', 'active')->max('updated_at'),
             'feed' => SocialContent::query()->published()->where('type', 'post')->max('updated_at'),
             'videos' => SocialContent::query()->published()->where('type', 'video')->max('updated_at'),

@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\DigitalProduct;
 use App\Models\Game;
+use App\Models\Platform;
 use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\Studio;
+use App\Models\User;
 use App\Models\VideoPlaylist;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -36,6 +39,29 @@ class SitemapTest extends TestCase
         Category::factory()->create(['slug' => 'inactive-category', 'status' => 'inactive']);
 
         $game = Game::factory()->create(['slug' => 'public-channel', 'status' => 'active']);
+        $digitalSeller = User::factory()->create(['status' => 'active']);
+        $digitalPlatform = Platform::factory()->create(['slug' => 'digital-sitemap-platform']);
+        $visibleDigitalProduct = DigitalProduct::query()->create([
+            'game_id' => $game->id,
+            'platform_id' => $digitalPlatform->id,
+            'category_id' => $visibleCategory->id,
+            'seller_id' => $digitalSeller->id,
+            'title' => 'محصول دیجیتال عمومی',
+            'slug' => 'visible-digital-product',
+            'support_days' => 7,
+            'status' => 'published',
+        ]);
+        DigitalProduct::query()->create([
+            'game_id' => $game->id,
+            'platform_id' => $digitalPlatform->id,
+            'category_id' => $visibleCategory->id,
+            'seller_id' => $digitalSeller->id,
+            'title' => 'محصول دیجیتال پیش‌نویس',
+            'slug' => 'draft-digital-product',
+            'support_days' => 7,
+            'status' => 'draft',
+        ]);
+
         $video = SocialContent::query()->create([
             'game_id' => $game->id,
             'type' => 'video',
@@ -121,7 +147,10 @@ class SitemapTest extends TestCase
 
         $this->get('/sitemaps/products.xml')->assertOk()
             ->assertSee(route('products.show', $visibleProduct->slug), false)
-            ->assertDontSee('draft-product')->assertDontSee('private-product');
+            ->assertSee(route('digital.show', $visibleDigitalProduct->slug), false)
+            ->assertDontSee('draft-product')
+            ->assertDontSee('private-product')
+            ->assertDontSee('draft-digital-product');
         $this->get('/sitemaps/categories.xml')->assertOk()
             ->assertSee(route('categories.show', $visibleCategory->slug), false)
             ->assertDontSee('inactive-category');
@@ -161,7 +190,7 @@ class SitemapTest extends TestCase
     {
         $response = $this->get('/sitemaps/static.xml')->assertOk();
 
-        foreach (['/', '/shop', '/exchange-products', '/discover', '/offers', '/videos', '/studios'] as $path) {
+        foreach (['/', '/shop', '/digital', '/exchange-products', '/discover', '/offers', '/videos', '/studios'] as $path) {
             $response->assertSee('http://localhost'.$path, false);
         }
 
