@@ -90,6 +90,40 @@ class DigitalProductSeoTest extends TestCase
                 }));
     }
 
+    public function test_rich_product_description_is_plain_text_in_meta_and_structured_data(): void
+    {
+        $product = $this->digitalProduct();
+        $product->update([
+            'short_description' => '<p>خرید <strong>نسخه کامل</strong> با پشتیبانی فروشنده و تحویل از پلی نکسوس.</p>',
+        ]);
+        $product->offers()->create([
+            'code' => 'capacity_1',
+            'label' => 'ظرفیت ۱',
+            'price' => 2_900_000,
+            'stock' => 2,
+            'reserved_stock' => 0,
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+
+        $expected = 'خرید نسخه کامل با پشتیبانی فروشنده و تحویل از پلی نکسوس.';
+
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Show')
+                ->where('seo.description', $expected)
+                ->where('seo.structuredData.@graph.0.description', $expected));
+    }
+
+    public function test_digital_store_routes_are_part_of_the_public_ssr_surface(): void
+    {
+        $paths = config('inertia.ssr.paths', []);
+
+        $this->assertContains('digital', $paths);
+        $this->assertContains('digital/*', $paths);
+    }
+
     private function digitalProduct(): DigitalProduct
     {
         $seller = User::factory()->create([
