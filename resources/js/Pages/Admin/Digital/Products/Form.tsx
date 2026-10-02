@@ -557,9 +557,10 @@ export default function Form({
                             )}
 
                             <div>
+                            <label className="mb-2 block text-sm font-bold text-slate-200">عنوان محصول</label>
                             <Input
-                                label="عنوان محصول"
-                                placeholder="اختیاری؛ اگر خالی باشد خودکار ساخته می‌شود"
+                                aria-label="عنوان محصول"
+                                placeholder="اختیاری؛ اگر بازی انتخاب شده باشد از نام بازی ساخته می‌شود"
                                 value={form.data.title}
                                 onChange={(event) =>
                                     form.setData("title", event.target.value)
@@ -571,8 +572,9 @@ export default function Form({
                             </div>
 
                             <div>
+                            <label className="mb-2 block text-sm font-bold text-slate-200">روزهای پشتیبانی</label>
                             <Input
-                                label="روزهای پشتیبانی"
+                                aria-label="روزهای پشتیبانی"
                                 type="number"
                                 min="0"
                                 value={String(form.data.support_days)}
