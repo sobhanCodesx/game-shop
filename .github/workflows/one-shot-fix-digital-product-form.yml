@@ -1,0 +1,75 @@
+name: One-shot fix digital product form
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/one-shot-fix-digital-product-form.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fix validation, labels and unlimited text fields
+        shell: python
+        run: |
+          from pathlib import Path
+
+          controller = Path('app/Http/Controllers/Admin/DigitalProductController.php')
+          s = controller.read_text()
+          s = s.replace("'title'=>['nullable','string','max:255'],'short_description'=>['nullable','string','max:50000']", "'title'=>['nullable','string'],'short_description'=>['nullable','string']")
+          s = s.replace("'attribute_values.*.*'=>['nullable','string','max:100']", "'attribute_values.*.*'=>['nullable','string']")
+          s = s.replace("$title=trim((string)($data['title']??''))?:($game?\"{$game->name} - {$platform->name}\":'');\n        if($title==='') throw ValidationException::withMessages(['title'=>'وقتی بازی انتخاب نمی‌شود، عنوان محصول الزامی است.']);", "$title=trim((string)($data['title']??''))?:($game?\"{$game->name} - {$platform->name}\":'محصول دیجیتال');")
+          controller.write_text(s)
+
+          form = Path('resources/js/Pages/Admin/Digital/Products/Form.tsx')
+          s = form.read_text()
+          s = s.replace('label="عنوان نمایش (اختیاری)"', 'label="عنوان محصول"')
+          s = s.replace('placeholder="اگر خالی باشد از نام بازی + پلتفرم ساخته می‌شود"', 'placeholder="اختیاری؛ اگر خالی باشد خودکار ساخته می‌شود"')
+          s = s.replace('''                                </select>\n                            </label>\n\n                            {!currentSellerId && (''', '''                                </select>\n                                {(form.errors as any).platform_id && (\n                                    <p className="mt-2 text-xs text-rose-400">\n                                        {(form.errors as any).platform_id}\n                                    </p>\n                                )}\n                            </label>\n\n                            {!currentSellerId && (''', 1)
+          seller_marker = '''                                    </select>\n                                </label>\n                            )}\n\n                            <Input\n                                label="عنوان محصول"'''
+          seller_repl = '''                                    </select>\n                                    {(form.errors as any).seller_id && (\n                                        <p className="mt-2 text-xs text-rose-400">\n                                            {(form.errors as any).seller_id}\n                                        </p>\n                                    )}\n                                </label>\n                            )}\n\n                            <Input\n                                label="عنوان محصول"'''
+          s = s.replace(seller_marker, seller_repl, 1)
+          s = s.replace('''                            <Input\n                                label="عنوان محصول"''', '''                            <div>\n                            <Input\n                                label="عنوان محصول"''', 1)
+          s = s.replace('''                                onChange={(event) =>\n                                    form.setData("title", event.target.value)\n                                }\n                            />\n\n                            <Input\n                                label="روزهای پشتیبانی"''', '''                                onChange={(event) =>\n                                    form.setData("title", event.target.value)\n                                }\n                            />\n                            {(form.errors as any).title && (\n                                <p className="mt-2 text-xs text-rose-400">{(form.errors as any).title}</p>\n                            )}\n                            </div>\n\n                            <div>\n                            <Input\n                                label="روزهای پشتیبانی"''', 1)
+          s = s.replace('''                                onChange={(event) =>\n                                    form.setData(\n                                        "support_days",\n                                        Number(event.target.value),\n                                    )\n                                }\n                            />\n\n                            <label className="text-sm font-bold text-slate-200">\n                                وضعیت''', '''                                onChange={(event) =>\n                                    form.setData(\n                                        "support_days",\n                                        Number(event.target.value),\n                                    )\n                                }\n                            />\n                            {(form.errors as any).support_days && (\n                                <p className="mt-2 text-xs text-rose-400">{(form.errors as any).support_days}</p>\n                            )}\n                            </div>\n\n                            <label className="text-sm font-bold text-slate-200">\n                                وضعیت''', 1)
+          s = s.replace('''                {Object.keys(form.errors).length > 0 && (\n                    <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-300">\n                        بعضی اطلاعات از نظر ساختاری معتبر نیست؛ فیلد مشخص‌شده را بررسی کن.\n                    </div>\n                )}''', '''                {Object.keys(form.errors).length > 0 && (\n                    <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-300">\n                        <strong className="block">ذخیره انجام نشد؛ موارد زیر را بررسی کن:</strong>\n                        <ul className="mt-2 list-disc space-y-1 pr-5">\n                            {Object.entries(form.errors).map(([field, message]) => (\n                                <li key={field}>{String(message)}</li>\n                            ))}\n                        </ul>\n                    </div>\n                )}''')
+          form.write_text(s)
+
+          media = Path('resources/js/Components/Admin/Form/ProductMediaUploader.tsx')
+          s = media.read_text()
+          old = '''                                <input\n                                    className="h-10 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-indigo-500"'''
+          new = '''                                <label className="block text-xs font-bold text-slate-300">\n                                    {item.type === "image" ? "متن جایگزین تصویر" : "عنوان ویدئو"}\n                                </label>\n                                <input\n                                    aria-label={item.type === "image" ? "متن جایگزین تصویر" : "عنوان ویدئو"}\n                                    className="h-10 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-indigo-500"'''
+          s = s.replace(old, new, 1)
+          media.write_text(s)
+
+          migration = Path('database/migrations/2026_10_02_180000_expand_digital_product_text_fields.php')
+          migration.write_text('''<?php\n\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\n\nreturn new class extends Migration\n{\n    public function up(): void\n    {\n        Schema::table('digital_products', function (Blueprint $table): void {\n            $table->text('title')->change();\n            $table->longText('short_description')->nullable()->change();\n        });\n    }\n\n    public function down(): void\n    {\n        Schema::table('digital_products', function (Blueprint $table): void {\n            $table->string('title')->change();\n            $table->text('short_description')->nullable()->change();\n        });\n    }\n};\n''')
+
+          test = Path('tests/Feature/DigitalProductFormRelaxedValidationTest.php')
+          test.write_text('''<?php\n\nnamespace Tests\\Feature;\n\nuse Tests\\TestCase;\n\nclass DigitalProductFormRelaxedValidationTest extends TestCase\n{\n    public function test_game_is_optional_and_text_has_no_application_length_cap(): void\n    {\n        $source = file_get_contents(app_path('Http/Controllers/Admin/DigitalProductController.php'));\n        $this->assertStringContainsString("'game_id'=>['nullable','integer'", $source);\n        $this->assertStringContainsString("'title'=>['nullable','string']", $source);\n        $this->assertStringContainsString("'short_description'=>['nullable','string']", $source);\n        $this->assertStringNotContainsString("'title'=>['nullable','string','max:", $source);\n        $this->assertStringNotContainsString("'short_description'=>['nullable','string','max:", $source);\n    }\n}\n''')
+
+      - name: Validate backend and frontend
+        run: |
+          php -l app/Http/Controllers/Admin/DigitalProductController.php
+          php -l database/migrations/2026_10_02_180000_expand_digital_product_text_fields.php
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan route:list >/dev/null
+          php artisan test tests/Feature/DigitalProductFormRelaxedValidationTest.php tests/Feature/DigitalProductNoStrictPricingTest.php
+          npm ci
+          npm run build
+
+      - name: Commit verified fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/Admin/DigitalProductController.php resources/js/Pages/Admin/Digital/Products/Form.tsx resources/js/Components/Admin/Form/ProductMediaUploader.tsx database/migrations/2026_10_02_180000_expand_digital_product_text_fields.php tests/Feature/DigitalProductFormRelaxedValidationTest.php
+          git commit -m "Fix digital product form validation and labels"
+          git push origin HEAD:main
