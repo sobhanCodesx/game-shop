@@ -17,6 +17,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import ProductMediaUploader, {
     type ProductMediaItem,
 } from "../../../../Components/Admin/Form/ProductMediaUploader";
+import RichTextEditor from "../../../../Components/Admin/Form/RichTextEditor";
 import AdminLayout from "../../../../Layouts/AdminLayout";
 import { normalizeDigits } from "../../../../utils/persian-number";
 
@@ -589,16 +590,13 @@ export default function Form({
                                 <label className="text-sm font-bold text-slate-200">
                                     توضیح کوتاه
                                 </label>
-                                <textarea
-                                    className="mt-2 min-h-24 w-full rounded-2xl border border-slate-700 bg-slate-950 p-3 text-sm outline-none focus:border-indigo-500"
-                                    value={form.data.short_description}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            "short_description",
-                                            event.target.value,
-                                        )
-                                    }
-                                />
+                                <div className="mt-2">
+                                    <RichTextEditor
+                                        minHeight={180}
+                                        value={form.data.short_description}
+                                        onChange={(value) => form.setData("short_description", value)}
+                                    />
+                                </div>
                             </div>
 
                             <Checkbox
@@ -620,7 +618,7 @@ export default function Form({
                             <div>
                                 <h2 className="text-lg font-black">مدیا محصول</h2>
                                 <p className="mt-1 text-xs text-slate-400">
-                                    کاور، اسکرین‌شات و ویدیو. یک تصویر کاور اصلی انتخاب کن.
+                                    کاور، اسکرین‌شات و ویدیو اختیاری‌اند؛ هر زمان خواستی اضافه کن.
                                 </p>
                             </div>
                         </div>
@@ -900,7 +898,7 @@ export default function Form({
 
                 {Object.keys(form.errors).length > 0 && (
                     <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-300">
-                        بعضی اطلاعات معتبر نیست. مدیا، ویژگی‌ها و قیمت‌ها را بررسی کن.
+                        بعضی اطلاعات از نظر ساختاری معتبر نیست؛ فیلد مشخص‌شده را بررسی کن.
                     </div>
                 )}
 

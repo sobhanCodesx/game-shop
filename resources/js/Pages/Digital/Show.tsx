@@ -241,9 +241,10 @@ export default function Show({
 
                                     <div className="mt-4">
                                         {product.short_description && (
-                                            <p className="text-sm leading-8 text-[var(--store-muted)]">
-                                                {product.short_description}
-                                            </p>
+                                            <div
+                                                className="prose prose-invert max-w-none text-sm leading-8 text-[var(--store-muted)] prose-headings:text-[var(--store-text)] prose-a:text-indigo-400 prose-strong:text-[var(--store-text)]"
+                                                dangerouslySetInnerHTML={{ __html: product.short_description }}
+                                            />
                                         )}
 
                                         {product.features.length > 0 && (
