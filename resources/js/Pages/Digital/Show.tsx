@@ -388,25 +388,37 @@ export default function Show({
                                 </div>
                             </div>
 
-                            <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-amber-500/15 bg-amber-500/[.045] px-3 py-2.5">
-                                <div className="flex min-w-0 items-start gap-2">
+                            <div className="mt-3 flex flex-col items-stretch gap-3 rounded-2xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(245,158,11,.08),rgba(249,115,22,.035))] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex min-w-0 items-start gap-2.5">
                                     <MessageCircleMore
                                         className="mt-0.5 shrink-0 text-amber-500"
-                                        size={15}
+                                        size={16}
                                     />
-                                    <p className="text-[10px] font-bold leading-5 text-[var(--store-muted)] sm:text-[11px]">
-                                        قیمت و موجودی ممکن است با نوسان ارز تغییر کند.
-                                    </p>
+                                    <div className="min-w-0">
+                                        <strong className="block text-[11px] font-black leading-5 text-[var(--store-text)] sm:text-xs">
+                                            قبل از خرید قیمت را تأیید کن
+                                        </strong>
+                                        <p className="mt-0.5 text-[10px] font-bold leading-5 text-[var(--store-muted)] sm:text-[11px]">
+                                            به‌دلیل نوسان ارز و موجودی ظرفیت‌ها، قیمت نهایی ممکن است تغییر کند.
+                                        </p>
+                                    </div>
                                 </div>
                                 <button
-                                    className="shrink-0 text-[10px] font-black text-amber-500 transition hover:text-amber-400 sm:text-[11px]"
+                                    aria-label="استعلام آخرین قیمت و موجودی"
+                                    className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-3 text-[10px] font-black text-white shadow-[0_8px_24px_-12px_rgba(245,158,11,.9)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(245,158,11,.95)] disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:text-[11px]"
                                     disabled={requestingPrice}
                                     onClick={requestLatestPrice}
                                     type="button"
                                 >
+                                    {!requestingPrice && (
+                                        <span className="relative flex size-2" aria-hidden="true">
+                                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-white/70 opacity-60 motion-reduce:hidden" />
+                                            <span className="relative inline-flex size-2 rounded-full bg-white" />
+                                        </span>
+                                    )}
                                     {requestingPrice
                                         ? "در حال ارسال..."
-                                        : "استعلام قیمت"}
+                                        : "استعلام قیمت و موجودی"}
                                 </button>
                             </div>
                         </div>
@@ -566,74 +578,66 @@ export default function Show({
                         className="mt-4 rounded-[22px] border border-[var(--store-border)] bg-[var(--store-surface)] p-4 sm:mt-6 sm:rounded-[28px] sm:p-6"
                         id="product-details"
                     >
-                        <details className="group">
-                            <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                    <h2 className="font-black text-[var(--store-text)]">
-                                        جزئیات و ویژگی‌های محصول
-                                    </h2>
-                                    <p className="mt-1 text-[10px] leading-5 text-[var(--store-muted)] sm:text-[11px]">
-                                        توضیحات، شرایط و ویژگی‌های این اکانت
-                                    </p>
-                                </div>
-                                <span className="shrink-0 text-xs font-black text-indigo-500 group-open:hidden">
-                                    نمایش
-                                </span>
-                                <span className="hidden shrink-0 text-xs font-black text-indigo-500 group-open:inline">
-                                    بستن
-                                </span>
-                            </summary>
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                                <h2 className="font-black text-[var(--store-text)]">
+                                    جزئیات و ویژگی‌های محصول
+                                </h2>
+                                <p className="mt-1 text-[10px] leading-5 text-[var(--store-muted)] sm:text-[11px]">
+                                    توضیحات، شرایط و ویژگی‌های این اکانت
+                                </p>
+                            </div>
+                        </div>
 
-                            <div className="mt-4 border-t border-[var(--store-border)] pt-4">
-                                {product.short_description && (
-                                    <div
-                                        className="prose prose-invert max-w-none text-sm leading-8 text-[var(--store-muted)] prose-headings:text-[var(--store-text)] prose-a:text-indigo-400 prose-strong:text-[var(--store-text)]"
-                                        dangerouslySetInnerHTML={{
-                                            __html: product.short_description,
-                                        }}
-                                    />
-                                )}
+                        <div className="mt-4 border-t border-[var(--store-border)] pt-4">
+                            {product.short_description && (
+                                <div
+                                    className="prose prose-invert max-w-none text-sm leading-8 text-[var(--store-muted)] prose-headings:text-[var(--store-text)] prose-a:text-indigo-400 prose-strong:text-[var(--store-text)]"
+                                    dangerouslySetInnerHTML={{
+                                        __html: product.short_description,
+                                    }}
+                                />
+                            )}
 
-                                {product.features.length > 0 && (
-                                    <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                                        {product.features.map((feature: any) =>
-                                            feature.filter_url ? (
-                                                <Link
-                                                    className="group/feature flex items-start justify-between gap-4 rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-3 transition hover:border-indigo-500/40 hover:bg-indigo-500/[.04]"
-                                                    href={feature.filter_url}
-                                                    key={feature.id}
-                                                >
-                                                    <span className="text-xs font-bold text-[var(--store-muted)]">
-                                                        {feature.name}
-                                                    </span>
-                                                    <span className="flex items-center gap-2 text-left">
-                                                        <strong className="text-sm">
-                                                            {feature.value}
-                                                        </strong>
-                                                        <ArrowLeft
-                                                            className="text-indigo-500 opacity-0 transition group-hover/feature:opacity-100"
-                                                            size={13}
-                                                        />
-                                                    </span>
-                                                </Link>
-                                            ) : (
-                                                <div
-                                                    className="flex items-start justify-between gap-4 rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-3"
-                                                    key={feature.id}
-                                                >
-                                                    <span className="text-xs font-bold text-[var(--store-muted)]">
-                                                        {feature.name}
-                                                    </span>
-                                                    <strong className="text-left text-sm">
+                            {product.features.length > 0 && (
+                                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                                    {product.features.map((feature: any) =>
+                                        feature.filter_url ? (
+                                            <Link
+                                                className="group/feature flex items-start justify-between gap-4 rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-3 transition hover:border-indigo-500/40 hover:bg-indigo-500/[.04]"
+                                                href={feature.filter_url}
+                                                key={feature.id}
+                                            >
+                                                <span className="text-xs font-bold text-[var(--store-muted)]">
+                                                    {feature.name}
+                                                </span>
+                                                <span className="flex items-center gap-2 text-left">
+                                                    <strong className="text-sm">
                                                         {feature.value}
                                                     </strong>
-                                                </div>
-                                            ),
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </details>
+                                                    <ArrowLeft
+                                                        className="text-indigo-500 opacity-0 transition group-hover/feature:opacity-100"
+                                                        size={13}
+                                                    />
+                                                </span>
+                                            </Link>
+                                        ) : (
+                                            <div
+                                                className="flex items-start justify-between gap-4 rounded-2xl border border-[var(--store-border)] bg-[var(--store-bg)] p-3"
+                                                key={feature.id}
+                                            >
+                                                <span className="text-xs font-bold text-[var(--store-muted)]">
+                                                    {feature.name}
+                                                </span>
+                                                <strong className="text-left text-sm">
+                                                    {feature.value}
+                                                </strong>
+                                            </div>
+                                        ),
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </section>
                 )}
 
