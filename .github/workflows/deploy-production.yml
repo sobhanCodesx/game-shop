@@ -58,6 +58,7 @@ jobs:
           tests/Feature/ProductMediaStorageTest.php
           tests/Feature/MediaStorageLegacyFallbackTest.php
           tests/Feature/DigitalCommerceTest.php
+          tests/Feature/DigitalProductSeoTest.php
           tests/Feature/ContentAgentDigitalProductMcpTest.php
 
   build-and-deploy:

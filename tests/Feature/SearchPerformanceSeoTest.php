@@ -8,6 +8,7 @@ use App\Models\HomeSetting;
 use App\Models\SocialContent;
 use App\Models\Studio;
 use App\Models\User;
+use App\Services\HomeExperienceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -89,11 +90,15 @@ class SearchPerformanceSeoTest extends TestCase
 
     public function test_home_preserves_explicit_admin_meta_description(): void
     {
-        HomeSetting::query()->create([
-            'content' => [
-                'seo_description' => 'توضیح کوتاه اما عمدی مدیر سایت.',
+        HomeSetting::query()->updateOrCreate(
+            ['id' => 1],
+            [
+                'content' => [
+                    'seo_description' => 'توضیح کوتاه اما عمدی مدیر سایت.',
+                ],
             ],
-        ]);
+        );
+        app(HomeExperienceService::class)->invalidate();
 
         $this->get(route('home'))
             ->assertOk()

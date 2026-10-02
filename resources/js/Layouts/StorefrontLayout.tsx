@@ -12,6 +12,7 @@ import type { SharedPageProps } from "../types";
 
 interface Props extends PropsWithChildren {
     announcement?: { enabled: boolean; text: string; url: string };
+    commerceFocus?: boolean;
 }
 
 function DeferredAuthOverlay() {
@@ -40,7 +41,11 @@ function DeferredAuthOverlay() {
     );
 }
 
-export default function StorefrontLayout({ children, announcement }: Props) {
+export default function StorefrontLayout({
+    children,
+    announcement,
+    commerceFocus = false,
+}: Props) {
     const page = usePage<SharedPageProps>();
     const { auth, storefront, impersonation } = page.props;
     const { theme, toggleTheme } = useStorefrontTheme();
@@ -67,6 +72,7 @@ export default function StorefrontLayout({ children, announcement }: Props) {
                 announcement={announcement}
                 categories={storefront.categories}
                 stories={storefront.stories}
+                showStories={!commerceFocus}
                 onToggleTheme={toggleTheme}
                 theme={theme}
                 user={auth.user}
@@ -74,7 +80,7 @@ export default function StorefrontLayout({ children, announcement }: Props) {
             />
             {children}
             <StorefrontFooter androidApp={storefront.android_app} />
-            {!page.url.startsWith("/nexus-ai") && (
+            {!page.url.startsWith("/nexus-ai") && !commerceFocus && (
                 <NexusAiWidget config={storefront.nexus_ai} />
             )}
             <DeferredAuthOverlay />
