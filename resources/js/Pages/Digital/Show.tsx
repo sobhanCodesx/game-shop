@@ -183,11 +183,9 @@ export default function Show({
         }
 
         setRequestingPrice(true);
-        router.post(
-            `/digital/${product.slug}/price-inquiry`,
-            {},
-            { onFinish: () => setRequestingPrice(false) },
-        );
+        router.visit(`/digital/${product.slug}/price-inquiry`, {
+            onFinish: () => setRequestingPrice(false),
+        });
     };
 
     return (
@@ -443,7 +441,7 @@ export default function Show({
                                 </div>
                                 <button
                                     aria-describedby="price-inquiry-explanation"
-                                    aria-label="تأیید قیمت و موجودی امروز با فروشنده"
+                                    aria-label="انتخاب ظرفیت برای استعلام قیمت و موجودی"
                                     className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-[linear-gradient(135deg,#f59e0b,#f97316)] px-3 text-[10px] font-black text-white shadow-[0_8px_24px_-12px_rgba(245,158,11,.9)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-12px_rgba(245,158,11,.95)] disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:text-[11px]"
                                     disabled={requestingPrice}
                                     onClick={requestLatestPrice}
@@ -456,8 +454,8 @@ export default function Show({
                                         </span>
                                     )}
                                     {requestingPrice
-                                        ? "در حال ارسال..."
-                                        : "تأیید قیمت و موجودی امروز"}
+                                        ? "در حال باز کردن چت..."
+                                        : "انتخاب ظرفیت برای استعلام"}
                                 </button>
                             </div>
                         </div>
@@ -561,12 +559,12 @@ export default function Show({
                             {ordering
                                 ? "در حال ثبت سفارش..."
                                 : requestingPrice && !hasPurchasableOffer
-                                  ? "در حال ارسال..."
+                                  ? "در حال باز کردن چت..."
                                   : offer
                                     ? `خرید ${offer.label} · ${money.format(offer.price)} تومان`
                                     : hasPurchasableOffer
                                       ? "یک ظرفیت انتخاب کن"
-                                      : "استعلام آخرین قیمت و موجودی"}
+                                      : "انتخاب ظرفیت برای استعلام"}
                         </Button>
 
                         <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--store-border)] pt-4">

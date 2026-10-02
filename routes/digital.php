@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DigitalOrderController as AdminDigitalOrderContro
 use App\Http\Controllers\Admin\DigitalProductController as AdminDigitalProductController;
 use App\Http\Controllers\DigitalOrderAttachmentController;
 use App\Http\Controllers\DigitalOrderController;
+use App\Http\Controllers\DigitalPriceInquiryController;
 use App\Http\Controllers\DigitalStoreController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,9 +15,11 @@ Route::middleware('auth')->group(function () {
     Route::get('digital-order-files/{message}', DigitalOrderAttachmentController::class)
         ->name('digital-order-files.show');
     Route::post('digital/{digitalProduct:slug}/orders', [DigitalStoreController::class, 'order'])->name('digital.orders.store');
-    Route::post('digital/{digitalProduct:slug}/price-inquiry', [DigitalStoreController::class, 'priceInquiry'])
+    Route::get('digital/{digitalProduct:slug}/price-inquiry', [DigitalPriceInquiryController::class, 'create'])
+        ->name('digital.price-inquiry.create');
+    Route::post('digital/{digitalProduct:slug}/price-inquiry', [DigitalPriceInquiryController::class, 'store'])
         ->middleware('throttle:6,1')
-        ->name('digital.price-inquiry');
+        ->name('digital.price-inquiry.store');
 
     Route::prefix('account/digital-orders')->name('account.digital-orders.')->group(function () {
         Route::get('/', [DigitalOrderController::class, 'index'])->name('index');
