@@ -10,6 +10,7 @@ import type { StorefrontNavigationProps, StorefrontTheme } from "./types";
 interface Props extends StorefrontNavigationProps {
     theme: StorefrontTheme;
     onToggleTheme: () => void;
+    showStories?: boolean;
 }
 
 const safeUrl = (url: string) =>
@@ -23,10 +24,12 @@ export default function StorefrontNavigation({
     theme,
     onToggleTheme,
     freshContentAt,
+    showStories = true,
 }: Props) {
     const [panel, setPanel] = useState<StorefrontPanel>(null);
     const [hasFreshContent, setHasFreshContent] = useState(false);
     const closePanel = useCallback(() => setPanel(null), []);
+
     useEffect(() => {
         const openSearch = (event: KeyboardEvent) => {
             if (
@@ -38,8 +41,10 @@ export default function StorefrontNavigation({
             }
         };
         window.addEventListener("keydown", openSearch);
+
         return () => window.removeEventListener("keydown", openSearch);
     }, []);
+
     useEffect(() => {
         const refresh = () => {
             const seenAt = Number(
@@ -49,8 +54,10 @@ export default function StorefrontNavigation({
                 Boolean(freshContentAt && Date.parse(freshContentAt) > seenAt),
             );
         };
+
         refresh();
         window.addEventListener("fresh-content-seen", refresh);
+
         return () => window.removeEventListener("fresh-content-seen", refresh);
     }, [freshContentAt]);
 
@@ -64,6 +71,7 @@ export default function StorefrontNavigation({
                     {announcement.text}
                 </Link>
             )}
+
             <div className="sticky top-0 z-40">
                 <DesktopNavigation
                     categories={categories}
@@ -82,7 +90,9 @@ export default function StorefrontNavigation({
                     hasFreshContent={hasFreshContent}
                 />
             </div>
-            <StorefrontStories stories={stories} />
+
+            {showStories && <StorefrontStories stories={stories} />}
+
             {panel && (
                 <StorefrontPanels
                     categories={categories}
