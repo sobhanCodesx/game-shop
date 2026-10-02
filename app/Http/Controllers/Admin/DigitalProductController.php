@@ -50,8 +50,7 @@ class DigitalProductController extends Controller
         $sellerId=$actor->role==='digital-seller'?$actor->id:(int)$data['seller_id'];
         $game=filled($data['game_id']??null)?Game::query()->findOrFail((int)$data['game_id']):null;
         $platform=Platform::query()->findOrFail($data['platform_id']);
-        $title=trim((string)($data['title']??''))?:($game?"{$game->name} - {$platform->name}":'');
-        if($title==='') throw ValidationException::withMessages(['title'=>'وقتی بازی انتخاب نمی‌شود، عنوان محصول الزامی است.']);
+        $title=trim((string)($data['title']??''))?:($game?"{$game->name} - {$platform->name}":'محصول دیجیتال');
         $slugBase=Str::slug($title)?:'digital-game'; $slug=$slugBase;
         for($i=2;DigitalProduct::withTrashed()->where('slug',$slug)->exists();$i++) $slug=$slugBase.'-'.$i;
         DB::transaction(function()use($data,$sellerId,$title,$slug):void{
@@ -71,8 +70,7 @@ class DigitalProductController extends Controller
     {
         $this->authorizeProduct($request->user(),$digitalProduct); $data=$this->validateProduct($request); $actor=$request->user();
         $game=filled($data['game_id']??null)?Game::query()->findOrFail((int)$data['game_id']):null; $platform=Platform::query()->findOrFail($data['platform_id']);
-        $title=trim((string)($data['title']??''))?:($game?"{$game->name} - {$platform->name}":'');
-        if($title==='') throw ValidationException::withMessages(['title'=>'وقتی بازی انتخاب نمی‌شود، عنوان محصول الزامی است.']);
+        $title=trim((string)($data['title']??''))?:($game?"{$game->name} - {$platform->name}":'محصول دیجیتال');
         DB::transaction(function()use($data,$digitalProduct,$actor,$title):void{
             $digitalProduct->update(['category_id'=>$data['category_id']??null,'game_id'=>$data['game_id']??null,'platform_id'=>$data['platform_id'],'seller_id'=>$actor->role==='digital-seller'?$actor->id:(int)$data['seller_id'],'title'=>$title,'short_description'=>RichText::sanitize($data['short_description']??null),'support_days'=>$data['support_days']??0,'status'=>$data['status']??'published','featured'=>(bool)($data['featured']??false)]);
             $this->syncOffers($digitalProduct,$data['offers']??[]); $this->syncAttributeValues($digitalProduct,$data['attribute_values']??[]); $this->syncMedia($digitalProduct,$data['media']??[]);
@@ -96,9 +94,9 @@ class DigitalProductController extends Controller
             // These two remain required because the database/business relation cannot safely persist without them.
             'platform_id'=>['required','integer',Rule::exists('platforms','id')->whereNull('deleted_at')],
             'seller_id'=>$sellerRule,
-            'title'=>['nullable','string','max:255'],'short_description'=>['nullable','string','max:50000'],'support_days'=>['nullable','integer','min:0','max:3650'],'status'=>['nullable',Rule::in(['draft','published','hidden'])],'featured'=>['nullable','boolean'],
+            'title'=>['nullable','string'],'short_description'=>['nullable','string'],'support_days'=>['nullable','integer','min:0','max:3650'],'status'=>['nullable',Rule::in(['draft','published','hidden'])],'featured'=>['nullable','boolean'],
             'offers'=>['nullable','array','max:4'],'offers.*.code'=>['nullable',Rule::in(['capacity_1','capacity_2','capacity_3','full']),'distinct'],'offers.*.label'=>['nullable','string','max:80'],'offers.*.price'=>['nullable','integer','min:0'],'offers.*.stock'=>['nullable','integer','min:0'],'offers.*.status'=>['nullable',Rule::in(['active','inactive'])],
-            'attribute_values'=>['nullable','array'],'attribute_values.*'=>['nullable','array'],'attribute_values.*.*'=>['nullable','string','max:100'],
+            'attribute_values'=>['nullable','array'],'attribute_values.*'=>['nullable','array'],'attribute_values.*.*'=>['nullable','string'],
             'media'=>['nullable','array','max:12'],'media.*.id'=>['nullable','integer'],'media.*.type'=>['nullable',Rule::in(['image','video'])],'media.*.file'=>['nullable','file','mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime','max:2097152'],'media.*.alt'=>['nullable','string','max:255'],'media.*.is_primary'=>['nullable','boolean'],
         ]);
         $data['attribute_values']=$this->validateAttributeValues($data['attribute_values']??[]);

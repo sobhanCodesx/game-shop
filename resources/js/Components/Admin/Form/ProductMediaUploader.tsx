@@ -297,7 +297,11 @@ export default function ProductMediaUploader({
                                 </div>
                             </div>
                             <div className="space-y-3 p-3">
+                                <label className="block text-xs font-bold text-slate-300">
+                                    {item.type === "image" ? "متن جایگزین تصویر" : "عنوان ویدئو"}
+                                </label>
                                 <input
+                                    aria-label={item.type === "image" ? "متن جایگزین تصویر" : "عنوان ویدئو"}
                                     className="h-10 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs text-slate-200 outline-none focus:border-indigo-500"
                                     onChange={(event) =>
                                         onChange(

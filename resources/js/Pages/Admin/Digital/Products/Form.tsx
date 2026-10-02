@@ -524,6 +524,11 @@ export default function Form({
                                         </option>
                                     ))}
                                 </select>
+                                {(form.errors as any).platform_id && (
+                                    <p className="mt-2 text-xs text-rose-400">
+                                        {(form.errors as any).platform_id}
+                                    </p>
+                                )}
                             </label>
 
                             {!currentSellerId && (
@@ -543,18 +548,29 @@ export default function Form({
                                             </option>
                                         ))}
                                     </select>
+                                    {(form.errors as any).seller_id && (
+                                        <p className="mt-2 text-xs text-rose-400">
+                                            {(form.errors as any).seller_id}
+                                        </p>
+                                    )}
                                 </label>
                             )}
 
+                            <div>
                             <Input
-                                label="عنوان نمایش (اختیاری)"
-                                placeholder="اگر خالی باشد از نام بازی + پلتفرم ساخته می‌شود"
+                                label="عنوان محصول"
+                                placeholder="اختیاری؛ اگر خالی باشد خودکار ساخته می‌شود"
                                 value={form.data.title}
                                 onChange={(event) =>
                                     form.setData("title", event.target.value)
                                 }
                             />
+                            {(form.errors as any).title && (
+                                <p className="mt-2 text-xs text-rose-400">{(form.errors as any).title}</p>
+                            )}
+                            </div>
 
+                            <div>
                             <Input
                                 label="روزهای پشتیبانی"
                                 type="number"
@@ -567,6 +583,10 @@ export default function Form({
                                     )
                                 }
                             />
+                            {(form.errors as any).support_days && (
+                                <p className="mt-2 text-xs text-rose-400">{(form.errors as any).support_days}</p>
+                            )}
+                            </div>
 
                             <label className="text-sm font-bold text-slate-200">
                                 وضعیت
@@ -898,7 +918,12 @@ export default function Form({
 
                 {Object.keys(form.errors).length > 0 && (
                     <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-300">
-                        بعضی اطلاعات از نظر ساختاری معتبر نیست؛ فیلد مشخص‌شده را بررسی کن.
+                        <strong className="block">ذخیره انجام نشد؛ موارد زیر را بررسی کن:</strong>
+                        <ul className="mt-2 list-disc space-y-1 pr-5">
+                            {Object.entries(form.errors).map(([field, message]) => (
+                                <li key={field}>{String(message)}</li>
+                            ))}
+                        </ul>
                     </div>
                 )}
 
