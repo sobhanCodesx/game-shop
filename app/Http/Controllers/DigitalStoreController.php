@@ -156,6 +156,72 @@ class DigitalStoreController extends Controller
             ? url((string) data_get($product, 'game.channel_url'))
             : null;
 
+        $structuredOffers = collect($product['offers'])
+            ->filter(fn ($offer) => (int) data_get($offer, 'price', 0) > 0)
+            ->map(fn ($offer) => [
+                '@type' => 'Offer',
+                'name' => (string) data_get($offer, 'label', $digitalProduct->title),
+                'url' => $canonical,
+                'priceCurrency' => 'IRR',
+                'price' => (int) data_get($offer, 'price') * 10,
+                'availability' => (bool) data_get($offer, 'available', false)
+                    ? 'https://schema.org/InStock'
+                    : 'https://schema.org/OutOfStock',
+                'itemCondition' => 'https://schema.org/NewCondition',
+            ])
+            ->values()
+            ->all();
+
+        $productStructuredData = [
+            '@type' => 'Product',
+            '@id' => $canonical.'#product',
+            'name' => $digitalProduct->title,
+            'url' => $canonical,
+            'description' => $description,
+            'image' => $image,
+            'offers' => $structuredOffers,
+            ...($digitalProduct->category?->name
+                ? ['category' => $digitalProduct->category->name]
+                : []),
+            ...($gameUrl
+                ? ['isRelatedTo' => [
+                    '@type' => 'VideoGame',
+                    'name' => $digitalProduct->game?->name,
+                    'url' => $gameUrl,
+                ]]
+                : []),
+        ];
+
+        $breadcrumbStructuredData = [
+            '@type' => 'BreadcrumbList',
+            '@id' => $canonical.'#breadcrumb',
+            'itemListElement' => array_values(array_filter([
+                [
+                    '@type' => 'ListItem',
+                    'position' => 1,
+                    'name' => 'خانه',
+                    'item' => route('home'),
+                ],
+                $gameUrl ? [
+                    '@type' => 'ListItem',
+                    'position' => 2,
+                    'name' => $digitalProduct->game?->name,
+                    'item' => $gameUrl,
+                ] : null,
+                [
+                    '@type' => 'ListItem',
+                    'position' => $gameUrl ? 3 : 2,
+                    'name' => $digitalProduct->title,
+                    'item' => $canonical,
+                ],
+            ])),
+        ];
+
+        $structuredGraph = [
+            ...($structuredOffers !== [] ? [$productStructuredData] : []),
+            $breadcrumbStructuredData,
+        ];
+
         $sameGameProducts = $this->sameGameProducts($digitalProduct);
         $relatedProducts = $this->relatedProducts($digitalProduct);
         $gameVideos = $this->gameContent($digitalProduct, 'video', 4);
@@ -173,50 +239,7 @@ class DigitalStoreController extends Controller
                 'imageAlt' => $digitalProduct->title,
                 'structuredData' => [
                     '@context' => 'https://schema.org',
-                    '@graph' => [
-                        [
-                            '@type' => 'Product',
-                            '@id' => $canonical.'#product',
-                            'name' => $digitalProduct->title,
-                            'url' => $canonical,
-                            'description' => $description,
-                            'image' => $image,
-                            ...($digitalProduct->category?->name
-                                ? ['category' => $digitalProduct->category->name]
-                                : []),
-                            ...($gameUrl
-                                ? ['isRelatedTo' => [
-                                    '@type' => 'VideoGame',
-                                    'name' => $digitalProduct->game?->name,
-                                    'url' => $gameUrl,
-                                ]]
-                                : []),
-                        ],
-                        [
-                            '@type' => 'BreadcrumbList',
-                            '@id' => $canonical.'#breadcrumb',
-                            'itemListElement' => array_values(array_filter([
-                                [
-                                    '@type' => 'ListItem',
-                                    'position' => 1,
-                                    'name' => 'خانه',
-                                    'item' => route('home'),
-                                ],
-                                $gameUrl ? [
-                                    '@type' => 'ListItem',
-                                    'position' => 2,
-                                    'name' => $digitalProduct->game?->name,
-                                    'item' => $gameUrl,
-                                ] : null,
-                                [
-                                    '@type' => 'ListItem',
-                                    'position' => $gameUrl ? 3 : 2,
-                                    'name' => $digitalProduct->title,
-                                    'item' => $canonical,
-                                ],
-                            ])),
-                        ],
-                    ],
+                    '@graph' => $structuredGraph,
                 ],
             ]),
             'product' => $product,
