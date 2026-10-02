@@ -1,0 +1,46 @@
+name: One-shot finalize digital product form
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/one-shot-finalize-digital-form.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Finalize safe validation and schema
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('app/Http/Controllers/Admin/DigitalProductController.php')
+          s=p.read_text()
+          old="$title=trim((string)($data['title']??''))?:($game?\"{$game->name} - {$platform->name}\":'محصول دیجیتال');"
+          new="$title=trim((string)($data['title']??''))?:($game?\"{$game->name} - {$platform->name}\":'');\n        if($title==='') throw ValidationException::withMessages(['title'=>'اگر بازی انتخاب نمی‌کنی، فقط عنوان محصول را وارد کن.']);"
+          s=s.replace(old,new)
+          p.write_text(s)
+
+          m=Path('database/migrations/2026_10_02_180000_expand_digital_product_text_fields.php')
+          m.write_text('''<?php\n\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Support\\Facades\\DB;\n\nreturn new class extends Migration\n{\n    public function up(): void\n    {\n        if (DB::getDriverName() === 'mysql') {\n            DB::statement('ALTER TABLE digital_products MODIFY title TEXT NOT NULL');\n            DB::statement('ALTER TABLE digital_products MODIFY short_description LONGTEXT NULL');\n        }\n    }\n\n    public function down(): void\n    {\n        if (DB::getDriverName() === 'mysql') {\n            DB::statement('ALTER TABLE digital_products MODIFY title VARCHAR(255) NOT NULL');\n            DB::statement('ALTER TABLE digital_products MODIFY short_description TEXT NULL');\n        }\n    }\n};\n''')
+      - name: Validate syntax and frontend build
+        run: |
+          php -l app/Http/Controllers/Admin/DigitalProductController.php
+          php -l database/migrations/2026_10_02_180000_expand_digital_product_text_fields.php
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan route:list >/dev/null
+          npm ci
+          npm run build
+      - name: Commit verified fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/Admin/DigitalProductController.php database/migrations/2026_10_02_180000_expand_digital_product_text_fields.php
+          git commit -m "Finalize relaxed digital product form validation"
+          git push origin HEAD:main
