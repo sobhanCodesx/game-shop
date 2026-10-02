@@ -1,0 +1,60 @@
+name: One-shot digital product form hardening
+
+on:
+  push:
+    branches:
+      - fix/digital-product-form-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-push:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ github.token }}
+      - name: Apply focused fixes
+        shell: python
+        run: |
+          from pathlib import Path
+          controller = Path('app/Http/Controllers/Admin/DigitalProductController.php')
+          s = controller.read_text()
+          s = s.replace("$slugBase=Str::slug($title)?:'digital-game'; $slug=$slugBase;", "$slugBase=Str::limit(Str::slug($title),220,'')?:'digital-game'; $slug=$slugBase;")
+          s = s.replace("'support_days'=>['nullable','integer','min:0','max:3650']", "'support_days'=>['nullable','integer','min:0']")
+          s = s.replace("'offers'=>['nullable','array','max:4']", "'offers'=>['nullable','array']")
+          s = s.replace("'offers.*.label'=>['nullable','string','max:80']", "'offers.*.label'=>['nullable','string']")
+          s = s.replace("'media'=>['nullable','array','max:12']", "'media'=>['nullable','array']")
+          s = s.replace("'media.*.alt'=>['nullable','string','max:255']", "'media.*.alt'=>['nullable','string']")
+          controller.write_text(s)
+          form = Path('resources/js/Pages/Admin/Digital/Products/Form.tsx')
+          s = form.read_text()
+          pairs = [
+            ('<div>\n                            <Input\n                                label="عنوان محصول"\n                                placeholder="اختیاری؛ اگر خالی باشد خودکار ساخته می‌شود"', '<div>\n                            <label className="mb-2 block text-sm font-bold text-slate-200">عنوان محصول</label>\n                            <Input\n                                aria-label="عنوان محصول"\n                                placeholder="اختیاری؛ اگر خالی باشد خودکار ساخته می‌شود"'),
+            ('<div>\n                            <Input\n                                label="روزهای پشتیبانی"\n                                type="number"', '<div>\n                            <label className="mb-2 block text-sm font-bold text-slate-200">روزهای پشتیبانی</label>\n                            <Input\n                                aria-label="روزهای پشتیبانی"\n                                type="number"'),
+          ]
+          for old,new in pairs:
+            if old not in s: raise SystemExit(f'pattern not found: {old[:40]}')
+            s=s.replace(old,new,1)
+          form.write_text(s)
+      - name: Verify
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          php -l app/Http/Controllers/Admin/DigitalProductController.php
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan test tests/Feature/DigitalCommerceTest.php tests/Feature/ContentAgentDigitalProductMcpTest.php
+          npm ci
+          npm run build
+      - name: Commit verified fix
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/Admin/DigitalProductController.php resources/js/Pages/Admin/Digital/Products/Form.tsx
+          git diff --cached --check
+          git commit -m "Harden digital product form and relaxed validation"
+          git push origin HEAD:fix/digital-product-form-hardening
