@@ -556,9 +556,11 @@ export default function Form({
                                 </label>
                             )}
 
-                            <div className="md:col-span-2">
+                            <div className="col-span-full w-full min-w-0">
                             <label className="mb-2 block text-sm font-bold text-slate-200">عنوان محصول</label>
                             <Input
+                                className="w-full max-w-none"
+                                classNames={{ base: "w-full max-w-none", mainWrapper: "w-full max-w-none", inputWrapper: "w-full max-w-none" }}
                                 aria-label="عنوان محصول"
                                 placeholder="اختیاری؛ اگر بازی انتخاب شده باشد از نام بازی ساخته می‌شود"
                                 value={form.data.title}
