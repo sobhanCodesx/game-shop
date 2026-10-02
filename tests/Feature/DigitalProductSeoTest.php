@@ -50,6 +50,7 @@ class DigitalProductSeoTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Digital/Show')
+                ->where('product.offers.0.updated_at', fn ($value): bool => is_string($value) && str_contains($value, 'T'))
                 ->where('seo.structuredData', function ($data): bool {
                     $offers = data_get($data, '@graph.0.offers', []);
 

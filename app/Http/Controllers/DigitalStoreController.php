@@ -557,6 +557,7 @@ class DigitalStoreController extends Controller
                 ->where('status', 'active')
                 ->map(fn ($offer) => [
                     ...$offer->only(['id', 'code', 'label', 'price']),
+                    'updated_at' => $offer->updated_at?->toISOString(),
                     'available_stock' => $offer->availableStock(),
                     'available' => $offer->availableStock() > 0,
                 ])
