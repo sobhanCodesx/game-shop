@@ -6,9 +6,11 @@ use App\Models\ContentAsset;
 use App\Services\GraphQL\PlayNexusGraphService;
 use App\Services\MediaStorage;
 use App\Services\Telegram\TelegramMtProtoCompatibilityService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Inertia\Ssr\HttpGateway;
 use Throwable;
 
 final class DeploymentHealthService
@@ -197,6 +199,37 @@ final class DeploymentHealthService
             }
 
             return $destination === '' ? 'bundle-present' : 'bundle-synced';
+        });
+
+        $check('ssr_render', function (): string {
+            if (! (bool) config('inertia.ssr.enabled')) {
+                return 'SSR: disabled';
+            }
+
+            $page = [
+                'component' => 'Welcome',
+                'props' => [
+                    'laravelVersion' => app()->version(),
+                    'phpVersion' => PHP_VERSION,
+                ],
+                'url' => '/__ssr-health',
+                'version' => null,
+                'clearHistory' => false,
+                'encryptHistory' => false,
+            ];
+
+            $probeRequest = Request::create('/__ssr-health', 'GET');
+            $rendered = app(HttpGateway::class)->dispatch($page, $probeRequest);
+
+            if ($rendered === null || trim((string) $rendered->body) === '') {
+                throw new \RuntimeException('SSR: fallback (render endpoint returned no HTML).');
+            }
+
+            if (! str_contains((string) $rendered->body, 'Laravel + Inertia + React')) {
+                throw new \RuntimeException('SSR: fallback (expected rendered marker is missing).');
+            }
+
+            return 'SSR: rendered';
         });
 
         $check('graphql', function (): string {
