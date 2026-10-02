@@ -209,19 +209,24 @@ class HandleInertiaRequests extends Middleware
                     now()->addMinutes(5),
                     fn () => app(StorefrontDataService::class)->navigation(),
                 ),
-                'stories' => Cache::remember('storefront.stories.v1', now()->addMinute(), fn () =>
-                    SocialContent::query()->published()->where('type', 'short')->whereNotNull('video_path')
-                        ->with('game:id,name,slug,cover')
-                        ->orderBy('sort_order')->orderByDesc('published_at')->limit(20)->get()->map(fn (SocialContent $story) => [
-                            ...$story->only(['id', 'title', 'excerpt', 'media_type', 'duration', 'link_url', 'link_label']),
-                            'media_url' => MediaStorage::url($story->video_path),
-                            'thumbnail_url' => MediaStorage::url(
-                                $story->thumbnail ?: ($story->media_type === 'image' ? $story->video_path : null),
-                            ),
-                            'channel_name' => $story->game?->name ?? 'PlayNexus',
-                            'channel_avatar_url' => MediaStorage::url($story->game?->cover) ?: url((string) config('seo.default_image', '/logo.png')),
-                        ])->values()->all()
-                ),
+                // Digital product pages deliberately hide stories to keep the
+                // purchase/SEO surface focused, so do not serialize 20 unused
+                // story records into their first SSR/HTML response.
+                'stories' => $request->routeIs('digital.show')
+                    ? []
+                    : Cache::remember('storefront.stories.v1', now()->addMinute(), fn () =>
+                        SocialContent::query()->published()->where('type', 'short')->whereNotNull('video_path')
+                            ->with('game:id,name,slug,cover')
+                            ->orderBy('sort_order')->orderByDesc('published_at')->limit(20)->get()->map(fn (SocialContent $story) => [
+                                ...$story->only(['id', 'title', 'excerpt', 'media_type', 'duration', 'link_url', 'link_label']),
+                                'media_url' => MediaStorage::url($story->video_path),
+                                'thumbnail_url' => MediaStorage::url(
+                                    $story->thumbnail ?: ($story->media_type === 'image' ? $story->video_path : null),
+                                ),
+                                'channel_name' => $story->game?->name ?? 'PlayNexus',
+                                'channel_avatar_url' => MediaStorage::url($story->game?->cover) ?: url((string) config('seo.default_image', '/logo.png')),
+                            ])->values()->all()
+                    ),
                 'android_app' => Cache::remember('android.latest-release.v1', now()->addMinutes(5), function (): ?array {
                     try {
                         $release = AndroidRelease::query()
