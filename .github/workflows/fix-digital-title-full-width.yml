@@ -1,0 +1,36 @@
+name: Fix digital product title full width
+on:
+  push:
+    branches: [fix/digital-title-full-width]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make title field full width
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('resources/js/Pages/Admin/Digital/Products/Form.tsx')
+          s=p.read_text()
+          needle='''                            <div>\n                            <label className="mb-2 block text-sm font-bold text-slate-200">عنوان محصول</label>'''
+          replacement='''                            <div className="md:col-span-2">\n                            <label className="mb-2 block text-sm font-bold text-slate-200">عنوان محصول</label>'''
+          if needle not in s:
+              raise SystemExit('title wrapper not found')
+          s=s.replace(needle,replacement,1)
+          p.write_text(s)
+          PY
+      - name: Verify frontend build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resources/js/Pages/Admin/Digital/Products/Form.tsx
+          git commit -m "Make digital product title full width"
+          git push
