@@ -1,0 +1,9 @@
+{
+  "job_id": "2026-10-03-feed5-games",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query FeedCandidateGames {\n  gears: search(query: \"Gears of War: E-Day\", first: 5) { games { id name slug status coverUrl backgroundUrl } }\n  battlefield: search(query: \"Battlefield 6\", first: 5) { games { id name slug status coverUrl backgroundUrl } }\n  gta: search(query: \"Grand Theft Auto V\", first: 5) { games { id name slug status coverUrl backgroundUrl } }\n  ghost: search(query: \"Ghost of Yōtei\", first: 5) { games { id name slug status coverUrl backgroundUrl } }\n  wolverine: search(query: \"Marvel's Wolverine\", first: 5) { games { id name slug status coverUrl backgroundUrl } }\n}",
+    "variables": {},
+    "operation_name": "FeedCandidateGames"
+  }
+}
