@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-03-feed-create-crimson-dlc",
+  "tool": "create_feed",
+  "arguments": {
+    "title": "DLC جدید Crimson Desert دو هفته عقب افتاد؛ Charting the Unknown در ۲۹ اکتبر می‌آید",
+    "body": "<p>Pearl Abyss تاریخ انتشار DLC جدید Crimson Desert Enhanced با نام Charting the Unknown را دو هفته عقب انداخت. این بسته حالا در ۲۹ اکتبر ۲۰۲۶ منتشر می‌شود و سازنده دلیل این جابه‌جایی را نیاز به زمان بیشتر برای ارائه تجربه‌ای پایدارتر و پرداخت‌شده‌تر اعلام کرده است.</p><p>Charting the Unknown دامنه ماجراجویی در Pywel را به دریا گسترش می‌دهد؛ بازیکنان می‌توانند با کشتی به جزیره‌های تازه بروند، زیر آب به دنبال گنج و ویرانه‌ها بگردند و با تهدیدها و خط‌های داستانی جدید روبه‌رو شوند.</p><p><a href=\"https://crimsondesert.pearlabyss.com/en-us/News/Notice/Detail?_boardNo=134\">منبع رسمی: Pearl Abyss</a></p>",
+    "feed_type": "news",
+    "feed_badge": "news",
+    "game_id": 2,
+    "seo_title": "تأخیر DLC جدید Crimson Desert؛ انتشار Charting the Unknown در ۲۹ اکتبر",
+    "seo_description": "Pearl Abyss انتشار Charting the Unknown برای Crimson Desert را دو هفته عقب انداخت؛ DLC جدید در ۲۹ اکتبر با اکتشاف دریا و محتوای تازه می‌آید."
+  }
+}
