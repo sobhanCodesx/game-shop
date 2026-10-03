@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-03-feed5-upload-04",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "feed",
+    "query": "The Wolf Among Us Remastered ۲۹ اکتبر می‌آید؛ مدل‌ها و نورپردازی از نو ساخته شدند",
+    "slot": "media",
+    "source_url": "https://image.api.playstation.com/vulcan/ap/rnd/202604/1514/a3d81353673485bc9b74a8a894333ea5f1a01ed8e1eafcad.png",
+    "name": "wolf-among-us-remastered.png",
+    "alt": "The Wolf Among Us Remastered",
+    "sort_order": 0
+  }
+}
