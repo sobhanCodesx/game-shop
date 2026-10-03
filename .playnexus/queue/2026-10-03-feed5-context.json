@@ -1,9 +1,9 @@
 {
-  "job_id": "2026-10-03-feed5-context",
+  "job_id": "2026-10-03-feed5-recent-1",
   "tool": "query_playnexus_graph",
   "arguments": {
-    "query": "query Feed5Context {\n  feeds(first: 100, offset: 0, orderBy: \"published_at\", orderDir: \"desc\") {\n    nodes { id title status publishedAt feedBadge game { id name slug } }\n    pageInfo { total first offset hasMore nextOffset }\n  }\n  gears: search(query: \"Gears of War: E-Day\", first: 8) { games { id name slug status coverUrl backgroundUrl } }\n  battlefield: search(query: \"Battlefield 6\", first: 8) { games { id name slug status coverUrl backgroundUrl } }\n  gta: search(query: \"GTA Online\", first: 8) { games { id name slug status coverUrl backgroundUrl } }\n  ghost: search(query: \"Ghost of Yōtei\", first: 8) { games { id name slug status coverUrl backgroundUrl } }\n  wolverine: search(query: \"Marvel's Wolverine\", first: 8) { games { id name slug status coverUrl backgroundUrl } }\n}",
+    "query": "query RecentFeedsA {\n  feeds(first: 50, offset: 0, orderBy: \"published_at\", orderDir: \"desc\") {\n    nodes { id title publishedAt game { id name slug } }\n    pageInfo { total first offset hasMore nextOffset }\n  }\n}",
     "variables": {},
-    "operation_name": "Feed5Context"
+    "operation_name": "RecentFeedsA"
   }
 }
