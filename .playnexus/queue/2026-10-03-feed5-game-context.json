@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-10-03-feed5-game-context-v2",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query FeedGameContext {\n  ghost: search(query: \"Ghost of Yotei\", first: 5) { games { id name slug } }\n  gears: search(query: \"Gears of War E-Day\", first: 5) { games { id name slug } }\n}\n",
-    "variables": {},
-    "operation_name": "FeedGameContext"
-  }
-}
