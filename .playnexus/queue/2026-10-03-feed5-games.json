@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-10-03-feed5-games-a",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query FeedCandidateGamesA {\n  gears: search(query: \"Gears of War: E-Day\", first: 5) { games { id name slug status } }\n  battlefield: search(query: \"Battlefield 6\", first: 5) { games { id name slug status } }\n  ghost: search(query: \"Ghost of Yōtei\", first: 5) { games { id name slug status } }\n}",
-    "variables": {},
-    "operation_name": "FeedCandidateGamesA"
-  }
-}
