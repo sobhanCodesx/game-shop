@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-10-03-feed5-dedupe-tail",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query RecentFeedsTail {\n  feeds(first: 10, offset: 50, orderBy: \"published_at\", orderDir: \"desc\") {\n    nodes { id title publishedAt game { id name slug } }\n    pageInfo { total first offset hasMore nextOffset }\n  }\n}",
-    "variables": {},
-    "operation_name": "RecentFeedsTail"
-  }
-}
