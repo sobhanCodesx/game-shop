@@ -1,0 +1,9 @@
+{
+  "job_id": "2026-10-03-feed5-game-context",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query FeedGameContext {\n  ghost: search(query: \"Ghost of Yotei\", first: 10) { games { id name slug status coverUrl backgroundUrl } }\n  gears: search(query: \"Gears of War E-Day\", first: 10) { games { id name slug status coverUrl backgroundUrl } }\n  kena: search(query: \"Kena Scars of Kosmora\", first: 10) { games { id name slug status coverUrl backgroundUrl } }\n  wolf: search(query: \"The Wolf Among Us Remastered\", first: 10) { games { id name slug status coverUrl backgroundUrl } }\n  gta: search(query: \"Grand Theft Auto V\", first: 10) { games { id name slug status coverUrl backgroundUrl } }\n}",
+    "variables": {},
+    "operation_name": "FeedGameContext"
+  }
+}
