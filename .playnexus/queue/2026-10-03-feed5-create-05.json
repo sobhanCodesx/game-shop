@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-03-feed5-create-05",
+  "tool": "create_feed",
+  "arguments": {
+    "title": "هالووین GTA Online تمام اکتبر ادامه دارد؛ پاداش 3X و جایزه ۲ میلیون دلاری",
+    "body": "<p>Rockstar برنامه هالووین GTA Online را برای تمام ماه اکتبر آغاز کرده است؛ Los Santos دوباره میزبان Slashers، Ghosts Exposed، موج‌های undead و فعالیت‌های مخصوص فصل ترس شده.</p><p>تمام Halloween Survivals سه‌برابر GTA$ و RP می‌دهند و بازیکنانی که همه Weekly Challengeهای اکتبر را تکمیل کنند یک پاداش اضافه GTA$2,000,000 دریافت می‌کنند. Slasher Mode نیز 3X و Ghosts Exposed دوبرابر GTA$ دارد.</p><p><a href=\"https://www.rockstargames.com/newswire/article/39a22k25434a53/experience-halloween-thrills-all-throughout-october-in-gta-online\">منبع رسمی: Rockstar Games</a></p>",
+    "feed_type": "news",
+    "feed_badge": "update",
+    "game_id": 45,
+    "seo_title": "هالووین GTA Online با پاداش 3X و GTA$2M آغاز شد",
+    "seo_description": "رویداد هالووین GTA Online در تمام اکتبر با Halloween Survivals و Slasher سه‌برابر، Ghosts Exposed و جایزه اضافه GTA$2M ادامه دارد."
+  }
+}
