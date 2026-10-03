@@ -1,5 +1,0 @@
-{
-  "job_id": "2026-10-03-feed5-verify-02-retry",
-  "tool": "verify_feed_ready",
-  "arguments": {"id": 115}
-}
