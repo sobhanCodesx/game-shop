@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-03-feed5-upload-02",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "feed",
+    "query": "Early Access بازی Gears of War: E-Day شروع شد؛ عرضه جهانی ۶ اکتبر",
+    "slot": "media",
+    "source_url": "https://xboxwire.thesourcemediaassets.com/sites/2/2026/06/Gears-f783604b4900f089e04e.jpg",
+    "name": "gears-e-day-early-access.jpg",
+    "alt": "Gears of War E-Day",
+    "sort_order": 0
+  }
+}
