@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-10-03-feed5-recent-1",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query RecentFeedsA {\n  feeds(first: 50, offset: 0, orderBy: \"published_at\", orderDir: \"desc\") {\n    nodes { id title publishedAt game { id name slug } }\n    pageInfo { total first offset hasMore nextOffset }\n  }\n}",
-    "variables": {},
-    "operation_name": "RecentFeedsA"
-  }
-}
