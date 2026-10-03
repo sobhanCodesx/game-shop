@@ -1,0 +1,5 @@
+{
+  "job_id": "2026-10-03-feed5-verify-05",
+  "tool": "verify_feed_ready",
+  "arguments": {"feed_id": 112}
+}
