@@ -1,0 +1,12 @@
+{
+  "job_id": "2026-10-03-feed-media-114",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "feed",
+    "id": 114,
+    "slot": "media",
+    "source_url": "https://image.api.playstation.com/vulcan/ap/rnd/202609/1000/b3010de3b9a5b23818bc3b30289afb3481ce4b769fb2a855.jpg",
+    "name": "marvels-wolverine-qssr.jpg",
+    "alt": "Marvel’s Wolverine روی PS5 و فناوری QSSR"
+  }
+}
