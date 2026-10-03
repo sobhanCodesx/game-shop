@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-10-03-feed5-game-catalog-lite",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query FeedGameCatalogLite {\n  games(first: 100, offset: 0) {\n    nodes { id name slug status }\n    pageInfo { total first offset hasMore nextOffset }\n  }\n}",
-    "variables": {},
-    "operation_name": "FeedGameCatalogLite"
-  }
-}
