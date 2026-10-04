@@ -4,7 +4,9 @@ import {
     ArrowLeft,
     Building2,
     Check,
+    ChevronDown,
     ChevronLeft,
+    ChevronUp,
     Clock3,
     Gamepad2,
     HelpCircle,
@@ -120,6 +122,7 @@ export default function Show({
     const [ordering, setOrdering] = useState(false);
     const [requestingPrice, setRequestingPrice] = useState(false);
     const [guide, setGuide] = useState(false);
+    const [detailsExpanded, setDetailsExpanded] = useState(false);
 
     const offer = useMemo(
         () =>
@@ -628,12 +631,62 @@ export default function Show({
 
                         <div className="mt-4 border-t border-[var(--store-border)] pt-4">
                             {product.short_description && (
-                                <div
-                                    className="prose prose-invert max-w-none text-sm leading-8 text-[var(--store-muted)] prose-headings:text-[var(--store-text)] prose-a:text-indigo-400 prose-strong:text-[var(--store-text)]"
-                                    dangerouslySetInnerHTML={{
-                                        __html: product.short_description,
-                                    }}
-                                />
+                                <div>
+                                    <div className="relative">
+                                        <div
+                                            aria-expanded={detailsExpanded}
+                                            className={`prose prose-invert max-w-none text-justify text-sm leading-8 text-[var(--store-muted)] [text-align-last:right] [unicode-bidi:plaintext] prose-headings:text-right prose-headings:text-[var(--store-text)] prose-a:text-indigo-400 prose-strong:text-[var(--store-text)] transition-[max-height] duration-500 ease-out ${
+                                                detailsExpanded
+                                                    ? "max-h-[600rem] prose-p:my-3"
+                                                    : "max-h-32 overflow-hidden prose-p:my-0"
+                                            }`}
+                                            dir="rtl"
+                                            id="digital-product-description"
+                                            dangerouslySetInnerHTML={{
+                                                __html: product.short_description,
+                                            }}
+                                        />
+
+                                        {!detailsExpanded && (
+                                            <div
+                                                aria-hidden="true"
+                                                className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--store-surface)] via-[var(--store-surface)]/95 to-transparent"
+                                            />
+                                        )}
+                                    </div>
+
+                                    <div className="relative mt-3 flex justify-center">
+                                        <button
+                                            aria-controls="digital-product-description"
+                                            aria-expanded={detailsExpanded}
+                                            className="group inline-flex min-h-11 items-center gap-2 rounded-full border border-indigo-500/25 bg-[linear-gradient(135deg,rgba(99,102,241,.12),rgba(6,182,212,.07))] px-3 py-2 text-right text-[11px] font-black text-[var(--store-text)] shadow-[0_16px_35px_-24px_rgba(99,102,241,.95)] backdrop-blur transition hover:-translate-y-0.5 hover:border-indigo-500/45 hover:bg-indigo-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 active:translate-y-0"
+                                            onClick={() =>
+                                                setDetailsExpanded((expanded) => !expanded)
+                                            }
+                                            type="button"
+                                        >
+                                            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-indigo-500/12 text-indigo-500 transition group-hover:bg-indigo-500/20">
+                                                {detailsExpanded ? (
+                                                    <ChevronUp size={15} />
+                                                ) : (
+                                                    <ChevronDown size={15} />
+                                                )}
+                                            </span>
+                                            <span>
+                                                <span className="block leading-4">
+                                                    {detailsExpanded
+                                                        ? "بستن توضیحات"
+                                                        : "ادامه توضیحات"}
+                                                </span>
+                                                <span className="mt-0.5 block text-[9px] font-bold leading-4 text-[var(--store-muted)]">
+                                                    {detailsExpanded
+                                                        ? "بازگشت به چهار خط اول"
+                                                        : "نمایش کامل متن محصول"}
+                                                </span>
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
                             )}
 
                             {product.features.length > 0 && (
