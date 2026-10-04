@@ -41,6 +41,28 @@ jobs:
           test -f /tmp/body && head -c 600 /tmp/body || true
           echo
 
+      - name: Probe ordinary API routes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          for path in api/__deployment_diag_missing api/v1/meta api/nexus-ai/health; do
+            rm -f /tmp/body
+            code="$(curl --connect-timeout 8 --max-time 20 -sS -o /tmp/body -w '%{http_code}' -H 'Accept: application/json' "https://playnexus.ir/$path" || true)"
+            echo "route=$path status=$code"
+            test -f /tmp/body && head -c 1200 /tmp/body || true
+            echo
+          done
+
+      - name: Probe deployment route without bearer
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f /tmp/body
+          code="$(curl --connect-timeout 8 --max-time 20 -sS -o /tmp/body -w '%{http_code}' -H 'Accept: application/json' https://playnexus.ir/api/deployment-agent/health || true)"
+          echo "deployment_no_auth_status=$code"
+          test -f /tmp/body && head -c 1200 /tmp/body || true
+          echo
+
       - name: Probe authenticated deployment health
         shell: bash
         run: |
