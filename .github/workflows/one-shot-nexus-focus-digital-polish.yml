@@ -1,0 +1,158 @@
+name: One-shot Nexus Focus digital polish
+
+on:
+  push:
+    branches:
+      - chatgpt/nexus-focus-digital-polish
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: chatgpt/nexus-focus-digital-polish
+
+      - name: Apply focused UI and home changes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one match in {path}, got {count}")
+              file.write_text(text.replace(old, new, 1))
+
+          # 1) Keep product image badges compact and pinned inside the top-right corner.
+          replace_once(
+              'resources/js/Components/Storefront/Product/ProductCard.tsx',
+              '''    const highlightedBadges = product.meta_badges.filter((meta) =>\n        highlightedMetaKeys.has(meta.key),\n    );''',
+              '''    const primaryHighlight =\n        product.meta_badges.find((meta) => meta.key === "discount") ??\n        product.meta_badges.find((meta) => meta.key === "availability");''',
+          )
+
+          replace_once(
+              'resources/js/Components/Storefront/Product/ProductCard.tsx',
+              '''                    <div className="absolute right-2.5 top-2.5 flex max-w-[72%] flex-col items-start gap-1.5">\n                        {product.badge && (\n                            <span className="inline-flex max-w-full truncate rounded-lg border border-indigo-300/40 bg-indigo-600 px-2.5 py-1 text-[11px] font-black leading-5 text-white shadow-lg shadow-black/25">\n                                {product.badge}\n                            </span>\n                        )}\n                        {highlightedBadges.map((meta) => (\n                            <span\n                                className={`inline-flex max-w-full items-center rounded-lg border px-2.5 py-1 text-[11px] font-black leading-5 shadow-lg shadow-black/25 ${highlightToneClasses[meta.tone]}`}\n                                key={meta.key}\n                                title={`${meta.label}: ${meta.value}`}\n                            >\n                                {meta.key === "discount"\n                                    ? `${meta.label} ${meta.value}`\n                                    : meta.value}\n                            </span>\n                        ))}\n                    </div>''',
+              '''                    <div className="absolute right-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-1">\n                        {product.badge && (\n                            <span className="inline-flex max-w-[8.5rem] items-center truncate rounded-full border border-white/15 bg-indigo-600/92 px-2 py-0.5 text-[9px] font-black leading-4 text-white shadow-md shadow-black/20 backdrop-blur-sm sm:text-[10px]">\n                                {product.badge}\n                            </span>\n                        )}\n                        {primaryHighlight && (\n                            <span\n                                className={`inline-flex max-w-[8.5rem] items-center truncate rounded-full border px-2 py-0.5 text-[9px] font-black leading-4 shadow-md shadow-black/20 backdrop-blur-sm sm:text-[10px] ${highlightToneClasses[primaryHighlight.tone]}`}\n                                title={`${primaryHighlight.label}: ${primaryHighlight.value}`}\n                            >\n                                {primaryHighlight.key === "discount"\n                                    ? `${primaryHighlight.label} ${primaryHighlight.value}`\n                                    : primaryHighlight.value}\n                            </span>\n                        )}\n                    </div>''',
+          )
+
+          # Keep the Nexus Focus store cards consistent with the compact badge treatment.
+          replace_once(
+              'resources/js/Components/Home/Templates/NexusFocus/components/NexusStore.tsx',
+              '''                    <div className="absolute right-2.5 top-2.5 flex max-w-[75%] flex-col items-start gap-1.5">\n                        {product.badge && (\n                            <span className="max-w-full truncate rounded-lg bg-indigo-600 px-2 py-1 text-[9px] font-black text-white shadow-lg shadow-black/25">\n                                {product.badge}\n                            </span>\n                        )}\n                        {primarySignal && (\n                            <span\n                                className={\n                                    primarySignal.tone === "danger"\n                                        ? "rounded-lg bg-rose-600 px-2 py-1 text-[9px] font-black text-white"\n                                        : "rounded-lg bg-emerald-500 px-2 py-1 text-[9px] font-black text-slate-950"\n                                }\n                            >\n                                {primarySignal.value}\n                            </span>\n                        )}\n                    </div>''',
+              '''                    <div className="absolute right-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-1">\n                        {product.badge && (\n                            <span className="max-w-[8.5rem] truncate rounded-full border border-white/15 bg-indigo-600/92 px-2 py-0.5 text-[9px] font-black leading-4 text-white shadow-md shadow-black/20 backdrop-blur-sm">\n                                {product.badge}\n                            </span>\n                        )}\n                        {primarySignal && (\n                            <span\n                                className={\n                                    primarySignal.tone === "danger"\n                                        ? "max-w-[8.5rem] truncate rounded-full border border-white/15 bg-rose-600/92 px-2 py-0.5 text-[9px] font-black leading-4 text-white shadow-md shadow-black/20 backdrop-blur-sm"\n                                        : "max-w-[8.5rem] truncate rounded-full border border-white/15 bg-emerald-500/92 px-2 py-0.5 text-[9px] font-black leading-4 text-slate-950 shadow-md shadow-black/20 backdrop-blur-sm"\n                                }\n                            >\n                                {primarySignal.value}\n                            </span>\n                        )}\n                    </div>''',
+          )
+
+          # 2) Add a dedicated Nexus Focus rail for the ten newest digital products.
+          component = '''import { Link } from "@inertiajs/react";\nimport { ChevronLeft, ChevronRight, Gamepad2, Sparkles } from "lucide-react";\nimport { useRef } from "react";\n\nimport Price from "../../../../Storefront/Commerce/Price";\nimport type { StorefrontProduct } from "../../../../../types";\nimport SectionHeader from "./SectionHeader";\n\nfunction DigitalProductCard({\n    product,\n    index,\n}: {\n    product: StorefrontProduct;\n    index: number;\n}) {\n    const availability = product.meta_badges.find(\n        (meta) => meta.key === "availability",\n    );\n    const platform = product.meta_badges.find(\n        (meta) => meta.key === "platform",\n    );\n\n    return (\n        <Link\n            className="group block h-full rounded-[22px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"\n            href={product.url}\n        >\n            <article className="relative h-full overflow-hidden rounded-[22px] border border-indigo-500/20 bg-[linear-gradient(160deg,rgba(49,46,129,.18),var(--store-surface)_42%,var(--store-surface))] shadow-[0_24px_60px_-42px_rgba(99,102,241,.95)] transition duration-300 hover:-translate-y-1 hover:border-indigo-400/50 hover:shadow-[0_28px_70px_-38px_rgba(99,102,241,.9)]">\n                <div className="relative aspect-[16/10] overflow-hidden bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,.35),var(--store-surface-strong)_70%)]">\n                    <span className="absolute inset-0 grid place-items-center text-indigo-400/55">\n                        <Gamepad2 size={38} />\n                    </span>\n\n                    {product.cover_url && (\n                        <>\n                            <img\n                                aria-hidden="true"\n                                alt=""\n                                className="absolute inset-0 size-full scale-110 object-cover opacity-35 blur-xl transition duration-500 group-hover:scale-[1.16]"\n                                src={product.cover_url}\n                            />\n                            <span className="absolute inset-0 bg-black/15" />\n                            <img\n                                alt={product.cover_alt}\n                                className="relative size-full object-contain transition duration-500 group-hover:scale-[1.035]"\n                                decoding="async"\n                                loading="lazy"\n                                onError={(event) => {\n                                    event.currentTarget.style.display = "none";\n                                }}\n                                src={product.cover_url}\n                            />\n                        </>\n                    )}\n\n                    <span className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />\n\n                    <div className="absolute right-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-1">\n                        <span className="rounded-full border border-white/15 bg-indigo-600/92 px-2 py-0.5 text-[9px] font-black leading-4 text-white shadow-md shadow-black/25 backdrop-blur-sm">\n                            دیجیتال\n                        </span>\n                        {availability && (\n                            <span\n                                className={`max-w-[7rem] truncate rounded-full border border-white/15 px-2 py-0.5 text-[9px] font-black leading-4 shadow-md shadow-black/25 backdrop-blur-sm ${\n                                    availability.tone === "danger"\n                                        ? "bg-rose-600/92 text-white"\n                                        : "bg-emerald-500/92 text-slate-950"\n                                }`}\n                            >\n                                {availability.value}\n                            </span>\n                        )}\n                    </div>\n\n                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/50 px-2 py-1 text-[9px] font-black text-white/90 backdrop-blur-sm">\n                        <Sparkles size={11} />\n                        تازه {new Intl.NumberFormat("fa-IR").format(index + 1)}\n                    </span>\n                </div>\n\n                <div className="p-3.5">\n                    <div className="flex min-w-0 items-center justify-between gap-2">\n                        <small className="truncate text-[9px] font-bold text-[var(--store-muted)]">\n                            {platform?.value ??\n                                product.category ??\n                                "اکانت دیجیتال"}\n                        </small>\n                        <span\n                            aria-hidden="true"\n                            className="size-1.5 shrink-0 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,.8)]"\n                        />\n                    </div>\n\n                    <h3 className="mt-1.5 line-clamp-2 min-h-12 text-sm font-black leading-6 text-[var(--store-text)] sm:text-[15px]">\n                        {product.title}\n                    </h3>\n\n                    <div className="mt-3 flex items-end justify-between gap-3 border-t border-[var(--store-border)] pt-3">\n                        <div className="min-w-0">\n                            {product.pricing.final_price > 0 ? (\n                                <Price compact pricing={product.pricing} />\n                            ) : (\n                                <strong className="text-xs font-black text-amber-500">\n                                    استعلام قیمت\n                                </strong>\n                            )}\n                        </div>\n                        <span className="shrink-0 text-[9px] font-black text-indigo-400 transition group-hover:-translate-x-0.5 sm:text-[10px]">\n                            دیدن ظرفیت‌ها\n                        </span>\n                    </div>\n                </div>\n            </article>\n        </Link>\n    );\n}\n\nexport default function NexusDigitalProducts({\n    products,\n}: {\n    products: StorefrontProduct[];\n}) {\n    const railRef = useRef<HTMLDivElement>(null);\n    const visibleProducts = products.slice(0, 10);\n\n    if (!visibleProducts.length) return null;\n\n    const scroll = (direction: "next" | "previous") => {\n        railRef.current?.scrollBy({\n            left: direction === "next" ? -620 : 620,\n            behavior: "smooth",\n        });\n    };\n\n    return (\n        <section className="relative mx-auto max-w-[1360px] px-3 pt-7 sm:px-5 sm:pt-9">\n            <div\n                aria-hidden="true"\n                className="pointer-events-none absolute inset-x-10 top-10 h-28 rounded-full bg-indigo-500/[.055] blur-3xl"\n            />\n\n            <SectionHeader\n                actionLabel="همه اکانت‌ها"\n                description="۱۰ محصول دیجیتال تازه منتشرشده؛ قیمت، موجودی و ظرفیت‌ها را سریع بررسی کن."\n                eyebrow="DIGITAL DROP"\n                href="/digital"\n                title="تازه‌ترین اکانت‌های دیجیتال"\n            />\n\n            <div className="relative mb-2 hidden justify-end gap-2 sm:flex">\n                <button\n                    aria-label="محصولات قبلی"\n                    className="grid size-9 place-items-center rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)] transition hover:border-indigo-500/40 hover:text-indigo-400"\n                    onClick={() => scroll("previous")}\n                    type="button"\n                >\n                    <ChevronRight size={16} />\n                </button>\n                <button\n                    aria-label="محصولات بعدی"\n                    className="grid size-9 place-items-center rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] text-[var(--store-muted)] transition hover:border-indigo-500/40 hover:text-indigo-400"\n                    onClick={() => scroll("next")}\n                    type="button"\n                >\n                    <ChevronLeft size={16} />\n                </button>\n            </div>\n\n            <div\n                className="relative -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-3 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-5 sm:gap-4 sm:px-5"\n                ref={railRef}\n            >\n                {visibleProducts.map((product, index) => (\n                    <div\n                        className="w-[58vw] min-w-[190px] max-w-[250px] shrink-0 snap-start sm:w-[245px]"\n                        key={`digital-latest-${product.id}`}\n                    >\n                        <DigitalProductCard index={index} product={product} />\n                    </div>\n                ))}\n            </div>\n        </section>\n    );\n}\n'''
+          target = Path('resources/js/Components/Home/Templates/NexusFocus/components/NexusDigitalProducts.tsx')
+          if target.exists():
+              raise SystemExit(f'{target} already exists')
+          target.write_text(component)
+
+          replace_once(
+              'resources/js/Components/Home/Templates/NexusFocus/types.ts',
+              '''    products: StorefrontProduct[];\n    latestProducts: NexusFocusLatestProduct[];''',
+              '''    products: StorefrontProduct[];\n    latestDigitalProducts: StorefrontProduct[];\n    latestProducts: NexusFocusLatestProduct[];''',
+          )
+
+          replace_once(
+              'resources/js/Components/Home/Templates/NexusFocus/NexusFocusHome.tsx',
+              '''import NexusExplore from "./components/NexusExplore";''',
+              '''import NexusDigitalProducts from "./components/NexusDigitalProducts";\nimport NexusExplore from "./components/NexusExplore";''',
+          )
+          replace_once(
+              'resources/js/Components/Home/Templates/NexusFocus/NexusFocusHome.tsx',
+              '''            <NexusLatestSlider items={model.latestSlides} />\n            <NexusQuickPaths />''',
+              '''            <NexusLatestSlider items={model.latestSlides} />\n            <NexusDigitalProducts products={props.latestDigitalProducts} />\n            <NexusQuickPaths />''',
+          )
+
+          replace_once(
+              'resources/js/Pages/Home.tsx',
+              '''    heroFeaturedProducts: StorefrontProduct[];\n    heroLatestProducts: StorefrontProduct[];\n    featuredProducts?: StorefrontProduct[];''',
+              '''    heroFeaturedProducts: StorefrontProduct[];\n    heroLatestProducts: StorefrontProduct[];\n    latestDigitalProducts: StorefrontProduct[];\n    featuredProducts?: StorefrontProduct[];''',
+          )
+          replace_once(
+              'resources/js/Pages/Home.tsx',
+              '''    heroFeaturedProducts,\n    heroLatestProducts,\n    featuredProducts = [],''',
+              '''    heroFeaturedProducts,\n    heroLatestProducts,\n    latestDigitalProducts = [],\n    featuredProducts = [],''',
+          )
+          replace_once(
+              'resources/js/Pages/Home.tsx',
+              '''                        latestProducts={previewLatestProducts}\n                        latestGames={previewLatestGames}\n                        products={[''',
+              '''                        latestProducts={previewLatestProducts}\n                        latestGames={previewLatestGames}\n                        latestDigitalProducts={latestDigitalProducts}\n                        products={[''',
+          )
+
+          # Query exactly the ten newest published digital products only for Nexus Focus.
+          replace_once(
+              'app/Http/Controllers/HomeController.php',
+              '''        $heroLatestProducts = $usesEagerProducts\n            ? $this->homeCatalogProducts($request, $storefront, $cardRelations, $limit)\n            : collect();\n\n\n        $seoTitle =''',
+              '''        $heroLatestProducts = $usesEagerProducts\n            ? $this->homeCatalogProducts($request, $storefront, $cardRelations, $limit)\n            : collect();\n\n        $latestDigitalProducts =\n            (string) ($homeExperienceState['effective_template'] ?? 'default') === 'nexus_focus'\n                ? DigitalProduct::query()\n                    ->published()\n                    ->with([\n                        'category:id,name,slug',\n                        'game:id,name,slug,cover',\n                        'platform:id,name,slug',\n                        'offers',\n                        'coverMedia',\n                        'attributeValues.attribute.options',\n                    ])\n                    ->latest('id')\n                    ->limit(10)\n                    ->get()\n                    ->map(fn (DigitalProduct $product) => $storefront->digitalProduct($product))\n                    ->values()\n                : collect();\n\n        $seoTitle =''',
+          )
+          replace_once(
+              'app/Http/Controllers/HomeController.php',
+              '''            'heroFeaturedProducts' => $heroFeaturedProducts,\n            'heroLatestProducts' => $heroLatestProducts,\n            'latestFeed' => $previewLatestFeed,''',
+              '''            'heroFeaturedProducts' => $heroFeaturedProducts,\n            'heroLatestProducts' => $heroLatestProducts,\n            'latestDigitalProducts' => $latestDigitalProducts,\n            'latestFeed' => $previewLatestFeed,''',
+          )
+
+          # 3) Creation redirects to the top of the newest-first admin list.
+          replace_once(
+              'resources/js/Pages/Admin/Digital/Products/Form.tsx',
+              '''            { forceFormData: true, preserveScroll: true },''',
+              '''            { forceFormData: true, preserveScroll: Boolean(product) },''',
+          )
+          PY
+
+      - name: Verify PHP syntax
+        run: php -l app/Http/Controllers/HomeController.php
+
+      - name: Verify frontend build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Guard requested behavior
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          product_card = Path('resources/js/Components/Storefront/Product/ProductCard.tsx').read_text()
+          nexus_home = Path('resources/js/Components/Home/Templates/NexusFocus/NexusFocusHome.tsx').read_text()
+          home_controller = Path('app/Http/Controllers/HomeController.php').read_text()
+          form = Path('resources/js/Pages/Admin/Digital/Products/Form.tsx').read_text()
+          shelf = Path('resources/js/Components/Home/Templates/NexusFocus/components/NexusDigitalProducts.tsx').read_text()
+
+          assert 'right-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap' in product_card
+          assert '<NexusDigitalProducts products={props.latestDigitalProducts} />' in nexus_home
+          assert "->limit(10)" in home_controller and "'latestDigitalProducts' => $latestDigitalProducts" in home_controller
+          assert 'preserveScroll: Boolean(product)' in form
+          assert 'visibleProducts = products.slice(0, 10)' in shelf
+          PY
+
+      - name: Commit focused changes and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/one-shot-nexus-focus-digital-polish.yml
+          git add \
+            app/Http/Controllers/HomeController.php \
+            resources/js/Components/Storefront/Product/ProductCard.tsx \
+            resources/js/Components/Home/Templates/NexusFocus/NexusFocusHome.tsx \
+            resources/js/Components/Home/Templates/NexusFocus/types.ts \
+            resources/js/Components/Home/Templates/NexusFocus/components/NexusStore.tsx \
+            resources/js/Components/Home/Templates/NexusFocus/components/NexusDigitalProducts.tsx \
+            resources/js/Pages/Home.tsx \
+            resources/js/Pages/Admin/Digital/Products/Form.tsx
+          git commit -m "Polish digital cards and add Nexus Focus digital shelf"
+          git push
