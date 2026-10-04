@@ -13,7 +13,7 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 8
     env:
       PLAYNEXUS_CONTENT_AGENT_TOKEN: ${{ secrets.PLAYNEXUS_CONTENT_AGENT_TOKEN }}
     steps:
@@ -35,28 +35,31 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          code="$(curl -sS -o /tmp/body -w '%{http_code}' https://playnexus.ir/up || true)"
+          rm -f /tmp/body
+          code="$(curl --connect-timeout 8 --max-time 20 -sS -o /tmp/body -w '%{http_code}' https://playnexus.ir/up || true)"
           echo "up_status=$code"
-          head -c 600 /tmp/body || true
+          test -f /tmp/body && head -c 600 /tmp/body || true
           echo
 
       - name: Probe authenticated deployment health
         shell: bash
         run: |
           set -Eeuo pipefail
-          code="$(curl -sS -o /tmp/body -w '%{http_code}' \
+          rm -f /tmp/body
+          code="$(curl --connect-timeout 8 --max-time 25 -sS -o /tmp/body -w '%{http_code}' \
             -H 'Accept: application/json' \
             -H "Authorization: Bearer $DEPLOY_TOKEN" \
             https://playnexus.ir/api/deployment-agent/health || true)"
           echo "deployment_health_status=$code"
-          head -c 3000 /tmp/body || true
+          test -f /tmp/body && head -c 3000 /tmp/body || true
           echo
 
       - name: Probe deployment validation before any filesystem write
         shell: bash
         run: |
           set -Eeuo pipefail
-          code="$(curl -sS -o /tmp/body -w '%{http_code}' \
+          rm -f /tmp/body
+          code="$(curl --connect-timeout 8 --max-time 20 -sS -o /tmp/body -w '%{http_code}' \
             -X POST \
             -H 'Accept: application/json' \
             -H 'Content-Type: application/json' \
@@ -64,14 +67,15 @@ jobs:
             --data '{}' \
             https://playnexus.ir/api/deployment-agent/upload/chunk || true)"
           echo "deployment_invalid_chunk_status=$code"
-          head -c 3000 /tmp/body || true
+          test -f /tmp/body && head -c 3000 /tmp/body || true
           echo
 
       - name: Probe authenticated MCP ping
         shell: bash
         run: |
           set -Eeuo pipefail
-          code="$(curl -sS -o /tmp/body -w '%{http_code}' \
+          rm -f /tmp/body
+          code="$(curl --connect-timeout 8 --max-time 20 -sS -o /tmp/body -w '%{http_code}' \
             -X POST \
             -H 'Accept: application/json' \
             -H 'Content-Type: application/json' \
@@ -79,14 +83,15 @@ jobs:
             --data '{"jsonrpc":"2.0","id":1,"method":"ping","params":{}}' \
             https://playnexus.ir/api/mcp || true)"
           echo "mcp_ping_status=$code"
-          head -c 3000 /tmp/body || true
+          test -f /tmp/body && head -c 3000 /tmp/body || true
           echo
 
       - name: Probe content-agent upload validation
         shell: bash
         run: |
           set -Eeuo pipefail
-          code="$(curl -sS -o /tmp/body -w '%{http_code}' \
+          rm -f /tmp/body
+          code="$(curl --connect-timeout 8 --max-time 20 -sS -o /tmp/body -w '%{http_code}' \
             -X POST \
             -H 'Accept: application/json' \
             -H 'Content-Type: application/json' \
@@ -94,5 +99,5 @@ jobs:
             --data '{}' \
             https://playnexus.ir/api/content-agent/upload/chunk || true)"
           echo "content_agent_invalid_chunk_status=$code"
-          head -c 3000 /tmp/body || true
+          test -f /tmp/body && head -c 3000 /tmp/body || true
           echo
