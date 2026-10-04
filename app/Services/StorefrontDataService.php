@@ -67,6 +67,9 @@ class StorefrontDataService
             'slug' => $product->slug,
             'url' => route('products.show', $product, false),
             'category' => $product->category?->name,
+            'platform_name' => $product->relationLoaded('platforms') && $product->platforms->isNotEmpty()
+                ? $product->platforms->take(2)->pluck('name')->join('، ')
+                : null,
             'badge' => $product->badge,
             'product_type' => $product->type?->title ?? $product->product_type,
             'availability' => $product->availability,
@@ -156,6 +159,7 @@ class StorefrontDataService
             'slug' => $product->slug,
             'url' => route('digital.show', $product, false),
             'category' => $product->category?->name,
+            'platform_name' => $product->platform?->name,
             'badge' => 'دیجیتال',
             'product_type' => 'اکانت دیجیتال',
             'availability' => $stock > 0 ? 'in_stock' : 'out_of_stock',

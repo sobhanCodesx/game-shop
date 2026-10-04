@@ -43,8 +43,9 @@ class DigitalStoreController extends Controller
             ->with([
                 'category:id,name,slug',
                 'game:id,name,slug,cover,background,status',
-                'platform:id,name,slug',
-                'offers',
+                'platform:id,name,slug,is_dual_platform',
+                'platform.variants:id,platform_id,name,key,sort_order',
+                'offers.variantPrices',
                 'coverMedia',
             ])
             ->when(
@@ -135,8 +136,9 @@ class DigitalStoreController extends Controller
             'category:id,name,slug',
             'game:id,studio_id,name,slug,cover,background,status',
             'game.studio:id,name,slug,logo,background,status',
-            'platform:id,name,slug',
-            'offers',
+            'platform:id,name,slug,is_dual_platform',
+                'platform.variants:id,platform_id,name,key,sort_order',
+            'offers.variantPrices',
             'media',
             'seller:id,name,avatar',
             'attributeValues.attribute.options',
@@ -294,10 +296,15 @@ class DigitalStoreController extends Controller
                 Rule::exists('digital_offers', 'id')
                     ->where('digital_product_id', $digitalProduct->id),
             ],
+            'platform_variant_id' => ['nullable', 'integer', Rule::exists('platform_variants', 'id')],
         ]);
 
         $offer = DigitalOffer::query()->findOrFail($data['offer_id']);
-        $order = $orders->create($request->user(), $offer);
+        $order = $orders->create(
+            $request->user(),
+            $offer,
+            isset($data['platform_variant_id']) ? (int) $data['platform_variant_id'] : null,
+        );
 
         return to_route('account.digital-orders.show', $order)
             ->with(
@@ -319,8 +326,9 @@ class DigitalStoreController extends Controller
             ->with([
                 'category:id,name,slug',
                 'game:id,name,slug,cover,background,status',
-                'platform:id,name,slug',
-                'offers',
+                'platform:id,name,slug,is_dual_platform',
+                'platform.variants:id,platform_id,name,key,sort_order',
+                'offers.variantPrices',
                 'coverMedia',
                 'attributeValues.attribute.options',
             ])
@@ -353,8 +361,9 @@ class DigitalStoreController extends Controller
             ->with([
                 'category:id,name,slug',
                 'game:id,name,slug,cover,background,status',
-                'platform:id,name,slug',
-                'offers',
+                'platform:id,name,slug,is_dual_platform',
+                'platform.variants:id,platform_id,name,key,sort_order',
+                'offers.variantPrices',
                 'coverMedia',
                 'attributeValues.attribute.options',
             ]);
@@ -534,8 +543,13 @@ class DigitalStoreController extends Controller
                     'background_url' => MediaStorage::url($product->game->studio->background),
                 ] : null,
             ] : null,
+            'platform_name' => $product->platform?->name,
             'platform' => $product->platform ? [
                 ...$product->platform->only(['id', 'name', 'slug']),
+                'is_dual_platform' => (bool) $product->platform->is_dual_platform,
+                'variants' => $product->platform->is_dual_platform && $product->platform->relationLoaded('variants')
+                    ? $product->platform->variants->take(2)->map(fn ($variant) => $variant->only(['id', 'name', 'key']))->values()
+                    : [],
                 'digital_products_url' => route('digital.index', ['platform' => $product->platform->slug], false),
             ] : null,
             'seller' => $detailed && $product->seller ? [
@@ -560,6 +574,12 @@ class DigitalStoreController extends Controller
                     'updated_at' => $offer->updated_at?->toISOString(),
                     'available_stock' => $offer->availableStock(),
                     'available' => $offer->availableStock() > 0,
+                    'variant_prices' => $offer->relationLoaded('variantPrices')
+                        ? $offer->variantPrices->map(fn ($row) => [
+                            'platform_variant_id' => (int) $row->platform_variant_id,
+                            'price' => (int) $row->price,
+                        ])->values()
+                        : [],
                 ])
                 ->values(),
         ];

@@ -22,6 +22,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -100,11 +102,12 @@ class CatalogController extends Controller
         }
 
         DB::transaction(function () use ($definition, $data, $catalog, $media): void {
-            $model = $definition['model']::create(Arr::except($data, ['platform_ids', 'attribute_values', 'attributes', 'variants', 'media']));
+            $model = $definition['model']::create(Arr::except($data, ['platform_ids', 'attribute_values', 'attributes', 'variants', 'platform_variants', 'media']));
             $this->syncPlatforms($catalog, $model, $data['platform_ids'] ?? []);
             $this->syncAttributeValues($catalog, $model, $data['attribute_values'] ?? []);
             $this->syncCategoryAttributes($catalog, $model, $data['attributes'] ?? []);
             $this->syncVariants($catalog, $model, $data['variants'] ?? []);
+            $this->syncPlatformVariants($catalog, $model, $data);
             if ($model instanceof Product && array_key_exists('media', $data)) {
                 $media->sync($model, $data['media'] ?? []);
             }
@@ -147,11 +150,12 @@ class CatalogController extends Controller
                 ]);
             }
 
-            $model->update(Arr::except($data, ['platform_ids', 'attribute_values', 'attributes', 'variants', 'media']));
+            $model->update(Arr::except($data, ['platform_ids', 'attribute_values', 'attributes', 'variants', 'platform_variants', 'media']));
             $this->syncPlatforms($catalog, $model, $data['platform_ids'] ?? []);
             $this->syncAttributeValues($catalog, $model, $data['attribute_values'] ?? []);
             $this->syncCategoryAttributes($catalog, $model, $data['attributes'] ?? []);
             $this->syncVariants($catalog, $model, $data['variants'] ?? []);
+            $this->syncPlatformVariants($catalog, $model, $data);
             if ($model instanceof Product && array_key_exists('media', $data)) {
                 $media->sync($model, $data['media'] ?? []);
             }
@@ -246,6 +250,10 @@ class CatalogController extends Controller
             $model->loadMissing('attributes');
         }
 
+        if ($model instanceof Platform) {
+            $model->loadMissing('variants');
+        }
+
         $page = match ($catalog) {
             'products' => 'Admin/Catalog/ProductForm',
             'categories' => 'Admin/Catalog/CategoryForm',
@@ -261,6 +269,9 @@ class CatalogController extends Controller
                     ? $this->normalizeProductStatus($model->status)
                     : $model->status,
                 'platform_ids' => method_exists($model, 'platforms') ? $model->platforms->pluck('id') : [],
+                'platform_variants' => $model instanceof Platform
+                    ? $model->variants->map(fn ($variant) => $variant->only(['id', 'name', 'key']))->values()
+                    : [],
                 'attribute_values' => $model instanceof Product
                     ? $model->attributeValues->pluck('value', 'category_attribute_id')
                     : [],
@@ -290,6 +301,54 @@ class CatalogController extends Controller
                 'visibilities' => $this->catalogOptions('visibilities'),
             ],
         ]);
+    }
+
+    private function syncPlatformVariants(string $catalog, Model $model, array $data): void
+    {
+        if ($catalog !== 'platforms' || ! $model instanceof Platform || ! ($data['is_dual_platform'] ?? false)) {
+            return;
+        }
+
+        $submitted = array_values(array_slice($data['platform_variants'] ?? [], 0, 2));
+        if (count($submitted) !== 2) {
+            throw ValidationException::withMessages([
+                'platform_variants' => 'برای پلتفرم دوگانه دقیقاً دو پلتفرم فرزند وارد کنید.',
+            ]);
+        }
+
+        $existing = $model->variants()->get()->keyBy('id');
+        foreach ($submitted as $index => $variantData) {
+            $name = trim((string) ($variantData['name'] ?? ''));
+            if ($name === '') {
+                throw ValidationException::withMessages([
+                    "platform_variants.{$index}.name" => 'نام پلتفرم الزامی است.',
+                ]);
+            }
+
+            $id = isset($variantData['id']) ? (int) $variantData['id'] : null;
+            if ($id) {
+                $variant = $existing->get($id);
+                if (! $variant) {
+                    throw ValidationException::withMessages([
+                        "platform_variants.{$index}.id" => 'پلتفرم فرزند انتخاب‌شده معتبر نیست.',
+                    ]);
+                }
+                $variant->update(['name' => $name, 'sort_order' => $index + 1]);
+                continue;
+            }
+
+            $base = Str::slug($name) ?: 'variant';
+            $key = $base;
+            for ($suffix = 2; $model->variants()->where('key', $key)->exists(); $suffix++) {
+                $key = $base.'-'.$suffix;
+            }
+
+            $model->variants()->create([
+                'name' => $name,
+                'key' => $key,
+                'sort_order' => $index + 1,
+            ]);
+        }
     }
 
     private function catalogOptions(string $key): array

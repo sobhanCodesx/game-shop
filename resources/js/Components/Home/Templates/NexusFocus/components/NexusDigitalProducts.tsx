@@ -81,7 +81,8 @@ function DigitalProductCard({
                 <div className="p-3.5">
                     <div className="flex min-w-0 items-center justify-between gap-2">
                         <small className="truncate text-[9px] font-bold text-[var(--store-muted)]">
-                            {platform?.value ??
+                            {product.platform_name ??
+                                platform?.value ??
                                 product.category ??
                                 "اکانت دیجیتال"}
                         </small>

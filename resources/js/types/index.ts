@@ -69,6 +69,7 @@ export interface StorefrontProduct {
     slug: string;
     url: string;
     category: string | null;
+    platform_name: string | null;
     badge: string | null;
     product_type: string | null;
     availability: string;

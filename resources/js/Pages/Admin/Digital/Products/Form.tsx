@@ -21,12 +21,17 @@ import RichTextEditor from "../../../../Components/Admin/Form/RichTextEditor";
 import AdminLayout from "../../../../Layouts/AdminLayout";
 import { normalizeDigits } from "../../../../utils/persian-number";
 
+type VariantPrice = { platform_variant_id: number; price: number };
+type PlatformVariant = { id: number; name: string; key: string };
+type PlatformOption = { id: number; name: string; is_dual_platform: boolean; variants: PlatformVariant[] };
+
 type Offer = {
     code: "capacity_1" | "capacity_2" | "capacity_3" | "full";
     label: string;
     price: number;
     stock: number;
     status: "active" | "inactive";
+    variant_prices: VariantPrice[];
 };
 
 type AttributeOption = {
@@ -88,10 +93,10 @@ const emptyFeatureRow = (): FeatureRow => ({
 });
 
 const defaultOffers: Offer[] = [
-    { code: "capacity_1", label: "ظرفیت ۱", price: 0, stock: 0, status: "active" },
-    { code: "capacity_2", label: "ظرفیت ۲", price: 0, stock: 0, status: "active" },
-    { code: "capacity_3", label: "ظرفیت ۳", price: 0, stock: 0, status: "active" },
-    { code: "full", label: "فول ظرفیت", price: 0, stock: 0, status: "active" },
+    { code: "capacity_1", label: "ظرفیت ۱", price: 0, stock: 0, status: "active", variant_prices: [] },
+    { code: "capacity_2", label: "ظرفیت ۲", price: 0, stock: 0, status: "active", variant_prices: [] },
+    { code: "capacity_3", label: "ظرفیت ۳", price: 0, stock: 0, status: "active", variant_prices: [] },
+    { code: "full", label: "فول ظرفیت", price: 0, stock: 0, status: "active", variant_prices: [] },
 ];
 
 function GamePicker({
@@ -332,7 +337,7 @@ export default function Form({
     categories: Array<{ id: number; parent_id?: number | null; name: string; slug: string }>;
     games: GameOption[];
     gameOptionsMeta: GameOptionsMeta;
-    platforms: any[];
+    platforms: PlatformOption[];
     sellers: any[];
     attributes: AttributeDefinition[];
     currentSellerId: number | null;
@@ -354,6 +359,7 @@ export default function Form({
                   price: Number(offer.price),
                   stock: Number(offer.stock),
                   status: offer.status,
+                  variant_prices: Array.isArray(offer.variant_prices) ? offer.variant_prices.map((row: any) => ({ platform_variant_id: Number(row.platform_variant_id), price: Number(row.price) })) : [],
               }))
             : defaultOffers,
         attribute_values: product?.attribute_values ?? {},
@@ -368,6 +374,30 @@ export default function Form({
                 is_primary: Boolean(media.is_primary),
             })) ?? [],
     });
+
+    const selectedPlatform = useMemo(
+        () => platforms.find((item) => String(item.id) === form.data.platform_id) ?? null,
+        [platforms, form.data.platform_id],
+    );
+    const dualVariants = selectedPlatform?.is_dual_platform
+        ? (selectedPlatform.variants ?? []).slice(0, 2)
+        : [];
+
+    const changePlatform = (value: string) => {
+        const nextPlatform = platforms.find((item) => String(item.id) === value) ?? null;
+        const nextVariants = nextPlatform?.is_dual_platform ? (nextPlatform.variants ?? []).slice(0, 2) : [];
+        const offers = form.data.offers.map((offer) => ({
+            ...offer,
+            variant_prices: nextVariants.length === 2
+                ? nextVariants.map((variant) => ({
+                      platform_variant_id: variant.id,
+                      price: offer.variant_prices.find((row) => row.platform_variant_id === variant.id)?.price ?? offer.price ?? 0,
+                  }))
+                : [],
+        }));
+        form.setData('platform_id', value);
+        form.setData('offers', offers);
+    };
 
     const initialFeatureRows: FeatureRow[] = Object.entries(
         product?.attribute_values ?? {},
@@ -413,6 +443,23 @@ export default function Form({
                 i === index ? { ...offer, [key]: value } : offer,
             ),
         );
+
+    const updateVariantPrice = (offerIndex: number, variantId: number, price: number) => {
+        form.setData(
+            'offers',
+            form.data.offers.map((offer, index) => index === offerIndex
+                ? {
+                      ...offer,
+                      variant_prices: dualVariants.map((variant) => ({
+                          platform_variant_id: variant.id,
+                          price: variant.id === variantId
+                              ? price
+                              : offer.variant_prices.find((row) => row.platform_variant_id === variant.id)?.price ?? offer.price ?? 0,
+                      })),
+                  }
+                : offer),
+        );
+    };
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -513,9 +560,7 @@ export default function Form({
                                 <select
                                     className="mt-2 h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-3"
                                     value={form.data.platform_id}
-                                    onChange={(event) =>
-                                        form.setData("platform_id", event.target.value)
-                                    }
+                                    onChange={(event) => changePlatform(event.target.value)}
                                 >
                                     <option value="">انتخاب پلتفرم</option>
                                     {platforms.map((item) => (
@@ -530,6 +575,19 @@ export default function Form({
                                     </p>
                                 )}
                             </label>
+
+                            {selectedPlatform?.is_dual_platform && (
+                                <div className="md:col-span-2 rounded-2xl border border-indigo-500/20 bg-indigo-500/[.07] p-3.5">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div>
+                                            <strong className="text-xs font-black text-indigo-200">قیمت‌گذاری دو پلتفرمی فعال است</strong>
+                                            <p className="mt-1 text-[10px] leading-5 text-slate-400">برای هر ظرفیت، قیمت {selectedPlatform.name} را جداگانه برای هر نسخه وارد کن.</p>
+                                        </div>
+                                        <div className="flex gap-1.5">{dualVariants.map((variant) => <span className="rounded-full border border-indigo-400/20 bg-indigo-500/10 px-2 py-1 text-[10px] font-black text-indigo-300" key={variant.id}>{variant.name}</span>)}</div>
+                                    </div>
+                                    {dualVariants.length !== 2 && <p className="mt-2 text-xs font-bold text-rose-400">تنظیمات این پلتفرم ناقص است؛ ابتدا در بخش پلتفرم‌ها دو نام فرزند را ثبت کن.</p>}
+                                </div>
+                            )}
 
                             {!currentSellerId && (
                                 <label className="text-sm font-bold text-slate-200">
@@ -821,7 +879,7 @@ export default function Form({
                                 ظرفیت‌ها و قیمت فروش
                             </h2>
                             <p className="mt-1 text-xs text-slate-400">
-                                قیمت فروش، موجودی و وضعیت هر ظرفیت.
+                                {dualVariants.length === 2 ? `برای هر ظرفیت، قیمت ${dualVariants.map((variant) => variant.name).join(' و ')} را جدا وارد کن؛ موجودی بین دو نسخه مشترک است.` : 'قیمت فروش، موجودی و وضعیت هر ظرفیت.'}
                             </p>
                         </div>
 
@@ -837,47 +895,49 @@ export default function Form({
 
                                     <div>
                                         <label className="text-sm font-bold text-slate-200">
-                                            قیمت فروش
+                                            {dualVariants.length === 2 ? 'قیمت هر پلتفرم' : 'قیمت فروش'}
                                         </label>
-                                        <div className="mt-2 flex items-stretch gap-2">
-                                            <Input
-                                                className="min-w-0 flex-1 text-left text-base font-bold tabular-nums"
-                                                dir="ltr"
-                                                fullWidth
-                                                inputMode="numeric"
-                                                placeholder="۰"
-                                                value={
-                                                    offer.price > 0
-                                                        ? formatter.format(
-                                                              offer.price,
-                                                          )
-                                                        : ""
-                                                }
-                                                onChange={(event) => {
-                                                    const normalized =
-                                                        normalizeDigits(
-                                                            event.target.value,
-                                                        ).replace(
-                                                            /[^0-9]/g,
-                                                            "",
-                                                        );
-                                                    updateOffer(
-                                                        index,
-                                                        "price",
-                                                        normalized
-                                                            ? Number(normalized)
-                                                            : 0,
+                                        {dualVariants.length === 2 ? (
+                                            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                                {dualVariants.map((variant) => {
+                                                    const row = offer.variant_prices.find((item) => item.platform_variant_id === variant.id);
+                                                    return (
+                                                        <div className="rounded-2xl border border-indigo-500/15 bg-indigo-500/[.04] p-2.5" key={variant.id}>
+                                                            <div className="mb-1.5 flex items-center justify-between gap-2"><strong className="text-[11px] text-indigo-200">{variant.name}</strong><span className="text-[9px] text-slate-500">تومان</span></div>
+                                                            <Input
+                                                                className="text-left text-base font-bold tabular-nums"
+                                                                dir="ltr"
+                                                                fullWidth
+                                                                inputMode="numeric"
+                                                                placeholder="۰"
+                                                                value={row && row.price > 0 ? formatter.format(row.price) : ''}
+                                                                onChange={(event) => {
+                                                                    const normalized = normalizeDigits(event.target.value).replace(/[^0-9]/g, '');
+                                                                    updateVariantPrice(index, variant.id, normalized ? Number(normalized) : 0);
+                                                                }}
+                                                            />
+                                                            {(form.errors as any)[`offers.${index}.variant_prices`] && <p className="mt-1 text-[10px] text-rose-400">{(form.errors as any)[`offers.${index}.variant_prices`]}</p>}
+                                                        </div>
                                                     );
-                                                }}
-                                            />
-                                            <Chip
-                                                className="h-auto shrink-0 px-3 text-sm font-bold"
-                                                color="accent"
-                                                variant="soft"
-                                            >
-                                                تومان
-                                            </Chip>
-                                        </div>
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div className="mt-2 flex items-stretch gap-2">
+                                                <Input
+                                                    className="min-w-0 flex-1 text-left text-base font-bold tabular-nums"
+                                                    dir="ltr"
+                                                    fullWidth
+                                                    inputMode="numeric"
+                                                    placeholder="۰"
+                                                    value={offer.price > 0 ? formatter.format(offer.price) : ''}
+                                                    onChange={(event) => {
+                                                        const normalized = normalizeDigits(event.target.value).replace(/[^0-9]/g, '');
+                                                        updateOffer(index, 'price', normalized ? Number(normalized) : 0);
+                                                    }}
+                                                />
+                                                <Chip className="h-auto shrink-0 px-3 text-sm font-bold" color="accent" variant="soft">تومان</Chip>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <Input

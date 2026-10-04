@@ -399,9 +399,9 @@ export default function Index({
                                                 <span className="absolute right-2 top-2 rounded-lg border border-indigo-300/30 bg-indigo-600 px-2 py-1 text-[9px] font-black text-white shadow-lg">
                                                     دیجیتال
                                                 </span>
-                                                {product.platform?.name && (
+                                                {(product.platform_name ?? product.platform?.name) && (
                                                     <span className="absolute bottom-2 left-2 rounded-lg bg-black/70 px-2 py-1 text-[9px] font-black text-white">
-                                                        {product.platform.name}
+                                                        {product.platform_name ?? product.platform?.name}
                                                     </span>
                                                 )}
                                             </div>
