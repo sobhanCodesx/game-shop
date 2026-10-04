@@ -1,0 +1,15 @@
+{
+  "job_id": "feed-ghost-yotei-complete-create-20261004",
+  "tool": "create_feed",
+  "arguments": {
+    "title": "Ghost of Yōtei Complete Edition منتشر شد؛ Atsu با دو محتوای بزرگ برگشته",
+    "body": "<p><strong>Ghost of Yōtei Complete Edition</strong> حالا روی PS5 در دسترس است و ماجرای Atsu را در بسته‌ای کامل‌تر ارائه می‌کند. این نسخه کمپین اصلی و حالت Legends را کنار دو محتوای بزرگ تازه قرار می‌دهد.</p><p><strong>Most Wanted</strong> یک حالت roguelike با تمرکز روی مبارزه و بقاست، در حالی که <strong>Echoes of Sekigahara</strong> یک گسترش داستانی است که روایت را بین زمان حال و فلش‌بک‌های Atsu در سرزمین اصلی جابه‌جا می‌کند.</p><p>برای بازیکن‌هایی که نسخه اصلی را عقب انداخته بودند، Complete Edition حالا نقطه ورود کامل‌تری به دنیای Ghost of Yōtei روی PS5 است.</p>",
+    "feed_type": "news",
+    "feed_badge": "news",
+    "related_digital_product_id": 3,
+    "allow_comments": true,
+    "notify_followers": true,
+    "seo_title": "Ghost of Yōtei Complete Edition منتشر شد",
+    "seo_description": "نسخه Complete بازی Ghost of Yōtei اکنون روی PS5 در دسترس است و در کنار Legends، حالت Most Wanted و بسته داستانی Echoes of Sekigahara را اضافه می‌کند."
+  }
+}
