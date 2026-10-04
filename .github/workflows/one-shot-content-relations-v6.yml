@@ -1,0 +1,128 @@
+name: One-shot content relations v6
+
+on:
+  push:
+    branches:
+      - chatgpt/content-relations
+    paths:
+      - .github/workflows/one-shot-content-relations-v6.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: chatgpt/content-relations
+          fetch-depth: 0
+
+      - name: Apply normalized relation patch
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          source = Path('.github/workflows/one-shot-content-relations.yml').read_text()
+          start = source.index("          python3 <<'PY'\n") + len("          python3 <<'PY'\n")
+          end = source.index("\n          PY", start)
+          script = textwrap.dedent(source[start:end])
+
+          script = script.replace("    3,\n)\nreplace(\n    'app/Http/Controllers/Admin/VideoController.php',", "    2,\n)\nreplace(\n    'app/Http/Controllers/Admin/VideoController.php',", 1)
+
+          author_start = script.index('old_author =')
+          author_end = script.index('old_product =', author_start)
+          old_author_text = "        $isEditorialPost = $content->type === 'post';\n        $authorName = $isEditorialPost\n            ? 'PlayNexus'\n            : ($content->game?->name ?? 'PlayNexus');\n        $channelLogo = ! $isEditorialPost && $content->game\n            ? ($content->game->cover ?: $content->game->playlists->first()?->logo)\n            : null;"
+          new_author_text = "        $authorName = $content->game?->name ?? 'PlayNexus';\n        $channelLogo = $content->game\n            ? ($content->game->playlists->first()?->logo ?: $content->game->cover)\n            : null;"
+          old_author_url_text = "                'url' => $isEditorialPost\n                    ? null\n                    : ($content->game ? route('channels.show', $content->game->slug, false) : null),"
+          new_author_url_text = "                'url' => $content->game ? route('channels.show', $content->game->slug, false) : null,"
+          author_fix = "old_author = " + repr(old_author_text) + "\nnew_author = " + repr(new_author_text) + "\nif text.count(old_author) != 2:\n    raise SystemExit(f'Expected two FeedService author blocks, got {text.count(old_author)}')\ntext = text.replace(old_author, new_author)\nold_author_url = " + repr(old_author_url_text) + "\nnew_author_url = " + repr(new_author_url_text) + "\nif text.count(old_author_url) != 2:\n    raise SystemExit(f'Expected two FeedService author URL blocks, got {text.count(old_author_url)}')\ntext = text.replace(old_author_url, new_author_url)\n"
+          script = script[:author_start] + author_fix + script[author_end:]
+
+          product_start = script.index('old_product =')
+          product_end = script.index('helper =', product_start)
+          old_product_text = "            'related_product' => $content->relatedProduct && $content->relatedProduct->status === 'published' && $content->relatedProduct->visibility === 'public' ? [\n                'id' => $content->relatedProduct->id,\n                'title' => $content->relatedProduct->title,\n                'url' => route('products.show', $content->relatedProduct->slug, false),\n                'image_url' => MediaStorage::url($content->relatedProduct->coverMedia?->path),\n                'price' => $content->relatedProduct->discount_price ?: $content->relatedProduct->price,\n            ] : null,"
+          product_fix = "old_product = " + repr(old_product_text) + "\nif old_product not in text:\n    raise SystemExit('FeedService related product payload block missing')\ntext = text.replace(old_product, \"            'related_product' => $this->relatedProductCard($content),\", 1)\n"
+          script = script[:product_start] + product_fix + script[product_end:]
+
+          fallback_start = script.index('digital_fallback =')
+          fallback_end = script.index('text = text.replace(\n    "                \'image_url\' => MediaStorage::url($content->game->cover),"', fallback_start)
+          fallback_marker = "            } elseif ($content->relatedProduct?->coverMedia?->path) {"
+          digital_prefix = "            } elseif ($content->relatedDigitalProduct?->coverMedia?->path) {\n                $media->push([\n                    'id' => -$content->relatedDigitalProduct->id,\n                    'type' => 'image',\n                    'url' => MediaStorage::url($content->relatedDigitalProduct->coverMedia->path),\n                    'thumbnail' => null,\n                    'width' => null,\n                    'height' => null,\n                    'duration' => null,\n                    'alt' => $content->title,\n                ]);\n            } elseif ($content->relatedProduct?->coverMedia?->path) {"
+          fallback_fix = "fallback_marker = " + repr(fallback_marker) + "\ndigital_prefix = " + repr(digital_prefix) + "\nif text.count(fallback_marker) != 1:\n    raise SystemExit(f'Expected one physical preview fallback marker, got {text.count(fallback_marker)}')\ntext = text.replace(fallback_marker, digital_prefix, 1)\n"
+          script = script[:fallback_start] + fallback_fix + script[fallback_end:]
+
+          types_start = script.index("types = 'resources/js/types/index.ts'")
+          types_end = script.index("feed_item = 'resources/js/Components/Storefront/Feed/FeedItem.tsx'", types_start)
+          old_types = "        id: number;\n        title: string;\n        url: string;\n        image_url: string | null;\n        price: number;"
+          new_types = "        id: number;\n        kind: \"physical\" | \"digital\";\n        label: string;\n        title: string;\n        url: string;\n        image_url: string | null;\n        price: number | null;"
+          types_fix = "types = 'resources/js/types/index.ts'\nreplace(types, " + repr(old_types) + ", " + repr(new_types) + ", 1)\n\n"
+          script = script[:types_start] + types_fix + script[types_end:]
+
+          exec(compile(script, '<content-relations-patch>', 'exec'))
+          PY
+
+      - name: Verify PHP syntax
+        run: |
+          php -l app/Models/SocialContent.php
+          php -l app/Models/Product.php
+          php -l app/Models/DigitalProduct.php
+          php -l app/Http/Controllers/Admin/FeedPostController.php
+          php -l app/Http/Controllers/Admin/VideoController.php
+          php -l app/Http/Requests/Admin/FeedPostRequest.php
+          php -l app/Http/Requests/Admin/VideoRequest.php
+          php -l app/Services/FeedService.php
+          php -l app/Services/GraphQL/PlayNexusGraphSchemaFactory.php
+          php -l app/Services/GraphQL/PlayNexusGraphRepository.php
+          php -l app/Services/GraphQL/PlayNexusGraphService.php
+          php -l database/migrations/2026_10_04_083000_add_related_digital_product_to_social_contents.php
+
+      - name: Install PHP test dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run graph regression tests
+        run: php artisan test tests/Feature/ContentAgentGraphqlTest.php
+
+      - name: Verify frontend build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Guard requested behavior
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          checks = {
+              'app/Models/SocialContent.php': ['relatedDigitalProduct', 'related_digital_product_id'],
+              'app/Services/FeedService.php': ["'kind' => 'digital'", "playlists->first()?->logo", "route('digital.show'"],
+              'resources/js/Components/Storefront/Feed/FeedItem.tsx': ['مشاهده و خرید', 'item.related_product.label', 'ShoppingBag'],
+              'resources/js/Pages/Admin/Feed/Form.tsx': ['related_digital_product_id', 'دیجیتال ·'],
+              'resources/js/Pages/Admin/Videos/Form.tsx': ['related_digital_product_id', 'اکانت‌های دیجیتال'],
+              'app/Services/GraphQL/PlayNexusGraphSchemaFactory.php': ['relatedDigitalProduct', 'digitalProductId'],
+          }
+          for path, needles in checks.items():
+              text = Path(path).read_text()
+              for needle in needles:
+                  if needle not in text:
+                      raise SystemExit(f'{needle!r} missing from {path}')
+          PY
+
+      - name: Commit focused changes and remove one-shot workflows
+        shell: bash
+        run: |
+          rm .github/workflows/one-shot-content-relations.yml
+          rm .github/workflows/one-shot-content-relations-v2.yml
+          rm .github/workflows/one-shot-content-relations-v3.yml
+          rm .github/workflows/one-shot-content-relations-v4.yml
+          rm .github/workflows/one-shot-content-relations-v5.yml
+          rm .github/workflows/one-shot-content-relations-v6.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Link feed and videos to games and all products"
+          git push origin HEAD:chatgpt/content-relations
