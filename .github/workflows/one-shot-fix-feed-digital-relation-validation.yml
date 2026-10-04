@@ -1,0 +1,51 @@
+name: One-shot fix feed digital relation validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/one-shot-fix-feed-digital-relation-validation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Replace invalid prohibited_with validation rules
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('app/Services/ContentAgentService.php')
+          text = path.read_text()
+          replacements = {
+              "Rule::exists('products', 'id')->whereNull('deleted_at'), 'prohibited_with:related_digital_product_id'": "Rule::exists('products', 'id')->whereNull('deleted_at'), Rule::prohibitedIf(fn () => filled($arguments['related_digital_product_id'] ?? null))",
+              "Rule::exists('digital_products', 'id')->where('status', 'published'), 'prohibited_with:related_product_id'": "Rule::exists('digital_products', 'id')->where('status', 'published'), Rule::prohibitedIf(fn () => filled($arguments['related_product_id'] ?? null))",
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected one validation anchor, got {text.count(old)}: {old}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+
+      - name: Validate fix
+        run: |
+          php -l app/Services/ContentAgentService.php
+          ! grep -q "prohibited_with:related_" app/Services/ContentAgentService.php
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan test tests/Feature/ContentAgentMcpTest.php
+
+      - name: Commit verified fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Services/ContentAgentService.php
+          git commit -m "fix(playnexus): validate mutually exclusive feed product links"
+          git push origin HEAD:main
