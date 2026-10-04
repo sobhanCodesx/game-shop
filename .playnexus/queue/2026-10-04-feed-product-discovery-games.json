@@ -1,7 +1,0 @@
-{
-  "job_id": "feed-product-discovery-games-20261004",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query { gta: games(search: \"Grand Theft Auto VI\", first: 5) { nodes { id name slug status } } astro: games(search: \"ASTRO BOT\", first: 5) { nodes { id name slug status } } ghost: games(search: \"Ghost of Yotei\", first: 5) { nodes { id name slug status } } }"
-  }
-}
