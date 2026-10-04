@@ -1,0 +1,68 @@
+name: Verify Dual Platform Pricing
+
+on:
+  push:
+    branches:
+      - chatgpt/dual-platform-pricing
+    paths:
+      - '.github/workflows/verify-dual-platform-pricing.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:MxB3sypjSv/hgL1A0+W5h3I2R0c1uvmkUN7nxGgDg+Y=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: chatgpt/dual-platform-pricing
+      - name: Apply patch
+        run: |
+          python3 .github/scripts/dual_platform_patch.py
+          python3 .github/scripts/dual_platform_test_fix.py
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, sqlite3, pdo_sqlite
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Focused regressions
+        run: php artisan test tests/Feature/DigitalCommerceTest.php tests/Feature/DigitalProductSeoTest.php tests/Feature/ContentAgentDigitalProductMcpTest.php tests/Feature/ContentAgentMcpTest.php tests/Feature/Admin/AdminAccessTest.php
+      - name: Package changed implementation
+        run: |
+          tar -czf dual-platform-implementation.tgz \
+            app/Http/Controllers/Admin/CatalogController.php \
+            app/Http/Controllers/Admin/DigitalProductController.php \
+            app/Http/Controllers/DigitalStoreController.php \
+            app/Http/Requests/Admin/CatalogRequest.php \
+            app/Services/StorefrontDataService.php \
+            resources/js/Pages/Admin/Catalog/Form.tsx \
+            resources/js/Pages/Admin/Digital/Products/Form.tsx \
+            resources/js/Pages/Digital/Show.tsx \
+            resources/js/Components/Storefront/Product/ProductCard.tsx \
+            resources/js/Components/Home/Templates/NexusFocus/components/NexusDigitalProducts.tsx \
+            resources/js/types/index.ts \
+            tests/Feature/DigitalCommerceTest.php
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dual-platform-implementation
+          path: dual-platform-implementation.tgz
+          retention-days: 1
