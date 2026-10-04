@@ -1,0 +1,8 @@
+{
+  "job_id": "feed-astrobot-relate-diagnostic-20261004",
+  "tool": "update_feed",
+  "arguments": {
+    "id": 121,
+    "related_digital_product_id": 2
+  }
+}
