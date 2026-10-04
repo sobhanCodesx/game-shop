@@ -1,0 +1,9 @@
+{
+  "job_id": "feed-astrobot-minimal-create-20261004",
+  "tool": "create_feed",
+  "arguments": {
+    "title": "چرا ASTRO BOT هنوز یکی از بهترین ویترین‌های PS5 و DualSense است؟",
+    "game_id": 66,
+    "related_digital_product_id": 2
+  }
+}
