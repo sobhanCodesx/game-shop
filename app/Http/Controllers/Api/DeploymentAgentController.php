@@ -12,13 +12,28 @@ use Illuminate\Http\Request;
 
 class DeploymentAgentController extends Controller
 {
-    public function chunk(DeploymentAgentChunkRequest $request, DeploymentManager $manager): JsonResponse
-    {
+    public function chunk(
+        DeploymentAgentChunkRequest $request,
+        DeploymentManager $manager,
+        DeploymentStateStore $states,
+    ): JsonResponse {
         $data = $request->validated();
+
+        if (empty($data['operation_id'])) {
+            $states->cleanup();
+        }
 
         return response()->json(
             $manager->acceptChunk($this->actorId(), $data, $request->file('chunk')->getPathname())
         );
+    }
+
+    public function cleanup(DeploymentStateStore $states): JsonResponse
+    {
+        return response()->json([
+            'status' => 'ok',
+            'removed' => $states->cleanup(),
+        ]);
     }
 
     public function complete(Request $request, DeploymentManager $manager): JsonResponse
