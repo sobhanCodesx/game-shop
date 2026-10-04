@@ -1,5 +1,6 @@
 import NewsletterSignup from "../../NewsletterSignup";
 import { buildNexusFocusModel } from "./nexusFocusData";
+import NexusDigitalProducts from "./components/NexusDigitalProducts";
 import NexusExplore from "./components/NexusExplore";
 import NexusGames from "./components/NexusGames";
 import NexusMedia from "./components/NexusMedia";
@@ -25,6 +26,7 @@ export default function NexusFocusHome(props: NexusFocusInput) {
         <div className="pb-5 sm:pb-8">
             <h1 className="sr-only">{props.heading}</h1>
             <NexusLatestSlider items={model.latestSlides} />
+            <NexusDigitalProducts products={props.latestDigitalProducts} />
             <NexusQuickPaths />
             <NexusPulse items={model.pulse} personalized={personalized} />
             <NexusLatestGames items={props.latestGames} />

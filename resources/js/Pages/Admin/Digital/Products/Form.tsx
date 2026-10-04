@@ -445,7 +445,7 @@ export default function Form({
             product
                 ? `/admin/digital-products/${product.id}`
                 : "/admin/digital-products",
-            { forceFormData: true, preserveScroll: true },
+            { forceFormData: true, preserveScroll: Boolean(product) },
         );
     };
 

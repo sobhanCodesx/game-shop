@@ -59,9 +59,9 @@ function HomeProductCard({ product }: { product: StorefrontProduct }) {
                         />
                     )}
                     <span className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 to-transparent" />
-                    <div className="absolute right-2.5 top-2.5 flex max-w-[75%] flex-col items-start gap-1.5">
+                    <div className="absolute right-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-1">
                         {product.badge && (
-                            <span className="max-w-full truncate rounded-lg bg-indigo-600 px-2 py-1 text-[9px] font-black text-white shadow-lg shadow-black/25">
+                            <span className="max-w-[8.5rem] truncate rounded-full border border-white/15 bg-indigo-600/92 px-2 py-0.5 text-[9px] font-black leading-4 text-white shadow-md shadow-black/20 backdrop-blur-sm">
                                 {product.badge}
                             </span>
                         )}
@@ -69,8 +69,8 @@ function HomeProductCard({ product }: { product: StorefrontProduct }) {
                             <span
                                 className={
                                     primarySignal.tone === "danger"
-                                        ? "rounded-lg bg-rose-600 px-2 py-1 text-[9px] font-black text-white"
-                                        : "rounded-lg bg-emerald-500 px-2 py-1 text-[9px] font-black text-slate-950"
+                                        ? "max-w-[8.5rem] truncate rounded-full border border-white/15 bg-rose-600/92 px-2 py-0.5 text-[9px] font-black leading-4 text-white shadow-md shadow-black/20 backdrop-blur-sm"
+                                        : "max-w-[8.5rem] truncate rounded-full border border-white/15 bg-emerald-500/92 px-2 py-0.5 text-[9px] font-black leading-4 text-slate-950 shadow-md shadow-black/20 backdrop-blur-sm"
                                 }
                             >
                                 {primarySignal.value}

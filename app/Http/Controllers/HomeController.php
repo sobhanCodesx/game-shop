@@ -139,6 +139,24 @@ class HomeController extends Controller
             ? $this->homeCatalogProducts($request, $storefront, $cardRelations, $limit)
             : collect();
 
+        $latestDigitalProducts =
+            (string) ($homeExperienceState['effective_template'] ?? 'default') === 'nexus_focus'
+                ? DigitalProduct::query()
+                    ->published()
+                    ->with([
+                        'category:id,name,slug',
+                        'game:id,name,slug,cover',
+                        'platform:id,name,slug',
+                        'offers',
+                        'coverMedia',
+                        'attributeValues.attribute.options',
+                    ])
+                    ->latest('id')
+                    ->limit(10)
+                    ->get()
+                    ->map(fn (DigitalProduct $product) => $storefront->digitalProduct($product))
+                    ->values()
+                : collect();
 
         $seoTitle = trim((string) ($settings['seo_title'] ?? '')) ?: "فروشگاه بازی و تجهیزات گیمینگ | {$siteName}";
         $seoDescription = trim((string) ($settings['seo_description'] ?? ''));
@@ -198,6 +216,7 @@ class HomeController extends Controller
             'homePreview' => $homePreview,
             'heroFeaturedProducts' => $heroFeaturedProducts,
             'heroLatestProducts' => $heroLatestProducts,
+            'latestDigitalProducts' => $latestDigitalProducts,
             'latestFeed' => $previewLatestFeed,
             'latestFeedFull' => Inertia::optional(fn () => $isAdminTemplatePreview
                 ? collect()

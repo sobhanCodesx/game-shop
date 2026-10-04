@@ -114,6 +114,7 @@ interface Props {
     homePreview: HomePreviewData;
     heroFeaturedProducts: StorefrontProduct[];
     heroLatestProducts: StorefrontProduct[];
+    latestDigitalProducts: StorefrontProduct[];
     featuredProducts?: StorefrontProduct[];
     latestProducts?: StorefrontProduct[];
     contentSections?: ContentSection[];
@@ -3231,6 +3232,7 @@ export default function Home({
     homePreview,
     heroFeaturedProducts,
     heroLatestProducts,
+    latestDigitalProducts = [],
     featuredProducts = [],
     latestProducts = [],
     contentSections = [],
@@ -3405,6 +3407,7 @@ export default function Home({
                         latestArrivalsFeed={previewLatestArrivalsFeed}
                         latestProducts={previewLatestProducts}
                         latestGames={previewLatestGames}
+                        latestDigitalProducts={latestDigitalProducts}
                         products={[
                             ...heroFeaturedProducts,
                             ...heroLatestProducts,

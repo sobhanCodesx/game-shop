@@ -156,6 +156,7 @@ export interface NexusFocusInput {
     latestGames: NexusFocusLatestGame[];
     radar: NexusFocusRadarItem[];
     products: StorefrontProduct[];
+    latestDigitalProducts: StorefrontProduct[];
     latestProducts: NexusFocusLatestProduct[];
     categories: NavigationCategory[];
     personalizedHome: NexusFocusPersonalizedHome | null;
