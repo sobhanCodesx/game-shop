@@ -1,0 +1,656 @@
+name: One-shot content relations
+
+on:
+  push:
+    branches:
+      - chatgpt/content-relations
+    paths:
+      - .github/workflows/one-shot-content-relations.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: chatgpt/content-relations
+          fetch-depth: 0
+
+      - name: Apply game and product content relations
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def read(path):
+              return Path(path).read_text()
+
+          def write(path, text):
+              Path(path).write_text(text)
+
+          def replace(path, old, new, count=None):
+              text = read(path)
+              actual = text.count(old)
+              if actual == 0:
+                  raise SystemExit(f"missing replacement in {path}: {old[:100]!r}")
+              if count is not None and actual != count:
+                  raise SystemExit(f"unexpected replacement count in {path}: expected {count}, got {actual}")
+              write(path, text.replace(old, new))
+
+          # Database relation: social content can target either a physical or digital product.
+          migration = Path('database/migrations/2026_10_04_083000_add_related_digital_product_to_social_contents.php')
+          migration.write_text('''<?php
+
+          use Illuminate\\Database\\Migrations\\Migration;
+          use Illuminate\\Database\\Schema\\Blueprint;
+          use Illuminate\\Support\\Facades\\Schema;
+
+          return new class extends Migration
+          {
+              public function up(): void
+              {
+                  Schema::table('social_contents', function (Blueprint $table) {
+                      $table->foreignId('related_digital_product_id')
+                          ->nullable()
+                          ->after('related_product_id')
+                          ->constrained('digital_products')
+                          ->nullOnDelete();
+                  });
+              }
+
+              public function down(): void
+              {
+                  Schema::table('social_contents', function (Blueprint $table) {
+                      $table->dropConstrainedForeignId('related_digital_product_id');
+                  });
+              }
+          };
+          '''.replace('          ', ''))
+
+          replace(
+              'app/Models/SocialContent.php',
+              "'user_id', 'game_id', 'related_product_id', 'related_content_id'",
+              "'user_id', 'game_id', 'related_product_id', 'related_digital_product_id', 'related_content_id'",
+              1,
+          )
+          replace(
+              'app/Models/SocialContent.php',
+              "    public function relatedContent(): BelongsTo\n    {\n        return $this->belongsTo(self::class, 'related_content_id');\n    }",
+              "    public function relatedDigitalProduct(): BelongsTo\n    {\n        return $this->belongsTo(DigitalProduct::class, 'related_digital_product_id');\n    }\n\n    public function relatedContent(): BelongsTo\n    {\n        return $this->belongsTo(self::class, 'related_content_id');\n    }",
+              1,
+          )
+          replace(
+              'app/Models/Product.php',
+              "    public function attributeValues(): HasMany\n    {\n        return $this->hasMany(ProductAttributeValue::class);\n    }",
+              "    public function attributeValues(): HasMany\n    {\n        return $this->hasMany(ProductAttributeValue::class);\n    }\n\n    public function socialContents(): HasMany\n    {\n        return $this->hasMany(SocialContent::class, 'related_product_id');\n    }",
+              1,
+          )
+          replace(
+              'app/Models/DigitalProduct.php',
+              "    public function orders(): HasMany\n    {\n        return $this->hasMany(DigitalOrder::class);\n    }",
+              "    public function orders(): HasMany\n    {\n        return $this->hasMany(DigitalOrder::class);\n    }\n\n    public function socialContents(): HasMany\n    {\n        return $this->hasMany(SocialContent::class, 'related_digital_product_id');\n    }",
+              1,
+          )
+
+          # Feed admin: game + physical/digital product + related video.
+          replace('app/Http/Controllers/Admin/FeedPostController.php', 'use App\\Models\\Game;\nuse App\\Models\\Product;', 'use App\\Models\\DigitalProduct;\nuse App\\Models\\Game;\nuse App\\Models\\Product;', 1)
+          replace('app/Http/Controllers/Admin/FeedPostController.php', "'game_id', 'related_product_id', 'related_content_id'", "'game_id', 'related_product_id', 'related_digital_product_id', 'related_content_id'", 2)
+          replace(
+              'app/Http/Controllers/Admin/FeedPostController.php',
+              "            'products' => Product::query()->publiclyVisible()->latest()->limit(300)->get(['id', 'title']),\n            'videos' => SocialContent::query()->published()->where('type', 'video')->latest('published_at')->limit(300)->get(['id', 'title']),",
+              "            'products' => Product::query()->publiclyVisible()->latest()->limit(300)->get(['id', 'title']),\n            'digitalProducts' => DigitalProduct::query()->published()->latest()->limit(300)->get(['id', 'title']),\n            'videos' => SocialContent::query()->published()->where('type', 'video')->latest('published_at')->limit(300)->get(['id', 'title']),",
+              1,
+          )
+          replace(
+              'app/Http/Requests/Admin/FeedPostRequest.php',
+              "            'related_product_id' => ['nullable', 'integer', Rule::exists('products', 'id')->whereNull('deleted_at')],",
+              "            'related_product_id' => ['nullable', 'integer', Rule::exists('products', 'id')->whereNull('deleted_at'), 'prohibits:related_digital_product_id'],\n            'related_digital_product_id' => ['nullable', 'integer', Rule::exists('digital_products', 'id')->whereNull('deleted_at'), 'prohibits:related_product_id'],",
+              1,
+          )
+
+          feed_form = 'resources/js/Pages/Admin/Feed/Form.tsx'
+          replace(feed_form, '    related_product_id: number | null;\n    related_content_id: number | null;', '    related_product_id: number | null;\n    related_digital_product_id: number | null;\n    related_content_id: number | null;', 1)
+          replace(feed_form, '    related_product_id: string; related_content_id: string; status: string; allow_comments: boolean;', '    related_product_id: string; related_digital_product_id: string; related_content_id: string; status: string; allow_comments: boolean;', 1)
+          replace(
+              feed_form,
+              'export default function FeedForm({ post, games, products, videos }: { post: PostData | null; games: Option[]; products: Option[]; videos: Option[] }) {',
+              'export default function FeedForm({ post, games, products, digitalProducts, videos }: { post: PostData | null; games: Option[]; products: Option[]; digitalProducts: Option[]; videos: Option[] }) {',
+              1,
+          )
+          replace(
+              feed_form,
+              '        game_id: post?.game_id ? String(post.game_id) : "", related_product_id: post?.related_product_id ? String(post.related_product_id) : "",\n        related_content_id: post?.related_content_id ? String(post.related_content_id) : "", status: post?.status ?? "draft",',
+              '        game_id: post?.game_id ? String(post.game_id) : "", related_product_id: post?.related_product_id ? String(post.related_product_id) : "",\n        related_digital_product_id: post?.related_digital_product_id ? String(post.related_digital_product_id) : "",\n        related_content_id: post?.related_content_id ? String(post.related_content_id) : "", status: post?.status ?? "draft",',
+              1,
+          )
+          replace(
+              feed_form,
+              '    const syncMedia = (next: MediaItem[]) => {',
+              '''    const relatedProductValue = data.related_digital_product_id
+              ? `digital:${data.related_digital_product_id}`
+              : data.related_product_id
+                ? `physical:${data.related_product_id}`
+                : "";
+              const setRelatedProduct = (value: string) => {
+              const [kind, id = ""] = value.split(":");
+              setData("related_product_id", kind === "physical" ? id : "");
+              setData("related_digital_product_id", kind === "digital" ? id : "");
+              };
+
+              const syncMedia = (next: MediaItem[]) => {'''.replace('              ', '    '),
+              1,
+          )
+          replace(
+              feed_form,
+              '<SelectField label="محصول مرتبط" onChange={(value) => setData("related_product_id", value)} options={[["", "بدون محصول"], ...products.map((item) => [String(item.id), item.title ?? ""])]} value={data.related_product_id} />',
+              '<SelectField label="محصول مرتبط" onChange={setRelatedProduct} options={[["", "بدون محصول"], ...digitalProducts.map((item) => [`digital:${item.id}`, `دیجیتال · ${item.title ?? ""}`]), ...products.map((item) => [`physical:${item.id}`, `فیزیکی · ${item.title ?? ""}`])]} value={relatedProductValue} />',
+              1,
+          )
+
+          # Video admin gets the same product relationship, in addition to its game channel.
+          replace('app/Http/Controllers/Admin/VideoController.php', 'use App\\Models\\Game;\nuse App\\Models\\SocialContent;', 'use App\\Models\\DigitalProduct;\nuse App\\Models\\Game;\nuse App\\Models\\Product;\nuse App\\Models\\SocialContent;', 1)
+          replace(
+              'app/Http/Controllers/Admin/VideoController.php',
+              "'status', 'featured', 'game_id', 'allow_comments'",
+              "'status', 'featured', 'game_id', 'related_product_id', 'related_digital_product_id', 'allow_comments'",
+              3,
+          )
+          replace(
+              'app/Http/Controllers/Admin/VideoController.php',
+              "            'games' => Game::query()->whereIn('status', ['active', 'published'])->orderBy('name')->get(['id', 'name']),\n            'playlists' => VideoPlaylist::query()->orderBy('sort_order')->orderBy('title')->get(['id', 'game_id', 'title']),",
+              "            'games' => Game::query()->whereIn('status', ['active', 'published'])->orderBy('name')->get(['id', 'name']),\n            'products' => Product::query()->publiclyVisible()->latest()->limit(300)->get(['id', 'title']),\n            'digitalProducts' => DigitalProduct::query()->published()->latest()->limit(300)->get(['id', 'title']),\n            'playlists' => VideoPlaylist::query()->orderBy('sort_order')->orderBy('title')->get(['id', 'game_id', 'title']),",
+              1,
+          )
+          replace(
+              'app/Http/Requests/Admin/VideoRequest.php',
+              "            'game_id' => ['nullable', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],",
+              "            'game_id' => ['nullable', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],\n            'related_product_id' => ['nullable', 'integer', Rule::exists('products', 'id')->whereNull('deleted_at'), 'prohibits:related_digital_product_id'],\n            'related_digital_product_id' => ['nullable', 'integer', Rule::exists('digital_products', 'id')->whereNull('deleted_at'), 'prohibits:related_product_id'],",
+              1,
+          )
+
+          video_form = 'resources/js/Pages/Admin/Videos/Form.tsx'
+          replace(video_form, '    game_id: number | null;\n    playlist_ids: number[];', '    game_id: number | null;\n    related_product_id: number | null;\n    related_digital_product_id: number | null;\n    playlist_ids: number[];', 1)
+          replace(video_form, '    games: Array<{ id: number; name: string }>;\n    playlists:', '    games: Array<{ id: number; name: string }>;\n    products: Array<{ id: number; title: string }>;\n    digitalProducts: Array<{ id: number; title: string }>;\n    playlists:', 1)
+          replace(video_form, '    game_id: string;\n    playlist_ids: number[];', '    game_id: string;\n    related_product_id: string;\n    related_digital_product_id: string;\n    playlist_ids: number[];', 1)
+          replace(video_form, 'export default function VideoForm({ video, games, playlists }: Props) {', 'export default function VideoForm({ video, games, products, digitalProducts, playlists }: Props) {', 1)
+          replace(
+              video_form,
+              '            game_id: video?.game_id ? String(video.game_id) : "",\n            playlist_ids: video?.playlist_ids ?? [],',
+              '            game_id: video?.game_id ? String(video.game_id) : "",\n            related_product_id: video?.related_product_id ? String(video.related_product_id) : "",\n            related_digital_product_id: video?.related_digital_product_id ? String(video.related_digital_product_id) : "",\n            playlist_ids: video?.playlist_ids ?? [],',
+              1,
+          )
+          replace(
+              video_form,
+              '    const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(',
+              '''    const relatedProductValue = data.related_digital_product_id
+              ? `digital:${data.related_digital_product_id}`
+              : data.related_product_id
+                ? `physical:${data.related_product_id}`
+                : "";
+              const setRelatedProduct = (value: string) => {
+              const [kind, id = ""] = value.split(":");
+              setData("related_product_id", kind === "physical" ? id : "");
+              setData("related_digital_product_id", kind === "digital" ? id : "");
+              };
+
+              const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>('''.replace('              ', '    '),
+              1,
+          )
+          channel_pattern = re.compile(r'''(\s*<FormField\n\s*description="هر عنوان بازی نقش یک کانال مستقل را دارد\."\n\s*label="کانال ویدیو"\n\s*>.*?\n\s*</FormField>)(\n\s*\{playlists\.length > 0 && \()''', re.S)
+          text = read(video_form)
+          match = channel_pattern.search(text)
+          if not match:
+              raise SystemExit('video channel block not found')
+          product_field = '''
+                          <FormField
+                              description="یک محصول فیزیکی یا دیجیتال را به ویدیو وصل کنید؛ اگر ویدیو در فید نمایش داده شود CTA خرید هم همراهش می‌آید."
+                              error={errors.related_product_id ?? errors.related_digital_product_id}
+                              label="محصول مرتبط"
+                          >
+                              <select
+                                  className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
+                                  onChange={(event) => setRelatedProduct(event.target.value)}
+                                  value={relatedProductValue}
+                              >
+                                  <option value="">بدون محصول مرتبط</option>
+                                  {digitalProducts.length > 0 && (
+                                      <optgroup label="اکانت‌های دیجیتال">
+                                          {digitalProducts.map((product) => (
+                                              <option key={`digital-${product.id}`} value={`digital:${product.id}`}>
+                                                  {product.title}
+                                              </option>
+                                          ))}
+                                      </optgroup>
+                                  )}
+                                  {products.length > 0 && (
+                                      <optgroup label="محصولات فیزیکی">
+                                          {products.map((product) => (
+                                              <option key={`physical-${product.id}`} value={`physical:${product.id}`}>
+                                                  {product.title}
+                                              </option>
+                                          ))}
+                                      </optgroup>
+                                  )}
+                              </select>
+                          </FormField>'''
+          text = text[:match.end(1)] + product_field + text[match.start(2):]
+          write(video_form, text)
+
+          # Feed payload: prefer the game channel identity for every linked feed/video,
+          # and expose one unified product card for physical or digital products.
+          feed_service = 'app/Services/FeedService.php'
+          text = read(feed_service)
+          eager_marker = "                'relatedProduct.coverMedia',\n"
+          if eager_marker not in text:
+              raise SystemExit('FeedService product eager marker missing')
+          text = text.replace(
+              eager_marker,
+              eager_marker
+              + "                'relatedDigitalProduct:id,title,slug,status',\n"
+              + "                'relatedDigitalProduct.coverMedia',\n"
+              + "                'relatedDigitalProduct.offers:id,digital_product_id,price,status,sort_order',\n",
+          )
+          text = text.replace(
+              "                'related_product_id',\n                'related_content_id',",
+              "                'related_product_id',\n                'related_digital_product_id',\n                'related_content_id',",
+          )
+          old_author = '''        $isEditorialPost = $content->type === 'post';
+          $authorName = $isEditorialPost
+              ? 'PlayNexus'
+              : ($content->game?->name ?? 'PlayNexus');
+          $channelLogo = ! $isEditorialPost && $content->game
+              ? ($content->game->cover ?: $content->game->playlists->first()?->logo)
+              : null;'''.replace('          ', '')
+          new_author = '''        $authorName = $content->game?->name ?? 'PlayNexus';
+          $channelLogo = $content->game
+              ? ($content->game->playlists->first()?->logo ?: $content->game->cover)
+              : null;'''.replace('          ', '')
+          if text.count(old_author) != 2:
+              raise SystemExit(f'Expected two FeedService author blocks, got {text.count(old_author)}')
+          text = text.replace(old_author, new_author)
+          text = text.replace(
+              "                'url' => $isEditorialPost\n                    ? null\n                    : ($content->game ? route('channels.show', $content->game->slug, false) : null),",
+              "                'url' => $content->game ? route('channels.show', $content->game->slug, false) : null,",
+          )
+          old_product = '''            'related_product' => $content->relatedProduct && $content->relatedProduct->status === 'published' && $content->relatedProduct->visibility === 'public' ? [
+              'id' => $content->relatedProduct->id,
+              'title' => $content->relatedProduct->title,
+              'url' => route('products.show', $content->relatedProduct->slug, false),
+              'image_url' => MediaStorage::url($content->relatedProduct->coverMedia?->path),
+              'price' => $content->relatedProduct->discount_price ?: $content->relatedProduct->price,
+          ] : null,'''.replace('          ', '')
+          if old_product not in text:
+              raise SystemExit('FeedService related product payload block missing')
+          text = text.replace(old_product, "            'related_product' => $this->relatedProductCard($content),", 1)
+          helper = '''
+              private function relatedProductCard(SocialContent $content): ?array
+              {
+                  $digital = $content->relatedDigitalProduct;
+                  if ($digital && $digital->status === 'published') {
+                      $offers = $digital->relationLoaded('offers')
+                          ? $digital->offers
+                          : $digital->offers()->get();
+                      $price = $offers->where('status', 'active')->min('price');
+
+                      return [
+                          'id' => $digital->id,
+                          'kind' => 'digital',
+                          'label' => 'اکانت دیجیتال',
+                          'title' => $digital->title,
+                          'url' => route('digital.show', $digital->slug, false),
+                          'image_url' => MediaStorage::url($digital->coverMedia?->path),
+                          'price' => $price !== null ? (int) $price : null,
+                      ];
+                  }
+
+                  $product = $content->relatedProduct;
+                  if (! $product || $product->status !== 'published' || $product->visibility !== 'public') {
+                      return null;
+                  }
+
+                  $price = $product->discount_price ?: $product->price;
+
+                  return [
+                      'id' => $product->id,
+                      'kind' => 'physical',
+                      'label' => 'محصول فیزیکی',
+                      'title' => $product->title,
+                      'url' => route('products.show', $product->slug, false),
+                      'image_url' => MediaStorage::url($product->coverMedia?->path),
+                      'price' => $price !== null ? (int) $price : null,
+                  ];
+              }
+
+          '''.replace('              ', '    ')
+          marker = '    private function homeFeedQuery(): Builder\n'
+          if marker not in text:
+              raise SystemExit('FeedService homeFeedQuery marker missing')
+          text = text.replace(marker, helper + marker, 1)
+          digital_fallback = '''            } elseif ($content->relatedDigitalProduct?->coverMedia?->path) {
+              $media->push([
+                  'id' => -$content->relatedDigitalProduct->id,
+                  'type' => 'image',
+                  'url' => MediaStorage::url($content->relatedDigitalProduct->coverMedia->path),
+                  'thumbnail' => null,
+                  'width' => null,
+                  'height' => null,
+                  'duration' => null,
+                  'alt' => $content->title,
+              ]);
+          }'''.replace('          ', '')
+          physical_fallback_end = '''            } elseif ($content->relatedProduct?->coverMedia?->path) {
+              $media->push([
+                  'id' => -$content->relatedProduct->id,
+                  'type' => 'image',
+                  'url' => MediaStorage::url($content->relatedProduct->coverMedia->path),
+                  'thumbnail' => null,
+                  'width' => null,
+                  'height' => null,
+                  'duration' => null,
+                  'alt' => $content->title,
+              ]);
+          }'''.replace('          ', '')
+          if physical_fallback_end not in text:
+              raise SystemExit('FeedService physical preview fallback missing')
+          text = text.replace(physical_fallback_end, physical_fallback_end[:-2] + digital_fallback, 1)
+          text = text.replace(
+              "                'image_url' => MediaStorage::url($content->game->cover),",
+              "                'image_url' => MediaStorage::url($channelLogo),",
+              1,
+          )
+          write(feed_service, text)
+
+          # Frontend contract and graphic product CTA inside feed cards.
+          types = 'resources/js/types/index.ts'
+          replace(
+              types,
+              '''        id: number;
+              title: string;
+              url: string;
+              image_url: string | null;
+              price: number;'''.replace('              ', '        '),
+              '''        id: number;
+              kind: "physical" | "digital";
+              label: string;
+              title: string;
+              url: string;
+              image_url: string | null;
+              price: number | null;'''.replace('              ', '        '),
+              1,
+          )
+
+          feed_item = 'resources/js/Components/Storefront/Feed/FeedItem.tsx'
+          replace(
+              feed_item,
+              '    Bookmark,\n    Gamepad2,\n    Heart,\n    Link2,\n    MessageCircle,\n    Package,\n    PlaySquare,\n    Share2,',
+              '    ArrowUpLeft,\n    Bookmark,\n    Gamepad2,\n    Heart,\n    Link2,\n    MessageCircle,\n    PlaySquare,\n    Share2,\n    ShoppingBag,\n    Sparkles,',
+              1,
+          )
+          old_cta = '''                    {item.related_product && (
+                          <Link
+                              className="flex min-w-0 items-center gap-3 rounded-2xl bg-[var(--store-surface)] p-3 transition hover:bg-[var(--store-accent-soft)]"
+                              href={item.related_product.url}
+                          >
+                              {item.related_product.image_url ? (
+                                  <img
+                                      alt=""
+                                      className="size-12 rounded-xl object-cover"
+                                      loading="lazy"
+                                      src={item.related_product.image_url}
+                                  />
+                              ) : (
+                                  <span className="grid size-12 place-items-center rounded-xl bg-indigo-500/10 text-indigo-400">
+                                      <Package />
+                                  </span>
+                              )}
+                              <span className="min-w-0">
+                                  <small className="text-[10px] font-black text-indigo-400">
+                                      محصول مرتبط
+                                  </small>
+                                  <strong className="block truncate text-xs">
+                                      {item.related_product.title}
+                                  </strong>
+                                  <span className="text-[10px] text-[var(--store-muted)]">
+                                      {money.format(item.related_product.price)}{" "}
+                                      تومان
+                                  </span>
+                              </span>
+                          </Link>
+                      )}'''.replace('                      ', '                    ')
+          new_cta = '''                    {item.related_product && (
+                          <Link
+                              className="group relative isolate flex min-w-0 items-center gap-3 overflow-hidden rounded-[22px] border border-indigo-500/30 bg-[linear-gradient(120deg,rgba(67,56,202,.22),rgba(15,23,42,.82)_52%,rgba(6,182,212,.12))] p-3.5 shadow-[0_18px_45px_-30px_rgba(99,102,241,.95)] transition duration-300 hover:-translate-y-0.5 hover:border-indigo-400/60 hover:shadow-[0_22px_55px_-30px_rgba(99,102,241,.9)] sm:col-span-2"
+                              href={item.related_product.url}
+                          >
+                              <span
+                                  aria-hidden="true"
+                                  className="pointer-events-none absolute -right-12 -top-16 size-36 rounded-full bg-indigo-500/15 blur-3xl"
+                              />
+                              <span className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-slate-950/65 text-indigo-300 shadow-lg shadow-black/20">
+                                  {item.related_product.image_url ? (
+                                      <img
+                                          alt={item.related_product.title}
+                                          className="size-full object-cover transition duration-500 group-hover:scale-105"
+                                          loading="lazy"
+                                          src={item.related_product.image_url}
+                                      />
+                                  ) : (
+                                      <ShoppingBag size={24} />
+                                  )}
+                              </span>
+                              <span className="relative min-w-0 flex-1">
+                                  <span className="flex flex-wrap items-center gap-1.5">
+                                      <small className="inline-flex items-center gap-1 rounded-full border border-indigo-400/20 bg-indigo-500/10 px-2 py-0.5 text-[9px] font-black text-indigo-300">
+                                          <Sparkles size={10} />
+                                          {item.related_product.label}
+                                      </small>
+                                      {item.related_product.price !== null ? (
+                                          <span className="text-[10px] font-black text-emerald-400">
+                                              {item.related_product.kind === "digital" ? "از " : ""}
+                                              {money.format(item.related_product.price)} تومان
+                                          </span>
+                                      ) : (
+                                          <span className="text-[9px] font-bold text-amber-300">
+                                              قیمت و ظرفیت در صفحه محصول
+                                          </span>
+                                      )}
+                                  </span>
+                                  <strong className="mt-1.5 block line-clamp-2 text-xs font-black leading-5 text-white sm:text-sm">
+                                      {item.related_product.title}
+                                  </strong>
+                                  <span className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-indigo-500 px-2.5 py-1.5 text-[10px] font-black text-white shadow-lg shadow-indigo-950/30 transition group-hover:bg-indigo-400">
+                                      مشاهده و خرید
+                                      <ArrowUpLeft size={13} />
+                                  </span>
+                              </span>
+                          </Link>
+                      )}'''.replace('                      ', '                    ')
+          text = read(feed_item)
+          if old_cta not in text:
+              raise SystemExit('FeedItem old product CTA block missing')
+          write(feed_item, text.replace(old_cta, new_cta, 1))
+
+          # Feed detail page stays consistent with the same unified product relation.
+          show = 'resources/js/Pages/Feed/Show.tsx'
+          text = read(show)
+          text = text.replace('                                                محصول مرتبط\n', '                                                {item.related_product.label}\n', 1)
+          old_price = '''                                            <span className="mt-0.5 block text-[9px] text-[var(--store-muted)]">
+                                                  {money.format(
+                                                      item.related_product.price,
+                                                  )}{" "}
+                                                  تومان
+                                              </span>'''.replace('                                              ', '                                            ')
+          new_price = '''                                            <span className="mt-0.5 block text-[9px] text-[var(--store-muted)]">
+                                                  {item.related_product.price !== null
+                                                      ? `${item.related_product.kind === "digital" ? "از " : ""}${money.format(item.related_product.price)} تومان`
+                                                      : "مشاهده قیمت و ظرفیت‌ها"}
+                                              </span>'''.replace('                                              ', '                                            ')
+          if old_price not in text:
+              raise SystemExit('Feed show related product price block missing')
+          write(show, text.replace(old_price, new_price, 1))
+
+          # Intelligence Graph mirrors the new digital-product edge and supports reverse filtering.
+          schema = 'app/Services/GraphQL/PlayNexusGraphSchemaFactory.php'
+          replace(schema, 'use App\\Models\\Category;\nuse App\\Models\\Game;', 'use App\\Models\\Category;\nuse App\\Models\\DigitalProduct;\nuse App\\Models\\Game;', 1)
+          replace(schema, '    private ?ObjectType $productType = null;\n    private ?ObjectType $contentType = null;', '    private ?ObjectType $productType = null;\n    private ?ObjectType $digitalProductType = null;\n    private ?ObjectType $contentType = null;', 1)
+          digital_type = '''
+              private function digitalProductType(): ObjectType
+              {
+                  return $this->digitalProductType ??= new ObjectType([
+                      'name' => 'DigitalProduct',
+                      'description' => 'PlayNexus digital account/product connected to editorial content.',
+                      'fields' => fn () => [
+                          'id' => Type::nonNull(Type::id()),
+                          'title' => Type::nonNull(Type::string()),
+                          'slug' => Type::nonNull(Type::string()),
+                          'shortDescription' => ['type' => Type::string(), 'resolve' => fn (DigitalProduct $product) => $product->short_description],
+                          'supportDays' => ['type' => Type::int(), 'resolve' => fn (DigitalProduct $product) => $product->support_days],
+                          'featured' => Type::nonNull(Type::boolean()),
+                          'status' => Type::string(),
+                          'url' => [
+                              'type' => Type::string(),
+                              'resolve' => fn (DigitalProduct $product) => $product->status === 'published'
+                                  ? route('digital.show', $product->slug, false)
+                                  : null,
+                          ],
+                          'priceFrom' => [
+                              'type' => Type::float(),
+                              'resolve' => function (DigitalProduct $product): ?float {
+                                  $offers = $product->relationLoaded('offers') ? $product->offers : $product->offers()->get();
+                                  $price = $offers->where('status', 'active')->min('price');
+
+                                  return $price !== null ? (float) $price : null;
+                              },
+                          ],
+                          'game' => [
+                              'type' => $this->gameType(),
+                              'resolve' => fn (DigitalProduct $product) => $product->relationLoaded('game') ? $product->game : $product->game()->first(),
+                          ],
+                          'category' => [
+                              'type' => $this->categoryType(),
+                              'resolve' => fn (DigitalProduct $product) => $product->relationLoaded('category') ? $product->category : $product->category()->first(),
+                          ],
+                          'platform' => [
+                              'type' => $this->platformType(),
+                              'resolve' => fn (DigitalProduct $product) => $product->relationLoaded('platform') ? $product->platform : $product->platform()->first(),
+                          ],
+                      ],
+                  ]);
+              }
+
+          '''.replace('              ', '    ')
+          text = read(schema)
+          marker = '    private function contentType(): ObjectType\n'
+          if marker not in text:
+              raise SystemExit('Graph schema contentType marker missing')
+          text = text.replace(marker, digital_type + marker, 1)
+          relation_marker = '''                'relatedProduct' => [
+                      'type' => $this->productType(),
+                      'resolve' => fn (SocialContent $content) => $content->relationLoaded('relatedProduct')
+                          ? $content->relatedProduct
+                          : $content->relatedProduct()->first(),
+                  ],'''.replace('                  ', '                ')
+          digital_relation = relation_marker + '''
+                  'relatedDigitalProduct' => [
+                      'type' => $this->digitalProductType(),
+                      'resolve' => fn (SocialContent $content) => $content->relationLoaded('relatedDigitalProduct')
+                          ? $content->relatedDigitalProduct
+                          : $content->relatedDigitalProduct()->first(),
+                  ],'''.replace('                  ', '                ')
+          if relation_marker not in text:
+              raise SystemExit('Graph schema relatedProduct marker missing')
+          text = text.replace(relation_marker, digital_relation, 1)
+          text = text.replace(
+              "            'gameId' => ['type' => Type::id()],\n            ...($includeType ? ['type' => ['type' => Type::string()]] : []),",
+              "            'gameId' => ['type' => Type::id()],\n            'productId' => ['type' => Type::id()],\n            'digitalProductId' => ['type' => Type::id()],\n            ...($includeType ? ['type' => ['type' => Type::string()]] : []),",
+              1,
+          )
+          write(schema, text)
+
+          repo = 'app/Services/GraphQL/PlayNexusGraphRepository.php'
+          text = read(repo)
+          text = text.replace(
+              "->with(['game', 'relatedProduct', 'relatedContent', 'playlists', 'media'])",
+              "->with(['game', 'relatedProduct', 'relatedDigitalProduct.game', 'relatedDigitalProduct.category', 'relatedDigitalProduct.platform', 'relatedDigitalProduct.offers', 'relatedContent', 'playlists', 'media'])",
+              1,
+          )
+          text = text.replace(
+              "->with(['game', 'relatedProduct', 'playlists', 'media'])",
+              "->with(['game', 'relatedProduct', 'relatedDigitalProduct.game', 'relatedDigitalProduct.category', 'relatedDigitalProduct.platform', 'relatedDigitalProduct.offers', 'playlists', 'media'])",
+              1,
+          )
+          text = text.replace(
+              "            ->when(isset($args['gameId']), fn (Builder $q) => $q->where('game_id', (int) $args['gameId']))\n            ->when(isset($args['type']),",
+              "            ->when(isset($args['gameId']), fn (Builder $q) => $q->where('game_id', (int) $args['gameId']))\n            ->when(isset($args['productId']), fn (Builder $q) => $q->where('related_product_id', (int) $args['productId']))\n            ->when(isset($args['digitalProductId']), fn (Builder $q) => $q->where('related_digital_product_id', (int) $args['digitalProductId']))\n            ->when(isset($args['type']),",
+              1,
+          )
+          write(repo, text)
+
+          service = 'app/Services/GraphQL/PlayNexusGraphService.php'
+          text = read(service)
+          if text.count("'1.1.0'") != 2:
+              raise SystemExit('Unexpected GraphQL schema version occurrence count')
+          write(service, text.replace("'1.1.0'", "'1.2.0'"))
+          PY
+
+      - name: Verify PHP syntax
+        run: |
+          php -l app/Models/SocialContent.php
+          php -l app/Models/Product.php
+          php -l app/Models/DigitalProduct.php
+          php -l app/Http/Controllers/Admin/FeedPostController.php
+          php -l app/Http/Controllers/Admin/VideoController.php
+          php -l app/Http/Requests/Admin/FeedPostRequest.php
+          php -l app/Http/Requests/Admin/VideoRequest.php
+          php -l app/Services/FeedService.php
+          php -l app/Services/GraphQL/PlayNexusGraphSchemaFactory.php
+          php -l app/Services/GraphQL/PlayNexusGraphRepository.php
+          php -l app/Services/GraphQL/PlayNexusGraphService.php
+          php -l database/migrations/2026_10_04_083000_add_related_digital_product_to_social_contents.php
+
+      - name: Install PHP test dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run graph regression tests
+        run: php artisan test tests/Feature/ContentAgentGraphqlTest.php
+
+      - name: Verify frontend build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Guard requested behavior
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          checks = {
+              'app/Models/SocialContent.php': ['relatedDigitalProduct', 'related_digital_product_id'],
+              'app/Services/FeedService.php': ["'kind' => 'digital'", "playlists->first()?->logo", "route('digital.show'"],
+              'resources/js/Components/Storefront/Feed/FeedItem.tsx': ['مشاهده و خرید', 'item.related_product.label', 'ShoppingBag'],
+              'resources/js/Pages/Admin/Feed/Form.tsx': ['related_digital_product_id', 'دیجیتال ·'],
+              'resources/js/Pages/Admin/Videos/Form.tsx': ['related_digital_product_id', 'اکانت‌های دیجیتال'],
+              'app/Services/GraphQL/PlayNexusGraphSchemaFactory.php': ['relatedDigitalProduct', 'digitalProductId'],
+          }
+          for path, needles in checks.items():
+              text = Path(path).read_text()
+              for needle in needles:
+                  if needle not in text:
+                      raise SystemExit(f'{needle!r} missing from {path}')
+          PY
+
+      - name: Commit focused changes and remove one-shot workflow
+        shell: bash
+        run: |
+          rm .github/workflows/one-shot-content-relations.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Link feed and videos to games and all products"
+          git push origin HEAD:chatgpt/content-relations
