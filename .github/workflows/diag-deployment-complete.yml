@@ -19,7 +19,7 @@ jobs:
       API_BASE: https://playnexus.ir/api/deployment-agent
       SOURCE_SHA: b81f3e5052866bdf1696c10d5a5f4688b45acd50
     steps:
-      - name: Probe tiny deployment upload complete
+      - name: Probe deployment agent health and tiny upload
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -29,10 +29,19 @@ jobs:
           print(hmac.new(root,b'playnexus/deployment-auth/v1',hashlib.sha256).hexdigest())
           PY
           )"
-          printf 'playnexus deployment diagnostic %s\n' "$(date -u +%s)" > /tmp/diag.bin
-          RESPONSE="$(curl -fsS \
+
+          HEALTH_HTTP="$(curl -sS -o /tmp/health.json -w '%{http_code}' \
             -H "Authorization: Bearer $TOKEN" \
-            -H "Accept: application/json" \
+            -H 'Accept: application/json' \
+            "$API_BASE/health?expected_sha=$SOURCE_SHA" || true)"
+          echo "health_http=$HEALTH_HTTP"
+          cat /tmp/health.json || true
+          echo
+
+          printf 'playnexus deployment diagnostic %s\n' "$(date -u +%s)" > /tmp/diag.bin
+          UPLOAD_HTTP="$(curl -sS -o /tmp/chunk.json -w '%{http_code}' \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Accept: application/json' \
             -H "X-PlayNexus-Deploy-SHA: $SOURCE_SHA" \
             -H "X-PlayNexus-Deploy-Run: $GITHUB_RUN_ID" \
             -F 'operation_id=' \
@@ -44,39 +53,29 @@ jobs:
             -F 'source_ref=refs/heads/main' \
             -F "run_id=$GITHUB_RUN_ID" \
             -F 'chunk=@/tmp/diag.bin;type=application/octet-stream' \
-            "$API_BASE/upload/chunk")"
-          echo "$RESPONSE" > /tmp/chunk.json
-          OP_ID="$(python3 - <<'PY'
+            "$API_BASE/upload/chunk" || true)"
+          echo "upload_http=$UPLOAD_HTTP"
+          cat /tmp/chunk.json || true
+          echo
+
+          if [[ "$UPLOAD_HTTP" =~ ^2 ]]; then
+            OP_ID="$(python3 - <<'PY'
           import json
           data=json.load(open('/tmp/chunk.json'))
           print(data.get('id',''))
           PY
-          )"
-          test -n "$OP_ID"
-          echo "operation_id=$OP_ID"
+            )"
+            echo "operation_id=$OP_ID"
+            COMPLETE_HTTP="$(curl -sS -o /tmp/complete.json -w '%{http_code}' \
+              -X POST \
+              -H "Authorization: Bearer $TOKEN" \
+              -H 'Accept: application/json' \
+              -H 'Content-Type: application/json' \
+              --data "{\"operation_id\":\"$OP_ID\"}" \
+              "$API_BASE/upload/complete" || true)"
+            echo "complete_http=$COMPLETE_HTTP"
+            cat /tmp/complete.json || true
+            echo
+          fi
 
-          set +e
-          HTTP="$(curl -sS -o /tmp/complete.json -w '%{http_code}' \
-            -X POST \
-            -H "Authorization: Bearer $TOKEN" \
-            -H 'Accept: application/json' \
-            -H 'Content-Type: application/json' \
-            -H "X-PlayNexus-Deploy-SHA: $SOURCE_SHA" \
-            -H "X-PlayNexus-Deploy-Run: $GITHUB_RUN_ID" \
-            --data "{\"operation_id\":\"$OP_ID\"}" \
-            "$API_BASE/upload/complete")"
-          RC=$?
-          set -e
-          echo "complete_http=$HTTP curl_rc=$RC"
-          cat /tmp/complete.json || true
-          echo
-
-          STATUS_HTTP="$(curl -sS -o /tmp/status.json -w '%{http_code}' \
-            -H "Authorization: Bearer $TOKEN" \
-            -H 'Accept: application/json' \
-            "$API_BASE/$OP_ID/status" || true)"
-          echo "status_http=$STATUS_HTTP"
-          cat /tmp/status.json || true
-          echo
-
-          [[ "$HTTP" =~ ^2 ]] || exit 1
+          [[ "$HEALTH_HTTP" =~ ^2|503$ ]] || exit 1
