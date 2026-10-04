@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Deployment\DeploymentStateStore;
 use App\Services\FollowedGameWatchService;
 use App\Services\GameEventService;
 use App\Services\GameRadarService;
@@ -13,6 +14,10 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+Artisan::command('nexus:cleanup-deployments', function () {
+    $removed = app(DeploymentStateStore::class)->cleanup();
+    $this->info("Deployment cleanup removed {$removed} stale operation(s).");
+})->purpose('Reclaim disk space from stale PlayNexus deployment artifacts');
 
 Artisan::command('nexus:sync-game-radar', function () {
     $snapshot = app(GameRadarService::class)->refresh();
@@ -53,7 +58,6 @@ Artisan::command('nexus:sync-followed-game-watchlist', function () {
 Artisan::command('nexus:sync-game-events {--days=90}', function () {
     $days = max(1, min(365, (int) $this->option('days')));
     $count = app(GameEventService::class)->syncRecentContent($days);
-
     $this->info("Game Events synced: {$count} records considered from the last {$days} days.");
 })->purpose('Backfill canonical Game Events from published PlayNexus content');
 
@@ -61,6 +65,10 @@ Artisan::command('nexus:prune-mobile-api-tokens', function () {
     $count = app(MobileApiTokenService::class)->pruneExpired();
     $this->info("Expired mobile API tokens pruned: {$count}.");
 })->purpose('Delete expired native mobile API access tokens');
+
+Schedule::command('nexus:cleanup-deployments')
+    ->hourly()
+    ->withoutOverlapping();
 
 Schedule::command('nexus:prune-mobile-api-tokens')
     ->dailyAt('03:20')
@@ -70,11 +78,9 @@ Schedule::command('nexus:sync-game-radar')
     ->everySixHours()
     ->withoutOverlapping();
 
-
 Schedule::command('nexus:sync-game-events --days=7')
     ->daily()
     ->withoutOverlapping();
-
 
 Schedule::command('nexus:sync-followed-game-watchlist')
     ->cron('20 */6 * * *')
