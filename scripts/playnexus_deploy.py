@@ -40,7 +40,8 @@ DEPLOY_TOKEN = (
 SOURCE_SHA = os.getenv("GITHUB_SHA", "").strip().lower()
 SOURCE_REF = os.getenv("GITHUB_REF", "").strip()
 RUN_ID = os.getenv("GITHUB_RUN_ID", "").strip()
-CHUNK_SIZE = 1024 * 1024
+# Stay comfortably below shared-host POST/upload limits including multipart overhead.
+CHUNK_SIZE = 512 * 1024
 MAX_RETRIES = 4
 TERMINAL = {"completed", "rolled_back"}
 
