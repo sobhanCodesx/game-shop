@@ -11,9 +11,9 @@ export default function ProductCard({
     product: StorefrontProduct;
 }) {
     const highlightedMetaKeys = new Set(["availability", "discount"]);
-    const highlightedBadges = product.meta_badges.filter((meta) =>
-        highlightedMetaKeys.has(meta.key),
-    );
+    const primaryHighlight =
+        product.meta_badges.find((meta) => meta.key === "discount") ??
+        product.meta_badges.find((meta) => meta.key === "availability");
     const detailBadges = product.meta_badges.filter(
         (meta) => !highlightedMetaKeys.has(meta.key),
     );
@@ -60,23 +60,22 @@ export default function ProductCard({
                         />
                     )}
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/45 to-transparent opacity-60 transition group-hover:opacity-80" />
-                    <div className="absolute right-2.5 top-2.5 flex max-w-[72%] flex-col items-start gap-1.5">
+                    <div className="absolute right-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-1">
                         {product.badge && (
-                            <span className="inline-flex max-w-full truncate rounded-lg border border-indigo-300/40 bg-indigo-600 px-2.5 py-1 text-[11px] font-black leading-5 text-white shadow-lg shadow-black/25">
+                            <span className="inline-flex max-w-[8.5rem] items-center truncate rounded-full border border-white/15 bg-indigo-600/92 px-2 py-0.5 text-[9px] font-black leading-4 text-white shadow-md shadow-black/20 backdrop-blur-sm sm:text-[10px]">
                                 {product.badge}
                             </span>
                         )}
-                        {highlightedBadges.map((meta) => (
+                        {primaryHighlight && (
                             <span
-                                className={`inline-flex max-w-full items-center rounded-lg border px-2.5 py-1 text-[11px] font-black leading-5 shadow-lg shadow-black/25 ${highlightToneClasses[meta.tone]}`}
-                                key={meta.key}
-                                title={`${meta.label}: ${meta.value}`}
+                                className={`inline-flex max-w-[8.5rem] items-center truncate rounded-full border px-2 py-0.5 text-[9px] font-black leading-4 shadow-md shadow-black/20 backdrop-blur-sm sm:text-[10px] ${highlightToneClasses[primaryHighlight.tone]}`}
+                                title={`${primaryHighlight.label}: ${primaryHighlight.value}`}
                             >
-                                {meta.key === "discount"
-                                    ? `${meta.label} ${meta.value}`
-                                    : meta.value}
+                                {primaryHighlight.key === "discount"
+                                    ? `${primaryHighlight.label} ${primaryHighlight.value}`
+                                    : primaryHighlight.value}
                             </span>
-                        ))}
+                        )}
                     </div>
                     {product.trade_enabled && (
                         <Chip
