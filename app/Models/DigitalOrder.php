@@ -11,6 +11,7 @@ class DigitalOrder extends Model
 {
     protected $fillable = [
         'number', 'user_id', 'seller_id', 'digital_product_id', 'digital_offer_id',
+        'platform_variant_id', 'platform_variant_name',
         'sale_price', 'order_status', 'payment_status',
         'delivery_status', 'reservation_expires_at', 'paid_at',
         'delivered_at', 'completed_at', 'cancelled_at',
@@ -46,6 +47,11 @@ class DigitalOrder extends Model
     public function offer(): BelongsTo
     {
         return $this->belongsTo(DigitalOffer::class, 'digital_offer_id');
+    }
+
+    public function platformVariant(): BelongsTo
+    {
+        return $this->belongsTo(PlatformVariant::class);
     }
 
     public function messages(): HasMany

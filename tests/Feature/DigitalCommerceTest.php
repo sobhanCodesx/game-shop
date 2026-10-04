@@ -938,6 +938,67 @@ class DigitalCommerceTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_dual_platform_prices_are_saved_and_checkout_uses_selected_variant_price(): void
+    {
+        [$seller, $existing] = $this->digitalProduct('dual-platform-source');
+        $platform = $existing->platform()->firstOrFail();
+        $platform->update(['name' => 'PS5 / PS4', 'is_dual_platform' => true]);
+        $ps5 = $platform->variants()->create(['name' => 'PS5', 'key' => 'ps5', 'sort_order' => 1]);
+        $ps4 = $platform->variants()->create(['name' => 'PS4', 'key' => 'ps4', 'sort_order' => 2]);
+
+        $game = Game::factory()->create(['name' => 'Dual Price Game']);
+        $response = $this->actingAs($seller)->post('/admin/digital-products', [
+            'game_id' => $game->id,
+            'platform_id' => $platform->id,
+            'title' => 'Dual Price Account',
+            'support_days' => 7,
+            'status' => 'published',
+            'featured' => false,
+            'offers' => [[
+                'code' => 'capacity_1',
+                'label' => 'ظرفیت ۱',
+                'price' => 999,
+                'stock' => 3,
+                'status' => 'active',
+                'variant_prices' => [
+                    ['platform_variant_id' => $ps5->id, 'price' => 3_000_000],
+                    ['platform_variant_id' => $ps4->id, 'price' => 2_400_000],
+                ],
+            ]],
+        ]);
+        $response->assertRedirect('/admin/digital-products');
+
+        $product = DigitalProduct::query()->where('title', 'Dual Price Account')->firstOrFail();
+        $offer = $product->offers()->where('code', 'capacity_1')->firstOrFail();
+        $this->assertSame(2_400_000, (int) $offer->price);
+        $this->assertDatabaseHas('digital_offer_prices', ['digital_offer_id' => $offer->id, 'platform_variant_id' => $ps5->id, 'price' => 3_000_000]);
+        $this->assertDatabaseHas('digital_offer_prices', ['digital_offer_id' => $offer->id, 'platform_variant_id' => $ps4->id, 'price' => 2_400_000]);
+
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('product.platform.name', 'PS5 / PS4')
+                ->where('product.platform.is_dual_platform', true)
+                ->has('product.platform.variants', 2)
+                ->has('product.offers.0.variant_prices', 2));
+
+        $this->get('/digital')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('products.data.0.platform_name', 'PS5 / PS4'));
+
+        $customer = User::factory()->create();
+        $this->actingAs($customer)->post('/digital/'.$product->slug.'/orders', [
+            'offer_id' => $offer->id,
+            'platform_variant_id' => $ps5->id,
+        ])->assertRedirect();
+
+        $order = $customer->digitalOrders()->latest('id')->firstOrFail();
+        $this->assertSame(3_000_000, (int) $order->sale_price);
+        $this->assertSame($ps5->id, $order->platform_variant_id);
+        $this->assertSame('PS5', $order->platform_variant_name);
+    }
+
     private function digitalAttribute(): Attribute
     {
         $type = ProductType::query()->firstOrCreate(

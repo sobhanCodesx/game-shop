@@ -27,6 +27,8 @@ interface CatalogItem {
     age_rating?: string | null;
     manufacturer?: string | null;
     sort_order?: number;
+    is_dual_platform?: boolean;
+    platform_variants?: Array<{ id?: number; name: string; key?: string }>;
     category_id?: number | null;
     brand_id?: number | null;
     game_id?: number | null;
@@ -74,6 +76,8 @@ interface CatalogFormData {
     age_rating: string;
     manufacturer: string;
     sort_order: number;
+    is_dual_platform: boolean;
+    platform_variants: Array<{ id?: number; name: string }>;
     category_id: string;
     brand_id: string;
     game_id: string;
@@ -112,6 +116,10 @@ export default function CatalogForm({ resource, title, item, options }: CatalogF
         age_rating: item?.age_rating ?? '',
         manufacturer: item?.manufacturer ?? '',
         sort_order: item?.sort_order ?? 0,
+        is_dual_platform: Boolean(item?.is_dual_platform),
+        platform_variants: item?.platform_variants?.length
+            ? item.platform_variants.slice(0, 2).map((variant) => ({ id: variant.id, name: variant.name }))
+            : [{ name: '' }, { name: '' }],
         category_id: item?.category_id?.toString() ?? '',
         brand_id: item?.brand_id?.toString() ?? '',
         game_id: item?.game_id?.toString() ?? '',
@@ -195,6 +203,46 @@ export default function CatalogForm({ resource, title, item, options }: CatalogF
                             {resource === 'brands' && field('website', 'وب‌سایت', <input className={inputClassName} dir="ltr" onChange={(event) => setData('website', event.target.value)} value={data.website} />)}
 
                             {resource === 'platforms' && field('manufacturer', 'سازنده', <input className={inputClassName} onChange={(event) => setData('manufacturer', event.target.value)} value={data.manufacturer} />)}
+
+                            {resource === 'platforms' && (
+                                <div className="sm:col-span-2 rounded-2xl border border-indigo-500/20 bg-[linear-gradient(135deg,rgba(79,70,229,.12),rgba(15,23,42,.45))] p-4">
+                                    <button
+                                        aria-checked={data.is_dual_platform}
+                                        className="flex w-full items-center justify-between gap-4 text-right"
+                                        onClick={() => setData('is_dual_platform', !data.is_dual_platform)}
+                                        role="switch"
+                                        type="button"
+                                    >
+                                        <span>
+                                            <strong className="block text-sm font-black text-white">دو پلتفرم</strong>
+                                            <small className="mt-1 block text-[11px] leading-5 text-slate-400">برای نسخه‌های Cross-Gen که هر ظرفیت روی دو پلتفرم قیمت جدا دارد.</small>
+                                        </span>
+                                        <span className={`relative h-7 w-12 shrink-0 rounded-full border transition ${data.is_dual_platform ? 'border-indigo-400 bg-indigo-500' : 'border-slate-600 bg-slate-800'}`}>
+                                            <span className={`absolute top-1 size-5 rounded-full bg-white shadow transition ${data.is_dual_platform ? 'left-1' : 'left-6'}`} />
+                                        </span>
+                                    </button>
+
+                                    {data.is_dual_platform && (
+                                        <div className="mt-4 grid gap-3 border-t border-indigo-500/15 pt-4 sm:grid-cols-2">
+                                            {[0, 1].map((index) => (
+                                                <label className="block" key={index}>
+                                                    <span className="mb-2 block text-xs font-bold text-slate-300">نام پلتفرم {index === 0 ? 'اول' : 'دوم'} *</span>
+                                                    <input
+                                                        className={inputClassName}
+                                                        placeholder={index === 0 ? 'مثلاً PS5' : 'مثلاً PS4'}
+                                                        value={data.platform_variants[index]?.name ?? ''}
+                                                        onChange={(event) => setData('platform_variants', data.platform_variants.map((variant, i) => i === index ? { ...variant, name: event.target.value } : variant))}
+                                                    />
+                                                    {(errors as Record<string, string>)[`platform_variants.${index}.name`] && (
+                                                        <span className="mt-1.5 block text-xs text-red-400">{(errors as Record<string, string>)[`platform_variants.${index}.name`]}</span>
+                                                    )}
+                                                </label>
+                                            ))}
+                                            <p className="sm:col-span-2 text-[10px] leading-5 text-slate-500">کلید داخلی هر پلتفرم خودکار ساخته می‌شود و بعد از ویرایش نام ثابت می‌ماند؛ نیازی نیست چیزی مدیریت کنی.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {resource === 'games' && (
                                 <>

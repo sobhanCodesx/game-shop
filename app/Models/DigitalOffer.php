@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Validation\ValidationException;
 
 class DigitalOffer extends Model
@@ -24,6 +25,11 @@ class DigitalOffer extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(DigitalProduct::class, 'digital_product_id');
+    }
+
+    public function variantPrices(): HasMany
+    {
+        return $this->hasMany(DigitalOfferPrice::class)->orderBy('platform_variant_id');
     }
 
     public function availableStock(): int

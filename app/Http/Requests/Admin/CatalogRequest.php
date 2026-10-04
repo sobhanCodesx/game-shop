@@ -25,6 +25,10 @@ class CatalogRequest extends FormRequest
             $this->merge(['slug' => Str::slug($source)]);
         }
 
+        if ($this->route('catalog') === 'platforms') {
+            $this->merge(['is_dual_platform' => $this->boolean('is_dual_platform')]);
+        }
+
         if ($this->route('catalog') === 'products') {
             $legacyStatuses = ['active' => 'published', 'inactive' => 'disabled', 'archive' => 'archived'];
             $status = $this->string('status')->toString();
@@ -83,6 +87,10 @@ class CatalogRequest extends FormRequest
                 'name' => ['required', 'string', 'max:255'],
                 'slug' => ['required', 'string', 'max:255', Rule::unique('platforms')->ignore($id)],
                 'manufacturer' => ['nullable', 'string', 'max:255'],
+                'is_dual_platform' => ['required', 'boolean'],
+                'platform_variants' => ['required_if:is_dual_platform,1', 'array', 'size:2'],
+                'platform_variants.*.id' => ['nullable', 'integer', Rule::exists('platform_variants', 'id')],
+                'platform_variants.*.name' => ['required_if:is_dual_platform,1', 'nullable', 'string', 'max:100', 'distinct'],
                 'sort_order' => ['required', 'integer', 'min:0'],
                 'status' => ['required', Rule::in(['active', 'inactive'])],
             ],

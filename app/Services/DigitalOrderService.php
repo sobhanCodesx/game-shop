@@ -13,13 +13,13 @@ use Illuminate\Validation\ValidationException;
 
 class DigitalOrderService
 {
-    public function create(User $customer, DigitalOffer $offer): DigitalOrder
+    public function create(User $customer, DigitalOffer $offer, ?int $platformVariantId = null): DigitalOrder
     {
         $this->releaseExpiredReservations();
 
-        $order = DB::transaction(function () use ($customer, $offer): DigitalOrder {
+        $order = DB::transaction(function () use ($customer, $offer, $platformVariantId): DigitalOrder {
             $lockedOffer = DigitalOffer::query()
-                ->with('product')
+                ->with(['product.platform.variants', 'variantPrices'])
                 ->lockForUpdate()
                 ->findOrFail($offer->id);
 
@@ -28,6 +28,41 @@ class DigitalOrderService
             }
 
             $lockedOffer->ensureAvailable();
+
+            $platform = $lockedOffer->product->platform;
+            $selectedVariant = null;
+            $salePrice = (int) $lockedOffer->price;
+
+            if ($platform?->is_dual_platform) {
+                if (! $platformVariantId) {
+                    throw ValidationException::withMessages([
+                        'platform_variant_id' => 'پلتفرم موردنظر را انتخاب کنید.',
+                    ]);
+                }
+
+                $selectedVariant = $platform->variants->firstWhere('id', $platformVariantId);
+                if (! $selectedVariant) {
+                    throw ValidationException::withMessages([
+                        'platform_variant_id' => 'پلتفرم انتخاب‌شده برای این محصول معتبر نیست.',
+                    ]);
+                }
+
+                $variantPrice = $lockedOffer->variantPrices->firstWhere('platform_variant_id', $selectedVariant->id);
+                if (! $variantPrice || (int) $variantPrice->price <= 0) {
+                    throw ValidationException::withMessages([
+                        'platform_variant_id' => 'برای این ظرفیت و پلتفرم قیمت قابل سفارش ثبت نشده است.',
+                    ]);
+                }
+
+                $salePrice = (int) $variantPrice->price;
+            }
+
+            if ($salePrice <= 0) {
+                throw ValidationException::withMessages([
+                    'offer_id' => 'برای این ظرفیت قیمت قابل سفارش ثبت نشده است.',
+                ]);
+            }
+
             $lockedOffer->increment('reserved_stock');
 
             $order = DigitalOrder::query()->create([
@@ -36,16 +71,19 @@ class DigitalOrderService
                 'seller_id' => $lockedOffer->product->seller_id,
                 'digital_product_id' => $lockedOffer->digital_product_id,
                 'digital_offer_id' => $lockedOffer->id,
-                'sale_price' => $lockedOffer->price,
+                'platform_variant_id' => $selectedVariant?->id,
+                'platform_variant_name' => $selectedVariant?->name,
+                'sale_price' => $salePrice,
                 'order_status' => 'new',
                 'payment_status' => 'unpaid',
                 'delivery_status' => 'waiting',
                 'reservation_expires_at' => now()->addMinutes(30),
             ]);
 
+            $selection = $selectedVariant ? ' پلتفرم انتخابی: '.$selectedVariant->name.'.' : '';
             $order->messages()->create([
                 'type' => 'system',
-                'message' => 'سفارش ثبت شد. پشتیبانی از همین گفت‌وگو روند پرداخت و تحویل را با شما ادامه می‌دهد.',
+                'message' => 'سفارش ثبت شد.'.$selection.' پشتیبانی از همین گفت‌وگو روند پرداخت و تحویل را با شما ادامه می‌دهد.',
             ]);
 
             return $order;
@@ -54,7 +92,7 @@ class DigitalOrderService
         $seller = User::query()->find($order->seller_id);
         $seller?->notify(new DigitalOrderNotification(
             'سفارش دیجیتال جدید',
-            "سفارش {$order->number} ثبت شد.",
+            "سفارش {$order->number} ثبت شد".($order->platform_variant_name ? " ({$order->platform_variant_name})" : '').'.',
             route('admin.digital-orders.show', $order),
         ));
 

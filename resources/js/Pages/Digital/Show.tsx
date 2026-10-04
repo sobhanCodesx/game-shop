@@ -99,12 +99,26 @@ export default function Show({
 }) {
     const { auth } = usePage<SharedPageProps>().props;
 
+    const platformVariants = useMemo(
+        () => product.platform?.is_dual_platform ? (product.platform.variants ?? []).slice(0, 2) : [],
+        [product.platform],
+    );
+    const [platformVariantId, setPlatformVariantId] = useState<number | null>(
+        platformVariants[0]?.id ?? null,
+    );
+    const resolvedOffers = useMemo(
+        () => product.offers.map((item: any) => {
+            if (platformVariants.length !== 2 || !platformVariantId) return item;
+            const row = (item.variant_prices ?? []).find(
+                (price: any) => Number(price.platform_variant_id) === platformVariantId,
+            );
+            return { ...item, price: Number(row?.price ?? 0) };
+        }),
+        [product.offers, platformVariantId, platformVariants],
+    );
     const pricedOffers = useMemo(
-        () =>
-            product.offers.filter(
-                (item: any) => Number(item.price) > 0,
-            ),
-        [product.offers],
+        () => resolvedOffers.filter((item: any) => Number(item.price) > 0),
+        [resolvedOffers],
     );
     const availableOffers = useMemo(
         () => pricedOffers.filter((item: any) => item.available),
@@ -157,7 +171,7 @@ export default function Show({
     const sellerInitial = product.seller?.name?.trim()?.charAt(0) || "P";
     const hasPurchasableOffer = availableOffers.length > 0;
     const offerGridClass =
-        product.offers.length >= 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3";
+        resolvedOffers.length >= 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3";
 
     const order = () => {
         if (!offer?.id || Number(offer.price) <= 0 || !offer.available) return;
@@ -172,7 +186,7 @@ export default function Show({
         setOrdering(true);
         router.post(
             `/digital/${product.slug}/orders`,
-            { offer_id: offer.id },
+            { offer_id: offer.id, platform_variant_id: platformVariants.length === 2 ? platformVariantId : null },
             { onFinish: () => setOrdering(false) },
         );
     };
@@ -383,6 +397,37 @@ export default function Show({
                                 {product.title}
                             </h1>
 
+                            {platformVariants.length === 2 && (
+                                <div className="mt-3 rounded-2xl border border-sky-500/20 bg-[linear-gradient(135deg,rgba(14,165,233,.10),rgba(99,102,241,.06))] p-3">
+                                    <div className="mb-2 flex items-center justify-between gap-3">
+                                        <div>
+                                            <span className="text-[9px] font-black tracking-[.12em] text-sky-500">PLATFORM VERSION</span>
+                                            <strong className="mt-0.5 block text-xs font-black text-[var(--store-text)]">نسخه پلتفرم را انتخاب کن</strong>
+                                        </div>
+                                        <span className="rounded-full border border-sky-500/15 bg-sky-500/[.08] px-2 py-1 text-[9px] font-black text-sky-500">{product.platform.name}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="انتخاب نسخه پلتفرم">
+                                        {platformVariants.map((variant: any) => {
+                                            const selected = platformVariantId === Number(variant.id);
+                                            return (
+                                                <button
+                                                    aria-checked={selected}
+                                                    className={`relative min-h-12 overflow-hidden rounded-xl border px-3 py-2 text-center text-sm font-black transition ${selected ? 'border-sky-400 bg-sky-500 text-white shadow-[0_10px_28px_-16px_rgba(14,165,233,.95)]' : 'border-[var(--store-border)] bg-[var(--store-bg)] text-[var(--store-muted)] hover:border-sky-500/40'}`}
+                                                    key={variant.id}
+                                                    onClick={() => setPlatformVariantId(Number(variant.id))}
+                                                    role="radio"
+                                                    type="button"
+                                                >
+                                                    {variant.name}
+                                                    {selected && <span className="absolute left-1.5 top-1.5 grid size-4 place-items-center rounded-full bg-white/20"><Check size={10} /></span>}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="mt-2 text-[9px] leading-5 text-[var(--store-muted)]">قیمت ظرفیت‌ها با انتخاب نسخه، همان لحظه به قیمت مخصوص همان پلتفرم تغییر می‌کند.</p>
+                                </div>
+                            )}
+
                             <div
                                 className="mt-3 rounded-2xl border border-emerald-500/15 bg-[linear-gradient(135deg,rgba(16,185,129,.09),rgba(99,102,241,.04))] p-3.5"
                                 aria-live="polite"
@@ -487,7 +532,7 @@ export default function Show({
                         )}
 
                         <div className={`mt-3 grid gap-2 ${offerGridClass}`}>
-                            {product.offers.map((item: any) => {
+                            {resolvedOffers.map((item: any) => {
                                 const selectable =
                                     item.available && Number(item.price) > 0;
                                 const selected = offerId === item.id;

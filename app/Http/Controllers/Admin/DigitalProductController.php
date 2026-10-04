@@ -54,16 +54,16 @@ class DigitalProductController extends Controller
         if($title==='') throw ValidationException::withMessages(['title'=>'اگر بازی انتخاب نمی‌کنی، فقط عنوان محصول را وارد کن.']);
         $slugBase=Str::limit(Str::slug($title),220,'')?:'digital-game'; $slug=$slugBase;
         for($i=2;DigitalProduct::withTrashed()->where('slug',$slug)->exists();$i++) $slug=$slugBase.'-'.$i;
-        DB::transaction(function()use($data,$sellerId,$title,$slug):void{
+        DB::transaction(function()use($data,$sellerId,$title,$slug,$platform):void{
             $product=DigitalProduct::query()->create(['category_id'=>$data['category_id']??null,'game_id'=>$data['game_id']??null,'platform_id'=>$data['platform_id'],'seller_id'=>$sellerId,'title'=>$title,'slug'=>$slug,'short_description'=>RichText::sanitize($data['short_description']??null),'support_days'=>$data['support_days']??0,'status'=>$data['status']??'published','featured'=>(bool)($data['featured']??false)]);
-            $this->syncOffers($product,$data['offers']??[]); $this->syncAttributeValues($product,$data['attribute_values']??[]); $this->syncMedia($product,$data['media']??[]);
+            $this->syncOffers($product,$data['offers']??[],$platform); $this->syncAttributeValues($product,$data['attribute_values']??[]); $this->syncMedia($product,$data['media']??[]);
         });
         return to_route('admin.digital-products.index')->with('success','محصول دیجیتال ایجاد شد.');
     }
 
     public function edit(Request $request, DigitalProduct $digitalProduct): Response
     {
-        $this->authorizeProduct($request->user(),$digitalProduct); $digitalProduct->load(['game:id,name,slug,status','offers','media','attributeValues.attribute.options']);
+        $this->authorizeProduct($request->user(),$digitalProduct); $digitalProduct->load(['game:id,name,slug,status','offers.variantPrices','media','attributeValues.attribute.options']);
         return Inertia::render('Admin/Digital/Products/Form',[...$this->formData($request),'product'=>$this->formProductPayload($digitalProduct)]);
     }
 
@@ -73,9 +73,9 @@ class DigitalProductController extends Controller
         $game=filled($data['game_id']??null)?Game::query()->findOrFail((int)$data['game_id']):null; $platform=Platform::query()->findOrFail($data['platform_id']);
         $title=trim((string)($data['title']??''))?:($game?"{$game->name} - {$platform->name}":'');
         if($title==='') throw ValidationException::withMessages(['title'=>'اگر بازی انتخاب نمی‌کنی، فقط عنوان محصول را وارد کن.']);
-        DB::transaction(function()use($data,$digitalProduct,$actor,$title):void{
+        DB::transaction(function()use($data,$digitalProduct,$actor,$title,$platform):void{
             $digitalProduct->update(['category_id'=>$data['category_id']??null,'game_id'=>$data['game_id']??null,'platform_id'=>$data['platform_id'],'seller_id'=>$actor->role==='digital-seller'?$actor->id:(int)$data['seller_id'],'title'=>$title,'short_description'=>RichText::sanitize($data['short_description']??null),'support_days'=>$data['support_days']??0,'status'=>$data['status']??'published','featured'=>(bool)($data['featured']??false)]);
-            $this->syncOffers($digitalProduct,$data['offers']??[]); $this->syncAttributeValues($digitalProduct,$data['attribute_values']??[]); $this->syncMedia($digitalProduct,$data['media']??[]);
+            $this->syncOffers($digitalProduct,$data['offers']??[],$platform); $this->syncAttributeValues($digitalProduct,$data['attribute_values']??[]); $this->syncMedia($digitalProduct,$data['media']??[]);
         });
         return to_route('admin.digital-products.index')->with('success','محصول دیجیتال به‌روزرسانی شد.');
     }
@@ -98,9 +98,12 @@ class DigitalProductController extends Controller
             'seller_id'=>$sellerRule,
             'title'=>['nullable','string'],'short_description'=>['nullable','string'],'support_days'=>['nullable','integer','min:0'],'status'=>['nullable',Rule::in(['draft','published','hidden'])],'featured'=>['nullable','boolean'],
             'offers'=>['nullable','array'],'offers.*.code'=>['nullable',Rule::in(['capacity_1','capacity_2','capacity_3','full']),'distinct'],'offers.*.label'=>['nullable','string'],'offers.*.price'=>['nullable','integer','min:0'],'offers.*.stock'=>['nullable','integer','min:0'],'offers.*.status'=>['nullable',Rule::in(['active','inactive'])],
+            'offers.*.variant_prices'=>['nullable','array'],'offers.*.variant_prices.*.platform_variant_id'=>['required','integer',Rule::exists('platform_variants','id')],'offers.*.variant_prices.*.price'=>['required','integer','min:0'],
             'attribute_values'=>['nullable','array'],'attribute_values.*'=>['nullable','array'],'attribute_values.*.*'=>['nullable','string'],
             'media'=>['nullable','array'],'media.*.id'=>['nullable','integer'],'media.*.type'=>['nullable',Rule::in(['image','video'])],'media.*.file'=>['nullable','file','mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime','max:2097152'],'media.*.alt'=>['nullable','string'],'media.*.is_primary'=>['nullable','boolean'],
         ]);
+        $platform=Platform::query()->with('variants')->findOrFail((int)$data['platform_id']);
+        $data['offers']=$this->validateOfferPrices($data['offers']??[],$platform);
         $data['attribute_values']=$this->validateAttributeValues($data['attribute_values']??[]);
         // Empty media rows are harmless UI state; ignore them instead of rejecting the whole product.
         $data['media']=array_values(array_filter($data['media']??[],fn($media)=>!empty($media['id'])||!empty($media['file'])));
@@ -111,13 +114,45 @@ class DigitalProductController extends Controller
         return $data;
     }
 
-    private function syncOffers(DigitalProduct $product,array $offers):void
+    private function syncOffers(DigitalProduct $product,array $offers,Platform $platform):void
     {
+        $platform->loadMissing('variants');
+        $variantIds=$platform->is_dual_platform?$platform->variants->take(2)->pluck('id')->map(fn($id)=>(int)$id)->all():[];
         foreach($offers as $index=>$offer){
             $code=$offer['code']??null; if(!in_array($code,['capacity_1','capacity_2','capacity_3','full'],true)) continue;
             $defaults=['capacity_1'=>'ظرفیت ۱','capacity_2'=>'ظرفیت ۲','capacity_3'=>'ظرفیت ۳','full'=>'فول ظرفیت'];
-            $product->offers()->updateOrCreate(['code'=>$code],['label'=>trim((string)($offer['label']??''))?:$defaults[$code],'price'=>(int)($offer['price']??0),'stock'=>(int)($offer['stock']??0),'status'=>in_array($offer['status']??null,['active','inactive'],true)?$offer['status']:'inactive','sort_order'=>$index+1]);
+            $variantPrices=collect($offer['variant_prices']??[])->map(fn($row)=>['platform_variant_id'=>(int)($row['platform_variant_id']??0),'price'=>(int)($row['price']??0)])->filter(fn($row)=>in_array($row['platform_variant_id'],$variantIds,true))->values();
+            $positive=$variantPrices->pluck('price')->filter(fn($price)=>(int)$price>0);
+            $price=$platform->is_dual_platform?(int)($positive->min()??0):(int)($offer['price']??0);
+            $saved=$product->offers()->updateOrCreate(['code'=>$code],['label'=>trim((string)($offer['label']??''))?:$defaults[$code],'price'=>$price,'stock'=>(int)($offer['stock']??0),'status'=>in_array($offer['status']??null,['active','inactive'],true)?$offer['status']:'inactive','sort_order'=>$index+1]);
+            if($platform->is_dual_platform){
+                foreach($variantPrices as $row){$saved->variantPrices()->updateOrCreate(['platform_variant_id'=>$row['platform_variant_id']],['price'=>$row['price']]);}
+                $saved->variantPrices()->whereNotIn('platform_variant_id',$variantIds?:[0])->delete();
+            }else{$saved->variantPrices()->delete();}
         }
+    }
+
+    private function validateOfferPrices(array $offers,Platform $platform):array
+    {
+        $platform->loadMissing('variants');
+        if(!$platform->is_dual_platform){
+            return array_map(function(array $offer):array{$offer['variant_prices']=[];return $offer;},$offers);
+        }
+
+        $variants=$platform->variants->take(2)->values();
+        if($variants->count()!==2){
+            throw ValidationException::withMessages(['platform_id'=>'این پلتفرم دوگانه هنوز دو زیرپلتفرم معتبر ندارد. ابتدا تنظیمات پلتفرم را کامل کنید.']);
+        }
+        $expected=$variants->pluck('id')->map(fn($id)=>(int)$id)->all();
+        foreach($offers as $index=>&$offer){
+            $submitted=collect($offer['variant_prices']??[])->mapWithKeys(fn($row)=>[(int)($row['platform_variant_id']??0)=>(int)($row['price']??0)]);
+            if(array_diff($expected,$submitted->keys()->all())!==[]||array_diff($submitted->keys()->all(),$expected)!==[]){
+                throw ValidationException::withMessages(["offers.{$index}.variant_prices"=>'برای هر دو پلتفرم باید قیمت این ظرفیت را مشخص کنید.']);
+            }
+            $offer['variant_prices']=$variants->map(fn($variant)=>['platform_variant_id'=>(int)$variant->id,'price'=>(int)$submitted->get((int)$variant->id,0)])->all();
+        }
+        unset($offer);
+        return $offers;
     }
 
     private function syncAttributeValues(DigitalProduct $product,array $values):void
@@ -163,12 +198,12 @@ class DigitalProductController extends Controller
     private function formData(Request $request):array
     {
         $actor=$request->user();
-        return ['product'=>null,'categories'=>Category::query()->where('status','active')->orderBy('sort_order')->orderBy('name')->get(['id','parent_id','name','slug']),'games'=>Game::query()->orderBy('name')->limit(25)->get(['id','name','slug','status']),'gameOptionsMeta'=>['current_page'=>1,'last_page'=>max(1,(int)ceil(Game::query()->count()/25)),'per_page'=>25,'total'=>Game::query()->count()],'platforms'=>Platform::query()->where('status','active')->orderBy('sort_order')->get(['id','name']),'sellers'=>$actor->role==='digital-seller'?collect([$actor->only(['id','name','email'])]):User::query()->where('status','active')->where('role','digital-seller')->orderBy('name')->get(['id','name','email']),'attributes'=>$this->digitalAttributes()->map(fn($attribute)=>['id'=>$attribute->id,'title'=>$attribute->title,'slug'=>$attribute->slug,'input_type'=>$attribute->input_type,'is_required'=>(bool)$attribute->is_required,'is_filterable'=>(bool)$attribute->is_filterable,'options'=>$attribute->input_type==='boolean'?[['title'=>'بله','value'=>'1'],['title'=>'خیر','value'=>'0']]:$attribute->options->map(fn($option)=>$option->only(['id','title','value']))->values()])->values(),'currentSellerId'=>$actor->role==='digital-seller'?$actor->id:null];
+        return ['product'=>null,'categories'=>Category::query()->where('status','active')->orderBy('sort_order')->orderBy('name')->get(['id','parent_id','name','slug']),'games'=>Game::query()->orderBy('name')->limit(25)->get(['id','name','slug','status']),'gameOptionsMeta'=>['current_page'=>1,'last_page'=>max(1,(int)ceil(Game::query()->count()/25)),'per_page'=>25,'total'=>Game::query()->count()],'platforms'=>Platform::query()->with(['variants:id,platform_id,name,key,sort_order'])->where('status','active')->orderBy('sort_order')->get(['id','name','is_dual_platform']),'sellers'=>$actor->role==='digital-seller'?collect([$actor->only(['id','name','email'])]):User::query()->where('status','active')->where('role','digital-seller')->orderBy('name')->get(['id','name','email']),'attributes'=>$this->digitalAttributes()->map(fn($attribute)=>['id'=>$attribute->id,'title'=>$attribute->title,'slug'=>$attribute->slug,'input_type'=>$attribute->input_type,'is_required'=>(bool)$attribute->is_required,'is_filterable'=>(bool)$attribute->is_filterable,'options'=>$attribute->input_type==='boolean'?[['title'=>'بله','value'=>'1'],['title'=>'خیر','value'=>'0']]:$attribute->options->map(fn($option)=>$option->only(['id','title','value']))->values()])->values(),'currentSellerId'=>$actor->role==='digital-seller'?$actor->id:null];
     }
 
     private function formProductPayload(DigitalProduct $product):array
     {
-        return [...$product->only(['id','category_id','game_id','platform_id','seller_id','title','short_description','support_days','status','featured']),'game'=>$product->game?->only(['id','name','slug','status']),'offers'=>$product->offers->map(fn($offer)=>$offer->only(['id','code','label','price','stock','status']))->values(),'attribute_values'=>$product->attributeValues->groupBy('attribute_id')->map(fn($items)=>$items->pluck('value')->values())->all(),'media'=>$product->media->map(fn($media)=>[...$media->only(['id','type','alt','is_primary']),'url'=>DigitalProductMediaStorage::url($media->path)])->values()];
+        return [...$product->only(['id','category_id','game_id','platform_id','seller_id','title','short_description','support_days','status','featured']),'game'=>$product->game?->only(['id','name','slug','status']),'offers'=>$product->offers->map(fn($offer)=>[...$offer->only(['id','code','label','price','stock','status']),'variant_prices'=>$offer->variantPrices->map(fn($row)=>['platform_variant_id'=>(int)$row->platform_variant_id,'price'=>(int)$row->price])->values()])->values(),'attribute_values'=>$product->attributeValues->groupBy('attribute_id')->map(fn($items)=>$items->pluck('value')->values())->all(),'media'=>$product->media->map(fn($media)=>[...$media->only(['id','type','alt','is_primary']),'url'=>DigitalProductMediaStorage::url($media->path)])->values()];
     }
 
     private function authorizeProduct(User $actor,DigitalProduct $product):void { if($actor->role==='digital-seller')abort_unless($product->seller_id===$actor->id,404); }

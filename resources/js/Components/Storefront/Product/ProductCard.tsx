@@ -10,7 +10,7 @@ export default function ProductCard({
 }: {
     product: StorefrontProduct;
 }) {
-    const highlightedMetaKeys = new Set(["availability", "discount"]);
+    const highlightedMetaKeys = new Set(["availability", "discount", "platform"]);
     const primaryHighlight =
         product.meta_badges.find((meta) => meta.key === "discount") ??
         product.meta_badges.find((meta) => meta.key === "availability");
@@ -88,8 +88,14 @@ export default function ProductCard({
                     )}
                 </div>
                 <Card.Content className="space-y-2.5 p-3">
-                    <div className="flex min-h-4 flex-wrap gap-1 text-[10px] text-[var(--store-muted)]">
-                        <span>{product.category}</span>
+                    <div className="flex min-h-4 flex-wrap items-center gap-1.5 text-[10px] text-[var(--store-muted)]">
+                        {product.platform_name && (
+                            <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-sky-500/15 bg-sky-500/[.07] px-1.5 py-0.5 font-black text-sky-500">
+                                <Gamepad2 size={10} />
+                                <span className="max-w-28 truncate">{product.platform_name}</span>
+                            </span>
+                        )}
+                        {product.category && <span>{product.category}</span>}
                         {product.product_type && (
                             <>
                                 <span>•</span>
