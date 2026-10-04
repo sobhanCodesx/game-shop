@@ -1,0 +1,74 @@
+name: One-shot digital product description disclosure
+
+on:
+  push:
+    branches:
+      - chatgpt/digital-description-disclosure
+    paths:
+      - '.github/workflows/one-shot-digital-description-disclosure.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add aligned four-line description disclosure
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('resources/js/Pages/Digital/Show.tsx')
+          source = path.read_text()
+
+          replacements = [
+              (
+                  '    Check,\n    ChevronLeft,\n    Clock3,',
+                  '    Check,\n    ChevronDown,\n    ChevronLeft,\n    ChevronUp,\n    Clock3,',
+                  'lucide imports',
+              ),
+              (
+                  '    const [requestingPrice, setRequestingPrice] = useState(false);\n    const [guide, setGuide] = useState(false);',
+                  '    const [requestingPrice, setRequestingPrice] = useState(false);\n    const [guide, setGuide] = useState(false);\n    const [detailsExpanded, setDetailsExpanded] = useState(false);',
+                  'details disclosure state',
+              ),
+              (
+                  '''                            {product.short_description && (\n                                <div\n                                    className="prose prose-invert max-w-none text-sm leading-8 text-[var(--store-muted)] prose-headings:text-[var(--store-text)] prose-a:text-indigo-400 prose-strong:text-[var(--store-text)]"\n                                    dangerouslySetInnerHTML={{\n                                        __html: product.short_description,\n                                    }}\n                                />\n                            )}''',
+                  '''                            {product.short_description && (\n                                <div>\n                                    <div className="relative">\n                                        <div\n                                            aria-expanded={detailsExpanded}\n                                            className={`prose prose-invert max-w-none text-justify text-sm leading-8 text-[var(--store-muted)] [text-align-last:right] [unicode-bidi:plaintext] prose-headings:text-right prose-headings:text-[var(--store-text)] prose-a:text-indigo-400 prose-strong:text-[var(--store-text)] transition-[max-height] duration-500 ease-out ${\n                                                detailsExpanded\n                                                    ? "max-h-[600rem] prose-p:my-3"\n                                                    : "max-h-32 overflow-hidden prose-p:my-0"\n                                            }`}\n                                            dir="rtl"\n                                            id="digital-product-description"\n                                            dangerouslySetInnerHTML={{\n                                                __html: product.short_description,\n                                            }}\n                                        />\n\n                                        {!detailsExpanded && (\n                                            <div\n                                                aria-hidden="true"\n                                                className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--store-surface)] via-[var(--store-surface)]/95 to-transparent"\n                                            />\n                                        )}\n                                    </div>\n\n                                    <div className="relative mt-3 flex justify-center">\n                                        <button\n                                            aria-controls="digital-product-description"\n                                            aria-expanded={detailsExpanded}\n                                            className="group inline-flex min-h-11 items-center gap-2 rounded-full border border-indigo-500/25 bg-[linear-gradient(135deg,rgba(99,102,241,.12),rgba(6,182,212,.07))] px-3 py-2 text-right text-[11px] font-black text-[var(--store-text)] shadow-[0_16px_35px_-24px_rgba(99,102,241,.95)] backdrop-blur transition hover:-translate-y-0.5 hover:border-indigo-500/45 hover:bg-indigo-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 active:translate-y-0"\n                                            onClick={() =>\n                                                setDetailsExpanded((expanded) => !expanded)\n                                            }\n                                            type="button"\n                                        >\n                                            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-indigo-500/12 text-indigo-500 transition group-hover:bg-indigo-500/20">\n                                                {detailsExpanded ? (\n                                                    <ChevronUp size={15} />\n                                                ) : (\n                                                    <ChevronDown size={15} />\n                                                )}\n                                            </span>\n                                            <span>\n                                                <span className="block leading-4">\n                                                    {detailsExpanded\n                                                        ? "بستن توضیحات"\n                                                        : "ادامه توضیحات"}\n                                                </span>\n                                                <span className="mt-0.5 block text-[9px] font-bold leading-4 text-[var(--store-muted)]">\n                                                    {detailsExpanded\n                                                        ? "بازگشت به چهار خط اول"\n                                                        : "نمایش کامل متن محصول"}\n                                                </span>\n                                            </span>\n                                        </button>\n                                    </div>\n                                </div>\n                            )}''',
+                  'product description disclosure',
+              ),
+          ]
+
+          for old, new, label in replacements:
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              source = source.replace(old, new, 1)
+
+          path.write_text(source)
+          PY
+
+      - name: Verify focused frontend build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit patch and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/one-shot-digital-description-disclosure.yml
+          git add resources/js/Pages/Digital/Show.tsx
+          git commit -m "Improve digital product description readability"
+          git push origin HEAD:chatgpt/digital-description-disclosure
