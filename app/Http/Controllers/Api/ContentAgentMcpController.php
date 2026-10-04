@@ -243,6 +243,7 @@ class ContentAgentMcpController extends Controller
             'feed_badge' => ['type' => ['string', 'null'], 'enum' => ['breaking', 'news', 'trailer', 'gameplay', 'update', 'rumor', 'review', 'patch_notes', null]],
             'game_id' => ['type' => ['integer', 'null']],
             'related_product_id' => ['type' => ['integer', 'null']],
+            'related_digital_product_id' => ['type' => ['integer', 'null'], 'description' => 'Related published PlayNexus digital product id.'],
             'related_content_id' => ['type' => ['integer', 'null'], 'description' => 'Related PlayNexus video content id.'],
             'allow_comments' => ['type' => 'boolean'],
             'notify_followers' => ['type' => 'boolean'],

@@ -383,6 +383,7 @@ class ContentAgentService
             'user_id' => $this->authorUserId(),
             'game_id' => $data['game_id'] ?? null,
             'related_product_id' => $data['related_product_id'] ?? null,
+            'related_digital_product_id' => $data['related_digital_product_id'] ?? null,
             'related_content_id' => $data['related_content_id'] ?? null,
             'type' => 'post',
             'feed_type' => $data['feed_type'] ?? 'post',
@@ -543,7 +544,7 @@ class ContentAgentService
         $data = $this->validateFeed($arguments, creating: false);
 
         foreach ([
-            'title', 'feed_type', 'feed_badge', 'game_id', 'related_product_id', 'related_content_id',
+            'title', 'feed_type', 'feed_badge', 'game_id', 'related_product_id', 'related_digital_product_id', 'related_content_id',
             'seo_title', 'seo_description', 'allow_comments', 'notify_followers',
         ] as $field) {
             if (array_key_exists($field, $data)) {
@@ -919,7 +920,8 @@ class ContentAgentService
             'feed_type' => ['sometimes', Rule::in(FeedService::TYPES)],
             'feed_badge' => ['sometimes', 'nullable', Rule::in(self::FEED_BADGES)],
             'game_id' => ['sometimes', 'nullable', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
-            'related_product_id' => ['sometimes', 'nullable', 'integer', Rule::exists('products', 'id')->whereNull('deleted_at')],
+            'related_product_id' => ['sometimes', 'nullable', 'integer', Rule::exists('products', 'id')->whereNull('deleted_at'), 'prohibited_with:related_digital_product_id'],
+            'related_digital_product_id' => ['sometimes', 'nullable', 'integer', Rule::exists('digital_products', 'id')->where('status', 'published'), 'prohibited_with:related_product_id'],
             'related_content_id' => ['sometimes', 'nullable', 'integer', Rule::exists('social_contents', 'id')->where('type', 'video')],
             'allow_comments' => ['sometimes', 'boolean'],
             'notify_followers' => ['sometimes', 'boolean'],
@@ -1322,6 +1324,7 @@ class ContentAgentService
             'feed_badge' => $feed->feed_badge,
             'game' => $feed->game?->only(['id', 'name', 'slug']),
             'related_product_id' => $feed->related_product_id,
+            'related_digital_product_id' => $feed->related_digital_product_id,
             'related_content_id' => $feed->related_content_id,
             'allow_comments' => (bool) $feed->allow_comments,
             'notify_followers' => (bool) $feed->notify_followers,
