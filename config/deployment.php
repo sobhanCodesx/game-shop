@@ -53,7 +53,14 @@ return [
     'max_extracted_size' => (int) env('DEPLOYMENT_MAX_EXTRACTED_SIZE', 1610612736),
     'max_compression_ratio' => (float) env('DEPLOYMENT_MAX_COMPRESSION_RATIO', 100),
     'token_ttl' => (int) env('DEPLOYMENT_TOKEN_TTL', 3600),
-    'retention' => (int) env('DEPLOYMENT_RETENTION', 3),
+
+    // Shared hosting has a finite quota. Keep only the latest successful
+    // deployment and aggressively reclaim abandoned upload directories.
+    'retention' => (int) env('DEPLOYMENT_RETENTION', 1),
+    'stale_upload_minutes' => (int) env('DEPLOYMENT_STALE_UPLOAD_MINUTES', 15),
+    'failed_retention_minutes' => (int) env('DEPLOYMENT_FAILED_RETENTION_MINUTES', 5),
+    'min_free_disk_bytes' => (int) env('DEPLOYMENT_MIN_FREE_DISK_BYTES', 134217728),
+    'legacy_log_max_bytes' => (int) env('DEPLOYMENT_LEGACY_LOG_MAX_BYTES', 16777216),
 
     'directory' => storage_path('app/deployments'),
     'ssr_bundle_destination' => env('INERTIA_SSR_PASSENGER_BUNDLE_PATH'),
