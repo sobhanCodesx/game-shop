@@ -1,0 +1,105 @@
+name: One Shot Dual Platform Pricing Follow-up
+
+on:
+  push:
+    branches:
+      - chatgpt/dual-platform-pricing
+    paths:
+      - '.github/workflows/one-shot-dual-platform-pricing-followup.yml'
+      - '.github/scripts/dual_platform_fix.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: chatgpt/dual-platform-pricing
+          fetch-depth: 0
+
+      - name: Apply implementation patches
+        run: |
+          python3 .github/scripts/dual_platform_patch.py
+          python3 .github/scripts/dual_platform_fix.py
+
+      - name: PHP syntax checks
+        run: |
+          php -l app/Models/Platform.php
+          php -l app/Models/PlatformVariant.php
+          php -l app/Models/DigitalOffer.php
+          php -l app/Models/DigitalOfferPrice.php
+          php -l app/Models/DigitalOrder.php
+          php -l app/Services/DigitalOrderService.php
+          php -l app/Http/Controllers/Admin/CatalogController.php
+          php -l app/Http/Requests/Admin/CatalogRequest.php
+          php -l app/Http/Controllers/Admin/DigitalProductController.php
+          php -l app/Http/Controllers/DigitalStoreController.php
+          php -l app/Services/StorefrontDataService.php
+          php -l database/migrations/2026_10_04_200000_add_dual_platform_pricing.php
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Setup test environment
+        run: |
+          echo 'APP_ENV=testing' >> "$GITHUB_ENV"
+          echo "APP_KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")" >> "$GITHUB_ENV"
+          echo 'DB_CONNECTION=sqlite' >> "$GITHUB_ENV"
+          echo 'DB_DATABASE=:memory:' >> "$GITHUB_ENV"
+          echo 'CACHE_STORE=array' >> "$GITHUB_ENV"
+          echo 'SESSION_DRIVER=array' >> "$GITHUB_ENV"
+          echo 'QUEUE_CONNECTION=sync' >> "$GITHUB_ENV"
+          echo 'MAIL_MAILER=array' >> "$GITHUB_ENV"
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend and SSR
+        run: npm run build
+
+      - name: Run digital commerce regressions
+        run: php artisan test tests/Feature/DigitalCommerceTest.php tests/Feature/DigitalProductSeoTest.php tests/Feature/ContentAgentDigitalProductMcpTest.php tests/Feature/ContentAgentMcpTest.php tests/Feature/Admin/AdminAccessTest.php
+
+      - name: Assert integration anchors
+        run: |
+          grep -q 'is_dual_platform' resources/js/Pages/Admin/Catalog/Form.tsx
+          grep -q 'variant_prices' resources/js/Pages/Admin/Digital/Products/Form.tsx
+          grep -q 'platform_variant_id' app/Services/DigitalOrderService.php
+          grep -q 'platform_name' resources/js/Components/Storefront/Product/ProductCard.tsx
+          grep -q 'platform_name' app/Http/Controllers/DigitalStoreController.php
+          grep -q 'platform_name ?? product.platform?.name' resources/js/Pages/Digital/Index.tsx
+          grep -q 'platformVariants' resources/js/Pages/Digital/Show.tsx
+
+      - name: Remove one-shot files
+        run: |
+          rm -f .github/scripts/dual_platform_patch.py
+          rm -f .github/scripts/dual_platform_fix.py
+          rm -f .github/workflows/one-shot-dual-platform-pricing.yml
+          rm -f .github/workflows/one-shot-dual-platform-pricing-followup.yml
+
+      - name: Commit verified implementation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Implement safe dual-platform digital pricing'
+          git push origin HEAD:chatgpt/dual-platform-pricing
