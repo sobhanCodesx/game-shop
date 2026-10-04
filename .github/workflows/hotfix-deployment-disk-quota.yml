@@ -1,0 +1,504 @@
+name: Hotfix deployment disk quota
+
+on:
+  push:
+    branches:
+      - chatgpt/deploy-disk-quota-guard
+    paths:
+      - '.github/workflows/hotfix-deployment-disk-quota.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout hotfix branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: chatgpt/deploy-disk-quota-guard
+          fetch-depth: 1
+
+      - name: Apply disk quota safeguards
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"expected block not found in {path}: {old[:100]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          Path('app/Services/Deployment/DeploymentStateStore.php').write_text(r'''<?php
+
+namespace App\Services\Deployment;
+
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
+
+final class DeploymentStateStore
+{
+    public function __construct(private DeploymentPaths $paths) {}
+
+    public function create(int $userId, array $extra = []): array
+    {
+        $id = (string) Str::uuid();
+        $now = now()->toIso8601String();
+        $state = array_merge([
+            'id' => $id, 'user_id' => $userId, 'status' => 'uploading',
+            'stage' => 'uploaded', 'progress' => 0, 'created_at' => $now,
+            'updated_at' => $now, 'expires_at' => now()->addSeconds((int) config('deployment.token_ttl'))->toIso8601String(),
+            'logs' => [], 'warnings' => [], 'error' => null,
+        ], $extra);
+        $this->save($state);
+        return $state;
+    }
+
+    public function get(string $id): array
+    {
+        return $this->paths->readJson($this->paths->operation($id).'/state.json');
+    }
+
+    public function save(array $state): array
+    {
+        $state['updated_at'] = now()->toIso8601String();
+        $this->paths->atomicJson($this->paths->operation($state['id']).'/state.json', $state);
+        return $state;
+    }
+
+    public function update(string $id, array $changes): array
+    {
+        return $this->save(array_replace($this->get($id), $changes));
+    }
+
+    public function recent(int $limit = 10): array
+    {
+        $files = glob($this->paths->root().'/*/state.json') ?: [];
+        usort($files, fn ($a, $b) => filemtime($b) <=> filemtime($a));
+        return array_map(fn ($file) => $this->paths->readJson($file), array_slice($files, 0, $limit));
+    }
+
+    /**
+     * Reclaim abandoned deployment disk usage before accepting a new package.
+     * Active uploads are kept; only stale/failed/orphaned operations are removed.
+     */
+    public function cleanup(): int
+    {
+        $removed = 0;
+        $root = $this->paths->root();
+        $uploadingCutoff = now()->subMinutes(max(5, (int) config('deployment.stale_upload_minutes', 15)))->timestamp;
+        $failedCutoff = now()->subMinutes(max(1, (int) config('deployment.failed_retention_minutes', 5)))->timestamp;
+
+        foreach (glob($root.'/*', GLOB_ONLYDIR) ?: [] as $directory) {
+            $stateFile = $directory.'/state.json';
+
+            if (! is_file($stateFile)) {
+                $modified = @filemtime($directory) ?: 0;
+                if ($modified > 0 && $modified < $uploadingCutoff && File::deleteDirectory($directory)) {
+                    $removed++;
+                }
+                continue;
+            }
+
+            try {
+                $state = $this->paths->readJson($stateFile);
+                $status = (string) ($state['status'] ?? '');
+                $updatedAt = strtotime((string) ($state['updated_at'] ?? '')) ?: 0;
+                $staleUpload = $status === 'uploading' && $updatedAt > 0 && $updatedAt < $uploadingCutoff;
+                $staleFailure = $status === 'failed' && $updatedAt > 0 && $updatedAt < $failedCutoff;
+
+                if (($staleUpload || $staleFailure) && File::deleteDirectory($directory)) {
+                    $removed++;
+                }
+            } catch (\Throwable) {
+                // Keep unreadable state for manual inspection instead of risking the wrong directory.
+            }
+        }
+
+        $this->trimLegacyLaravelLogUnderPressure();
+
+        return $removed + $this->pruneSuccessful();
+    }
+
+    public function pruneSuccessful(?int $keep = null): int
+    {
+        $keep = max(1, $keep ?? (int) config('deployment.retention', 1));
+        $completed = [];
+
+        foreach (glob($this->paths->root().'/*/state.json') ?: [] as $file) {
+            try {
+                $state = $this->paths->readJson($file);
+                if (($state['status'] ?? null) === 'completed') {
+                    $completed[] = ['file' => $file, 'updated_at' => strtotime((string) ($state['updated_at'] ?? '')) ?: 0];
+                }
+            } catch (\Throwable) {
+                // Keep unreadable state for manual inspection.
+            }
+        }
+
+        usort($completed, fn (array $a, array $b) => $b['updated_at'] <=> $a['updated_at']);
+        $removed = 0;
+        foreach (array_slice($completed, $keep) as $deployment) {
+            if (File::deleteDirectory(dirname($deployment['file']))) {
+                $removed++;
+            }
+        }
+
+        return $removed;
+    }
+
+    private function trimLegacyLaravelLogUnderPressure(): void
+    {
+        $path = storage_path('logs/laravel.log');
+        if (! is_file($path) || ! is_writable($path)) {
+            return;
+        }
+
+        clearstatcache(true, $path);
+        $size = @filesize($path);
+        if (! is_int($size) || $size < 1) {
+            return;
+        }
+
+        $maxBytes = max(4 * 1024 * 1024, (int) config('deployment.legacy_log_max_bytes', 16 * 1024 * 1024));
+        $minimumFree = max(32 * 1024 * 1024, (int) config('deployment.min_free_disk_bytes', 128 * 1024 * 1024));
+        $free = function_exists('disk_free_space') ? @disk_free_space(dirname($path)) : false;
+        $severelyOversized = $size >= ($maxBytes * 4);
+        $underPressure = $free !== false && $free < $minimumFree;
+
+        if ($size <= $maxBytes || (! $severelyOversized && ! $underPressure)) {
+            return;
+        }
+
+        $keepBytes = min(512 * 1024, max(64 * 1024, intdiv($maxBytes, 4)));
+        $handle = @fopen($path, 'c+b');
+        if (! $handle || ! @flock($handle, LOCK_EX)) {
+            if (is_resource($handle)) {
+                @fclose($handle);
+            }
+            return;
+        }
+
+        try {
+            $offset = max(0, $size - $keepBytes);
+            @fseek($handle, $offset, SEEK_SET);
+            $tail = (string) stream_get_contents($handle);
+            if (! @ftruncate($handle, 0)) {
+                return;
+            }
+            @rewind($handle);
+            if ($tail !== '') {
+                @fwrite($handle, $tail);
+            }
+            @fflush($handle);
+        } finally {
+            @flock($handle, LOCK_UN);
+            @fclose($handle);
+        }
+    }
+}
+''')
+
+          Path('app/Http/Controllers/Api/DeploymentAgentController.php').write_text(r'''<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\DeploymentAgentChunkRequest;
+use App\Services\Deployment\DeploymentHealthService;
+use App\Services\Deployment\DeploymentManager;
+use App\Services\Deployment\DeploymentStateStore;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class DeploymentAgentController extends Controller
+{
+    public function chunk(
+        DeploymentAgentChunkRequest $request,
+        DeploymentManager $manager,
+        DeploymentStateStore $states,
+    ): JsonResponse {
+        $data = $request->validated();
+
+        if (empty($data['operation_id'])) {
+            $states->cleanup();
+        }
+
+        return response()->json(
+            $manager->acceptChunk($this->actorId(), $data, $request->file('chunk')->getPathname())
+        );
+    }
+
+    public function cleanup(DeploymentStateStore $states): JsonResponse
+    {
+        return response()->json([
+            'status' => 'ok',
+            'removed' => $states->cleanup(),
+        ]);
+    }
+
+    public function complete(Request $request, DeploymentManager $manager): JsonResponse
+    {
+        $data = $request->validate([
+            'operation_id' => ['required', 'uuid'],
+        ]);
+
+        return response()->json(
+            $manager->complete($data['operation_id'], $this->actorId())
+        );
+    }
+
+    public function verify(Request $request, DeploymentManager $manager): JsonResponse
+    {
+        return response()->json(
+            $manager->verify((string) $request->route('deployment'), $this->actorId())
+        );
+    }
+
+    public function apply(Request $request, DeploymentManager $manager): JsonResponse
+    {
+        return response()->json(
+            $manager->advance((string) $request->route('deployment'), $this->actorId())
+        );
+    }
+
+    public function health(Request $request, DeploymentHealthService $health): JsonResponse
+    {
+        $data = $request->validate([
+            'expected_sha' => ['sometimes', 'nullable', 'regex:/^[a-f0-9]{40}$/i'],
+        ]);
+
+        $report = $health->report(
+            isset($data['expected_sha']) ? strtolower((string) $data['expected_sha']) : null,
+        );
+
+        if (($report['status'] ?? 'error') !== 'ok') {
+            $failed = collect($report['checks'] ?? [])
+                ->filter(
+                    fn (array $check) => ($check['blocking'] ?? true) === true
+                        && ($check['ok'] ?? false) !== true,
+                )
+                ->keys()
+                ->values()
+                ->all();
+
+            $report['error'] = 'Post-deploy health check failed: '.implode(', ', $failed);
+        }
+
+        return response()->json(
+            $report,
+            ($report['status'] ?? 'error') === 'ok' ? 200 : 503,
+        );
+    }
+
+    public function status(Request $request, DeploymentStateStore $states): JsonResponse
+    {
+        $state = $states->get((string) $request->route('deployment'));
+        abort_unless((int) ($state['user_id'] ?? -1) === $this->actorId(), 404);
+
+        return response()->json($state);
+    }
+
+    private function actorId(): int
+    {
+        $id = (int) config('content_agent.author_user_id');
+        abort_if($id < 1, 503, 'PlayNexus content agent author is not configured.');
+
+        return $id;
+    }
+}
+''')
+
+          replace(
+              'config/deployment.php',
+              "    'retention' => (int) env('DEPLOYMENT_RETENTION', 3),\n",
+              "    'retention' => (int) env('DEPLOYMENT_RETENTION', 1),\n"
+              "    'stale_upload_minutes' => (int) env('DEPLOYMENT_STALE_UPLOAD_MINUTES', 15),\n"
+              "    'failed_retention_minutes' => (int) env('DEPLOYMENT_FAILED_RETENTION_MINUTES', 5),\n"
+              "    'min_free_disk_bytes' => (int) env('DEPLOYMENT_MIN_FREE_DISK_BYTES', 134217728),\n"
+              "    'legacy_log_max_bytes' => (int) env('DEPLOYMENT_LEGACY_LOG_MAX_BYTES', 16777216),\n",
+          )
+
+          replace(
+              'config/logging.php',
+              "            'channels' => explode(',', (string) env('LOG_STACK', 'single')),",
+              "            'channels' => explode(',', (string) env('LOG_STACK', 'daily')),")
+          replace(
+              'config/logging.php',
+              "            'days' => env('LOG_DAILY_DAYS', 14),",
+              "            'days' => env('LOG_DAILY_DAYS', 7),")
+          replace(
+              'config/logging.php',
+              "            'days' => 14,\n            'replace_placeholders' => true,\n        ],\n\n        'slack' => [",
+              "            'days' => 3,\n            'replace_placeholders' => true,\n        ],\n\n        'slack' => [")
+
+          replace(
+              'routes/api.php',
+              "        Route::post('/upload/chunk', [DeploymentAgentController::class, 'chunk'])->name('chunk');\n",
+              "        Route::post('/cleanup', [DeploymentAgentController::class, 'cleanup'])->name('cleanup');\n"
+              "        Route::post('/upload/chunk', [DeploymentAgentController::class, 'chunk'])->name('chunk');\n",
+          )
+
+          replace(
+              'routes/console.php',
+              "use App\\Services\\FollowedGameWatchService;\n",
+              "use App\\Services\\Deployment\\DeploymentStateStore;\nuse App\\Services\\FollowedGameWatchService;\n",
+          )
+          replace(
+              'routes/console.php',
+              "Artisan::command('inspire', function () {\n    $this->comment(Inspiring::quote());\n})->purpose('Display an inspiring quote');\n",
+              "Artisan::command('inspire', function () {\n    $this->comment(Inspiring::quote());\n})->purpose('Display an inspiring quote');\n\n"
+              "Artisan::command('nexus:cleanup-deployments', function () {\n"
+              "    $removed = app(DeploymentStateStore::class)->cleanup();\n"
+              "    $this->info(\"Deployment cleanup removed {$removed} stale operation(s).\");\n"
+              "})->purpose('Reclaim disk space from stale PlayNexus deployment artifacts');\n",
+          )
+          replace(
+              'routes/console.php',
+              "Schedule::command('nexus:prune-mobile-api-tokens')\n",
+              "Schedule::command('nexus:cleanup-deployments')\n"
+              "    ->hourly()\n"
+              "    ->withoutOverlapping();\n\n"
+              "Schedule::command('nexus:prune-mobile-api-tokens')\n",
+          )
+
+          replace(
+              'app/Services/Deployment/DeploymentManager.php',
+              "        $state = empty($data['operation_id'])\n            ? $this->states->create($userId, $metadata)\n            : $this->owned($data['operation_id'], $userId);\n",
+              "        if (empty($data['operation_id'])) {\n"
+              "            $freeSpace = $this->freeDiskSpace($this->paths->root());\n"
+              "            $minimumFree = max(64 * 1024 * 1024, (int) config('deployment.min_free_disk_bytes', 128 * 1024 * 1024));\n"
+              "            $required = max($minimumFree, ((int) $metadata['size']) * 2);\n"
+              "            if ($freeSpace !== null && $freeSpace < $required) {\n"
+              "                throw new RuntimeException('فضای آزاد هاست برای Deploy امن کافی نیست.');\n"
+              "            }\n"
+              "        }\n\n"
+              "        $state = empty($data['operation_id'])\n"
+              "            ? $this->states->create($userId, $metadata)\n"
+              "            : $this->owned($data['operation_id'], $userId);\n",
+          )
+          replace(
+              'app/Services/Deployment/DeploymentManager.php',
+              "                $source = fopen($path, 'rb');\n                stream_copy_to_stream($source, $target);\n                fclose($source);\n",
+              "                $source = fopen($path, 'rb');\n"
+              "                if (! $source || stream_copy_to_stream($source, $target) === false) {\n"
+              "                    if (is_resource($source)) fclose($source);\n"
+              "                    throw new RuntimeException(\"خواندن قطعه {$i} ناموفق بود.\");\n"
+              "                }\n"
+              "                fclose($source);\n"
+              "                if (! @unlink($path) && is_file($path)) {\n"
+              "                    throw new RuntimeException(\"آزادسازی فضای قطعه {$i} ناموفق بود.\");\n"
+              "                }\n",
+          )
+          replace(
+              'app/Services/Deployment/DeploymentManager.php',
+              "        $this->paths->atomicJson($dir.'/manifest.json', $manifest);\n        return $this->states->update($id, ['status' => 'verified',",
+              "        $this->paths->atomicJson($dir.'/manifest.json', $manifest);\n"
+              "        File::delete($dir.'/package.zip');\n"
+              "        return $this->states->update($id, ['status' => 'verified',",
+          )
+          replace(
+              'app/Services/Deployment/DeploymentManager.php',
+              "        $this->states->pruneSuccessful();\n\n        return $state;\n    }\n\n    private function backup(array $state): array",
+              "        $this->releaseTransientArtifacts($state['id']);\n"
+              "        $this->states->pruneSuccessful();\n\n"
+              "        return $state;\n"
+              "    }\n\n"
+              "    private function backup(array $state): array",
+          )
+          replace(
+              'app/Services/Deployment/DeploymentManager.php',
+              "        $this->states->pruneSuccessful();\n\n        return $state;\n    }\n\n    private function removeDeletedFiles(array $state): void",
+              "        $this->releaseTransientArtifacts($state['id']);\n"
+              "        $this->states->pruneSuccessful();\n\n"
+              "        return $state;\n"
+              "    }\n\n"
+              "    private function releaseTransientArtifacts(string $id): void\n"
+              "    {\n"
+              "        $directory = $this->paths->operation($id);\n"
+              "        File::deleteDirectory($directory.'/staging');\n"
+              "        File::deleteDirectory($directory.'/chunks');\n"
+              "        File::delete([\n"
+              "            $directory.'/package.zip',\n"
+              "            $directory.'/package.zip.tmp',\n"
+              "            $directory.'/upload.lock',\n"
+              "        ]);\n"
+              "    }\n\n"
+              "    private function removeDeletedFiles(array $state): void",
+          )
+
+          test_file = Path('tests/Feature/DeploymentAgentApiTest.php')
+          test_text = test_file.read_text()
+          marker = "    private function deploymentToken(): string\n"
+          if marker not in test_text:
+              raise SystemExit('test insertion marker not found')
+          test_method = r'''    public function test_new_upload_prunes_stale_deployment_artifacts(): void
+    {
+        config([
+            'deployment.stale_upload_minutes' => 5,
+            'deployment.failed_retention_minutes' => 1,
+        ]);
+
+        $staleId = '11111111-1111-4111-8111-111111111111';
+        $staleDirectory = $this->directory.'/'.$staleId;
+        File::ensureDirectoryExists($staleDirectory.'/chunks');
+        File::put($staleDirectory.'/chunks/0.part', str_repeat('x', 1024));
+        File::put($staleDirectory.'/state.json', json_encode([
+            'id' => $staleId,
+            'user_id' => 42,
+            'status' => 'uploading',
+            'stage' => 'uploaded',
+            'updated_at' => now()->subHour()->toIso8601String(),
+        ], JSON_THROW_ON_ERROR));
+
+        $this->withHeaders([
+            'Accept' => 'application/json',
+            'Authorization' => 'Bearer '.$this->deploymentToken(),
+        ])->post(
+            '/api/deployment-agent/upload/chunk',
+            $this->chunkPayload('refs/heads/main'),
+        )->assertOk();
+
+        $this->assertDirectoryDoesNotExist($staleDirectory);
+    }
+
+'''
+          test_file.write_text(test_text.replace(marker, test_method + marker, 1))
+          PY
+
+      - name: Remove one-shot workflow from final branch
+        run: rm .github/workflows/hotfix-deployment-disk-quota.yml
+
+      - name: PHP syntax checks
+        run: |
+          set -Eeuo pipefail
+          php -l app/Services/Deployment/DeploymentStateStore.php
+          php -l app/Services/Deployment/DeploymentManager.php
+          php -l app/Http/Controllers/Api/DeploymentAgentController.php
+          php -l config/deployment.php
+          php -l config/logging.php
+          php -l routes/api.php
+          php -l routes/console.php
+          php -l tests/Feature/DeploymentAgentApiTest.php
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run focused deployment tests
+        run: php artisan test tests/Feature/DeploymentAgentApiTest.php
+
+      - name: Commit verified hotfix
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git diff --check
+          git config user.name 'sobhanCodesx'
+          git config user.email 'sobhankhii22@gmail.com'
+          git add -A
+          git commit -m 'Prevent deployment disk quota exhaustion'
+          git push origin HEAD:chatgpt/deploy-disk-quota-guard
