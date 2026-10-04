@@ -58,8 +58,8 @@ class PersonalizedEditorialFeedTest extends TestCase
         $this->assertCount(1, $items);
         $this->assertSame($post->id, $items[0]['id']);
         $this->assertSame('news', $items[0]['type']);
-        $this->assertSame('PlayNexus', $items[0]['author']['name']);
-        $this->assertNull($items[0]['author']['url']);
+        $this->assertSame('Editorial Test Game', $items[0]['author']['name']);
+        $this->assertSame(route('channels.show', $game->slug, false), $items[0]['author']['url']);
         $this->assertNotContains($video->id, array_column($items, 'id'));
     }
 
@@ -109,6 +109,7 @@ class PersonalizedEditorialFeedTest extends TestCase
         $this->assertSame([$video->id], array_column($videos, 'id'));
         $this->assertSame([$post->id], array_column($editorial, 'id'));
         $this->assertSame('video', $videos[0]['type']);
-        $this->assertSame('PlayNexus', $editorial[0]['author']['name']);
+        $this->assertSame('Video Test Game', $editorial[0]['author']['name']);
+        $this->assertSame(route('channels.show', $game->slug, false), $editorial[0]['author']['url']);
     }
 }
