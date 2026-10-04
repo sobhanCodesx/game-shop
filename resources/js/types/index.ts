@@ -163,10 +163,12 @@ export interface FeedItemData {
     allow_comments: boolean;
     related_product: {
         id: number;
+        kind: "physical" | "digital";
+        label: string;
         title: string;
         url: string;
         image_url: string | null;
-        price: number;
+        price: number | null;
     } | null;
     related_video: { id: number; title: string; url: string } | null;
 }

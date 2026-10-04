@@ -1,14 +1,16 @@
 import { Avatar } from "@heroui/react";
 import { Link, router, usePage } from "@inertiajs/react";
 import {
+    ArrowUpLeft,
     Bookmark,
     Gamepad2,
     Heart,
     Link2,
     MessageCircle,
-    Package,
     PlaySquare,
     Share2,
+    ShoppingBag,
+    Sparkles,
 } from "lucide-react";
 import { lazy, memo, Suspense, useState } from "react";
 
@@ -241,31 +243,36 @@ function FeedItemComponent({
                 <div className="grid gap-2 border-b border-[var(--store-border)] p-3 sm:grid-cols-2 sm:px-5">
                     {item.related_product && (
                         <Link
-                            className="flex min-w-0 items-center gap-3 rounded-2xl bg-[var(--store-surface)] p-3 transition hover:bg-[var(--store-accent-soft)]"
+                            className="group relative isolate flex min-w-0 items-center gap-3 overflow-hidden rounded-[22px] border border-indigo-500/30 bg-[linear-gradient(120deg,rgba(67,56,202,.22),rgba(15,23,42,.82)_52%,rgba(6,182,212,.12))] p-3.5 shadow-[0_18px_45px_-30px_rgba(99,102,241,.95)] transition duration-300 hover:-translate-y-0.5 hover:border-indigo-400/60 hover:shadow-[0_22px_55px_-30px_rgba(99,102,241,.9)] sm:col-span-2"
                             href={item.related_product.url}
                         >
-                            {item.related_product.image_url ? (
-                                <img
-                                    alt=""
-                                    className="size-12 rounded-xl object-cover"
-                                    loading="lazy"
-                                    src={item.related_product.image_url}
-                                />
-                            ) : (
-                                <span className="grid size-12 place-items-center rounded-xl bg-indigo-500/10 text-indigo-400">
-                                    <Package />
+                            <span aria-hidden="true" className="pointer-events-none absolute -right-12 -top-16 size-36 rounded-full bg-indigo-500/15 blur-3xl" />
+                            <span className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-slate-950/65 text-indigo-300 shadow-lg shadow-black/20">
+                                {item.related_product.image_url ? (
+                                    <img alt={item.related_product.title} className="size-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" src={item.related_product.image_url} />
+                                ) : (
+                                    <ShoppingBag size={24} />
+                                )}
+                            </span>
+                            <span className="relative min-w-0 flex-1">
+                                <span className="flex flex-wrap items-center gap-1.5">
+                                    <small className="inline-flex items-center gap-1 rounded-full border border-indigo-400/20 bg-indigo-500/10 px-2 py-0.5 text-[9px] font-black text-indigo-300">
+                                        <Sparkles size={10} />
+                                        {item.related_product.label}
+                                    </small>
+                                    {item.related_product.price !== null ? (
+                                        <span className="text-[10px] font-black text-emerald-400">
+                                            {item.related_product.kind === "digital" ? "از " : ""}
+                                            {money.format(item.related_product.price)} تومان
+                                        </span>
+                                    ) : (
+                                        <span className="text-[9px] font-bold text-amber-300">قیمت و ظرفیت در صفحه محصول</span>
+                                    )}
                                 </span>
-                            )}
-                            <span className="min-w-0">
-                                <small className="text-[10px] font-black text-indigo-400">
-                                    محصول مرتبط
-                                </small>
-                                <strong className="block truncate text-xs">
-                                    {item.related_product.title}
-                                </strong>
-                                <span className="text-[10px] text-[var(--store-muted)]">
-                                    {money.format(item.related_product.price)}{" "}
-                                    تومان
+                                <strong className="mt-1.5 block line-clamp-2 text-xs font-black leading-5 text-white sm:text-sm">{item.related_product.title}</strong>
+                                <span className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-indigo-500 px-2.5 py-1.5 text-[10px] font-black text-white shadow-lg shadow-indigo-950/30 transition group-hover:bg-indigo-400">
+                                    مشاهده و خرید
+                                    <ArrowUpLeft size={13} />
                                 </span>
                             </span>
                         </Link>

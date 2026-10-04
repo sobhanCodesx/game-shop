@@ -33,6 +33,9 @@ class FeedService
                 'media',
                 'relatedProduct:id,title,slug,game_id,price,discount_price,status,visibility',
                 'relatedProduct.coverMedia',
+                'relatedDigitalProduct:id,title,slug,status',
+                'relatedDigitalProduct.coverMedia',
+                'relatedDigitalProduct.offers:id,digital_product_id,price,status,sort_order',
                 'relatedContent:id,title,slug,type,thumbnail,video_path,video_mime,duration,status,published_at',
             ])
             ->withCount([
@@ -394,12 +397,9 @@ class FeedService
             }
         }
 
-        $isEditorialPost = $content->type === 'post';
-        $authorName = $isEditorialPost
-            ? 'PlayNexus'
-            : ($content->game?->name ?? 'PlayNexus');
-        $channelLogo = ! $isEditorialPost && $content->game
-            ? ($content->game->cover ?: $content->game->playlists->first()?->logo)
+        $authorName = $content->game?->name ?? 'PlayNexus';
+        $channelLogo = $content->game
+            ? ($content->game->playlists->first()?->logo ?: $content->game->cover)
             : null;
         $authorAvatar = $channelLogo
             ? MediaStorage::url($channelLogo)
@@ -423,27 +423,58 @@ class FeedService
             'author' => [
                 'name' => $authorName,
                 'avatar_url' => $authorAvatar,
-                'url' => $isEditorialPost
-                    ? null
-                    : ($content->game ? route('channels.show', $content->game->slug, false) : null),
+                'url' => $content->game ? route('channels.show', $content->game->slug, false) : null,
             ],
             'likes_count' => (int) $content->likes_count,
             'comments_count' => (int) $content->comments_count,
             'is_liked' => in_array($content->id, $liked, true),
             'is_saved' => in_array($content->id, $saved, true),
             'allow_comments' => (bool) $content->allow_comments,
-            'related_product' => $content->relatedProduct && $content->relatedProduct->status === 'published' && $content->relatedProduct->visibility === 'public' ? [
-                'id' => $content->relatedProduct->id,
-                'title' => $content->relatedProduct->title,
-                'url' => route('products.show', $content->relatedProduct->slug, false),
-                'image_url' => MediaStorage::url($content->relatedProduct->coverMedia?->path),
-                'price' => $content->relatedProduct->discount_price ?: $content->relatedProduct->price,
-            ] : null,
+            'related_product' => $this->relatedProductCard($content),
             'related_video' => $content->relatedContent && $content->relatedContent->status === 'published' ? [
                 'id' => $content->relatedContent->id,
                 'title' => $content->relatedContent->title,
                 'url' => route('content.show', ['type' => $content->relatedContent->type === 'short' ? 'shorts' : 'videos', 'content' => $content->relatedContent->slug], false),
             ] : null,
+        ];
+    }
+
+
+    private function relatedProductCard(SocialContent $content): ?array
+    {
+        $digital = $content->relatedDigitalProduct;
+        if ($digital && $digital->status === 'published') {
+            $offers = $digital->relationLoaded('offers')
+      ? $digital->offers
+      : $digital->offers()->get();
+            $price = $offers->where('status', 'active')->min('price');
+
+            return [
+      'id' => $digital->id,
+      'kind' => 'digital',
+      'label' => 'اکانت دیجیتال',
+      'title' => $digital->title,
+      'url' => route('digital.show', $digital->slug, false),
+      'image_url' => MediaStorage::url($digital->coverMedia?->path),
+      'price' => $price !== null ? (int) $price : null,
+            ];
+        }
+
+        $product = $content->relatedProduct;
+        if (! $product || $product->status !== 'published' || $product->visibility !== 'public') {
+            return null;
+        }
+
+        $price = $product->discount_price ?: $product->price;
+
+        return [
+            'id' => $product->id,
+            'kind' => 'physical',
+            'label' => 'محصول فیزیکی',
+            'title' => $product->title,
+            'url' => route('products.show', $product->slug, false),
+            'image_url' => MediaStorage::url($product->coverMedia?->path),
+            'price' => $price !== null ? (int) $price : null,
         ];
     }
 
@@ -456,6 +487,7 @@ class FeedService
                 'id',
                 'game_id',
                 'related_product_id',
+                'related_digital_product_id',
                 'related_content_id',
                 'type',
                 'feed_type',
@@ -478,6 +510,9 @@ class FeedService
                 'relatedContent:id,title,thumbnail,video_path,duration',
                 'relatedProduct:id',
                 'relatedProduct.coverMedia',
+                'relatedDigitalProduct:id,title,slug,status',
+                'relatedDigitalProduct.coverMedia',
+                'relatedDigitalProduct.offers:id,digital_product_id,price,status,sort_order',
             ]);
     }
 
@@ -540,6 +575,17 @@ class FeedService
                     'duration' => null,
                     'alt' => $reference->title,
                 ]);
+            } elseif ($content->relatedDigitalProduct?->coverMedia?->path) {
+                $media->push([
+                    'id' => -$content->relatedDigitalProduct->id,
+                    'type' => 'image',
+                    'url' => MediaStorage::url($content->relatedDigitalProduct->coverMedia->path),
+                    'thumbnail' => null,
+                    'width' => null,
+                    'height' => null,
+                    'duration' => null,
+                    'alt' => $content->title,
+                ]);
             } elseif ($content->relatedProduct?->coverMedia?->path) {
                 $media->push([
                     'id' => -$content->relatedProduct->id,
@@ -554,12 +600,9 @@ class FeedService
             }
         }
 
-        $isEditorialPost = $content->type === 'post';
-        $authorName = $isEditorialPost
-            ? 'PlayNexus'
-            : ($content->game?->name ?? 'PlayNexus');
-        $channelLogo = ! $isEditorialPost && $content->game
-            ? ($content->game->cover ?: $content->game->playlists->first()?->logo)
+        $authorName = $content->game?->name ?? 'PlayNexus';
+        $channelLogo = $content->game
+            ? ($content->game->playlists->first()?->logo ?: $content->game->cover)
             : null;
 
         return [
@@ -576,7 +619,7 @@ class FeedService
             'game' => $content->game ? [
                 'name' => $content->game->name,
                 'url' => route('channels.show', $content->game->slug, false),
-                'image_url' => MediaStorage::url($content->game->cover),
+                'image_url' => MediaStorage::url($channelLogo),
             ] : null,
             'media' => $media,
             'author' => [
@@ -584,9 +627,7 @@ class FeedService
                 'avatar_url' => $channelLogo
                     ? MediaStorage::url($channelLogo)
                     : url((string) config('seo.default_image', '/logo.png')),
-                'url' => $isEditorialPost
-                    ? null
-                    : ($content->game ? route('channels.show', $content->game->slug, false) : null),
+                'url' => $content->game ? route('channels.show', $content->game->slug, false) : null,
             ],
         ];
     }
@@ -603,6 +644,9 @@ class FeedService
                 'media',
                 'relatedProduct:id,title,slug,game_id,price,discount_price,status,visibility',
                 'relatedProduct.coverMedia',
+                'relatedDigitalProduct:id,title,slug,status',
+                'relatedDigitalProduct.coverMedia',
+                'relatedDigitalProduct.offers:id,digital_product_id,price,status,sort_order',
                 'relatedContent:id,title,slug,type,thumbnail,video_path,video_mime,duration,status,published_at',
             ])
             ->withCount([

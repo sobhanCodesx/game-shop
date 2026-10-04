@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\FeedPostRequest;
+use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Product;
 use App\Models\SocialContent;
@@ -70,7 +71,7 @@ class FeedPostController extends Controller
 
         return Inertia::render('Admin/Feed/Form', [
             'post' => [
-                ...$post->only(['id', 'title', 'excerpt', 'body', 'feed_type', 'feed_badge', 'game_id', 'related_product_id', 'related_content_id', 'status', 'allow_comments', 'notify_followers', 'seo_title', 'seo_description']),
+                ...$post->only(['id', 'title', 'excerpt', 'body', 'feed_type', 'feed_badge', 'game_id', 'related_product_id', 'related_digital_product_id', 'related_content_id', 'status', 'allow_comments', 'notify_followers', 'seo_title', 'seo_description']),
                 'media' => $post->media->map(fn (SocialContentMedia $media) => [
                     'id' => $media->id,
                     'type' => $media->type,
@@ -108,7 +109,7 @@ class FeedPostController extends Controller
 
     private function fields(FeedPostRequest $request): array
     {
-        $fields = $request->safe()->only(['title', 'feed_type', 'feed_badge', 'game_id', 'related_product_id', 'related_content_id', 'status', 'allow_comments', 'notify_followers', 'seo_title', 'seo_description']);
+        $fields = $request->safe()->only(['title', 'feed_type', 'feed_badge', 'game_id', 'related_product_id', 'related_digital_product_id', 'related_content_id', 'status', 'allow_comments', 'notify_followers', 'seo_title', 'seo_description']);
         $body = RichText::sanitize($request->string('body')->toString());
         $fields['body'] = $body ?: null;
         $fields['excerpt'] = Str::limit(RichText::plainText($body), 500, '…') ?: null;
@@ -170,6 +171,7 @@ class FeedPostController extends Controller
         return [
             'games' => Game::query()->whereIn('status', ['active', 'published'])->orderBy('name')->get(['id', 'name']),
             'products' => Product::query()->publiclyVisible()->latest()->limit(300)->get(['id', 'title']),
+            'digitalProducts' => DigitalProduct::query()->published()->latest()->limit(300)->get(['id', 'title']),
             'videos' => SocialContent::query()->published()->where('type', 'video')->latest('published_at')->limit(300)->get(['id', 'title']),
         ];
     }

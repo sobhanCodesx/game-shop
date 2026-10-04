@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SocialContent extends Model
 {
-    protected $fillable = ['user_id', 'game_id', 'related_product_id', 'related_content_id', 'type', 'feed_type', 'feed_badge', 'media_type', 'title', 'slug', 'excerpt', 'body', 'seo_title', 'seo_description', 'link_url', 'link_label', 'thumbnail', 'video_path', 'video_mime', 'duration', 'views', 'allow_comments', 'notify_followers', 'featured', 'sort_order', 'status', 'published_at'];
+    protected $fillable = ['user_id', 'game_id', 'related_product_id', 'related_digital_product_id', 'related_content_id', 'type', 'feed_type', 'feed_badge', 'media_type', 'title', 'slug', 'excerpt', 'body', 'seo_title', 'seo_description', 'link_url', 'link_label', 'thumbnail', 'video_path', 'video_mime', 'duration', 'views', 'allow_comments', 'notify_followers', 'featured', 'sort_order', 'status', 'published_at'];
 
     protected function casts(): array
     {
@@ -35,6 +35,11 @@ class SocialContent extends Model
     public function relatedProduct(): BelongsTo
     {
         return $this->belongsTo(Product::class, 'related_product_id');
+    }
+
+    public function relatedDigitalProduct(): BelongsTo
+    {
+        return $this->belongsTo(DigitalProduct::class, 'related_digital_product_id');
     }
 
     public function relatedContent(): BelongsTo

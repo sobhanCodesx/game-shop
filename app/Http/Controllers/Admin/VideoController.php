@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\VideoRequest;
+use App\Models\DigitalProduct;
 use App\Models\Game;
+use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\Studio;
 use App\Models\VideoPlaylist;
@@ -127,7 +129,7 @@ class VideoController extends Controller
     public function store(VideoRequest $request, MediaOptimizationService $optimizer, TemporaryUploadService $uploads): RedirectResponse
     {
         $video = new SocialContent([
-            ...$request->safe()->only(['title', 'excerpt', 'body', 'seo_title', 'seo_description', 'status', 'featured', 'game_id', 'allow_comments']),
+            ...$request->safe()->only(['title', 'excerpt', 'body', 'seo_title', 'seo_description', 'status', 'featured', 'game_id', 'related_product_id', 'related_digital_product_id', 'allow_comments']),
             'user_id' => $request->user()->id,
             'type' => 'video',
             'slug' => $this->uniqueSlug($request->string('title')->toString()),
@@ -174,7 +176,7 @@ class VideoController extends Controller
     public function update(VideoRequest $request, SocialContent $video, MediaOptimizationService $optimizer, TemporaryUploadService $uploads): RedirectResponse
     {
         abort_unless($video->type === 'video', 404);
-        $video->fill($request->safe()->only(['title', 'excerpt', 'body', 'seo_title', 'seo_description', 'status', 'featured', 'game_id', 'allow_comments']));
+        $video->fill($request->safe()->only(['title', 'excerpt', 'body', 'seo_title', 'seo_description', 'status', 'featured', 'game_id', 'related_product_id', 'related_digital_product_id', 'allow_comments']));
         $this->prepareEditorialContent($video);
         $video->published_at = $video->status === 'published' ? ($video->published_at ?? now()) : null;
         $token = $request->string('upload_token')->toString();
@@ -259,6 +261,8 @@ class VideoController extends Controller
     {
         return [
             'games' => Game::query()->whereIn('status', ['active', 'published'])->orderBy('name')->get(['id', 'name']),
+            'products' => Product::query()->publiclyVisible()->latest()->limit(300)->get(['id', 'title']),
+            'digitalProducts' => DigitalProduct::query()->published()->latest()->limit(300)->get(['id', 'title']),
             'playlists' => VideoPlaylist::query()->orderBy('sort_order')->orderBy('title')->get(['id', 'game_id', 'title']),
         ];
     }

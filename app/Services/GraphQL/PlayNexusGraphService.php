@@ -66,7 +66,7 @@ class PlayNexusGraphService
 
         $result['extensions'] = [
             'playnexus' => [
-                'schemaVersion' => '1.1.0',
+                'schemaVersion' => '1.2.0',
                 'readOnly' => true,
                 'queryHash' => $metrics['hash'],
                 'depth' => $metrics['depth'],
@@ -96,7 +96,7 @@ class PlayNexusGraphService
 
         return [
             'name' => 'PlayNexus Intelligence Graph',
-            'version' => '1.1.0',
+            'version' => '1.2.0',
             'read_only' => true,
             'endpoint' => '/api/graphql',
             'authentication' => 'Uses the same Bearer token as the existing PlayNexus MCP endpoint.',
