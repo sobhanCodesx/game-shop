@@ -1,0 +1,98 @@
+name: Diagnose Deployment Agent 500
+
+on:
+  push:
+    branches:
+      - diag/deployment-agent-500-20261004
+    paths:
+      - '.github/workflows/diag-deployment-agent-500.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PLAYNEXUS_CONTENT_AGENT_TOKEN: ${{ secrets.PLAYNEXUS_CONTENT_AGENT_TOKEN }}
+    steps:
+      - name: Verify secret and derive scoped deployment token
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -n "${PLAYNEXUS_CONTENT_AGENT_TOKEN:-}"
+          DEPLOY_TOKEN="$(python3 - <<'PY'
+          import hashlib, hmac, os
+          root = os.environ['PLAYNEXUS_CONTENT_AGENT_TOKEN'].encode()
+          print(hmac.new(root, b'playnexus/deployment-auth/v1', hashlib.sha256).hexdigest())
+          PY
+          )"
+          echo "::add-mask::$DEPLOY_TOKEN"
+          echo "DEPLOY_TOKEN=$DEPLOY_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Probe public Laravel health
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          code="$(curl -sS -o /tmp/body -w '%{http_code}' https://playnexus.ir/up || true)"
+          echo "up_status=$code"
+          head -c 600 /tmp/body || true
+          echo
+
+      - name: Probe authenticated deployment health
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          code="$(curl -sS -o /tmp/body -w '%{http_code}' \
+            -H 'Accept: application/json' \
+            -H "Authorization: Bearer $DEPLOY_TOKEN" \
+            https://playnexus.ir/api/deployment-agent/health || true)"
+          echo "deployment_health_status=$code"
+          head -c 3000 /tmp/body || true
+          echo
+
+      - name: Probe deployment validation before any filesystem write
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          code="$(curl -sS -o /tmp/body -w '%{http_code}' \
+            -X POST \
+            -H 'Accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer $DEPLOY_TOKEN" \
+            --data '{}' \
+            https://playnexus.ir/api/deployment-agent/upload/chunk || true)"
+          echo "deployment_invalid_chunk_status=$code"
+          head -c 3000 /tmp/body || true
+          echo
+
+      - name: Probe authenticated MCP ping
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          code="$(curl -sS -o /tmp/body -w '%{http_code}' \
+            -X POST \
+            -H 'Accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer $PLAYNEXUS_CONTENT_AGENT_TOKEN" \
+            --data '{"jsonrpc":"2.0","id":1,"method":"ping","params":{}}' \
+            https://playnexus.ir/api/mcp || true)"
+          echo "mcp_ping_status=$code"
+          head -c 3000 /tmp/body || true
+          echo
+
+      - name: Probe content-agent upload validation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          code="$(curl -sS -o /tmp/body -w '%{http_code}' \
+            -X POST \
+            -H 'Accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer $PLAYNEXUS_CONTENT_AGENT_TOKEN" \
+            --data '{}' \
+            https://playnexus.ir/api/content-agent/upload/chunk || true)"
+          echo "content_agent_invalid_chunk_status=$code"
+          head -c 3000 /tmp/body || true
+          echo
