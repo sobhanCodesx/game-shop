@@ -1,0 +1,97 @@
+name: Diagnose Deployment Agent Health
+
+on:
+  push:
+    branches:
+      - diag/deployment-agent-health-20261004
+    paths:
+      - '.github/workflows/diag-deployment-agent-health.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PLAYNEXUS_CONTENT_AGENT_TOKEN: ${{ secrets.PLAYNEXUS_CONTENT_AGENT_TOKEN }}
+      BASE_URL: https://playnexus.ir/api/deployment-agent
+    steps:
+      - name: Verify secret exists
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -n "${PLAYNEXUS_CONTENT_AGENT_TOKEN:-}"
+
+      - name: Query authenticated deployment health
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          BEARER="$(python3 - <<'PY'
+          import hashlib, hmac, os
+          token = os.environ['PLAYNEXUS_CONTENT_AGENT_TOKEN'].strip().encode()
+          print(hmac.new(token, b'playnexus/deployment-auth/v1', hashlib.sha256).hexdigest())
+          PY
+          )"
+          code="$(curl -sS -L \
+            -H "Authorization: Bearer ${BEARER}" \
+            -H 'Accept: application/json' \
+            -o /tmp/health.json \
+            -w '%{http_code}' \
+            "${BASE_URL}/health")"
+          echo "HTTP ${code}"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          raw = Path('/tmp/health.json').read_text(errors='replace')
+          try:
+              print(json.dumps(json.loads(raw), ensure_ascii=False, indent=2))
+          except Exception:
+              print(raw[:4000])
+          PY
+          test "$code" -ge 200
+          test "$code" -lt 500
+
+      - name: Probe tiny first chunk
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          BEARER="$(python3 - <<'PY'
+          import hashlib, hmac, os
+          token = os.environ['PLAYNEXUS_CONTENT_AGENT_TOKEN'].strip().encode()
+          print(hmac.new(token, b'playnexus/deployment-auth/v1', hashlib.sha256).hexdigest())
+          PY
+          )"
+          OP="diag-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          printf 'PK\003\004diagnostic' > /tmp/probe.zip
+          SHA="$(printf '%040d' 0)"
+          code="$(curl -sS -L \
+            -H "Authorization: Bearer ${BEARER}" \
+            -H 'Accept: application/json' \
+            -o /tmp/chunk.json \
+            -w '%{http_code}' \
+            -F "operation_id=${OP}" \
+            -F 'chunk_index=0' \
+            -F 'total_chunks=1' \
+            -F "size=$(stat -c%s /tmp/probe.zip)" \
+            -F 'name=diagnostic-probe.zip' \
+            -F "source_sha=${SHA}" \
+            -F 'source_ref=refs/heads/main' \
+            -F "run_id=${GITHUB_RUN_ID}" \
+            -F 'chunk=@/tmp/probe.zip;type=application/zip' \
+            "${BASE_URL}/upload/chunk" || true)"
+          echo "CHUNK HTTP ${code}"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          raw = Path('/tmp/chunk.json').read_text(errors='replace') if Path('/tmp/chunk.json').exists() else ''
+          try:
+              print(json.dumps(json.loads(raw), ensure_ascii=False, indent=2))
+          except Exception:
+              print(raw[:4000])
+          PY
+          if [[ "$code" == "500" ]]; then
+            exit 42
+          fi
