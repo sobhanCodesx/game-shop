@@ -11,6 +11,7 @@ use App\Services\FeedService;
 use App\Services\GraphQL\PlayNexusGraphService;
 use App\Services\MediaStorageDiagnosticService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -57,6 +58,14 @@ class ContentAgentMcpController extends Controller
             ]));
         } catch (ModelNotFoundException) {
             return $this->rpcResult($id, $this->toolError('Requested PlayNexus record was not found.'));
+        } catch (QueryException $exception) {
+            report($exception);
+
+            return $this->rpcResult($id, $this->toolError('Database write failed.', [
+                'sqlstate' => $exception->errorInfo[0] ?? null,
+                'driver_code' => $exception->errorInfo[1] ?? null,
+                'driver_message' => $exception->errorInfo[2] ?? null,
+            ]));
         } catch (RuntimeException $exception) {
             return $this->rpcResult($id, $this->toolError($exception->getMessage()));
         } catch (Throwable $exception) {
