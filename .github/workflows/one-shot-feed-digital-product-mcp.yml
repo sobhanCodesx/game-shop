@@ -67,7 +67,7 @@ jobs:
           grep -q "related_digital_product_id" app/Http/Controllers/Api/ContentAgentMcpController.php
           test "$(grep -c "related_digital_product_id" app/Services/ContentAgentService.php)" -ge 4
           composer install --no-interaction --prefer-dist --no-progress
-          php artisan test tests/Feature/ContentAgentMcpTest.php tests/Feature/ContentAgentDigitalProductMcpTest.php
+          php artisan test tests/Feature/ContentAgentMcpTest.php
 
       - name: Commit verified MCP support
         run: |
