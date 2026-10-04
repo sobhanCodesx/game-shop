@@ -1,0 +1,36 @@
+name: One Shot Clean Dual Platform Branch
+
+on:
+  push:
+    branches:
+      - chatgpt/dual-platform-pricing
+    paths:
+      - '.github/workflows/one-shot-clean-dual-platform.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  clean:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: chatgpt/dual-platform-pricing
+          fetch-depth: 0
+
+      - name: Remove temporary verification and generated cache artifacts
+        run: |
+          rm -f .github/scripts/dual_platform_test_fix.py
+          rm -f .github/workflows/verify-dual-platform-pricing.yml
+          rm -rf storage/framework/cache/data
+          rm -f .github/workflows/one-shot-clean-dual-platform.yml
+
+      - name: Commit cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Remove temporary dual-platform verification artifacts'
+          git push origin HEAD:chatgpt/dual-platform-pricing
