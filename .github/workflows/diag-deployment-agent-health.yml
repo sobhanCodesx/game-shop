@@ -37,12 +37,37 @@ jobs:
           )"
           echo "DEPLOY_BEARER=${BEARER}" >> "$GITHUB_ENV"
 
-      - name: Probe authentication boundary
+      - name: Probe public app health
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          code="$(curl -sS -o /tmp/up.txt -w '%{http_code}' https://playnexus.ir/up || true)"
+          echo "APP_UP_HTTP=${code}"
+          head -c 1000 /tmp/up.txt || true
+
+      - name: Probe content-agent authentication and ping
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bad="$(curl -sS -o /tmp/mcp-bad.json -w '%{http_code}' \
+            -H 'Authorization: Bearer invalid' -H 'Content-Type: application/json' -H 'Accept: application/json' \
+            --data '{"jsonrpc":"2.0","id":1,"method":"ping","params":{}}' \
+            https://playnexus.ir/api/mcp || true)"
+          echo "MCP_BAD_BEARER_HTTP=${bad}"
+          cat /tmp/mcp-bad.json || true
+          good="$(curl -sS -o /tmp/mcp-good.json -w '%{http_code}' \
+            -H "Authorization: Bearer ${PLAYNEXUS_CONTENT_AGENT_TOKEN}" -H 'Content-Type: application/json' -H 'Accept: application/json' \
+            --data '{"jsonrpc":"2.0","id":2,"method":"ping","params":{}}' \
+            https://playnexus.ir/api/mcp || true)"
+          echo "MCP_GOOD_BEARER_HTTP=${good}"
+          cat /tmp/mcp-good.json || true
+
+      - name: Probe deployment authentication boundary
         shell: bash
         run: |
           set -Eeuo pipefail
           bad="$(curl -sS -o /tmp/bad.json -w '%{http_code}' -H 'Authorization: Bearer invalid' -H 'Accept: application/json' "${BASE_URL}/health" || true)"
-          echo "BAD_BEARER_HTTP=${bad}"
+          echo "DEPLOY_BAD_BEARER_HTTP=${bad}"
           cat /tmp/bad.json || true
 
       - name: Query authenticated deployment health
@@ -55,10 +80,10 @@ jobs:
             -o /tmp/health.json \
             -w '%{http_code}' \
             "${BASE_URL}/health" || true)"
-          echo "HEALTH_HTTP=${code}"
+          echo "DEPLOY_HEALTH_HTTP=${code}"
           cat /tmp/health.json || true
 
-      - name: Probe validation path without chunk
+      - name: Probe deployment validation path without chunk
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -68,7 +93,7 @@ jobs:
             -o /tmp/validation.json \
             -w '%{http_code}' \
             "${BASE_URL}/upload/chunk" || true)"
-          echo "VALIDATION_HTTP=${code}"
+          echo "DEPLOY_VALIDATION_HTTP=${code}"
           cat /tmp/validation.json || true
 
       - name: Probe tiny valid first chunk
@@ -81,7 +106,6 @@ jobs:
           PY
           )"
           printf 'PK\003\004diagnostic' > /tmp/probe.zip
-          SHA="0000000000000000000000000000000000000000"
           code="$(curl -sS -L \
             -H "Authorization: Bearer ${DEPLOY_BEARER}" \
             -H 'Accept: application/json' \
@@ -92,11 +116,10 @@ jobs:
             -F 'total_chunks=1' \
             -F "size=$(stat -c%s /tmp/probe.zip)" \
             -F 'name=diagnostic-probe.zip' \
-            -F "source_sha=${SHA}" \
+            -F 'source_sha=0000000000000000000000000000000000000000' \
             -F 'source_ref=refs/heads/main' \
             -F "run_id=${GITHUB_RUN_ID}" \
             -F 'chunk=@/tmp/probe.zip;type=application/zip' \
             "${BASE_URL}/upload/chunk" || true)"
-          echo "VALID_CHUNK_HTTP=${code}"
+          echo "DEPLOY_VALID_CHUNK_HTTP=${code}"
           cat /tmp/chunk.json || true
-          echo "PROBE_OPERATION=${OP}"
