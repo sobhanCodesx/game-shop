@@ -1,0 +1,53 @@
+name: One-shot MCP database diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/one-shot-mcp-db-diagnostic.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Add safe QueryException diagnostics
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('app/Http/Controllers/Api/ContentAgentMcpController.php')
+          text = path.read_text()
+
+          import_anchor = 'use Illuminate\\Database\\Eloquent\\ModelNotFoundException;\n'
+          import_replacement = import_anchor + 'use Illuminate\\Database\\QueryException;\n'
+          if text.count(import_anchor) != 1:
+              raise SystemExit(f'import anchor count={text.count(import_anchor)}')
+          text = text.replace(import_anchor, import_replacement, 1)
+
+          catch_anchor = "        } catch (RuntimeException $exception) {\n            return $this->rpcResult($id, $this->toolError($exception->getMessage()));\n"
+          catch_replacement = "        } catch (QueryException $exception) {\n            report($exception);\n\n            return $this->rpcResult($id, $this->toolError('Database write failed.', [\n                'sqlstate' => $exception->errorInfo[0] ?? null,\n                'driver_code' => $exception->errorInfo[1] ?? null,\n                'driver_message' => $exception->errorInfo[2] ?? null,\n            ]));\n        } catch (RuntimeException $exception) {\n            return $this->rpcResult($id, $this->toolError($exception->getMessage()));\n"
+          if text.count(catch_anchor) != 1:
+              raise SystemExit(f'catch anchor count={text.count(catch_anchor)}')
+          path.write_text(text.replace(catch_anchor, catch_replacement, 1))
+
+      - name: Validate controller
+        run: |
+          php -l app/Http/Controllers/Api/ContentAgentMcpController.php
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan test tests/Feature/ContentAgentMcpTest.php
+
+      - name: Commit diagnostic support
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/Api/ContentAgentMcpController.php
+          git commit -m "fix(playnexus): surface safe MCP database diagnostics"
+          git push origin HEAD:main
