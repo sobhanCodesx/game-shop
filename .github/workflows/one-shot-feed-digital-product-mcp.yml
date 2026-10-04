@@ -1,0 +1,78 @@
+name: One-shot feed digital product MCP relation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/one-shot-feed-digital-product-mcp.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Add digital product relation to feed MCP
+        shell: python
+        run: |
+          from pathlib import Path
+
+          controller = Path('app/Http/Controllers/Api/ContentAgentMcpController.php')
+          text = controller.read_text()
+          old = "            'related_product_id' => ['type' => ['integer', 'null']],\n            'related_content_id' => ['type' => ['integer', 'null'], 'description' => 'Related PlayNexus video content id.'],"
+          new = "            'related_product_id' => ['type' => ['integer', 'null']],\n            'related_digital_product_id' => ['type' => ['integer', 'null'], 'description' => 'Related published PlayNexus digital product id.'],\n            'related_content_id' => ['type' => ['integer', 'null'], 'description' => 'Related PlayNexus video content id.'],"
+          if text.count(old) != 1:
+              raise SystemExit(f'controller feed schema anchor count={text.count(old)}')
+          controller.write_text(text.replace(old, new, 1))
+
+          service = Path('app/Services/ContentAgentService.php')
+          text = service.read_text()
+
+          replacements = [
+              (
+                  "            'related_product_id' => $data['related_product_id'] ?? null,\n            'related_content_id' => $data['related_content_id'] ?? null,",
+                  "            'related_product_id' => $data['related_product_id'] ?? null,\n            'related_digital_product_id' => $data['related_digital_product_id'] ?? null,\n            'related_content_id' => $data['related_content_id'] ?? null,",
+              ),
+              (
+                  "            'title', 'feed_type', 'feed_badge', 'game_id', 'related_product_id', 'related_content_id',\n            'seo_title', 'seo_description', 'allow_comments', 'notify_followers',",
+                  "            'title', 'feed_type', 'feed_badge', 'game_id', 'related_product_id', 'related_digital_product_id', 'related_content_id',\n            'seo_title', 'seo_description', 'allow_comments', 'notify_followers',",
+              ),
+              (
+                  "            'related_product_id' => ['sometimes', 'nullable', 'integer', Rule::exists('products', 'id')->whereNull('deleted_at')],\n            'related_content_id' => ['sometimes', 'nullable', 'integer', Rule::exists('social_contents', 'id')->where('type', 'video')],",
+                  "            'related_product_id' => ['sometimes', 'nullable', 'integer', Rule::exists('products', 'id')->whereNull('deleted_at'), 'prohibited_with:related_digital_product_id'],\n            'related_digital_product_id' => ['sometimes', 'nullable', 'integer', Rule::exists('digital_products', 'id')->where('status', 'published'), 'prohibited_with:related_product_id'],\n            'related_content_id' => ['sometimes', 'nullable', 'integer', Rule::exists('social_contents', 'id')->where('type', 'video')],",
+              ),
+              (
+                  "            'related_product_id' => $feed->related_product_id,\n            'related_content_id' => $feed->related_content_id,",
+                  "            'related_product_id' => $feed->related_product_id,\n            'related_digital_product_id' => $feed->related_digital_product_id,\n            'related_content_id' => $feed->related_content_id,",
+              ),
+          ]
+
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f'service anchor count={text.count(old)} for {old[:80]!r}')
+              text = text.replace(old, new, 1)
+
+          service.write_text(text)
+
+      - name: Validate MCP relation patch
+        run: |
+          php -l app/Http/Controllers/Api/ContentAgentMcpController.php
+          php -l app/Services/ContentAgentService.php
+          grep -q "related_digital_product_id" app/Http/Controllers/Api/ContentAgentMcpController.php
+          test "$(grep -c "related_digital_product_id" app/Services/ContentAgentService.php)" -ge 4
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan test tests/Feature/ContentAgentMcpTest.php tests/Feature/ContentAgentDigitalProductMcpTest.php
+
+      - name: Commit verified MCP support
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/Api/ContentAgentMcpController.php app/Services/ContentAgentService.php
+          git commit -m "feat(playnexus): link feeds to digital products through MCP"
+          git push origin HEAD:main
