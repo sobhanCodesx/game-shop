@@ -17,6 +17,8 @@ class VideoRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:160'],
             'game_id' => ['nullable', 'integer', Rule::exists('games', 'id')->whereNull('deleted_at')],
+            'related_product_id' => ['nullable', 'integer', Rule::exists('products', 'id')->whereNull('deleted_at'), 'prohibits:related_digital_product_id'],
+            'related_digital_product_id' => ['nullable', 'integer', Rule::exists('digital_products', 'id')->whereNull('deleted_at'), 'prohibits:related_product_id'],
             'playlist_ids' => ['array'],
             'playlist_ids.*' => ['integer', Rule::exists('video_playlists', 'id')],
             'excerpt' => ['nullable', 'string', 'max:500'],

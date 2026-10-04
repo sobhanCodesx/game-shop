@@ -114,7 +114,7 @@ class PlayNexusGraphRepository
     public function content(array $args): ?SocialContent
     {
         return $this->contentQuery($args)
-            ->with(['game', 'relatedProduct', 'relatedContent', 'playlists', 'media'])
+            ->with(['game', 'relatedProduct', 'relatedDigitalProduct.game', 'relatedDigitalProduct.category', 'relatedDigitalProduct.platform', 'relatedDigitalProduct.offers', 'relatedContent', 'playlists', 'media'])
             ->withCount([
                 'reactions as likes_count' => fn (Builder $query) => $query->where('type', 'like'),
                 'comments as comments_count' => fn (Builder $query) => $query->where('status', 'published'),
@@ -126,7 +126,7 @@ class PlayNexusGraphRepository
     public function contents(array $args): array
     {
         $query = $this->contentQuery($args)
-            ->with(['game', 'relatedProduct', 'playlists', 'media'])
+            ->with(['game', 'relatedProduct', 'relatedDigitalProduct.game', 'relatedDigitalProduct.category', 'relatedDigitalProduct.platform', 'relatedDigitalProduct.offers', 'playlists', 'media'])
             ->withCount([
                 'reactions as likes_count' => fn (Builder $query) => $query->where('type', 'like'),
                 'comments as comments_count' => fn (Builder $query) => $query->where('status', 'published'),
@@ -569,6 +569,8 @@ class PlayNexusGraphRepository
             ->when(isset($args['slug']), fn (Builder $q) => $q->where('slug', $args['slug']))
             ->when(! empty($args['ids']), fn (Builder $q) => $q->whereIn('id', array_map('intval', $args['ids'])))
             ->when(isset($args['gameId']), fn (Builder $q) => $q->where('game_id', (int) $args['gameId']))
+            ->when(isset($args['productId']), fn (Builder $q) => $q->where('related_product_id', (int) $args['productId']))
+            ->when(isset($args['digitalProductId']), fn (Builder $q) => $q->where('related_digital_product_id', (int) $args['digitalProductId']))
             ->when(isset($args['type']), fn (Builder $q) => $q->where('type', $args['type']))
             ->when(isset($args['feedType']), fn (Builder $q) => $q->where('feed_type', $args['feedType']))
             ->when(isset($args['feedBadge']), fn (Builder $q) => $q->where('feed_badge', $args['feedBadge']))

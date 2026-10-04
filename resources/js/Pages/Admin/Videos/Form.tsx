@@ -41,12 +41,16 @@ interface VideoData {
     video_url: string | null;
     thumbnail_url: string | null;
     game_id: number | null;
+    related_product_id: number | null;
+    related_digital_product_id: number | null;
     playlist_ids: number[];
     allow_comments: boolean;
 }
 interface Props {
     video: VideoData | null;
     games: Array<{ id: number; name: string }>;
+    products: Array<{ id: number; title: string }>;
+    digitalProducts: Array<{ id: number; title: string }>;
     playlists: Array<{ id: number; game_id: number; title: string }>;
 }
 interface FormData {
@@ -59,6 +63,8 @@ interface FormData {
     status: string;
     featured: boolean;
     game_id: string;
+    related_product_id: string;
+    related_digital_product_id: string;
     playlist_ids: number[];
     allow_comments: boolean;
     _method?: "put";
@@ -129,7 +135,7 @@ function browserVideoMetadata(
     });
 }
 
-export default function VideoForm({ video, games, playlists }: Props) {
+export default function VideoForm({ video, games, products, digitalProducts, playlists }: Props) {
     const editing = Boolean(video);
     const [preview, setPreview] = useState<string | null>(null);
     const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(
@@ -147,11 +153,24 @@ export default function VideoForm({ video, games, playlists }: Props) {
             status: video?.status ?? "draft",
             featured: video?.featured ?? false,
             game_id: video?.game_id ? String(video.game_id) : "",
+            related_product_id: video?.related_product_id ? String(video.related_product_id) : "",
+            related_digital_product_id: video?.related_digital_product_id ? String(video.related_digital_product_id) : "",
             playlist_ids: video?.playlist_ids ?? [],
             allow_comments: video?.allow_comments ?? true,
             custom_thumbnail: false,
             ...(editing ? { _method: "put" as const } : {}),
         });
+    const relatedProductValue = data.related_digital_product_id
+    ? `digital:${data.related_digital_product_id}`
+    : data.related_product_id
+      ? `physical:${data.related_product_id}`
+      : "";
+    const setRelatedProduct = (value: string) => {
+    const [kind, id = ""] = value.split(":");
+    setData("related_product_id", kind === "physical" ? id : "");
+    setData("related_digital_product_id", kind === "digital" ? id : "");
+    };
+
     const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
         null,
     );
@@ -403,6 +422,37 @@ export default function VideoForm({ video, games, playlists }: Props) {
                                 ))}
                             </select>
                         </FormField>
+                <FormField
+                    description="یک محصول فیزیکی یا دیجیتال را به ویدیو وصل کنید؛ اگر ویدیو در فید نمایش داده شود CTA خرید هم همراهش می‌آید."
+                    error={errors.related_product_id ?? errors.related_digital_product_id}
+                    label="محصول مرتبط"
+                >
+                    <select
+                        className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white"
+                        onChange={(event) => setRelatedProduct(event.target.value)}
+                        value={relatedProductValue}
+                    >
+                        <option value="">بدون محصول مرتبط</option>
+                        {digitalProducts.length > 0 && (
+                            <optgroup label="اکانت‌های دیجیتال">
+                                {digitalProducts.map((product) => (
+                                    <option key={`digital-${product.id}`} value={`digital:${product.id}`}>
+                                        {product.title}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        )}
+                        {products.length > 0 && (
+                            <optgroup label="محصولات فیزیکی">
+                                {products.map((product) => (
+                                    <option key={`physical-${product.id}`} value={`physical:${product.id}`}>
+                                        {product.title}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        )}
+                    </select>
+                </FormField>
                         {playlists.length > 0 && (
                             <FormField
                                 description="نام کالکشن را جست‌وجو کنید؛ امکان انتخاب چند مورد وجود دارد."

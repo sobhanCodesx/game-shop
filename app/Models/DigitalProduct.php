@@ -87,4 +87,9 @@ class DigitalProduct extends Model
     {
         return $this->hasMany(DigitalOrder::class);
     }
+
+    public function socialContents(): HasMany
+    {
+        return $this->hasMany(SocialContent::class, 'related_digital_product_id');
+    }
 }

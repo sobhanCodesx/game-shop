@@ -19,6 +19,7 @@ interface PostData {
     feed_badge: string | null;
     game_id: number | null;
     related_product_id: number | null;
+    related_digital_product_id: number | null;
     related_content_id: number | null;
     status: string;
     allow_comments: boolean;
@@ -30,7 +31,7 @@ interface PostData {
 interface Option { id: number; name?: string; title?: string }
 interface FormData {
     title: string; body: string; feed_type: string; feed_badge: string; game_id: string;
-    related_product_id: string; related_content_id: string; status: string; allow_comments: boolean;
+    related_product_id: string; related_digital_product_id: string; related_content_id: string; status: string; allow_comments: boolean;
     notify_followers: boolean; seo_title: string; seo_description: string;
     media: Array<{ id?: number; upload_token?: string; type: "image" | "video"; alt: string }>;
     _method?: "put";
@@ -39,7 +40,7 @@ interface FormData {
 const typeOptions = [["post", "پست"], ["news", "خبر"], ["article", "مقاله"], ["video", "ویدیو"], ["clip", "کلیپ"], ["trailer", "تریلر"], ["game_update", "آپدیت بازی"], ["review", "نقد و بررسی"], ["image", "تصویر"]];
 const badgeOptions = [["", "بدون نشان"], ["breaking", "فوری"], ["news", "خبر"], ["trailer", "تریلر"], ["gameplay", "گیم‌پلی"], ["update", "آپدیت"], ["rumor", "شایعه"], ["review", "نقد"], ["patch_notes", "Patch Notes"]];
 
-export default function FeedForm({ post, games, products, videos }: { post: PostData | null; games: Option[]; products: Option[]; videos: Option[] }) {
+export default function FeedForm({ post, games, products, digitalProducts, videos }: { post: PostData | null; games: Option[]; products: Option[]; digitalProducts: Option[]; videos: Option[] }) {
     const editing = Boolean(post);
     const [media, setMedia] = useState<MediaItem[]>(() => post?.media.map((item) => ({ key: `media-${item.id}`, id: item.id, type: item.type, url: item.url, previewUrl: item.preview_url, alt: item.alt, is_primary: false })) ?? []);
     const [uploading, setUploading] = useState(false);
@@ -49,10 +50,22 @@ export default function FeedForm({ post, games, products, videos }: { post: Post
     const { data, setData, transform, post: submitPost, processing, errors } = useForm<FormData>({
         title: post?.title ?? "", body: post?.body ?? "", feed_type: post?.feed_type ?? "post", feed_badge: post?.feed_badge ?? "",
         game_id: post?.game_id ? String(post.game_id) : "", related_product_id: post?.related_product_id ? String(post.related_product_id) : "",
+        related_digital_product_id: post?.related_digital_product_id ? String(post.related_digital_product_id) : "",
         related_content_id: post?.related_content_id ? String(post.related_content_id) : "", status: post?.status ?? "draft",
         allow_comments: post?.allow_comments ?? true, notify_followers: post?.notify_followers ?? true,
         seo_title: post?.seo_title ?? "", seo_description: post?.seo_description ?? "", media: [], ...(editing ? { _method: "put" as const } : {}),
     });
+
+    const relatedProductValue = data.related_digital_product_id
+    ? `digital:${data.related_digital_product_id}`
+    : data.related_product_id
+      ? `physical:${data.related_product_id}`
+      : "";
+    const setRelatedProduct = (value: string) => {
+    const [kind, id = ""] = value.split(":");
+    setData("related_product_id", kind === "physical" ? id : "");
+    setData("related_digital_product_id", kind === "digital" ? id : "");
+    };
 
     const syncMedia = (next: MediaItem[]) => {
         setMedia(next);
@@ -107,7 +120,7 @@ export default function FeedForm({ post, games, products, videos }: { post: Post
                     </Card.Content></Card>
                     <Card className="border border-slate-800 bg-slate-900/60" variant="secondary"><Card.Header className="border-b border-slate-800 p-5"><Card.Title>ارتباط محتوا</Card.Title></Card.Header><Card.Content className="grid gap-4 p-5 sm:grid-cols-2">
                         <SelectField label="کانال بازی" onChange={(value) => setData("game_id", value)} options={[["", "PlayNexus"], ...games.map((item) => [String(item.id), item.name ?? ""])]} value={data.game_id} />
-                        <SelectField label="محصول مرتبط" onChange={(value) => setData("related_product_id", value)} options={[["", "بدون محصول"], ...products.map((item) => [String(item.id), item.title ?? ""])]} value={data.related_product_id} />
+                        <SelectField label="محصول مرتبط" onChange={setRelatedProduct} options={[["", "بدون محصول"], ...digitalProducts.map((item) => [`digital:${item.id}`, `دیجیتال · ${item.title ?? ""}`]), ...products.map((item) => [`physical:${item.id}`, `فیزیکی · ${item.title ?? ""}`])]} value={relatedProductValue} />
                         <SelectField label="ویدیوی مرتبط" onChange={(value) => setData("related_content_id", value)} options={[["", "بدون ویدیو"], ...videos.map((item) => [String(item.id), item.title ?? ""])]} value={data.related_content_id} />
                     </Card.Content></Card>
                 </div>

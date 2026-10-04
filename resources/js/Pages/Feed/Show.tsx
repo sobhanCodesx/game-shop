@@ -395,16 +395,15 @@ export default function FeedShow({
                                         </span>
                                         <span className="min-w-0 flex-1">
                                             <small className="text-[9px] font-black text-emerald-500">
-                                                محصول مرتبط
+                                                {item.related_product.label}
                                             </small>
                                             <strong className="mt-0.5 block truncate text-[11px] group-hover:text-emerald-500 sm:text-xs">
                                                 {item.related_product.title}
                                             </strong>
                                             <span className="mt-0.5 block text-[9px] text-[var(--store-muted)]">
-                                                {money.format(
-                                                    item.related_product.price,
-                                                )}{" "}
-                                                تومان
+                                                {item.related_product.price !== null
+                                                    ? `${item.related_product.kind === "digital" ? "از " : ""}${money.format(item.related_product.price)} تومان`
+                                                    : "مشاهده قیمت و ظرفیت‌ها"}
                                             </span>
                                         </span>
                                     </Link>

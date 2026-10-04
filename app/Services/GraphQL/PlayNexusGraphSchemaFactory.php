@@ -4,6 +4,7 @@ namespace App\Services\GraphQL;
 
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\Product;
@@ -24,6 +25,7 @@ class PlayNexusGraphSchemaFactory
     private ?ObjectType $brandType = null;
     private ?ObjectType $platformType = null;
     private ?ObjectType $productType = null;
+    private ?ObjectType $digitalProductType = null;
     private ?ObjectType $contentType = null;
     private ?ObjectType $contentMediaType = null;
     private ?ObjectType $collectionType = null;
@@ -455,6 +457,51 @@ class PlayNexusGraphSchemaFactory
         ]);
     }
 
+
+    private function digitalProductType(): ObjectType
+    {
+        return $this->digitalProductType ??= new ObjectType([
+            'name' => 'DigitalProduct',
+            'description' => 'PlayNexus digital account/product connected to editorial content.',
+            'fields' => fn () => [
+      'id' => Type::nonNull(Type::id()),
+      'title' => Type::nonNull(Type::string()),
+      'slug' => Type::nonNull(Type::string()),
+      'shortDescription' => ['type' => Type::string(), 'resolve' => fn (DigitalProduct $product) => $product->short_description],
+      'supportDays' => ['type' => Type::int(), 'resolve' => fn (DigitalProduct $product) => $product->support_days],
+      'featured' => Type::nonNull(Type::boolean()),
+      'status' => Type::string(),
+      'url' => [
+          'type' => Type::string(),
+          'resolve' => fn (DigitalProduct $product) => $product->status === 'published'
+              ? route('digital.show', $product->slug, false)
+              : null,
+      ],
+      'priceFrom' => [
+          'type' => Type::float(),
+          'resolve' => function (DigitalProduct $product): ?float {
+              $offers = $product->relationLoaded('offers') ? $product->offers : $product->offers()->get();
+              $price = $offers->where('status', 'active')->min('price');
+
+              return $price !== null ? (float) $price : null;
+          },
+      ],
+      'game' => [
+          'type' => $this->gameType(),
+          'resolve' => fn (DigitalProduct $product) => $product->relationLoaded('game') ? $product->game : $product->game()->first(),
+      ],
+      'category' => [
+          'type' => $this->categoryType(),
+          'resolve' => fn (DigitalProduct $product) => $product->relationLoaded('category') ? $product->category : $product->category()->first(),
+      ],
+      'platform' => [
+          'type' => $this->platformType(),
+          'resolve' => fn (DigitalProduct $product) => $product->relationLoaded('platform') ? $product->platform : $product->platform()->first(),
+      ],
+            ],
+        ]);
+    }
+
     private function contentType(): ObjectType
     {
         return $this->contentType ??= new ObjectType([
@@ -517,6 +564,12 @@ class PlayNexusGraphSchemaFactory
                     'resolve' => fn (SocialContent $content) => $content->relationLoaded('relatedProduct')
                         ? $content->relatedProduct
                         : $content->relatedProduct()->first(),
+                ],
+                'relatedDigitalProduct' => [
+                    'type' => $this->digitalProductType(),
+                    'resolve' => fn (SocialContent $content) => $content->relationLoaded('relatedDigitalProduct')
+                        ? $content->relatedDigitalProduct
+                        : $content->relatedDigitalProduct()->first(),
                 ],
                 'relatedContent' => [
                     'type' => $this->contentType(),
@@ -975,6 +1028,8 @@ class PlayNexusGraphSchemaFactory
             'search' => ['type' => Type::string()],
             'ids' => ['type' => Type::listOf(Type::nonNull(Type::id()))],
             'gameId' => ['type' => Type::id()],
+            'productId' => ['type' => Type::id()],
+            'digitalProductId' => ['type' => Type::id()],
             ...($includeType ? ['type' => ['type' => Type::string()]] : []),
             'feedType' => ['type' => Type::string()],
             'feedBadge' => ['type' => Type::string()],

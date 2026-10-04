@@ -111,4 +111,9 @@ class Product extends Model
     {
         return $this->hasMany(ProductAttributeValue::class);
     }
+
+    public function socialContents(): HasMany
+    {
+        return $this->hasMany(SocialContent::class, 'related_product_id');
+    }
 }
