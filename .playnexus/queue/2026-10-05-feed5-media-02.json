@@ -1,13 +1,13 @@
 {
-  "job_id": "2026-10-05-feed5-media-02-retry",
+  "job_id": "2026-10-05-feed5-media-02-retry2",
   "tool": "upload_asset",
   "arguments": {
     "resource": "feed",
     "id": 123,
     "slot": "media",
-    "source_url": "https://img2.quasarzone.com/editor/2026/10/01/77a2620cd85496ee2e2d37fa525ec09c.webp",
-    "name": "playstation-plus-october-2026.webp",
-    "alt": "بازی‌های ماهانه PlayStation Plus اکتبر ۲۰۲۶",
+    "source_url": "https://blog.playstation.com/tachyon/2026/09/d9cf749a1a4850fd0969ccb3a83cb907c56f640a.jpg",
+    "name": "playstation-plus-october-2026.jpg",
+    "alt": "بازی‌های ماهانه PlayStation Plus اکتبر ۲۰۲۶؛ F1 25، Hunt: Showdown 1896 و Earth Defense Force: World Brothers 2",
     "sort_order": 0
   }
 }
