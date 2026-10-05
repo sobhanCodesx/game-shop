@@ -1,9 +1,0 @@
-{
-  "job_id": "2026-10-05-feed5-dedupe",
-  "tool": "query_playnexus_graph",
-  "arguments": {
-    "query": "query RecentFeeds { feeds(first: 60, offset: 0, orderBy: \"published_at\", orderDir: \"desc\") { nodes { id title status publishedAt feedBadge game { id name slug } } pageInfo { total first offset hasMore nextOffset } } }",
-    "variables": {},
-    "operation_name": "RecentFeeds"
-  }
-}
