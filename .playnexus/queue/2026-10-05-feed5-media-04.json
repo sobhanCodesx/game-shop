@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-05-feed5-media-04",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "feed",
+    "query": "Angstrom Levy در ۱۳ اکتبر به Invincible VS می‌آید؛ مبارز DLC با پورتال و تله",
+    "slot": "media",
+    "source_url": "https://assets.games.gg/angstrom_levy_confirmed_invincible_vs_hero_b359b991f2.webp",
+    "name": "invincible-vs-angstrom-levy.webp",
+    "alt": "Angstrom Levy در Invincible VS",
+    "sort_order": 0
+  }
+}

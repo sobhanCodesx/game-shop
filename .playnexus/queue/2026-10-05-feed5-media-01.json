@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-05-feed5-media-01",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "feed",
+    "query": "رأی‌گیری بهترین بازی سپتامبر پلی‌استیشن آغاز شد؛ Wolverine و Control Resonant بین نامزدها",
+    "slot": "media",
+    "source_url": "https://images.cgames.de/images/gamestar/290/wolverine-control_6422058.jpg",
+    "name": "players-choice-september-2026.jpg",
+    "alt": "Marvel's Wolverine و Control Resonant در میان نامزدهای Players Choice سپتامبر ۲۰۲۶",
+    "sort_order": 0
+  }
+}

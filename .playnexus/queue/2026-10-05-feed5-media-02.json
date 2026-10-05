@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-05-feed5-media-02",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "feed",
+    "query": "بازی‌های اکتبر PlayStation Plus مشخص شدند؛ F1 25 و Hunt: Showdown 1896 از ۶ اکتبر",
+    "slot": "media",
+    "source_url": "https://img2.quasarzone.com/editor/2026/10/01/77a2620cd85496ee2e2d37fa525ec09c.webp",
+    "name": "playstation-plus-october-2026.webp",
+    "alt": "بازی‌های ماهانه PlayStation Plus اکتبر ۲۰۲۶",
+    "sort_order": 0
+  }
+}

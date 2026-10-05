@@ -1,0 +1,13 @@
+{
+  "job_id": "2026-10-05-feed5-media-03",
+  "tool": "upload_asset_by_query",
+  "arguments": {
+    "resource": "feed",
+    "query": "Mythic Achievements به Xbox رسید؛ جایزه جدید برای کامل‌کردن تمام اچیومنت‌های اصلی",
+    "slot": "media",
+    "source_url": "https://xboxwire.thesourcemediaassets.com/sites/2/2026/09/2.-Profile-history-Gears-E-Day-38a2b1a525ca741eb845.png",
+    "name": "xbox-mythic-achievements.png",
+    "alt": "قابلیت Mythic Achievements در پروفایل Xbox",
+    "sort_order": 0
+  }
+}
