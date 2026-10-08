@@ -131,6 +131,11 @@ class GameStoryController extends Controller
                         'description' => $description,
                         'inLanguage' => 'fa-IR',
                         'primaryImageOfPage' => ['@type' => 'ImageObject', 'url' => $image],
+                        'relatedLink' => array_values(array_unique(array_merge(
+                            [url($ecosystem['game']['url']), $gameHubUrl],
+                            $ecosystem['studio'] ? [url($ecosystem['studio']['url'])] : [],
+                            array_map(fn (array $product) => url($product['url']), $ecosystem['products'])
+                        ))),
                         'mainEntity' => ['@id' => $canonical.'#article'],
                         'isPartOf' => ['@type' => 'WebSite', 'name' => 'PlayNexus', 'url' => route('home')],
                     ], [
