@@ -1,8 +1,0 @@
-{
-  "job_id": "rdr2-check-game-20261009",
-  "tool": "search_games",
-  "arguments": {
-    "query": "Red Dead Redemption 2",
-    "limit": 20
-  }
-}
