@@ -235,7 +235,8 @@ class SitemapTest extends TestCase
             'published_at' => now()->subMinute(),
         ]);
 
-        app(\App\Services\SitemapCacheService::class)->invalidate();
+        \Illuminate\Support\Facades\Cache::store('file')->forget('sitemap-xml:v2:channels');
+        \Illuminate\Support\Facades\Cache::store('file')->forget('sitemap-xml:v2:index');
         $this->get('/sitemaps/channels.xml')->assertOk()
             ->assertSee(route('channels.show', $editorialGame->slug), false)
             ->assertSee(route('channels.show', $physicalGame->slug), false)
@@ -267,7 +268,8 @@ class SitemapTest extends TestCase
         $post->updated_at = now()->startOfSecond()->subDays(3);
         $post->saveQuietly();
 
-        app(\App\Services\SitemapCacheService::class)->invalidate();
+        \Illuminate\Support\Facades\Cache::store('file')->forget('sitemap-xml:v2:channels');
+        \Illuminate\Support\Facades\Cache::store('file')->forget('sitemap-xml:v2:index');
 
         $channels = $this->get('/sitemaps/channels.xml')->assertOk();
         $this->assertStringContainsString(
