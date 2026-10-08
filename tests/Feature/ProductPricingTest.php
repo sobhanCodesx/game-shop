@@ -26,9 +26,28 @@ class ProductPricingTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Products/Show')
                 ->where('product.pricing.final_price', 4_700_000)
+                ->where('seo.structuredData.@graph.0.offers.price', 47_000_000)
                 ->where('product.pricing.is_partner_price', false)
                 ->missing('product.partner_price')
                 ->missing('product.cost_price'));
+    }
+
+    public function test_product_with_no_real_sale_price_omits_product_rich_result_schema(): void
+    {
+        $product = Product::factory()->create([
+            'price' => 0,
+            'discount_price' => null,
+        ]);
+
+        $this->get(route('products.show', $product->slug))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('seo.structuredData', function ($data): bool {
+                    $nodes = collect(data_get($data, '@graph', []));
+
+                    return ! $nodes->contains(fn ($node) => data_get($node, '@type') === 'Product')
+                        && $nodes->contains(fn ($node) => data_get($node, '@type') === 'BreadcrumbList');
+                }));
     }
 
     public function test_partner_sees_partner_price(): void
