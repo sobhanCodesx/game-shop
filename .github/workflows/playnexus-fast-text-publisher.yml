@@ -1,0 +1,187 @@
+name: PlayNexus Fast Text Publisher
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.playnexus/fast/*.json'
+  workflow_dispatch:
+    inputs:
+      job_path:
+        description: 'Path to a queued PlayNexus JSON job'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: playnexus-fast-text-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PLAYNEXUS_MCP_URL: https://playnexus.ir/api/mcp
+      PLAYNEXUS_CONTENT_AGENT_TOKEN: ${{ secrets.PLAYNEXUS_CONTENT_AGENT_TOKEN }}
+      PLAYNEXUS_PUBLISHER_CHUNK_SIZE: 524288
+      PLAYNEXUS_PUBLISHER_MAX_SOURCE_BYTES: 314572800
+
+    steps:
+      - name: Checkout publisher branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve queued jobs
+        id: jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/playnexus-jobs.txt
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            job_path='${{ inputs.job_path }}'
+            if [[ "$job_path" != .playnexus/fast/*.json ]]; then
+              echo "::error::job_path must match .playnexus/fast/*.json"
+              exit 1
+            fi
+            if [[ ! -f "$job_path" ]]; then
+              echo "::error::Job file not found: $job_path"
+              exit 1
+            fi
+            printf '%s\n' "$job_path" >> /tmp/playnexus-jobs.txt
+          else
+            before='${{ github.event.before }}'
+            after='${{ github.sha }}'
+
+            if [[ "$before" =~ ^0+$ ]]; then
+              git diff-tree --no-commit-id --name-only -r "$after" -- '.playnexus/fast/*.json' > /tmp/playnexus-jobs.txt
+            else
+              git diff --name-only "$before" "$after" -- '.playnexus/fast/*.json' > /tmp/playnexus-jobs.txt
+            fi
+
+            # Ignore deleted queue files and anything outside the expected path.
+            tmp_file="$(mktemp)"
+            while IFS= read -r path; do
+              [[ "$path" == .playnexus/fast/*.json ]] || continue
+              [[ -f "$path" ]] || continue
+              printf '%s\n' "$path" >> "$tmp_file"
+            done < /tmp/playnexus-jobs.txt
+            mv "$tmp_file" /tmp/playnexus-jobs.txt
+          fi
+
+          if [[ ! -s /tmp/playnexus-jobs.txt ]]; then
+            echo "No PlayNexus queue jobs need processing in this run."
+            echo "has_jobs=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_jobs=true" >> "$GITHUB_OUTPUT"
+          echo 'Jobs to process:'
+          cat /tmp/playnexus-jobs.txt
+
+      - name: Verify publisher secret exists
+        if: ${{ steps.jobs.outputs.has_jobs == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${PLAYNEXUS_CONTENT_AGENT_TOKEN:-}" ]]; then
+            echo "::error::Repository secret PLAYNEXUS_CONTENT_AGENT_TOKEN is missing."
+            exit 1
+          fi
+
+      - name: Validate text publisher
+        if: ${{ steps.jobs.outputs.has_jobs == 'true' }}
+        run: python3 -m py_compile scripts/playnexus_publish.py
+
+      - name: Send jobs to PlayNexus
+        if: ${{ steps.jobs.outputs.has_jobs == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/playnexus-processed.txt
+
+          while IFS= read -r job; do
+            echo "Processing $job"
+            python3 scripts/playnexus_publish.py "$job"
+
+            # Record the exact blob that was successfully processed. Cleanup will
+            # only remove the job if that exact blob is still on the active publisher branch.
+            blob_sha="$(git rev-parse "HEAD:$job")"
+            printf '%s\t%s\n' "$job" "$blob_sha" >> /tmp/playnexus-processed.txt
+          done < /tmp/playnexus-jobs.txt
+
+      - name: Cleanup successfully processed queue jobs
+        if: ${{ always() && steps.jobs.outputs.has_jobs == 'true' }}
+        shell: bash
+        run: |
+          set -u
+
+          if [[ ! -s /tmp/playnexus-processed.txt ]]; then
+            echo "No successfully processed queue jobs to clean up."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          target_branch="${GITHUB_REF_NAME}"
+          if [[ "$target_branch" != "chatgpt_dev" && "$target_branch" != "main" ]]; then
+            echo "::error::Unsupported publisher branch: $target_branch"
+            exit 1
+          fi
+
+          apply_cleanup() {
+            git fetch origin "$target_branch"
+            git checkout -B "$target_branch" "origin/$target_branch"
+
+            while IFS=$'\t' read -r job processed_sha; do
+              [[ -n "$job" && -n "$processed_sha" ]] || continue
+
+              if [[ ! -f "$job" ]]; then
+                echo "Already cleaned: $job"
+                continue
+              fi
+
+              current_sha="$(git rev-parse "HEAD:$job" 2>/dev/null || true)"
+              if [[ "$current_sha" != "$processed_sha" ]]; then
+                echo "::warning::Skipping cleanup for changed job: $job"
+                continue
+              fi
+
+              git rm -- "$job"
+            done < /tmp/playnexus-processed.txt
+          }
+
+          apply_cleanup
+
+          if git diff --cached --quiet; then
+            echo "No queue files are eligible for cleanup."
+            exit 0
+          fi
+
+          git commit -m "chore(playnexus): cleanup processed queue jobs"
+
+          if git push origin "HEAD:$target_branch"; then
+            echo "Processed PlayNexus queue jobs cleaned successfully."
+            exit 0
+          fi
+
+          echo "::warning::Cleanup push raced with a newer commit; retrying once."
+          git reset --hard HEAD~1
+          apply_cleanup
+
+          if git diff --cached --quiet; then
+            echo "Nothing left to clean after refresh."
+            exit 0
+          fi
+
+          git commit -m "chore(playnexus): cleanup processed queue jobs"
+
+          if ! git push origin "HEAD:$target_branch"; then
+            echo "::warning::Published content succeeded, but queue cleanup could not be pushed. The JSON jobs were left in Git for a later cleanup."
+          fi
