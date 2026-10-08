@@ -1,0 +1,7 @@
+{
+  "job_id": "rdr2-story3-status-1-20261009",
+  "tool": "get_game_story",
+  "arguments": {
+    "id": 3
+  }
+}
