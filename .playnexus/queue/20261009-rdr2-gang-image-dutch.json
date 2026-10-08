@@ -1,0 +1,13 @@
+{
+  "job_id": "rdr2-gang-art-dutch-20261009",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 2,
+    "slot": "attachment",
+    "source_url": "https://xboxwire.thesourcemediaassets.com/sites/2/RedDeadRedemptionGang1.jpg",
+    "name": "rdr2-dutch-official.jpg",
+    "alt": "پرتره داچ ون در لیند رهبر گنگ Red Dead Redemption 2",
+    "sort_order": 1
+  }
+}
