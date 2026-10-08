@@ -186,6 +186,104 @@ class SitemapTest extends TestCase
             ->assertDontSee('unlisted-playlist');
     }
 
+    public function test_channel_sitemap_discovers_published_news_and_commerce_without_videos(): void
+    {
+        $editorialGame = Game::factory()->create(['slug' => 'news-only-game', 'status' => 'active']);
+        $physicalGame = Game::factory()->create(['slug' => 'physical-only-game', 'status' => 'active']);
+        $digitalGame = Game::factory()->create(['slug' => 'digital-only-game', 'status' => 'active']);
+        $draftGame = Game::factory()->create(['slug' => 'draft-only-game', 'status' => 'active']);
+        $emptyGame = Game::factory()->create(['slug' => 'empty-game', 'status' => 'active']);
+        $hiddenGame = Game::factory()->create(['slug' => 'hidden-game', 'status' => 'draft']);
+
+        SocialContent::query()->create([
+            'game_id' => $editorialGame->id,
+            'type' => 'post',
+            'title' => 'خبر مهم بازی بدون ویدیو',
+            'slug' => 'news-only-game-announcement',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+        Product::factory()->create([
+            'game_id' => $physicalGame->id,
+            'status' => 'published',
+            'visibility' => 'public',
+        ]);
+        $seller = User::factory()->create(['status' => 'active']);
+        $platform = Platform::factory()->create();
+        DigitalProduct::query()->create([
+            'game_id' => $digitalGame->id,
+            'platform_id' => $platform->id,
+            'seller_id' => $seller->id,
+            'title' => 'اکانت دیجیتال واقعی',
+            'slug' => 'digital-only-game-offer',
+            'status' => 'published',
+            'support_days' => 7,
+        ]);
+        SocialContent::query()->create([
+            'game_id' => $draftGame->id,
+            'type' => 'post',
+            'title' => 'خبر هنوز منتشر نشده',
+            'slug' => 'unpublished-game-news',
+            'status' => 'draft',
+        ]);
+        SocialContent::query()->create([
+            'game_id' => $hiddenGame->id,
+            'type' => 'post',
+            'title' => 'خبر بازی مخفی',
+            'slug' => 'hidden-game-news',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+
+        \Illuminate\Support\Facades\Cache::store('file')->forget('sitemap-xml:v2:channels');
+        \Illuminate\Support\Facades\Cache::store('file')->forget('sitemap-xml:v2:index');
+        $this->get('/sitemaps/channels.xml')->assertOk()
+            ->assertSee(route('channels.show', $editorialGame->slug), false)
+            ->assertSee(route('channels.show', $physicalGame->slug), false)
+            ->assertSee(route('channels.show', $digitalGame->slug), false)
+            ->assertDontSee(route('channels.show', $draftGame->slug), false)
+            ->assertDontSee(route('channels.show', $emptyGame->slug), false)
+            ->assertDontSee(route('channels.show', $hiddenGame->slug), false);
+    }
+
+    public function test_channel_lastmod_tracks_real_new_publication_not_only_game_metadata(): void
+    {
+        $game = Game::factory()->create([
+            'slug' => 'fresh-editorial-hub',
+            'status' => 'active',
+        ]);
+        $game->timestamps = false;
+        $game->updated_at = now()->startOfSecond()->subDays(7);
+        $game->saveQuietly();
+
+        $post = SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'post',
+            'title' => 'خبر جدید',
+            'slug' => 'fresh-editorial-hub-post',
+            'status' => 'published',
+            'published_at' => now()->subDay(),
+        ]);
+        $post->timestamps = false;
+        $post->updated_at = now()->startOfSecond()->subDays(3);
+        $post->saveQuietly();
+
+        \Illuminate\Support\Facades\Cache::store('file')->forget('sitemap-xml:v2:channels');
+        \Illuminate\Support\Facades\Cache::store('file')->forget('sitemap-xml:v2:index');
+
+        $channels = $this->get('/sitemaps/channels.xml')->assertOk();
+        $this->assertStringContainsString(
+            '<lastmod>'.$post->published_at->toAtomString().'</lastmod>',
+            $channels->getContent(),
+        );
+
+        $index = $this->get('/sitemap.xml')->assertOk()->getContent();
+        $this->assertStringContainsString(
+            '<lastmod>'.$post->published_at->toAtomString().'</lastmod>',
+            $index,
+        );
+    }
+
     public function test_static_sitemap_omits_non_indexable_user_routes(): void
     {
         $response = $this->get('/sitemaps/static.xml')->assertOk();

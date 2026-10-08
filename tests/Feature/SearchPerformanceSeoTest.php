@@ -249,6 +249,59 @@ class SearchPerformanceSeoTest extends TestCase
             ->assertSee('poster="http://localhost/storage/videos/thumbnails/indexing-test.webp"', false);
     }
 
+    public function test_related_news_prefer_the_same_game_even_when_global_news_is_newer(): void
+    {
+        $game = Game::factory()->create(['status' => 'active']);
+        $otherGame = Game::factory()->create(['status' => 'active']);
+
+        $target = SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'post',
+            'title' => 'مطلب اصلی بازی',
+            'slug' => 'main-game-story',
+            'status' => 'published',
+            'published_at' => now()->subHours(2),
+        ]);
+        $related = SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'post',
+            'title' => 'خبر قبلی همین بازی',
+            'slug' => 'same-game-older-story',
+            'status' => 'published',
+            'published_at' => now()->subDays(3),
+        ]);
+        $unrelated = SocialContent::query()->create([
+            'game_id' => $otherGame->id,
+            'type' => 'post',
+            'title' => 'خبر جدید بازی دیگر',
+            'slug' => 'different-game-newer-story',
+            'status' => 'published',
+            'published_at' => now()->subMinute(),
+        ]);
+        $draft = SocialContent::query()->create([
+            'game_id' => $game->id,
+            'type' => 'post',
+            'title' => 'خبر منتشرنشده',
+            'slug' => 'same-game-unpublished',
+            'status' => 'draft',
+        ]);
+
+        $this->get(route('posts.show', $target->slug))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Feed/Show')
+                ->where('latestFeed.0.id', $related->id)
+                ->where('latestFeed.0.url', route('posts.show', $related->slug, false))
+                ->where('latestFeed.1.id', $unrelated->id)
+                ->where('latestFeed', function ($items) use ($target, $draft): bool {
+                    $ids = collect($items)->pluck('id');
+
+                    return ! $ids->contains($target->id)
+                        && ! $ids->contains($draft->id)
+                        && $ids->unique()->count() === $ids->count();
+                }));
+    }
+
     public function test_video_listing_pagination_has_self_canonical_and_stays_indexable(): void
     {
         for ($index = 1; $index <= 19; $index++) {

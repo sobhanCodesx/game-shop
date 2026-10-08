@@ -14,6 +14,7 @@ use App\Services\NexusAiSettings;
 use App\Services\SitemapCacheService;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use XMLWriter;
@@ -137,10 +138,39 @@ class SitemapController extends Controller
         }
 
         if ($type === 'channels') {
-            foreach (Game::query()->whereIn('status', ['active', 'published'])
-                ->whereHas('videos', fn (Builder $query) => $query->published())
-                ->orderBy('id')->cursor() as $game) {
-                yield $this->entry(route('channels.show', $game->slug), $game->updated_at);
+            // A game channel is a useful hub when it has published editorial
+            // content OR a publicly available product, not just video uploads.
+            // Read related timestamps in the same bounded query, without N+1s.
+            $games = $this->discoverableGames()
+                ->withMax([
+                    'contents as last_content_update' => fn (Builder $query) => $query
+                        ->published()->whereIn('type', ['post', 'video', 'short']),
+                ], 'updated_at')
+                ->withMax([
+                    'contents as last_content_publication' => fn (Builder $query) => $query
+                        ->published()->whereIn('type', ['post', 'video', 'short']),
+                ], 'published_at')
+                ->withMax([
+                    'products as last_physical_update' => fn (Builder $query) => $query->publiclyVisible(),
+                ], 'updated_at')
+                ->withMax([
+                    'products as last_physical_publication' => fn (Builder $query) => $query->publiclyVisible(),
+                ], 'published_at')
+                ->withMax([
+                    'digitalProducts as last_digital_update' => fn (Builder $query) => $query->published(),
+                ], 'updated_at');
+
+            foreach ($games->lazyById(200) as $game) {
+                $lastChanged = collect([
+                    $game->updated_at,
+                    $game->last_content_update,
+                    $game->last_content_publication,
+                    $game->last_physical_update,
+                    $game->last_physical_publication,
+                    $game->last_digital_update,
+                ])->filter()->map(fn ($value) => Carbon::parse($value))->max();
+
+                yield $this->entry(route('channels.show', $game->slug), $lastChanged);
             }
 
             return;
@@ -160,6 +190,48 @@ class SitemapController extends Controller
             ->orderBy('id')->cursor() as $playlist) {
             yield $this->entry(route('collections.show', $playlist->slug), $playlist->updated_at);
         }
+    }
+
+    /**
+     * Only surface real, indexable game hubs. Publishing news, a playable
+     * video, or a product should make the game discoverable without needing
+     * an arbitrary video upload. Empty/private/draft-only hubs stay out.
+     */
+    private function discoverableGames(): Builder
+    {
+        return Game::query()
+            ->whereIn('status', ['active', 'published'])
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereHas('contents', fn (Builder $contents) => $contents
+                        ->published()->whereIn('type', ['post', 'video', 'short']))
+                    ->orWhereHas('products', fn (Builder $products) => $products->publiclyVisible())
+                    ->orWhereHas('digitalProducts', fn (Builder $digital) => $digital->published());
+            });
+    }
+
+    /**
+     * Report meaningful content changes, not an artificial crawl timestamp.
+     * The sitemap index and its game URLs use identical visibility rules.
+     */
+    private function lastChannelModification(): ?string
+    {
+        $activeGame = fn (Builder $query) => $query->whereIn('status', ['active', 'published']);
+        $editorial = fn () => SocialContent::query()
+            ->published()
+            ->whereIn('type', ['post', 'video', 'short'])
+            ->whereHas('game', $activeGame);
+        $physical = fn () => Product::query()->publiclyVisible()->whereHas('game', $activeGame);
+        $digital = fn () => DigitalProduct::query()->published()->whereHas('game', $activeGame);
+
+        return collect([
+            $this->discoverableGames()->max('updated_at'),
+            $editorial()->max('updated_at'),
+            $editorial()->max('published_at'),
+            $physical()->max('updated_at'),
+            $physical()->max('published_at'),
+            $digital()->max('updated_at'),
+        ])->filter()->max();
     }
 
     /** @return iterable<array{loc: string, lastmod?: string, video?: array<string, mixed>}> */
@@ -225,7 +297,7 @@ class SitemapController extends Controller
             'feed' => SocialContent::query()->published()->where('type', 'post')->max('updated_at'),
             'videos' => SocialContent::query()->published()->where('type', 'video')->max('updated_at'),
             'content' => SocialContent::query()->published()->where('type', 'short')->max('updated_at'),
-            'channels' => Game::query()->whereIn('status', ['active', 'published'])->whereHas('videos', fn (Builder $query) => $query->published())->max('updated_at'),
+            'channels' => $this->lastChannelModification(),
             'studios' => Studio::query()->where('status', 'active')->max('updated_at'),
             'playlists' => VideoPlaylist::query()->where('visibility', 'public')->max('updated_at'),
             default => null,
