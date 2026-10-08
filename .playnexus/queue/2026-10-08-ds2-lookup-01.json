@@ -1,0 +1,8 @@
+{
+  "job_id": "ds2-game-lookup-20261008",
+  "tool": "search_games",
+  "arguments": {
+    "query": "Death Stranding",
+    "limit": 20
+  }
+}
