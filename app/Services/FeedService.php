@@ -104,6 +104,24 @@ class FeedService
         return $this->mapItems($contents, $request->user());
     }
 
+    /**
+     * Reuse the public feed's visibility and eager-loading rules to build
+     * editorial links between posts about the exact same game entity.
+     */
+    public function latestPostsForGame(Request $request, int $gameId, int $exceptId, int $limit = 3): array
+    {
+        $contents = $this->feedQuery()
+            ->where('type', 'post')
+            ->where('game_id', $gameId)
+            ->whereKeyNot($exceptId)
+            ->latest('published_at')
+            ->latest('id')
+            ->limit(max(1, min(6, $limit)))
+            ->get();
+
+        return $this->mapItems($contents, $request->user());
+    }
+
     public function latestImportant(Request $request, int $limit = 8): array
     {
         $important = $this->feedQuery()
