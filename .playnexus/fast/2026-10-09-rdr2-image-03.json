@@ -1,5 +1,5 @@
 {
-  "job_id": "rdr2-gang-inline-media-02-arthur-20261009",
+  "job_id": "rdr2-gang-inline-media-02-arthur-20261009-retry",
   "tool": "upload_asset",
   "arguments": {
     "resource": "game_story",
