@@ -1,0 +1,13 @@
+{
+  "job_id": "rdr2-gang-image-john-v1",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 2,
+    "slot": "attachment",
+    "source_url": "https://xboxwire.thesourcemediaassets.com/sites/2/RedDeadRedemptionGangJohn.jpg",
+    "name": "rdr2-john.jpg",
+    "alt": "جان مارستون یکی از اعضای قدیمی گروه ون در لیند",
+    "sort_order": 3
+  }
+}

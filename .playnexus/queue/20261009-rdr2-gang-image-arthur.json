@@ -1,0 +1,13 @@
+{
+  "job_id": "rdr2-gang-image-arthur-v1",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 2,
+    "slot": "attachment",
+    "source_url": "https://xboxwire.thesourcemediaassets.com/sites/2/RedDeadRedemptionGangArthur.jpg",
+    "name": "rdr2-arthur.jpg",
+    "alt": "آرتور مورگان یکی از بنیان گذاران اولیه گنگ ون در لیند",
+    "sort_order": 2
+  }
+}
