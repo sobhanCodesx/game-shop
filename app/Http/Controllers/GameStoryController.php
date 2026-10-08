@@ -67,7 +67,7 @@ class GameStoryController extends Controller
     public function show(GameStory $story, GameStoryService $service, GameStoryReaderService $reader, GameStoryLinkGraphService $links): Response
     {
         abort_unless($story->status === 'published' && $story->published_at && $story->published_at->isPast(), 404);
-        $story->load('game:id,name,slug,status,cover,background', 'author:id,name');
+        $story->load('game:id,studio_id,name,slug,status,cover,background', 'author:id,name');
         abort_unless($story->game && in_array($story->game->status, ['active', 'published'], true), 404);
 
         $related = GameStory::published()->where('game_id', $story->game_id)->whereKeyNot($story->id)
