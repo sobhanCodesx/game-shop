@@ -13,6 +13,12 @@ class GameStoryTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
     public function test_game_story_requires_real_game_and_stays_draft_until_explicitly_published(): void
     {
         $game = Game::factory()->create(['status' => 'active', 'name' => 'Death Stranding 2', 'slug' => 'death-stranding-2']);
@@ -41,6 +47,7 @@ class GameStoryTest extends TestCase
 
     public function test_rumors_keep_an_unverified_kind_and_images_are_sanitized(): void
     {
+        config()->set('media.disk', 'downloads');
         config()->set('filesystems.disks.downloads.url', 'https://cdnpn.ir/storage');
         $path = 'game-stories/inline/123e4567-e89b-12d3-a456-426614174000.webp';
         $html = StoryRichText::sanitize('<h2>سم</h2><figure><img src="https://cdnpn.ir/storage/'.$path.'" alt="تصویر سم" onerror="alert(1)"><figcaption>منطقه ناشناخته</figcaption></figure><script>alert(1)</script><img src="https://evil.example/remote.jpg" onerror="alert(1)">');
