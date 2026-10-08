@@ -41,6 +41,8 @@ return [
             'exchange-products',
             'feed',
             'feed/*',
+            'game-stories',
+            'game-stories/*',
             'game-radar',
             'offers',
             'posts/*',

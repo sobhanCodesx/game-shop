@@ -6,6 +6,7 @@ use App\Models\Game;
 use App\Models\GameStory;
 use App\Services\MediaStorage;
 use App\Services\GameStoryService;
+use App\Services\GameStoryReaderService;
 use App\Support\Seo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -62,7 +63,7 @@ class GameStoryController extends Controller
         ]);
     }
 
-    public function show(GameStory $story, GameStoryService $service): Response
+    public function show(GameStory $story, GameStoryService $service, GameStoryReaderService $reader): Response
     {
         abort_unless($story->status === 'published' && $story->published_at && $story->published_at->isPast(), 404);
         $story->load('game:id,name,slug,status,cover,background', 'author:id,name');
@@ -71,8 +72,15 @@ class GameStoryController extends Controller
         $related = GameStory::published()->where('game_id', $story->game_id)->whereKeyNot($story->id)
             ->with('game:id,name,slug,cover,background')->orderByDesc('published_at')->limit(4)->get()
             ->map(fn (GameStory $item) => $item->card())->all();
+        $reading = $reader->prepare((string) $story->body);
         $canonical = route('game-stories.show', $story->slug);
         $title = $story->seo_title ?: $story->title;
+        $gameHubUrl = route('game-stories.game', $story->game->slug);
+        $storyKind = match ($story->kind) {
+            'world' => 'جهان داستانی', 'character' => 'شخصیت', 'lore' => 'اسطوره و تاریخچه',
+            'quest' => 'روایت مأموریت', 'ending' => 'پایان‌بندی', 'rumor' => 'شایعه تأییدنشده',
+            'theory' => 'نظریه و تحلیل', default => 'روایت بازی',
+        };
         $description = Str::limit($story->seo_description ?: $story->summary ?: strip_tags((string) $story->body), 160, '…');
         $image = $story->cover_url ?: url((string) config('seo.default_image', '/logo.png'));
 
@@ -95,24 +103,42 @@ class GameStoryController extends Controller
                         'description' => $description,
                         'image' => $image,
                         'inLanguage' => 'fa-IR',
+                        'articleSection' => $storyKind,
+                        'wordCount' => $reading['wordCount'],
+                        'timeRequired' => 'PT'.$story->reading_minutes.'M',
+                        'keywords' => $story->game->name.', '.$storyKind.', Game Story',
                         'datePublished' => $story->published_at?->toAtomString(),
                         'dateModified' => $story->updated_at?->toAtomString(),
                         'author' => ['@type' => 'Organization', 'name' => 'PlayNexus'],
                         'publisher' => ['@type' => 'Organization', 'name' => 'PlayNexus', 'url' => route('home')],
-                        'isPartOf' => ['@type' => 'CreativeWorkSeries', 'name' => $story->game->name.' Game Stories'],
+                        'isPartOf' => ['@type' => 'CreativeWorkSeries', 'name' => $story->game->name.' Game Stories', 'url' => $gameHubUrl],
+                        ...($story->source_url ? ['citation' => $story->source_url] : []),
                         'about' => ['@type' => 'VideoGame', 'name' => $story->game->name, 'url' => route('channels.show', $story->game->slug)],
                         'isAccessibleForFree' => true,
+                    ], [
+                        '@type' => 'WebPage',
+                        '@id' => $canonical.'#webpage',
+                        'url' => $canonical,
+                        'name' => $story->title,
+                        'description' => $description,
+                        'inLanguage' => 'fa-IR',
+                        'primaryImageOfPage' => ['@type' => 'ImageObject', 'url' => $image],
+                        'mainEntity' => ['@id' => $canonical.'#article'],
+                        'isPartOf' => ['@type' => 'WebSite', 'name' => 'PlayNexus', 'url' => route('home')],
                     ], [
                         '@type' => 'BreadcrumbList',
                         'itemListElement' => [
                             ['@type' => 'ListItem', 'position' => 1, 'name' => 'خانه', 'item' => route('home')],
                             ['@type' => 'ListItem', 'position' => 2, 'name' => 'گیم استوری', 'item' => route('game-stories.index')],
-                            ['@type' => 'ListItem', 'position' => 3, 'name' => $story->title, 'item' => $canonical],
+                            ['@type' => 'ListItem', 'position' => 3, 'name' => $story->game->name, 'item' => $gameHubUrl],
+                            ['@type' => 'ListItem', 'position' => 4, 'name' => $story->title, 'item' => $canonical],
                         ],
                     ]],
                 ],
             ]),
-            'story' => $service->serialize($story),
+            'story' => [...$service->serialize($story), 'body' => $reading['html']],
+            'chapters' => $reading['chapters'],
+            'gameStoriesUrl' => route('game-stories.game', $story->game->slug, false),
             'related' => $related,
             'gameUrl' => route('channels.show', $story->game->slug, false),
         ]);
