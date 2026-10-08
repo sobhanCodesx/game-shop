@@ -1,0 +1,12 @@
+{
+  "job_id": "rdr2-story3-insert-marstons-inline-20261009",
+  "tool": "insert_game_story_image",
+  "arguments": {
+    "id": 3,
+    "asset_id": 10,
+    "position": "after_text",
+    "anchor_text": "سال‌ها بعد، جان مارستون هم به جمعشان اضافه شد",
+    "alt": "جان مارستون کنار ابیگیل و جک، سه چهره از خانواده ون‌درلیند در Red Dead Redemption 2",
+    "caption": "جان، ابیگیل و جک؛ خانواده‌ای کوچک در دل خانوادهٔ بزرگ‌تر ون‌درلیند."
+  }
+}
