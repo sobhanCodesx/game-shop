@@ -1,8 +1,0 @@
-{
-  "job_id": "ds2-existing-stories-20261008",
-  "tool": "list_game_stories",
-  "arguments": {
-    "limit": 50,
-    "include_drafts": true
-  }
-}
