@@ -1,0 +1,9 @@
+{
+  "job_id": "rdr2-publish-media-product-list-20261009",
+  "tool": "select_content",
+  "arguments": {
+    "resource": "product",
+    "game_id": 4,
+    "limit": 10
+  }
+}
