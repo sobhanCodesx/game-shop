@@ -145,8 +145,18 @@ final class FeedPageDataService
         ];
 
         $anonymousRequest = Request::create('/', 'GET');
-        $latestFeed = collect($this->feed->latestPostsExcept($anonymousRequest, $content->id))
-            ->map(fn (array $latest) => $this->staticFeedItem($latest))->values()->all();
+        // Prefer real same-game context over unrelated recency; leave one
+        // slot for general discovery. No keyword matching or synthetic links.
+        $relatedPosts = $content->game_id
+            ? $this->feed->latestPostsForGame($anonymousRequest, (int) $content->game_id, $content->id, 3)
+            : [];
+        $latestFeed = collect($relatedPosts)
+            ->concat($this->feed->latestPostsExcept($anonymousRequest, $content->id, 8))
+            ->unique('id')
+            ->take(4)
+            ->map(fn (array $latest) => $this->staticFeedItem($latest))
+            ->values()
+            ->all();
 
         $latestVideos = SocialContent::query()
             ->published()->where('type', 'video')->with('game:id,name,slug,cover')
