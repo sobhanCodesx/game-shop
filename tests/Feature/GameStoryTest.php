@@ -38,8 +38,9 @@ class GameStoryTest extends TestCase
         $service->setState($story->fresh(['game']), 'published');
         $this->get('/game-stories/'.$story->slug)->assertOk()->assertSee($story->title);
         $this->get('/game-stories?game=death-stranding-2')->assertOk();
+        $this->get('/game-stories/game/death-stranding-2')->assertOk();
         $this->assertSame(1, GameStory::published()->where('game_id', $game->id)->count());
-        $this->get('/sitemaps/game-stories.xml')->assertOk()->assertSee($story->slug);
+        $this->get('/sitemaps/game-stories.xml')->assertOk()->assertSee($story->slug)->assertSee('game-stories/game/death-stranding-2');
 
         $service->setState($story->fresh(['game']), 'draft');
         $this->get('/game-stories/'.$story->slug)->assertNotFound();

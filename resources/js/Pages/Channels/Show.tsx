@@ -562,7 +562,7 @@ export default function ChannelShow({
                         </section>
                     )}
 
-                    <GameStoryRail stories={gameStories} className="border-t border-[var(--store-border)]" />
+                    <GameStoryRail stories={gameStories} allUrl={"/game-stories/game/" + channel.slug} className="border-t border-[var(--store-border)]" />
                     <section
                         className="scroll-mt-24 border-t border-[var(--store-border)] py-7 sm:py-9"
                         id="about"

@@ -127,6 +127,11 @@ class SitemapController extends Controller
         }
 
         if ($type === 'game-stories') {
+            foreach (Game::query()->whereIn('status', ['active', 'published'])
+                ->whereHas('gameStories', fn (Builder $query) => $query->published())
+                ->orderBy('id')->cursor() as $game) {
+                yield $this->entry(route('game-stories.game', $game->slug), $game->updated_at);
+            }
             foreach (GameStory::published()->orderBy('id')->cursor() as $story) {
                 yield $this->entry(route('game-stories.show', $story->slug), $story->updated_at);
             }

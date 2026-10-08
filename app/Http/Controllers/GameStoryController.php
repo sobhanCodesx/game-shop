@@ -14,6 +14,14 @@ use Inertia\Response;
 
 class GameStoryController extends Controller
 {
+    public function game(Request $request, Game $game): Response
+    {
+        abort_unless(in_array($game->status, ['active', 'published'], true), 404);
+        $request->merge(['game' => $game->slug]);
+
+        return $this->index($request);
+    }
+
     public function index(Request $request): Response
     {
         $gameSlug = $request->string('game')->toString();
@@ -28,13 +36,14 @@ class GameStoryController extends Controller
             ->paginate(12)->withQueryString()
             ->through(fn (GameStory $story) => $story->card());
 
-        $canonical = route('game-stories.index');
+        $isGameHub = $game && $request->routeIs('game-stories.game');
+        $canonical = $isGameHub ? route('game-stories.game', $game->slug) : route('game-stories.index');
         return Inertia::render('GameStories/Index', [
             ...Seo::page([
-                'title' => 'گیم استوری | روایت‌ها، جهان‌ها و شخصیت‌های بازی‌ها',
-                'description' => 'روایت‌های کوتاه از داستان بازی‌ها، شخصیت‌ها، رازهای جهان، نظریه‌ها و شایعه‌های مشخص‌شده؛ در کتابخانه Game Story پلی نکسوس.',
+                'title' => $isGameHub ? 'گیم استوری '. $game->name.' | داستان‌ها و شخصیت‌ها' : 'گیم استوری | روایت‌ها، جهان‌ها و شخصیت‌های بازی‌ها',
+                'description' => $isGameHub ? 'روایت‌های کوتاه و اختصاصی از جهان، شخصیت‌ها، داستان و رازهای بازی '.$game->name.'؛ در کتابخانه Game Story پلی نکسوس.' : 'روایت‌های کوتاه از داستان بازی‌ها، شخصیت‌ها، رازهای جهان، نظریه‌ها و شایعه‌های مشخص‌شده؛ در کتابخانه Game Story پلی نکسوس.',
                 'canonical' => $canonical,
-                'robots' => $gameSlug || $kind || $stories->currentPage() > 1 ? 'noindex, follow' : 'index, follow, max-image-preview:large',
+                'robots' => ($gameSlug && ! $isGameHub) || $kind || $stories->currentPage() > 1 ? 'noindex, follow' : 'index, follow, max-image-preview:large',
                 'type' => 'website',
                 'image' => $stories->items()[0]['image_url'] ?? url((string) config('seo.default_image', '/logo.png')),
                 'structuredData' => [

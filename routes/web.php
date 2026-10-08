@@ -59,6 +59,7 @@ Route::post('newsletter', [NewsletterSubscriptionController::class, 'store'])
     ->name('newsletter.store');
 Route::get('android', AndroidAppPageController::class)->name('android.app');
 Route::get('game-stories', [GameStoryController::class, 'index'])->name('game-stories.index');
+Route::get('game-stories/game/{game:slug}', [GameStoryController::class, 'game'])->name('game-stories.game');
 Route::get('game-stories/{story:slug}', [GameStoryController::class, 'show'])->name('game-stories.show');
 Route::get('feed', [FeedController::class, 'index'])->name('feed.index');
 Route::get('feed/trending', [FeedController::class, 'trending'])->name('feed.trending');

@@ -141,7 +141,7 @@ export default function GameStoryShow({ seo, story, related, gameUrl }: { seo: S
                     </aside>
                 </div>
             </div>
-            {related.length > 0 && <section className="mx-auto max-w-[1320px] px-3 pb-20 sm:px-6"><div className="mb-5 flex items-center justify-between"><div><span className="text-xs text-amber-400">THE NEXT CHAPTER</span><h2 className="mt-2 text-2xl font-black">روایت‌های دیگر از همین بازی</h2></div><Link className="text-xs text-amber-300" href={"/game-stories?game=" + story.game?.slug}>همه داستان‌ها ←</Link></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{related.map(item => <GameStoryCardView key={item.id} story={item}/>)}</div></section>}
+            {related.length > 0 && <section className="mx-auto max-w-[1320px] px-3 pb-20 sm:px-6"><div className="mb-5 flex items-center justify-between"><div><span className="text-xs text-amber-400">THE NEXT CHAPTER</span><h2 className="mt-2 text-2xl font-black">روایت‌های دیگر از همین بازی</h2></div><Link className="text-xs text-amber-300" href={"/game-stories/game/" + story.game?.slug}>همه داستان‌ها ←</Link></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{related.map(item => <GameStoryCardView key={item.id} story={item}/>)}</div></section>}
         </main>
     </StorefrontLayout>;
 }

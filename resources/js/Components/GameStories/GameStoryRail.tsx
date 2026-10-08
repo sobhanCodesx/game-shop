@@ -44,7 +44,7 @@ export function GameStoryCardView({ story, compact = false }: { story: GameStory
     );
 }
 
-export default function GameStoryRail({ stories, className = "" }: { stories: GameStoryCard[]; className?: string }) {
+export default function GameStoryRail({ stories, className = "", allUrl = "/game-stories" }: { stories: GameStoryCard[]; className?: string; allUrl?: string }) {
     if (!stories.length) return null;
     return (
         <section aria-labelledby="game-stories-title" className={"relative isolate mx-auto max-w-[1536px] overflow-hidden px-3 py-9 sm:px-4 sm:py-12 " + className} id="game-stories">
@@ -55,7 +55,7 @@ export default function GameStoryRail({ stories, className = "" }: { stories: Ga
                     <h2 className="flex items-center gap-2 text-2xl font-black text-[var(--store-text)] sm:text-3xl" id="game-stories-title"><BookOpen className="text-amber-500" size={25} /> گیم استوری <Sparkles className="text-amber-400" size={17} /></h2>
                     <p className="mt-2 text-xs leading-6 text-[var(--store-muted)] sm:text-sm">هر بازی یک جهان است؛ اینجا داستان‌ها، شخصیت‌ها و رازهایش را ورق بزن.</p>
                 </div>
-                <Link className="whitespace-nowrap rounded-xl border border-amber-500/25 px-4 py-2 text-xs font-bold text-amber-500 transition hover:border-amber-400 hover:bg-amber-500/10" href="/game-stories">تمام روایت‌ها ←</Link>
+                <Link className="whitespace-nowrap rounded-xl border border-amber-500/25 px-4 py-2 text-xs font-bold text-amber-500 transition hover:border-amber-400 hover:bg-amber-500/10" href={allUrl}>تمام روایت‌ها ←</Link>
             </div>
             <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-5 [scrollbar-width:thin]" dir="rtl">
                 {stories.slice(0, 10).map(story => <GameStoryCardView compact key={story.id} story={story} />)}
