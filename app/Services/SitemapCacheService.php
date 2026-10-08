@@ -13,7 +13,7 @@ final class SitemapCacheService
 
     private const KEYS = [
         'index', 'static', 'products', 'categories', 'feed',
-        'videos', 'content', 'channels', 'studios', 'playlists',
+        'videos', 'content', 'channels', 'studios', 'playlists', 'game-stories',
     ];
 
     public function remember(string $type, Closure $resolver, int $ttlSeconds = 3600): string

@@ -1,0 +1,67 @@
+name: PlayNexus Game Story Check
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'resources/js/**'
+      - 'routes/**'
+      - 'tests/Feature/GameStoryTest.php'
+      - 'database/migrations/2026_10_08_190000_create_game_stories_table.php'
+      - '.github/workflows/game-story-check.yml'
+  push:
+    branches:
+      - feature/game-story-library-20261008
+    paths:
+      - 'app/**'
+      - 'resources/js/**'
+      - 'routes/**'
+      - 'tests/Feature/GameStoryTest.php'
+      - 'database/migrations/2026_10_08_190000_create_game_stories_table.php'
+      - '.github/workflows/game-story-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: inertia_testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax and route lint
+        run: |
+          set -euo pipefail
+          for f in app/Models/GameStory.php app/Support/StoryRichText.php app/Services/GameStoryService.php app/Http/Controllers/GameStoryController.php app/Http/Controllers/Admin/GameStoryController.php app/Http/Controllers/Api/ContentAgentMcpController.php app/Services/ContentAgentMediaService.php app/Http/Controllers/HomeController.php app/Http/Controllers/SitemapController.php routes/web.php database/migrations/2026_10_08_190000_create_game_stories_table.php tests/Feature/GameStoryTest.php; do php -l "$f"; done
+          python3 -m py_compile scripts/playnexus_publish.py
+      - name: Install backend dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Build client and SSR bundles
+        run: |
+          npm run build
+          test -s public/build/manifest.json
+          test -s bootstrap/ssr/ssr.js
+      - name: Game Story feature regression tests
+        run: php artisan test tests/Feature/GameStoryTest.php
+      - name: Verify routes
+        run: php artisan route:list --path=game-stories

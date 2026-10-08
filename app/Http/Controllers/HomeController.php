@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\DigitalProduct;
 use App\Models\Game;
+use App\Models\GameStory;
 use App\Models\HomeSection;
 use App\Models\HomeSlide;
 use App\Models\Platform;
@@ -210,6 +211,7 @@ class HomeController extends Controller
         ]);
 
         return Inertia::render('Home', [
+            'latestGameStories' => GameStory::published()->with('game:id,name,slug,cover,background')->orderByDesc('published_at')->orderByDesc('id')->limit(10)->get()->map(fn (GameStory $story) => $story->card())->all(),
             ...$seo,
             'personalizedHome' => $personalizedHome,
             'homeExperience' => $homeExperienceState,

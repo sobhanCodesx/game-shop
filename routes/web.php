@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\CommerceSettingsController;
 use App\Http\Controllers\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Admin\DeploymentController;
 use App\Http\Controllers\Admin\FeedPostController as AdminFeedPostController;
+use App\Http\Controllers\Admin\GameStoryController as AdminGameStoryController;
 use App\Http\Controllers\Admin\HomeSettingsController;
 use App\Http\Controllers\Admin\NexusAiKnowledgeController;
 use App\Http\Controllers\Admin\NexusAiSettingsController;
@@ -34,6 +35,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\FeedController;
+use App\Http\Controllers\GameStoryController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\GameRadarController;
 use App\Http\Controllers\HomeController;
@@ -56,6 +58,9 @@ Route::post('newsletter', [NewsletterSubscriptionController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('newsletter.store');
 Route::get('android', AndroidAppPageController::class)->name('android.app');
+Route::get('game-stories', [GameStoryController::class, 'index'])->name('game-stories.index');
+Route::get('game-stories/game/{game:slug}', [GameStoryController::class, 'game'])->name('game-stories.game');
+Route::get('game-stories/{story:slug}', [GameStoryController::class, 'show'])->name('game-stories.show');
 Route::get('feed', [FeedController::class, 'index'])->name('feed.index');
 Route::get('feed/trending', [FeedController::class, 'trending'])->name('feed.trending');
 Route::get('posts/{content:slug}', [FeedController::class, 'show'])->name('posts.show');
@@ -63,7 +68,7 @@ Route::get('feed/{content:slug}', [FeedController::class, 'legacyShow'])->name('
 Route::get('feed/{content:slug}/comments', [FeedController::class, 'comments'])->name('feed.comments');
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.index');
 Route::get('sitemaps/{type}.xml', [SitemapController::class, 'show'])
-    ->whereIn('type', ['static', 'products', 'categories', 'feed', 'videos', 'content', 'channels', 'studios', 'playlists'])
+    ->whereIn('type', ['static', 'products', 'categories', 'feed', 'videos', 'content', 'channels', 'studios', 'playlists', 'game-stories'])
     ->name('sitemap.show');
 Route::get('media/{path}', MediaStreamController::class)->where('path', '.*')->name('media.stream');
 
@@ -263,6 +268,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('products/{product}/media', [ProductMediaController::class, 'update'])->name('products.media.update');
     Route::patch('products/{product}/exchange', [CatalogController::class, 'toggleExchange'])->name('products.exchange.toggle');
     Route::resource('videos', AdminVideoController::class)->except('show');
+    Route::post('game-stories/inline-image', [AdminGameStoryController::class, 'uploadImage'])->middleware('throttle:20,1')->name('game-stories.inline-image');
+    Route::resource('game-stories', AdminGameStoryController::class)->except('show');
     Route::resource('feed', AdminFeedPostController::class)
         ->parameters(['feed' => 'post'])
         ->except('show');

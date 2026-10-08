@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\DigitalProduct;
 use App\Models\Game;
+use App\Models\GameStory;
 use App\Models\Product;
 use App\Models\SocialContent;
 use App\Models\Studio;
@@ -25,7 +26,7 @@ class SitemapController extends Controller
     {
     }
 
-    private const TYPES = ['static', 'products', 'categories', 'feed', 'videos', 'content', 'channels', 'studios', 'playlists'];
+    private const TYPES = ['static', 'products', 'categories', 'feed', 'videos', 'content', 'channels', 'studios', 'playlists', 'game-stories'];
 
     public function index(SitemapCacheService $cache): Response
     {
@@ -84,7 +85,7 @@ class SitemapController extends Controller
     private function urls(string $type): iterable
     {
         if ($type === 'static') {
-            foreach (['home', 'android.app', 'shop.index', 'digital.index', 'exchange-products.index', 'discover', 'game-radar.index', 'offers.index', 'videos.index', 'channels.index', 'studios.index'] as $routeName) {
+            foreach (['home', 'android.app', 'shop.index', 'digital.index', 'exchange-products.index', 'discover', 'game-radar.index', 'offers.index', 'videos.index', 'channels.index', 'studios.index', 'game-stories.index'] as $routeName) {
                 yield ['loc' => route($routeName)];
             }
 
@@ -120,6 +121,20 @@ class SitemapController extends Controller
             yield ['loc' => route('feed.index')];
             foreach (SocialContent::query()->published()->where('type', 'post')->orderBy('id')->cursor() as $content) {
                 yield $this->entry(route('posts.show', $content->slug), $content->updated_at);
+            }
+
+            return;
+        }
+
+        if ($type === 'game-stories') {
+            foreach (Game::query()->whereIn('status', ['active', 'published'])
+                ->whereHas('gameStories', fn (Builder $query) => $query->published())
+                ->withMax(['gameStories as story_last_modified' => fn (Builder $query) => $query->published()], 'updated_at')
+                ->orderBy('id')->cursor() as $game) {
+                yield $this->entry(route('game-stories.game', $game->slug), Carbon::parse($game->story_last_modified));
+            }
+            foreach (GameStory::published()->orderBy('id')->cursor() as $story) {
+                yield $this->entry(route('game-stories.show', $story->slug), $story->updated_at);
             }
 
             return;
@@ -295,6 +310,7 @@ class SitemapController extends Controller
             ])->filter()->max(),
             'categories' => Category::query()->where('status', 'active')->max('updated_at'),
             'feed' => SocialContent::query()->published()->where('type', 'post')->max('updated_at'),
+            'game-stories' => GameStory::published()->max('updated_at'),
             'videos' => SocialContent::query()->published()->where('type', 'video')->max('updated_at'),
             'content' => SocialContent::query()->published()->where('type', 'short')->max('updated_at'),
             'channels' => $this->lastChannelModification(),

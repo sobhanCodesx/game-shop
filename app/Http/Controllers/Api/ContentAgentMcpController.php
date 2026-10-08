@@ -8,6 +8,9 @@ use App\Services\ContentAgentMediaService;
 use App\Services\ContentAgentService;
 use App\Services\DigitalProductAgentService;
 use App\Services\FeedService;
+use App\Models\GameStory;
+use App\Services\GameStoryService;
+use Illuminate\Support\Facades\Validator;
 use App\Services\GraphQL\PlayNexusGraphService;
 use App\Services\MediaStorageDiagnosticService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -23,7 +26,7 @@ class ContentAgentMcpController extends Controller
     private const MODERN_PROTOCOL = '2026-07-28';
     private const LEGACY_PROTOCOL = '2025-11-25';
 
-    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, DigitalProductAgentService $digitalProducts, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases, MediaStorageDiagnosticService $mediaDiagnostics): Response
+    public function __invoke(Request $request, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, DigitalProductAgentService $digitalProducts, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases, MediaStorageDiagnosticService $mediaDiagnostics, GameStoryService $gameStories): Response
     {
         $payload = $request->json()->all();
 
@@ -48,7 +51,7 @@ class ContentAgentMcpController extends Controller
                 'initialize' => $this->rpcResult($id, $this->initializeResult($params)),
                 'server/discover' => $this->rpcResult($id, $this->discoverResult()),
                 'tools/list' => $this->rpcResult($id, $this->toolsListResult()),
-                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia, $digitalProducts, $graph, $androidReleases, $mediaDiagnostics)),
+                'tools/call' => $this->rpcResult($id, $this->callTool($params, $contentAgent, $contentMedia, $digitalProducts, $graph, $androidReleases, $mediaDiagnostics, $gameStories)),
                 'ping' => $this->rpcResult($id, new \stdClass()),
                 default => $this->rpcError($id, -32601, 'Method not found.'),
             };
@@ -146,7 +149,7 @@ class ContentAgentMcpController extends Controller
         ];
     }
 
-    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, DigitalProductAgentService $digitalProducts, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases, MediaStorageDiagnosticService $mediaDiagnostics): array
+    private function callTool(array $params, ContentAgentService $contentAgent, ContentAgentMediaService $contentMedia, DigitalProductAgentService $digitalProducts, PlayNexusGraphService $graph, AndroidReleaseAgentService $androidReleases, MediaStorageDiagnosticService $mediaDiagnostics, GameStoryService $gameStories): array
     {
         $name = (string) ($params['name'] ?? '');
         $arguments = is_array($params['arguments'] ?? null) ? $params['arguments'] : [];
@@ -173,6 +176,15 @@ class ContentAgentMcpController extends Controller
             'create_collection' => $contentAgent->createCollection($arguments),
             'create_story' => $contentAgent->createStory($arguments),
             'create_video' => $contentAgent->createVideo($arguments),
+            'list_game_stories' => GameStory::query()->with('game:id,name,slug,cover,background')
+                ->when(! ($arguments['include_drafts'] ?? false), fn ($query) => $query->published())
+                ->when(! empty($arguments['game_id']), fn ($query) => $query->where('game_id', (int) $arguments['game_id']))
+                ->latest('id')->limit(min(50, max(1, (int) ($arguments['limit'] ?? 20))))->get()
+                ->map(fn (GameStory $story) => $gameStories->serialize($story))->all(),
+            'get_game_story' => $gameStories->serialize(GameStory::with('game')->findOrFail((int) ($arguments['id'] ?? 0))),
+            'create_game_story' => $gameStories->serialize($gameStories->save($arguments)),
+            'update_game_story' => $gameStories->serialize($gameStories->save($arguments, GameStory::findOrFail((int) ($arguments['id'] ?? 0)))),
+            'set_game_story_state' => $gameStories->serialize($gameStories->setState(GameStory::with('game')->findOrFail((int) ($arguments['id'] ?? 0)), (string) ($arguments['state'] ?? ''))),
             'get_feed' => $contentAgent->getFeed($arguments),
             'create_feed' => $contentAgent->createFeed($arguments),
             'update_content' => $contentAgent->updateContent($arguments),
@@ -240,7 +252,7 @@ class ContentAgentMcpController extends Controller
     {
         $resourceEnum = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product'];
         $mutableResourceEnum = ['game', 'studio', 'collection', 'feed', 'story', 'video'];
-        $mediaResourceEnum = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product', 'digital_product'];
+        $mediaResourceEnum = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product', 'digital_product', 'game_story'];
         $mediaSlotEnum = ['cover', 'background', 'logo', 'icon', 'media', 'video', 'thumbnail', 'attachment'];
         $maxUploadSize = max(1, (int) config('content_agent.uploads.max_size', 104857600));
         $maxChunkSize = max(1, (int) config('content_agent.uploads.max_chunk_size', 2097152));
@@ -260,7 +272,51 @@ class ContentAgentMcpController extends Controller
             'seo_description' => ['type' => ['string', 'null'], 'maxLength' => 160],
         ];
 
+        $gameStoryProperties = [
+            'game_id' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Mandatory valid PlayNexus game id.'],
+            'title' => ['type' => 'string', 'maxLength' => 160],
+            'kind' => ['type' => 'string', 'enum' => GameStory::KINDS],
+            'subtitle' => ['type' => ['string', 'null'], 'maxLength' => 230],
+            'summary' => ['type' => ['string', 'null'], 'maxLength' => 600],
+            'body' => ['type' => ['string', 'null'], 'maxLength' => 200000, 'description' => 'Safe HTML. Embedded images must use URLs from resource=game_story slot=attachment, returned by complete_asset_upload.'],
+            'cover_path' => ['type' => ['string', 'null'], 'maxLength' => 255],
+            'source_url' => ['type' => ['string', 'null'], 'maxLength' => 1000, 'description' => 'Optional real citation for rumor or theory; never fabricate a source.'],
+            'contains_spoilers' => ['type' => 'boolean'],
+            'seo_title' => ['type' => ['string', 'null'], 'maxLength' => 60],
+            'seo_description' => ['type' => ['string', 'null'], 'maxLength' => 160],
+        ];
+
         return [
+            [
+                'name' => 'list_game_stories',
+                'description' => 'Read Game Story narratives. Defaults to publicly published entries; include_drafts reveals drafts for editorial checks.',
+                'inputSchema' => ['type' => 'object', 'properties' => ['game_id' => ['type' => 'integer'], 'include_drafts' => ['type' => 'boolean'], 'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50]], 'additionalProperties' => false],
+                'annotations' => ['readOnlyHint' => true],
+            ],
+            [
+                'name' => 'get_game_story',
+                'description' => 'Read one Game Story including full body, game and publication state.',
+                'inputSchema' => ['type' => 'object', 'properties' => ['id' => ['type' => 'integer', 'minimum' => 1]], 'required' => ['id'], 'additionalProperties' => false],
+                'annotations' => ['readOnlyHint' => true],
+            ],
+            [
+                'name' => 'create_game_story',
+                'description' => 'Create narrative booklet as DRAFT associated with a real game. No auto-publish. Kinds include story, world, character, lore, quest, ending, theory, rumor and other.',
+                'inputSchema' => ['type' => 'object', 'properties' => $gameStoryProperties, 'required' => ['game_id', 'title', 'kind'], 'additionalProperties' => false],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false],
+            ],
+            [
+                'name' => 'update_game_story',
+                'description' => 'Edit a Game Story without altering its publication state. Read with get_game_story first and send full required fields.',
+                'inputSchema' => ['type' => 'object', 'properties' => ['id' => ['type' => 'integer', 'minimum' => 1], ...$gameStoryProperties], 'required' => ['id', 'game_id', 'title', 'kind'], 'additionalProperties' => false],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false],
+            ],
+            [
+                'name' => 'set_game_story_state',
+                'description' => 'Explicit publication: draft or published. Publishing requires a real narrative and active game.',
+                'inputSchema' => ['type' => 'object', 'properties' => ['id' => ['type' => 'integer', 'minimum' => 1], 'state' => ['type' => 'string', 'enum' => ['draft', 'published']]], 'required' => ['id', 'state'], 'additionalProperties' => false],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false],
+            ],
             [
                 'name' => 'diagnose_media_storage',
                 'description' => 'Read-only production media-storage diagnostics. Reports non-secret download-host configuration presence and probes plain/explicit-TLS FTP login without revealing credentials.',
@@ -1034,7 +1090,7 @@ class ContentAgentMcpController extends Controller
 
     private function instructions(): string
     {
-        return 'PlayNexus Content Admin MCP v3.1. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos/digital-products=draft, games/studios=inactive, collections=private. Editing never changes publication state. Digital products use predefined feature/value options and separate capacity offers; upload their media with resource=digital_product. Binary content media uses dedicated chunked asset tools. Android APK releases should use start_android_release_upload + the authenticated binary chunk endpoint + complete_android_release_upload, which verifies SHA-256 and stores release notes/version metadata without long-running web requests. publish_android_release remains only as a compatibility path for smaller direct GitHub assets. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+        return 'PlayNexus Content Admin MCP v3.1. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos/digital-products=draft, games/studios=inactive, collections=private. Editing never changes publication state. Digital products use predefined feature/value options and separate capacity offers; upload their media with resource=digital_product. Binary content media uses dedicated chunked asset tools. Android APK releases should use start_android_release_upload + the authenticated binary chunk endpoint + complete_android_release_upload, which verifies SHA-256 and stores release notes/version metadata without long-running web requests. publish_android_release remains only as a compatibility path for smaller direct GitHub assets. Game Story is a separate book-like narrative, not the existing short Story. For Game Story images, create_game_story first, upload an image using resource=game_story slot=attachment, then update_game_story with an <img src=URL alt=description> tag from the returned CDN URL. Use set_game_story_state only after explicit publication request. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
     }
 
     private function serverInfo(): array
