@@ -10,6 +10,7 @@ use App\Services\GameStoryImagePlacementService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use App\Services\GameStoryService;
+use App\Services\GameStoryReaderService;
 use App\Support\StoryRichText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -267,5 +268,66 @@ class GameStoryTest extends TestCase
         $this->delete("/admin/game-stories/{$other->id}")->assertRedirect();
         $this->assertDatabaseMissing('game_stories', ['id' => $other->id]);
         $this->assertDatabaseHas('game_stories', ['id' => $first->id]);
+    }
+
+    public function test_reader_provides_stable_server_side_chapter_targets_and_preserves_manuscript(): void
+    {
+        $raw = '<p>درآمد؛ سفری به جهان بازی.</p><h2>فصل اول | آغاز سفر</h2><p>پاراگراف نخست.</p><h3>مرز زندگی و مرگ</h3><figure><img src="https://cdnpn.ir/storage/game-stories/inline/123e4567-e89b-12d3-a456-426614174000.webp" alt="جهان بازی"></figure><h2>فصل دوم | پرسش تازه</h2>';
+        $reader = app(GameStoryReaderService::class)->prepare($raw);
+
+        $this->assertCount(3, $reader['chapters']);
+        $this->assertSame(['chapter-1', 'chapter-2', 'chapter-3'], array_column($reader['chapters'], 'id'));
+        $this->assertSame([2, 3, 2], array_column($reader['chapters'], 'level'));
+        $this->assertSame('فصل اول | آغاز سفر', $reader['chapters'][0]['label']);
+        $this->assertStringContainsString('<h2 id="chapter-1">فصل اول | آغاز سفر</h2>', $reader['html']);
+        $this->assertStringContainsString('<h3 id="chapter-2">مرز زندگی و مرگ</h3>', $reader['html']);
+        $this->assertStringContainsString('<figure><img', $reader['html']);
+        $this->assertStringNotContainsString('id="chapter-1"', $raw);
+        $this->assertGreaterThan(12, $reader['wordCount']);
+    }
+
+    public function test_published_reader_includes_seo_graph_rich_body_and_ssr_opt_in(): void
+    {
+        $this->assertContains('game-stories', config('inertia.ssr.paths'));
+        $this->assertContains('game-stories/*', config('inertia.ssr.paths'));
+        $this->assertNotContains('admin/*', config('inertia.ssr.paths'));
+
+        $game = Game::factory()->create(['status' => 'active', 'name' => 'Death Stranding 2', 'slug' => 'death-stranding-2']);
+        $raw = '<h2>فصل اول | راز ساحل</h2><p>'.str_repeat('سم از میان باران و ساحل گذشت. ', 12).'</p><h2>فصل دوم | شبکه کایرال</h2><p>'.str_repeat('بازماندگان دوباره به هم متصل می‌شوند. ', 12).'</p>';
+        $story = app(GameStoryService::class)->save([
+            'game_id' => $game->id,
+            'title' => 'راز جهان Death Stranding 2',
+            'kind' => 'world',
+            'summary' => 'سفری درباره جهان داستانی',
+            'body' => $raw,
+            'seo_title' => 'دنیای دث استرندینگ ۲',
+            'seo_description' => 'بررسی جهان، سم و راز ساحل بازی',
+        ]);
+        app(GameStoryService::class)->setState($story->fresh(['game']), 'published');
+        $original = $story->fresh()->body;
+
+        $this->get('/game-stories/'.$story->slug)
+            ->assertOk()
+            ->assertViewHas('page', function (array $page) use ($story): bool {
+                $props = $page['props'] ?? [];
+                $chapters = $props['chapters'] ?? [];
+                $graph = $props['seo']['structuredData']['@graph'] ?? [];
+                $article = $graph[0] ?? [];
+                $webpage = $graph[1] ?? [];
+
+                return ($page['component'] ?? '') === 'GameStories/Show'
+                    && count($chapters) === 2
+                    && ($chapters[0]['id'] ?? '') === 'chapter-1'
+                    && str_contains($props['story']['body'] ?? '', 'id="chapter-2"')
+                    && ($article['@type'] ?? '') === 'Article'
+                    && ($article['about']['name'] ?? '') === 'Death Stranding 2'
+                    && ($article['timeRequired'] ?? '') !== ''
+                    && ($article['wordCount'] ?? 0) > 20
+                    && ($webpage['@type'] ?? '') === 'WebPage'
+                    && ($props['seo']['robots'] ?? '') === 'index, follow, max-image-preview:large, max-snippet:-1'
+                    && str_contains((string) ($props['seo']['canonical'] ?? ''), $story->slug)
+                    && ($props['gameStoriesUrl'] ?? '') === '/game-stories/game/death-stranding-2';
+            });
+        $this->assertSame($original, $story->fresh()->body);
     }
 }
