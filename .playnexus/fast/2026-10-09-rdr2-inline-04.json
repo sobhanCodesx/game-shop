@@ -1,0 +1,12 @@
+{
+  "job_id": "rdr2-van-der-linde-inline-7-20261009",
+  "tool": "insert_game_story_image",
+  "arguments": {
+    "id": 3,
+    "asset_id": 7,
+    "position": "after_text",
+    "anchor_text": "هرچه شرایط بدتر می‌شود، مایکا بل بیشتر به داچ نزدیک می‌شود",
+    "alt": "مایکا بل در گنگ ون در لیند Red Dead Redemption 2",
+    "caption": "مایکا بل؛ مردی که در واپسین روزهای گروه، بدگمانی را به سلاح تبدیل کرد"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "job_id": "rdr2-van-der-linde-inline-6-20261009",
+  "tool": "insert_game_story_image",
+  "arguments": {
+    "id": 3,
+    "asset_id": 6,
+    "position": "after_text",
+    "anchor_text": "سیدی ادلر بعد از فاجعه‌ای شخصی به گروه پناه آورد",
+    "alt": "سیدی ادلر در تصویر رسمی Red Dead Redemption 2",
+    "caption": "سیدی ادلر؛ از بازماندهٔ یک فاجعه تا یکی از سرسخت‌ترین اعضای گروه"
+  }
+}

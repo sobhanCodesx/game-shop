@@ -1,0 +1,12 @@
+{
+  "job_id": "rdr2-van-der-linde-inline-5-20261009",
+  "tool": "insert_game_story_image",
+  "arguments": {
+    "id": 3,
+    "asset_id": 5,
+    "position": "after_text",
+    "anchor_text": "وقتی آرتور مورگان نوجوان به داچ و هوزیا رسید",
+    "alt": "پرترهٔ هنری آرتور مورگان از Red Dead Redemption 2",
+    "caption": "آرتور مورگان؛ مردی که میان وفاداری به داچ و وجدان خودش گرفتار شد"
+  }
+}
