@@ -182,9 +182,6 @@ class DigitalStoreController extends Controller
             'description' => $description,
             'image' => $image,
             'offers' => $structuredOffers,
-            ...($digitalProduct->category?->name
-                ? ['category' => $digitalProduct->category->name]
-                : []),
             ...($gameUrl
                 ? ['isRelatedTo' => [
                     '@type' => 'VideoGame',
