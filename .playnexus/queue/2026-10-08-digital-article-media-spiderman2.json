@@ -1,10 +1,10 @@
 {
-  "job_id": "20261008-digital-article-media-spiderman2",
+  "job_id": "20261008-digital-article-media-spiderman2-slotfix",
   "tool": "upload_asset",
   "arguments": {
     "resource": "feed",
     "id": 134,
-    "slot": "image",
+    "slot": "media",
     "source_url": "https://cdnpn.ir/storage/0d847b24-308f-40f8-8447-db7a19d5065e.webp",
     "name": "spiderman2-ps5-cover.webp",
     "mime": "image/webp",
