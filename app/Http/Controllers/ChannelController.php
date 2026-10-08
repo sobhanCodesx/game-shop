@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Game;
+use App\Models\GameStory;
 use App\Models\SocialContent;
 use App\Models\VideoPlaylist;
 use App\Services\ChannelPageDataService;
@@ -125,6 +126,7 @@ class ChannelController extends Controller
         $image = url($channel['background_url'] ?: $channel['cover_url'] ?: (string) config('seo.default_image', '/logo.png'));
 
         return Inertia::render('Channels/Show', [
+            'gameStories' => GameStory::published()->where('game_id', $game->id)->with('game:id,name,slug,cover,background')->latest('published_at')->limit(6)->get()->map(fn (GameStory $story) => $story->card())->all(),
             ...Seo::page([
                 'title' => $pageNumber > 1 ? "کانال {$game->name} - صفحه {$pageNumber}" : "کانال {$game->name}",
                 'description' => $description,

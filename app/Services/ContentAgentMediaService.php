@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ContentAsset;
 use App\Models\DigitalProduct;
+use App\Models\GameStory;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\Product;
@@ -21,7 +22,7 @@ use Throwable;
 
 class ContentAgentMediaService
 {
-    private const RESOURCES = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product', 'digital_product'];
+    private const RESOURCES = ['game', 'studio', 'platform', 'collection', 'feed', 'story', 'video', 'product', 'digital_product', 'game_story'];
 
     private const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -426,6 +427,7 @@ class ContentAgentMediaService
                 'is_primary' => (bool) $media->is_primary,
                 'storage_exists' => ProductMediaStorage::exists($media->path),
             ])->values()->all(),
+            'game_story' => [],
             'digital_product' => $target->media()->get()->map(fn ($media) => [
                 'id' => $media->id,
                 'slot' => 'media',
@@ -889,7 +891,9 @@ class ContentAgentMediaService
     ): array {
         $resource = (string) $metadata['resource'];
         $extension = $this->safeExtensionForMime($actualMime);
-        $path = 'content-assets/'.$resource.'/'.Str::uuid().'.'.$extension;
+        $path = $resource === 'game_story'
+            ? 'content-assets/game_story/'.Str::uuid().'.'.$extension
+            : 'content-assets/'.$resource.'/'.Str::uuid().'.'.$extension;
         $stream = fopen($file->getRealPath(), 'rb');
 
         if (! is_resource($stream)) {
@@ -1039,6 +1043,7 @@ class ContentAgentMediaService
             'video' => SocialContent::query()->where('type', 'video')->findOrFail($id),
             'product' => Product::query()->findOrFail($id),
             'digital_product' => DigitalProduct::query()->findOrFail($id),
+            'game_story' => GameStory::query()->findOrFail($id),
         };
     }
 
@@ -1050,6 +1055,7 @@ class ContentAgentMediaService
             'platform' => ['icon', 'attachment'],
             'collection' => ['logo', 'attachment'],
             'feed' => ['media', 'attachment'],
+            'game_story' => ['attachment'],
             'story' => ['media', 'thumbnail', 'attachment'],
             'video' => ['video', 'thumbnail', 'attachment'],
             'product', 'digital_product' => ['media', 'attachment'],
@@ -1063,6 +1069,9 @@ class ContentAgentMediaService
     private function ensureMimeAllowedForSlot(string $resource, string $slot, string $mime): void
     {
         if ($slot === 'attachment') {
+            if ($resource === 'game_story' && ! in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+                throw new RuntimeException('Game Story attachments must be JPEG, PNG or WebP images.');
+            }
             return;
         }
 

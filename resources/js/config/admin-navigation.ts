@@ -16,6 +16,7 @@ import {
     ListVideo,
     MessageSquareText,
     Newspaper,
+    BookOpen,
     PanelsTopLeft,
     RefreshCw,
     Rocket,
@@ -97,6 +98,7 @@ export const adminNavigation: NavigationEntry[] = [
         icon: Newspaper,
         children: [
             link("فید", "/admin/feed", Newspaper, { permission: "content.manage" }),
+            link("Game Story · کتابخانه روایت‌ها", "/admin/game-stories", BookOpen, { permission: "content.manage" }),
             link("استودیوهای بازی‌سازی", "/admin/studios", Factory, { permission: "content.manage" }),
             link("ویدیوها", "/admin/videos", Video, { permission: "content.manage" }),
             link("کالکشن‌های ویدیو", "/admin/video-playlists", ListVideo, { permission: "content.manage" }),
