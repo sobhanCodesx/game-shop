@@ -1,0 +1,7 @@
+{
+  "job_id": "rdr2-gang-story-read-existing-2",
+  "tool": "get_game_story",
+  "arguments": {
+    "id": 2
+  }
+}

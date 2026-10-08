@@ -1,0 +1,8 @@
+{
+  "job_id": "rdr2-gang-story-read-assets-2",
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "game_story",
+    "id": 2
+  }
+}
