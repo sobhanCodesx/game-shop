@@ -129,8 +129,9 @@ class SitemapController extends Controller
         if ($type === 'game-stories') {
             foreach (Game::query()->whereIn('status', ['active', 'published'])
                 ->whereHas('gameStories', fn (Builder $query) => $query->published())
+                ->withMax(['gameStories as story_last_modified' => fn (Builder $query) => $query->published()], 'updated_at')
                 ->orderBy('id')->cursor() as $game) {
-                yield $this->entry(route('game-stories.game', $game->slug), $game->updated_at);
+                yield $this->entry(route('game-stories.game', $game->slug), Carbon::parse($game->story_last_modified));
             }
             foreach (GameStory::published()->orderBy('id')->cursor() as $story) {
                 yield $this->entry(route('game-stories.show', $story->slug), $story->updated_at);

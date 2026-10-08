@@ -37,6 +37,9 @@ class GameStoryService
             throw ValidationException::withMessages(['cover_path' => 'تصویر جلد باید از کتابخانه مدیای Game Story باشد.']);
         }
         $body = StoryRichText::sanitize($data['body'] ?? null);
+        if ($story?->status === 'published' && mb_strlen(trim(strip_tags((string) $body))) < 120) {
+            throw ValidationException::withMessages(['body' => 'برای حفظ انتشار، متن کتابچه باید حداقل ۱۲۰ کاراکتر داشته باشد.']);
+        }
         $summary = trim((string) ($data['summary'] ?? ''));
         if ($summary === '') {
             $summary = Str::limit(trim(html_entity_decode(strip_tags((string) $body), ENT_QUOTES | ENT_HTML5, 'UTF-8')), 280, '…');
