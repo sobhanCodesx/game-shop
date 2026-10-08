@@ -60,6 +60,9 @@ class ContentAgentMediaService
 
         $this->resolveTarget($resource, $id);
         $this->ensureValidSlot($resource, $slot);
+        if ($resource === 'game_story' && (int) $data['size'] > 8 * 1024 * 1024) {
+            throw new RuntimeException('Game Story image must be 8 MB or smaller.');
+        }
 
         $expectedChunks = (int) ceil((int) $data['size'] / (int) $data['chunk_size']);
         if ((int) $data['total_chunks'] !== $expectedChunks) {
@@ -890,6 +893,9 @@ class ContentAgentMediaService
         string $sha256,
     ): array {
         $resource = (string) $metadata['resource'];
+        if ($resource === 'game_story' && $file->getSize() > 8 * 1024 * 1024) {
+            throw new RuntimeException('Game Story image must be 8 MB or smaller.');
+        }
         $extension = $this->safeExtensionForMime($actualMime);
         $path = $resource === 'game_story'
             ? 'content-assets/game_story/'.Str::uuid().'.'.$extension
