@@ -244,13 +244,14 @@ class GameStoryTest extends TestCase
                 ->parameterNames()
         );
 
-        $this->withHeader('X-Inertia', 'true')
-            ->get("/admin/game-stories/{$first->id}/edit")
+        $this->get("/admin/game-stories/{$first->id}/edit")
             ->assertOk()
-            ->assertJsonPath('component', 'Admin/GameStories/Form')
-            ->assertJsonPath('props.story.id', $first->id)
-            ->assertJsonPath('props.story.game_id', $game->id)
-            ->assertJsonPath('props.story.title', 'روایت اول برای ویرایش');
+            ->assertViewHas('page', function (array $page) use ($first, $game): bool {
+                return ($page['component'] ?? null) === 'Admin/GameStories/Form'
+                    && ($page['props']['story']['id'] ?? null) === $first->id
+                    && ($page['props']['story']['game_id'] ?? null) === $game->id
+                    && ($page['props']['story']['title'] ?? null) === 'روایت اول برای ویرایش';
+            });
 
         $this->put("/admin/game-stories/{$first->id}", [
             'game_id' => $game->id,
