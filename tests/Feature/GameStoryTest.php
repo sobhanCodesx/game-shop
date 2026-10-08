@@ -221,7 +221,7 @@ class GameStoryTest extends TestCase
 
     public function test_admin_can_edit_save_and_delete_the_correct_game_story_via_resource_binding(): void
     {
-        $user = User::factory()->create(['role' => 'super-admin', 'is_admin' => true]);
+        $user = User::factory()->create(['role' => 'super-admin', 'is_admin' => true, 'status' => 'active']);
         $this->actingAs($user);
         $game = Game::factory()->create(['status' => 'active']);
         $first = app(GameStoryService::class)->save([
