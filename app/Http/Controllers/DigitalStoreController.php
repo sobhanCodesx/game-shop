@@ -6,6 +6,7 @@ use App\Models\Attribute;
 use App\Models\Category;
 use App\Models\DigitalOffer;
 use App\Models\DigitalProduct;
+use App\Services\GameStoryLinkGraphService;
 use App\Models\Game;
 use App\Models\Platform;
 use App\Models\SocialContent;
@@ -128,7 +129,7 @@ class DigitalStoreController extends Controller
         ]);
     }
 
-    public function show(DigitalProduct $digitalProduct): Response
+    public function show(DigitalProduct $digitalProduct, GameStoryLinkGraphService $storyLinks): Response
     {
         abort_unless($digitalProduct->status === 'published', 404);
 
@@ -231,6 +232,7 @@ class DigitalStoreController extends Controller
         $gamePlaylists = $this->gamePlaylists($digitalProduct);
 
         return Inertia::render('Digital/Show', [
+            'gameStories' => $storyLinks->storiesForGame($digitalProduct->game_id),
             ...Seo::page([
                 'title' => $digitalProduct->title,
                 'description' => $description,

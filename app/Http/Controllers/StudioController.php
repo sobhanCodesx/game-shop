@@ -7,6 +7,7 @@ use App\Models\Studio;
 use App\Models\VideoPlaylist;
 use App\Services\MediaStorage;
 use App\Services\StudioPageDataService;
+use App\Services\GameStoryLinkGraphService;
 use App\Support\RichText;
 use App\Support\Seo;
 use Illuminate\Http\Request;
@@ -52,11 +53,14 @@ class StudioController extends Controller
         ]);
     }
 
-    public function show(Studio $studio, Request $request, StudioPageDataService $page): Response
+    public function show(Studio $studio, Request $request, StudioPageDataService $page, GameStoryLinkGraphService $storyLinks): Response
     {
         abort_unless($studio->status === 'active', 404);
 
-        return Inertia::render('Studios/Show', $page->get($studio, $request));
+        return Inertia::render('Studios/Show', [
+            ...$page->get($studio, $request),
+            'gameStories' => $storyLinks->storiesForStudio($studio),
+        ]);
     }
 
     private function studioData(Studio $studio): array
