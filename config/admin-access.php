@@ -187,6 +187,7 @@ return [
         'admin.products.exchange.*' => 'catalog.manage',
         'admin.catalog.*' => 'catalog.manage',
         'admin.feed.*' => 'content.manage',
+        'admin.game-stories.*' => 'content.manage',
         'admin.studios.*' => 'content.manage',
         'admin.videos.*' => 'content.manage',
         'admin.video-playlists.*' => 'content.manage',
