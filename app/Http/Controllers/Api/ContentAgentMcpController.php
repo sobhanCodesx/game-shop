@@ -10,6 +10,7 @@ use App\Services\DigitalProductAgentService;
 use App\Services\FeedService;
 use App\Models\GameStory;
 use App\Services\GameStoryService;
+use App\Services\GameStoryImagePlacementService;
 use Illuminate\Support\Facades\Validator;
 use App\Services\GraphQL\PlayNexusGraphService;
 use App\Services\MediaStorageDiagnosticService;
@@ -185,6 +186,7 @@ class ContentAgentMcpController extends Controller
             'create_game_story' => $gameStories->serialize($gameStories->save($arguments)),
             'update_game_story' => $gameStories->serialize($gameStories->save($arguments, GameStory::findOrFail((int) ($arguments['id'] ?? 0)))),
             'set_game_story_state' => $gameStories->serialize($gameStories->setState(GameStory::with('game')->findOrFail((int) ($arguments['id'] ?? 0)), (string) ($arguments['state'] ?? ''))),
+            'insert_game_story_image' => app(GameStoryImagePlacementService::class)->insert($arguments),
             'get_feed' => $contentAgent->getFeed($arguments),
             'create_feed' => $contentAgent->createFeed($arguments),
             'update_content' => $contentAgent->updateContent($arguments),
@@ -310,6 +312,26 @@ class ContentAgentMcpController extends Controller
                 'description' => 'Edit a Game Story without altering its publication state. Read with get_game_story first and send full required fields.',
                 'inputSchema' => ['type' => 'object', 'properties' => ['id' => ['type' => 'integer', 'minimum' => 1], ...$gameStoryProperties], 'required' => ['id', 'game_id', 'title', 'kind'], 'additionalProperties' => false],
                 'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false],
+            ],
+            [
+                'name' => 'insert_game_story_image',
+                'description' => 'Insert an uploaded story-owned image at an exact location without rewriting any existing story prose. First create_game_story, then upload with resource=game_story and slot=attachment, complete_asset_upload and use returned asset.id. Use get_game_story to select the location.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'minimum' => 1],
+                        'asset_id' => ['type' => 'integer', 'minimum' => 1],
+                        'position' => ['type' => 'string', 'enum' => ['start', 'end', 'before_block', 'after_block', 'before_text', 'after_text']],
+                        'block_index' => ['type' => 'integer', 'minimum' => 1, 'description' => '1-based position. Required for before_block and after_block.'],
+                        'anchor_text' => ['type' => 'string', 'minLength' => 3, 'maxLength' => 500, 'description' => 'A unique quote in the target heading or paragraph. Required for before_text and after_text.'],
+                        'alt' => ['type' => 'string', 'minLength' => 3, 'maxLength' => 180],
+                        'caption' => ['type' => ['string', 'null'], 'maxLength' => 250],
+                        'expected_updated_at' => ['type' => 'string', 'description' => 'Optional last-read revision timestamp.'],
+                    ],
+                    'required' => ['id', 'asset_id', 'position', 'alt'],
+                    'additionalProperties' => false,
+                ],
+                'annotations' => ['readOnlyHint' => false, 'destructiveHint' => false, 'openWorldHint' => false],
             ],
             [
                 'name' => 'set_game_story_state',
@@ -1090,7 +1112,7 @@ class ContentAgentMcpController extends Controller
 
     private function instructions(): string
     {
-        return 'PlayNexus Content Admin MCP v3.1. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos/digital-products=draft, games/studios=inactive, collections=private. Editing never changes publication state. Digital products use predefined feature/value options and separate capacity offers; upload their media with resource=digital_product. Binary content media uses dedicated chunked asset tools. Android APK releases should use start_android_release_upload + the authenticated binary chunk endpoint + complete_android_release_upload, which verifies SHA-256 and stores release notes/version metadata without long-running web requests. publish_android_release remains only as a compatibility path for smaller direct GitHub assets. Game Story is a separate book-like narrative, not the existing short Story. For Game Story images, create_game_story first, upload an image using resource=game_story slot=attachment, then update_game_story with an <img src=URL alt=description> tag from the returned CDN URL. Use set_game_story_state only after explicit publication request. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
+        return 'PlayNexus Content Admin MCP v3.1. Structured Game Events are first-class intelligence records: create/update them as candidates, then use the dedicated state tool to activate or dismiss them. Search/select/get before mutating records. Creation defaults remain safe: feeds/stories/videos/digital-products=draft, games/studios=inactive, collections=private. Editing never changes publication state. Digital products use predefined feature/value options and separate capacity offers; upload their media with resource=digital_product. Binary content media uses dedicated chunked asset tools. Android APK releases should use start_android_release_upload + the authenticated binary chunk endpoint + complete_android_release_upload, which verifies SHA-256 and stores release notes/version metadata without long-running web requests. publish_android_release remains only as a compatibility path for smaller direct GitHub assets. Game Story is a separate book-like narrative, not the existing short Story. For Game Story inline images, create_game_story first, upload with resource=game_story slot=attachment, then call insert_game_story_image with returned asset.id and an exact narrative position or unique text anchor. This inserts a safe inline figure without rewriting the manuscript. Use set_game_story_state only after explicit publication request. Use dedicated state/publish tools only after an explicit user request. Raw SQL, shell execution, unrestricted filesystem access, secrets and arbitrary code execution are intentionally not exposed.';
     }
 
     private function serverInfo(): array
