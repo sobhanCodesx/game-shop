@@ -45,6 +45,7 @@ MCP_TOOLS = {
     "create_game_story",
     "update_game_story",
     "set_game_story_state",
+    "insert_game_story_image",
     "update_content",
     "update_feed",
     "sync_collection_videos",
