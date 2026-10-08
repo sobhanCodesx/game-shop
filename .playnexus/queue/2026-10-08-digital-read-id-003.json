@@ -1,0 +1,7 @@
+{
+  "job_id": "digital-read-20261008-3",
+  "tool": "get_digital_product",
+  "arguments": {
+    "id": 3
+  }
+}
