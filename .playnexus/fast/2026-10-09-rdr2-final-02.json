@@ -1,8 +1,0 @@
-{
-  "job_id": "rdr2-van-der-linde-story-publish-20261009",
-  "tool": "set_game_story_state",
-  "arguments": {
-    "id": 3,
-    "state": "published"
-  }
-}
