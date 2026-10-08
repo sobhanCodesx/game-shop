@@ -1,0 +1,13 @@
+{
+  "job_id": "rdr2-gang-inline-media-04-micah-20261009",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 3,
+    "slot": "attachment",
+    "source_url": "https://xboxwire.thesourcemediaassets.com/sites/2/RedDeadRedemptionGangMicah.jpg",
+    "name": "rdr2-vanderlinde-04-micah.jpg",
+    "alt": "مایکا بل از گنگ ون در لیند و نماد بی‌اعتمادی",
+    "sort_order": 5
+  }
+}

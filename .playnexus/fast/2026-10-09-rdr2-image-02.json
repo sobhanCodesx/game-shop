@@ -1,0 +1,13 @@
+{
+  "job_id": "rdr2-gang-inline-media-01-gang-20261009",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 3,
+    "slot": "attachment",
+    "source_url": "https://images.pushsquare.com/bee7e85fd2ebe/red-dead-redemption-2-ps4-playstation-4.large.jpg",
+    "name": "rdr2-vanderlinde-01-gang.jpg",
+    "alt": "اعضای گروه ون در لیند به رهبری داچ در جنگل Red Dead Redemption 2",
+    "sort_order": 2
+  }
+}

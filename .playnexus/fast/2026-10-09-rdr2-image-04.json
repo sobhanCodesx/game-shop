@@ -1,0 +1,13 @@
+{
+  "job_id": "rdr2-gang-inline-media-03-sadie-20261009",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 3,
+    "slot": "attachment",
+    "source_url": "https://xboxwire.thesourcemediaassets.com/sites/2/RedDeadRedemptionGangSadie.jpg",
+    "name": "rdr2-vanderlinde-03-sadie.jpg",
+    "alt": "سیدی ادلر از اعضای گنگ داچ؛ تصویر هنری رسمی راک‌استار",
+    "sort_order": 4
+  }
+}
