@@ -1,0 +1,8 @@
+{
+  "job_id": "death-stranding-2-story-1-publication-20261008",
+  "tool": "set_game_story_state",
+  "arguments": {
+    "id": 1,
+    "state": "published"
+  }
+}
