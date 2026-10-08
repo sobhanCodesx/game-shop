@@ -18,6 +18,7 @@ import {
 import FeedItem from "../../Components/Storefront/Feed/FeedItem";
 import ProductCard from "../../Components/Storefront/Product/ProductCard";
 import Seo, { type SeoData } from "../../Components/Seo";
+import GameStoryRail, { type GameStoryCard } from "../../Components/GameStories/GameStoryRail";
 import Pagination from "../../Components/Storefront/Shared/Pagination";
 import RichText from "../../Components/Storefront/Shared/RichText";
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
@@ -96,6 +97,7 @@ export default function ChannelShow({
     productsCount,
     digitalProductsCount,
     storeInfo,
+    gameStories = [],
 }: {
     seo: SeoData;
     channel: Channel;
@@ -106,6 +108,7 @@ export default function ChannelShow({
     productsCount: number;
     digitalProductsCount: number;
     storeInfo: StoreInfo | null;
+    gameStories?: GameStoryCard[];
 }) {
     const { auth } = usePage<SharedPageProps>().props;
     const [watchUpdating, setWatchUpdating] = useState(false);
@@ -559,6 +562,7 @@ export default function ChannelShow({
                         </section>
                     )}
 
+                    <GameStoryRail stories={gameStories} className="border-t border-[var(--store-border)]" />
                     <section
                         className="scroll-mt-24 border-t border-[var(--store-border)] py-7 sm:py-9"
                         id="about"

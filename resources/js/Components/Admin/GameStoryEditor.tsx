@@ -1,5 +1,5 @@
 import { Bold, Heading2, Heading3, ImagePlus, Italic, Link2, List, ListOrdered, Quote, RotateCcw, UploadCloud } from "lucide-react";
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from "react";
 import { uploadFileInChunks } from "../../services/chunkedUpload";
 
 interface UploadedStoryImage { path: string; url: string; }
@@ -83,7 +83,7 @@ export default function GameStoryEditor({ value, onChange, onImageUploaded }: { 
             setError(caught instanceof Error ? caught.message : "آپلود انجام نشد.");
         } finally { setBusy(false); setProgress(0); }
     };
-    const button = (label: string, icon: React.ReactNode, handle: () => void) =>
+    const button = (label: string, icon: ReactNode, handle: () => void) =>
         <button aria-label={label} className="grid size-9 place-items-center rounded-lg border border-white/5 text-slate-300 transition hover:border-amber-400/40 hover:bg-amber-400/10 hover:text-amber-200" key={label} onMouseDown={event => event.preventDefault()} onClick={handle} type="button" title={label}>{icon}</button>;
     const drop = (event: DragEvent) => { event.preventDefault(); chooseFile(event.dataTransfer.files[0]); };
 

@@ -42,6 +42,7 @@ import type {
 import ProductCard from "../Components/Storefront/Product/ProductCard";
 import VideoProgressBar from "../Components/Storefront/Video/VideoProgressBar";
 import Seo, { type SeoData } from "../Components/Seo";
+import GameStoryRail, { type GameStoryCard } from "../Components/GameStories/GameStoryRail";
 
 interface Pricing {
     regular_price: number;
@@ -121,6 +122,7 @@ interface Props {
     freshContent?: FreshItem[];
     channels?: ChannelItem[];
     latestFeed: HomeFeedPreviewItem[];
+    latestGameStories: GameStoryCard[];
     latestFeedFull?: HomeFeedPreviewItem[];
     latestStudios?: StudioItem[];
     gameRadar?: GameRadarItem[];
@@ -3239,6 +3241,7 @@ export default function Home({
     freshContent = [],
     channels = [],
     latestFeed,
+    latestGameStories = [],
     latestFeedFull = [],
     latestStudios = [],
     gameRadar = [],
@@ -3836,6 +3839,7 @@ export default function Home({
                 )}
                     </>
                 )}
+                <GameStoryRail stories={latestGameStories} />
             </main>
             <NexusAiWidget config={storefront.nexus_ai} />
             <footer
