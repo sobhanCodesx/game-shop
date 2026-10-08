@@ -56,9 +56,9 @@ export default function GameStoryEditor({ value, onChange, onImageUploaded }: { 
         onChange(editor.current?.innerHTML || "");
         rememberSelection();
     };
-    const chooseFile = (file?: File) => {
+    const chooseFile = (file?: File, preserveDropPosition = false) => {
         if (!file) return;
-        rememberSelection();
+        if (!preserveDropPosition) rememberSelection();
         setAlt(file.name.replace(/\.[^.]+$/, "").replaceAll("-", " "));
         setPendingImage(file);
         setError("");
@@ -156,7 +156,7 @@ export default function GameStoryEditor({ value, onChange, onImageUploaded }: { 
         })() : null);
         if (selectedRange && editor.current?.contains(selectedRange.startContainer))
             savedRange.current = selectedRange.cloneRange();
-        chooseFile(event.dataTransfer.files[0]);
+        chooseFile(event.dataTransfer.files[0], true);
     };
 
     return <div className="overflow-hidden rounded-[22px] border border-amber-600/25 bg-[#141313] shadow-[0_25px_85px_rgba(0,0,0,.25)]" dir="rtl">
