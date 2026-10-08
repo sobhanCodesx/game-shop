@@ -1,0 +1,9 @@
+{
+  "job_id": "rdr2-gang-find-own-media-20261009",
+  "tool": "select_content",
+  "arguments": {
+    "resource": "video",
+    "game_id": 4,
+    "limit": 20
+  }
+}
