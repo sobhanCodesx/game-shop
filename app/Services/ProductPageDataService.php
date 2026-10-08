@@ -41,18 +41,26 @@ final class ProductPageDataService
                 continue;
             }
 
+            $finalPrice = (int) ($pricing['final_price'] ?? 0);
+            if ($finalPrice <= 0) {
+                // Do not advertise a merchant offer without a real sale price.
+                // Keep BreadcrumbList so the page remains discoverable.
+                unset($graph[$index]);
+                break;
+            }
+
             $graph[$index]['offers'] = [
                 '@type' => 'Offer',
                 'url' => $input['canonical'],
                 'priceCurrency' => 'IRR',
-                'price' => (int) $pricing['final_price'] * 10,
+                'price' => $finalPrice * 10,
                 'availability' => $availability,
                 'itemCondition' => 'https://schema.org/NewCondition',
             ];
             break;
         }
 
-        data_set($input, 'structuredData.@graph', $graph);
+        data_set($input, 'structuredData.@graph', array_values($graph));
 
         return Seo::page($input);
     }
