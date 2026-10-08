@@ -4,6 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Game;
 use App\Models\GameStory;
+use App\Models\ContentAsset;
+use App\Services\GameStoryImagePlacementService;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use App\Services\GameStoryService;
 use App\Support\StoryRichText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -115,5 +119,102 @@ class GameStoryTest extends TestCase
         ]);
         $this->expectException(\Illuminate\Validation\ValidationException::class);
         $service->setState($story->fresh(['game']), 'published');
+    }
+
+    private function inlineAsset(int $storyId, string $uuid = '123e4567-e89b-12d3-a456-426614174000'): ContentAsset
+    {
+        $path = "content-assets/game_story/{$uuid}.webp";
+        Storage::disk('downloads')->put($path, 'fake content');
+        return ContentAsset::create([
+            'resource' => 'game_story', 'resource_id' => $storyId,
+            'slot' => 'attachment', 'kind' => 'image',
+            'path' => $path, 'mime' => 'image/webp', 'size' => 12,
+            'original_name' => 'chapter.webp',
+        ]);
+    }
+
+    public function test_ai_mcp_places_owned_image_between_two_paragraphs_without_rewriting_text(): void
+    {
+        config()->set('media.disk', 'downloads');
+        config()->set('filesystems.disks.downloads.url', 'https://cdnpn.ir/storage');
+        config()->set('content_agent.token', 'image-test-token');
+        Storage::fake('downloads');
+        $game = Game::factory()->create(['status' => 'active']);
+        $story = app(GameStoryService::class)->save([
+            'game_id' => $game->id, 'title' => 'مسیر سم', 'kind' => 'world',
+            'body' => '<h2>شروع</h2><p>سم در راه غرب قدم می‌زند.</p><p>داستان با بارش برف ادامه دارد.</p>',
+        ]);
+        $image = $this->inlineAsset($story->id);
+
+        $response = $this->withToken('image-test-token')->postJson('/api/mcp', [
+            'jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/call',
+            'params' => ['name' => 'insert_game_story_image', 'arguments' => [
+                'id' => $story->id, 'asset_id' => $image->id,
+                'position' => 'after_text', 'anchor_text' => 'سم در راه غرب',
+                'alt' => 'سم در برف', 'caption' => 'سفر شخصیت سم',
+            ]],
+        ])->assertOk()->assertJsonPath('result.structuredContent.result.asset_id', $image->id);
+
+        $body = $response->json('result.structuredContent.result.body');
+        $this->assertStringContainsString('</p><figure><img src="https://cdnpn.ir/storage/content-assets/game_story/', $body);
+        $this->assertStringContainsString('alt="سم در برف"', $body);
+        $this->assertStringContainsString('<figcaption>سفر شخصیت سم</figcaption></figure><p>داستان با بارش برف', $body);
+        $this->assertStringContainsString('<h2>شروع</h2>', $body);
+        $this->assertSame('draft', $story->fresh()->status);
+    }
+
+    public function test_ai_cannot_insert_a_different_storys_image_or_use_ambiguous_anchor(): void
+    {
+        config()->set('media.disk', 'downloads');
+        config()->set('filesystems.disks.downloads.url', 'https://cdnpn.ir/storage');
+        Storage::fake('downloads');
+        $game = Game::factory()->create(['status' => 'active']);
+        $story = app(GameStoryService::class)->save([
+            'game_id' => $game->id, 'title' => 'سرگذشت اول', 'kind' => 'character',
+            'body' => '<p>تکرار شروع.</p><p>تکرار ادامه.</p>',
+        ]);
+        $other = app(GameStoryService::class)->save([
+            'game_id' => $game->id, 'title' => 'سرگذشت دوم', 'kind' => 'character',
+            'body' => '<p>شروع دیگر.</p>',
+        ]);
+        $foreign = $this->inlineAsset($other->id);
+        try {
+            app(GameStoryImagePlacementService::class)->insert([
+                'id' => $story->id, 'asset_id' => $foreign->id, 'position' => 'end', 'alt' => 'یک تصویر',
+            ]);
+            $this->fail('Foreign attachment accepted.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $this->assertStringNotContainsString('<figure>', $story->fresh()->body);
+        }
+        $own = $this->inlineAsset($story->id, '123e4567-e89b-12d3-a456-426614174001');
+        try {
+            app(GameStoryImagePlacementService::class)->insert([
+                'id' => $story->id, 'asset_id' => $own->id, 'position' => 'after_text',
+                'anchor_text' => 'تکرار', 'alt' => 'یک تصویر',
+            ]);
+            $this->fail('Ambiguous text anchor accepted.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('anchor_text', $e->errors());
+        }
+        $this->assertStringNotContainsString('<figure>', $story->fresh()->body);
+    }
+
+    public function test_ai_can_insert_before_a_specific_story_block(): void
+    {
+        config()->set('media.disk', 'downloads');
+        config()->set('filesystems.disks.downloads.url', 'https://cdnpn.ir/storage');
+        Storage::fake('downloads');
+        $game = Game::factory()->create(['status' => 'active']);
+        $story = app(GameStoryService::class)->save([
+            'game_id' => $game->id, 'title' => 'دو فصل', 'kind' => 'lore',
+            'body' => '<h2>فصل اول</h2><p>متن اول.</p><h2>فصل دوم</h2><p>متن دوم.</p>',
+        ]);
+        $image = $this->inlineAsset($story->id);
+        $result = app(GameStoryImagePlacementService::class)->insert([
+            'id' => $story->id, 'asset_id' => $image->id, 'position' => 'before_block',
+            'block_index' => 3, 'alt' => 'نقشه جهان بازی',
+        ]);
+        $this->assertStringContainsString('<p>متن اول.</p><figure>', $result['body']);
+        $this->assertStringContainsString('</figure><h2>فصل دوم</h2>', $result['body']);
     }
 }
