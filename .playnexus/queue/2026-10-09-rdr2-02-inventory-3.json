@@ -1,0 +1,8 @@
+{
+  "job_id": "rdr2-game-media-20261009",
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "game",
+    "id": 4
+  }
+}

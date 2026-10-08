@@ -1,0 +1,10 @@
+{
+  "job_id": "rdr2-world-feed-assets-20261009",
+  "tool": "select_content",
+  "arguments": {
+    "resource": "feed",
+    "game_id": 4,
+    "limit": 25,
+    "status": "published"
+  }
+}
