@@ -1,0 +1,13 @@
+{
+  "job_id": "rdr2-gang-image-sunset-v1",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 2,
+    "slot": "attachment",
+    "source_url": "https://www.ireddead.com/content/images/lonely-sunset-1751.jpg",
+    "name": "rdr2-sunset.jpg",
+    "alt": "غروب غم انگیز غرب وحشی و سوارکار تنها در Red Dead Redemption 2",
+    "sort_order": 5
+  }
+}
