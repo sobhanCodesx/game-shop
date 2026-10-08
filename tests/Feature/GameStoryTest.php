@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Game;
 use App\Models\GameStory;
+use App\Models\User;
 use App\Models\ContentAsset;
 use App\Services\GameStoryImagePlacementService;
 use Illuminate\Support\Facades\Storage;
@@ -216,5 +217,54 @@ class GameStoryTest extends TestCase
         ]);
         $this->assertStringContainsString('<p>متن اول.</p><figure>', $result['body']);
         $this->assertStringContainsString('</figure><h2>فصل دوم</h2>', $result['body']);
+    }
+
+    public function test_admin_can_edit_save_and_delete_the_correct_game_story_via_resource_binding(): void
+    {
+        $user = User::factory()->create(['role' => 'super-admin', 'is_admin' => true]);
+        $this->actingAs($user);
+        $game = Game::factory()->create(['status' => 'active']);
+        $first = app(GameStoryService::class)->save([
+            'game_id' => $game->id,
+            'title' => 'روایت اول برای ویرایش',
+            'kind' => 'world',
+            'body' => '<h2>فصل اول</h2><p>نوشته مربوط به جهان بازی.</p>',
+        ]);
+        $other = app(GameStoryService::class)->save([
+            'game_id' => $game->id,
+            'title' => 'روایت دیگر',
+            'kind' => 'character',
+            'body' => '<p>نوشته یک شخصیت.</p>',
+        ]);
+
+        $this->assertSame(
+            ['story'],
+            \Illuminate\Support\Facades\Route::getRoutes()
+                ->getByName('admin.game-stories.edit')
+                ->parameterNames()
+        );
+
+        $this->withHeader('X-Inertia', 'true')
+            ->get("/admin/game-stories/{$first->id}/edit")
+            ->assertOk()
+            ->assertJsonPath('component', 'Admin/GameStories/Form')
+            ->assertJsonPath('props.story.id', $first->id)
+            ->assertJsonPath('props.story.game_id', $game->id)
+            ->assertJsonPath('props.story.title', 'روایت اول برای ویرایش');
+
+        $this->put("/admin/game-stories/{$first->id}", [
+            'game_id' => $game->id,
+            'title' => 'عنوان اصلاح‌شده از پنل',
+            'kind' => 'world',
+            'body' => '<h2>فصل اول</h2><p>متن تازه کتابچه و بخش جدید جهان داستانی.</p>',
+            'status' => 'draft',
+        ])->assertRedirect();
+
+        $this->assertSame('عنوان اصلاح‌شده از پنل', $first->fresh()->title);
+        $this->assertSame('روایت دیگر', $other->fresh()->title);
+
+        $this->delete("/admin/game-stories/{$other->id}")->assertRedirect();
+        $this->assertDatabaseMissing('game_stories', ['id' => $other->id]);
+        $this->assertDatabaseHas('game_stories', ['id' => $first->id]);
     }
 }
