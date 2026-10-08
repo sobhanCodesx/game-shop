@@ -5,6 +5,7 @@ on:
     paths:
       - 'app/**'
       - 'resources/js/**'
+      - 'resources/css/game-story.css'
       - 'routes/**'
       - 'tests/Feature/GameStoryTest.php'
       - 'database/migrations/2026_10_08_190000_create_game_stories_table.php'
@@ -15,6 +16,7 @@ on:
     paths:
       - 'app/**'
       - 'resources/js/**'
+      - 'resources/css/game-story.css'
       - 'routes/**'
       - 'tests/Feature/GameStoryTest.php'
       - 'database/migrations/2026_10_08_190000_create_game_stories_table.php'
@@ -45,7 +47,7 @@ jobs:
       - name: PHP syntax and route lint
         run: |
           set -euo pipefail
-          for f in app/Models/GameStory.php app/Support/StoryRichText.php app/Services/GameStoryService.php app/Services/GameStoryImagePlacementService.php app/Http/Controllers/GameStoryController.php app/Http/Controllers/Admin/GameStoryController.php app/Http/Controllers/Api/ContentAgentMcpController.php app/Services/ContentAgentMediaService.php app/Http/Controllers/HomeController.php app/Http/Controllers/SitemapController.php routes/web.php database/migrations/2026_10_08_190000_create_game_stories_table.php tests/Feature/GameStoryTest.php; do php -l "$f"; done
+          for f in app/Models/GameStory.php app/Support/StoryRichText.php app/Services/GameStoryService.php app/Services/GameStoryImagePlacementService.php app/Services/GameStoryLinkGraphService.php app/Http/Controllers/GameStoryController.php app/Http/Controllers/Admin/GameStoryController.php app/Http/Controllers/Api/ContentAgentMcpController.php app/Services/ContentAgentMediaService.php app/Http/Controllers/HomeController.php app/Http/Controllers/SitemapController.php routes/web.php database/migrations/2026_10_08_190000_create_game_stories_table.php tests/Feature/GameStoryTest.php; do php -l "$f"; done
           python3 -m py_compile scripts/playnexus_publish.py
       - name: Install backend dependencies
         run: composer install --no-interaction --prefer-dist --no-progress

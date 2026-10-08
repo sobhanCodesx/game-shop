@@ -4,6 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Game;
 use App\Models\GameStory;
+use App\Models\Studio;
+use App\Models\Product;
+use App\Models\DigitalProduct;
+use App\Services\GameStoryLinkGraphService;
 use App\Models\User;
 use App\Models\ContentAsset;
 use App\Services\GameStoryImagePlacementService;
@@ -329,5 +333,106 @@ class GameStoryTest extends TestCase
                     && ($props['gameStoriesUrl'] ?? '') === '/game-stories/game/death-stranding-2';
             });
         $this->assertSame($original, $story->fresh()->body);
+    }
+
+    public function test_game_story_entity_links_use_exact_game_and_only_public_products_and_active_studios(): void
+    {
+        $studio = Studio::query()->create(['name' => 'Kojima Productions', 'slug' => 'kojima-productions-test', 'status' => 'active']);
+        $game = Game::factory()->create(['name' => 'Death Stranding 2', 'slug' => 'death-stranding-2-graph', 'studio_id' => $studio->id]);
+        $unrelated = Game::factory()->create(['name' => 'Unrelated Game', 'slug' => 'unrelated-graph', 'studio_id' => $studio->id]);
+        $seller = User::factory()->create();
+
+        $digital = DigitalProduct::query()->create([
+            'game_id' => $game->id, 'seller_id' => $seller->id, 'title' => 'DS2 Legal Account',
+            'slug' => 'ds2-digital-graph', 'status' => 'published',
+        ]);
+        DigitalProduct::query()->create([
+            'game_id' => $game->id, 'seller_id' => $seller->id, 'title' => 'Unpublished DS2',
+            'slug' => 'ds2-draft-graph', 'status' => 'draft',
+        ]);
+        DigitalProduct::query()->create([
+            'game_id' => $unrelated->id, 'seller_id' => $seller->id, 'title' => 'Unrelated Digital',
+            'slug' => 'unrelated-digital-graph', 'status' => 'published',
+        ]);
+        $physical = Product::factory()->create(['game_id' => $game->id, 'title' => 'DS2 Physical Copy']);
+        Product::factory()->create(['game_id' => $game->id, 'title' => 'Hidden DS2 Copy', 'status' => 'draft']);
+        Product::factory()->create(['game_id' => $unrelated->id, 'title' => 'Unrelated Physical']);
+
+        $service = app(GameStoryLinkGraphService::class);
+        $graph = $service->forGame($game->fresh());
+        $this->assertSame('/channels/death-stranding-2-graph', $graph['game']['url']);
+        $this->assertSame('/studios/kojima-productions-test', $graph['studio']['url']);
+        $this->assertSame('/digital?game=death-stranding-2-graph', $graph['products_url']);
+        $this->assertCount(2, $graph['products']);
+        $this->assertEqualsCanonicalizing(
+            ['/digital/ds2-digital-graph', '/products/'.$physical->slug],
+            array_column($graph['products'], 'url')
+        );
+        $this->assertSame('DS2 Legal Account', $graph['products'][0]['title']);
+
+        $story = app(GameStoryService::class)->save([
+            'game_id' => $game->id, 'title' => 'جهان بازی سم', 'kind' => 'world',
+            'body' => '<h2>شروع</h2><p>'.str_repeat('روایت پیوند انسان در جهان بازی. ', 12).'</p>',
+        ]);
+        app(GameStoryService::class)->setState($story->fresh(['game']), 'published');
+        app(GameStoryService::class)->save([
+            'game_id' => $game->id, 'title' => 'پیش‌نویس منتشرنشده', 'kind' => 'character',
+            'body' => '<p>این مطلب هنوز منتشر نشده است.</p>',
+        ]);
+
+        $this->assertCount(1, $service->storiesForGame($game->id));
+        $this->assertSame([], $service->storiesForGame(null));
+        $this->assertCount(1, $service->storiesForStudio($studio));
+
+        $this->get('/game-stories/'.$story->slug)
+            ->assertOk()
+            ->assertViewHas('page', function (array $page) use ($digital, $physical): bool {
+                $props = $page['props'] ?? [];
+                $links = $props['ecosystem'] ?? [];
+                return ($page['component'] ?? '') === 'GameStories/Show'
+                    && count($links['products'] ?? []) === 2
+                    && in_array('/digital/'.$digital->slug, array_column($links['products'], 'url'), true)
+                    && in_array('/products/'.$physical->slug, array_column($links['products'], 'url'), true)
+                    && ($links['studio']['name'] ?? '') === 'Kojima Productions';
+            });
+
+        $this->get('/studios/'.$studio->slug)->assertOk()
+            ->assertViewHas('page', fn (array $page) => count($page['props']['gameStories'] ?? []) === 1);
+
+        $studio->update(['status' => 'inactive']);
+        $this->assertNull($service->forGame($game->fresh())['studio']);
+        $this->assertSame([], $service->storiesForStudio($studio->fresh()));
+    }
+
+    public function test_bidirectional_story_links_appear_on_related_product_pages_only(): void
+    {
+        $game = Game::factory()->create();
+        $other = Game::factory()->create();
+        $seller = User::factory()->create();
+
+        $story = app(GameStoryService::class)->save([
+            'game_id' => $game->id, 'title' => 'روایت منتشرشده', 'kind' => 'lore',
+            'body' => '<h2>جهان</h2><p>'.str_repeat('رازهای بازی برای خوانندگان آشکار شد. ', 12).'</p>',
+        ]);
+        app(GameStoryService::class)->setState($story->fresh(['game']), 'published');
+
+        $physical = Product::factory()->create(['game_id' => $game->id]);
+        $otherPhysical = Product::factory()->create(['game_id' => $other->id]);
+
+        $this->get('/products/'.$physical->slug)->assertOk()
+            ->assertViewHas('page', fn (array $page) =>
+                count($page['props']['gameStories'] ?? []) === 1
+                && ($page['props']['gameStories'][0]['id'] ?? null) === $story->id);
+        $this->get('/products/'.$otherPhysical->slug)->assertOk()
+            ->assertViewHas('page', fn (array $page) => ($page['props']['gameStories'] ?? []) === []);
+
+        $digital = DigitalProduct::query()->create([
+            'game_id' => $game->id, 'seller_id' => $seller->id, 'title' => 'DS2 account test',
+            'slug' => 'ds2-account-story-test', 'status' => 'published',
+        ]);
+        $this->get('/digital/'.$digital->slug)->assertOk()
+            ->assertViewHas('page', fn (array $page) =>
+                count($page['props']['gameStories'] ?? []) === 1
+                && ($page['props']['gameStories'][0]['url'] ?? null) === $story->public_url);
     }
 }

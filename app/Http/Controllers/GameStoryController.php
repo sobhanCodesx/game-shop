@@ -7,6 +7,7 @@ use App\Models\GameStory;
 use App\Services\MediaStorage;
 use App\Services\GameStoryService;
 use App\Services\GameStoryReaderService;
+use App\Services\GameStoryLinkGraphService;
 use App\Support\Seo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -63,16 +64,17 @@ class GameStoryController extends Controller
         ]);
     }
 
-    public function show(GameStory $story, GameStoryService $service, GameStoryReaderService $reader): Response
+    public function show(GameStory $story, GameStoryService $service, GameStoryReaderService $reader, GameStoryLinkGraphService $links): Response
     {
         abort_unless($story->status === 'published' && $story->published_at && $story->published_at->isPast(), 404);
-        $story->load('game:id,name,slug,status,cover,background', 'author:id,name');
+        $story->load('game:id,studio_id,name,slug,status,cover,background', 'author:id,name');
         abort_unless($story->game && in_array($story->game->status, ['active', 'published'], true), 404);
 
         $related = GameStory::published()->where('game_id', $story->game_id)->whereKeyNot($story->id)
             ->with('game:id,name,slug,cover,background')->orderByDesc('published_at')->limit(4)->get()
             ->map(fn (GameStory $item) => $item->card())->all();
         $reading = $reader->prepare((string) $story->body);
+        $ecosystem = $links->forGame($story->game);
         $canonical = route('game-stories.show', $story->slug);
         $title = $story->seo_title ?: $story->title;
         $gameHubUrl = route('game-stories.game', $story->game->slug);
@@ -113,7 +115,13 @@ class GameStoryController extends Controller
                         'publisher' => ['@type' => 'Organization', 'name' => 'PlayNexus', 'url' => route('home')],
                         'isPartOf' => ['@type' => 'CreativeWorkSeries', 'name' => $story->game->name.' Game Stories', 'url' => $gameHubUrl],
                         ...($story->source_url ? ['citation' => $story->source_url] : []),
-                        'about' => ['@type' => 'VideoGame', 'name' => $story->game->name, 'url' => route('channels.show', $story->game->slug)],
+                        'about' => ['@type' => 'VideoGame', 'name' => $story->game->name, 'url' => route('channels.show', $story->game->slug),
+                            ...($ecosystem['studio'] ? ['creator' => ['@type' => 'Organization', 'name' => $ecosystem['studio']['name'], 'url' => url($ecosystem['studio']['url'])]] : []),
+                        ],
+                        'mentions' => [
+                            ['@type' => 'VideoGame', 'name' => $story->game->name, 'url' => url($ecosystem['game']['url'])],
+                            ...($ecosystem['studio'] ? [['@type' => 'Organization', 'name' => $ecosystem['studio']['name'], 'url' => url($ecosystem['studio']['url'])]] : []),
+                        ],
                         'isAccessibleForFree' => true,
                     ], [
                         '@type' => 'WebPage',
@@ -123,6 +131,11 @@ class GameStoryController extends Controller
                         'description' => $description,
                         'inLanguage' => 'fa-IR',
                         'primaryImageOfPage' => ['@type' => 'ImageObject', 'url' => $image],
+                        'relatedLink' => array_values(array_unique(array_merge(
+                            [url($ecosystem['game']['url']), $gameHubUrl],
+                            $ecosystem['studio'] ? [url($ecosystem['studio']['url'])] : [],
+                            array_map(fn (array $product) => url($product['url']), $ecosystem['products'])
+                        ))),
                         'mainEntity' => ['@id' => $canonical.'#article'],
                         'isPartOf' => ['@type' => 'WebSite', 'name' => 'PlayNexus', 'url' => route('home')],
                     ], [
@@ -137,6 +150,7 @@ class GameStoryController extends Controller
                 ],
             ]),
             'story' => [...$service->serialize($story), 'body' => $reading['html']],
+            'ecosystem' => $ecosystem,
             'chapters' => $reading['chapters'],
             'gameStoriesUrl' => route('game-stories.game', $story->game->slug, false),
             'related' => $related,

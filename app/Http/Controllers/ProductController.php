@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Services\GameStoryLinkGraphService;
 use App\Models\SocialContent;
 use App\Models\Ticket;
 use App\Services\FeedService;
@@ -23,6 +24,7 @@ class ProductController extends Controller
         ProductPageDataService $page,
         FeedService $feed,
         StorefrontDataService $storefront,
+        GameStoryLinkGraphService $storyLinks,
     ): Response {
         abort_unless(
             Product::query()->publiclyVisible()->whereKey($product->getKey())->exists(),
@@ -85,6 +87,7 @@ class ProductController extends Controller
             ->values();
 
         return Inertia::render('Products/Show', [
+            'gameStories' => $storyLinks->storiesForGame($product->game_id),
             ...$page->seo(
                 $cached['seo_input'],
                 $product,
