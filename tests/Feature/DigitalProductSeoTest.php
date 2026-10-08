@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\DigitalProduct;
 use App\Models\Game;
 use App\Models\Platform;
@@ -60,6 +61,39 @@ class DigitalProductSeoTest extends TestCase
                         && data_get($offers, '0.availability') === 'https://schema.org/InStock'
                         && data_get($offers, '1.price') === 100_000_000
                         && data_get($offers, '1.availability') === 'https://schema.org/OutOfStock';
+                }));
+    }
+
+    public function test_digital_product_does_not_emit_arbitrary_category_as_merchant_taxonomy(): void
+    {
+        $product = $this->digitalProduct();
+        $category = Category::factory()->create([
+            'name' => 'اکانت قانونی بازی',
+            'slug' => 'legal-game-accounts',
+            'status' => 'active',
+        ]);
+        $product->update(['category_id' => $category->id]);
+        $product->offers()->create([
+            'code' => 'capacity_1',
+            'label' => 'ظرفیت ۱',
+            'price' => 2_900_000,
+            'stock' => 1,
+            'reserved_stock' => 0,
+            'status' => 'active',
+            'sort_order' => 1,
+        ]);
+
+        $this->get('/digital/'.$product->slug)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Digital/Show')
+                ->where('seo.structuredData', function ($data): bool {
+                    $productNode = data_get($data, '@graph.0', []);
+                    $breadcrumbNode = data_get($data, '@graph.1', []);
+
+                    return data_get($productNode, '@type') === 'Product'
+                        && ! array_key_exists('category', $productNode)
+                        && data_get($breadcrumbNode, '@type') === 'BreadcrumbList';
                 }));
     }
 
