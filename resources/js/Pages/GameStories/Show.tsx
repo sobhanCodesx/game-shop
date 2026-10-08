@@ -1,7 +1,7 @@
 import { Link } from "@inertiajs/react";
 import {
     ArrowDown, ArrowLeft, ArrowRight, BookMarked, BookOpen, Check, ChevronLeft,
-    Clock3, Feather, Focus, Gamepad2, List, Minus, Moon, Plus, Share2, Sun, X,
+    Clock3, Feather, Focus, Gamepad2, List, Minus, Moon, Plus, Share2, ShieldAlert, Sun, X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { GameStoryCardView, gameStoryKindLabels, type GameStoryCard } from "../../Components/GameStories/GameStoryRail";
@@ -40,7 +40,6 @@ export default function GameStoryShow({ seo, story, chapters, related, gameUrl, 
     const [saved, setSaved] = useState(false);
     const [mobileToc, setMobileToc] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [spoilerAccepted, setSpoilerAccepted] = useState(!story.contains_spoilers);
     const saveKey = "pn-game-story-" + story.id + "-saved";
 
     useEffect(() => {
@@ -79,7 +78,7 @@ export default function GameStoryShow({ seo, story, chapters, related, gameUrl, 
             window.removeEventListener("resize", onScroll);
             if (frame) window.cancelAnimationFrame(frame);
         };
-    }, [chapters, spoilerAccepted, size]);
+    }, [chapters, size]);
 
     const setReadingTheme = () => {
         const next = theme === "paper" ? "ink" : "paper";
@@ -106,7 +105,6 @@ export default function GameStoryShow({ seo, story, chapters, related, gameUrl, 
             }
         } catch { /* Share was cancelled or the clipboard is unavailable. */ }
     };
-    const unreadSpoiler = story.contains_spoilers && !spoilerAccepted;
     const publishedAt = story.published_at ? persianDate.format(new Date(story.published_at)) : null;
     const kind = gameStoryKindLabels[story.kind] || "روایت بازی";
 
@@ -116,7 +114,7 @@ export default function GameStoryShow({ seo, story, chapters, related, gameUrl, 
             <div className="gs-progress" role="progressbar" aria-label="پیشرفت مطالعه" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
                 <div className="gs-progress-fill" style={{ width: progress + "%" }} />
             </div>
-            <main className={"gs-world " + (focus ? "gs-focus" : "")} dir="rtl">
+            <main className={"gs-world " + (focus ? "gs-focus" : "")} dir="rtl" lang="fa-IR">
                 <header className="gs-cover">
                     {story.image_url && (
                         <img className="gs-cover-image" alt={"تصویر جلد: " + story.title} src={story.image_url} fetchPriority="high" decoding="async" />
@@ -136,7 +134,6 @@ export default function GameStoryShow({ seo, story, chapters, related, gameUrl, 
                             <div className="gs-cover-kind">
                                 <Feather aria-hidden="true" size={14} /> {kind}
                                 {story.kind === "rumor" && <span className="gs-rumor">تأییدنشده / شایعه</span>}
-                                {story.contains_spoilers && <span className="gs-spoiler-tag">حاوی اسپویل</span>}
                             </div>
                             <h1>{story.title}</h1>
                             {story.subtitle && <p className="gs-cover-subtitle">{story.subtitle}</p>}
@@ -187,6 +184,12 @@ export default function GameStoryShow({ seo, story, chapters, related, gameUrl, 
                     <div className="gs-reading-grid">
                         <article ref={articleRef} className={"gs-book gs-book-" + theme} itemScope itemType="https://schema.org/Article" aria-label={story.title}>
                             <div className="gs-book-inner">
+                                {story.contains_spoilers && (
+                                    <aside className="gs-spoiler-note" aria-label="هشدار اسپویل داستان">
+                                        <ShieldAlert aria-hidden="true" size={20} />
+                                        <p><strong>پیش از مطالعه</strong><span>این روایت بخش‌هایی از داستان بازی را فاش می‌کند.</span></p>
+                                    </aside>
+                                )}
                                 <div className="gs-book-head">
                                     <span className="gs-book-symbol" aria-hidden="true">✥</span>
                                     <span className="gs-book-series">P L A Y N E X U S &nbsp; / &nbsp; G A M E &nbsp; S T O R Y</span>
@@ -198,15 +201,7 @@ export default function GameStoryShow({ seo, story, chapters, related, gameUrl, 
                                     <h2>{story.game?.name}</h2>
                                     <span className="gs-ornament" aria-hidden="true">✦ &nbsp; ❦ &nbsp; ✦</span>
                                 </div>
-                                {unreadSpoiler && (
-                                    <div className="gs-spoiler-gate" role="group" aria-label="هشدار اسپویل">
-                                        <BookMarked aria-hidden="true" size={30}/>
-                                        <h2>پیش از ورق‌زدن…</h2>
-                                        <p>این روایت بخشی از داستان بازی را فاش می‌کند. برای حفظ تجربهٔ خودت، می‌توانی همین‌جا تصمیم بگیری.</p>
-                                        <button type="button" onClick={() => setSpoilerAccepted(true)}>می‌دانم؛ شروع کنیم <ArrowLeft size={16}/></button>
-                                    </div>
-                                )}
-                                <div className={unreadSpoiler ? "gs-hidden-spoilers" : ""} inert={unreadSpoiler} aria-hidden={unreadSpoiler}>
+                                <div className="gs-book-content">
                                     {story.summary && <p className="gs-deck">{story.summary}</p>}
                                     <div
                                         className="gs-prose"
