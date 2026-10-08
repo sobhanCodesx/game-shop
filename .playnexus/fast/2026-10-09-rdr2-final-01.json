@@ -1,0 +1,12 @@
+{
+  "job_id": "rdr2-van-der-linde-add-official-gang-photo-20261009",
+  "tool": "insert_game_story_image",
+  "arguments": {
+    "id": 3,
+    "asset_id": 8,
+    "position": "after_text",
+    "anchor_text": "داچ مرد ساده‌ای نبود که فقط دنبال پول باشد",
+    "alt": "داچ ون در لیند و اعضای اصلی گروه در تصویر رسمی Rockstar Games",
+    "caption": "داچ در میان اعضای گروه؛ آرمانی که قرار بود خانواده را آزاد کند، اما به‌تدریج آن را به بحران کشاند."
+  }
+}

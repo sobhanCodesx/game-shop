@@ -1,0 +1,8 @@
+{
+  "job_id": "rdr2-van-der-linde-attachments-check-20261009",
+  "tool": "list_content_assets",
+  "arguments": {
+    "resource": "game_story",
+    "id": 3
+  }
+}
