@@ -1,0 +1,8 @@
+{
+  "job_id": "rdr2-history-story-check-20261009",
+  "tool": "list_game_stories",
+  "arguments": {
+    "include_drafts": true,
+    "limit": 50
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "job_id": "rdr2-history-game-search-20261009",
+  "tool": "search_games",
+  "arguments": {
+    "query": "Red Dead Redemption",
+    "limit": 30
+  }
+}
