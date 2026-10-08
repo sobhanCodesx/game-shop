@@ -1,8 +1,8 @@
 {
-  "job_id": "rdr2-story-list-20261009",
+  "job_id": "rdr2-check-drafts-20261009",
   "tool": "list_game_stories",
   "arguments": {
-    "limit": 50,
-    "include_drafts": true
+    "include_drafts": true,
+    "limit": 50
   }
 }
