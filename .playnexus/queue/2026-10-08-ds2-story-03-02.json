@@ -1,0 +1,10 @@
+{
+  "job_id": "ds2-world-scan-game-videos",
+  "tool": "select_content",
+  "arguments": {
+    "resource": "video",
+    "game_id": 35,
+    "status": "published",
+    "limit": 30
+  }
+}

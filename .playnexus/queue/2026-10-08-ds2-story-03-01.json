@@ -1,0 +1,12 @@
+{
+  "job_id": "ds2-world-insert-scene-1",
+  "tool": "insert_game_story_image",
+  "arguments": {
+    "id": 1,
+    "asset_id": 1,
+    "position": "after_text",
+    "anchor_text": "فاجعه‌ای به نام",
+    "alt": "چشم‌انداز جهان پساآخرالزمانی Death Stranding 2",
+    "caption": "جهان دث استرندینگ ۲؛ طبیعت تماشایی و خطری که پشت سکوت پنهان شده است."
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "job_id": "ds2-world-scan-game-feed",
+  "tool": "select_content",
+  "arguments": {
+    "resource": "feed",
+    "game_id": 35,
+    "status": "published",
+    "limit": 30
+  }
+}
