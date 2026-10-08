@@ -24,6 +24,7 @@ import {
 import { useMemo, useState, type ReactNode } from "react";
 
 import Seo, { type SeoData } from "../../Components/Seo";
+import GameStoryRail, { type GameStoryCard } from "../../Components/GameStories/GameStoryRail";
 import ProductCard from "../../Components/Storefront/Product/ProductCard";
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
@@ -81,6 +82,7 @@ export default function Show({
     gameVideos = [],
     gameFeed = [],
     gamePlaylists = [],
+    gameStories = [],
 }: {
     product: any;
     seo: SeoData;
@@ -88,6 +90,7 @@ export default function Show({
     relatedProducts: StorefrontProduct[];
     gameVideos: StorefrontContent[];
     gameFeed: StorefrontContent[];
+    gameStories: GameStoryCard[];
     gamePlaylists: Array<{
         id: number;
         title: string;
@@ -1051,6 +1054,9 @@ export default function Show({
                     </section>
                 )}
 
+                {gameStories.length > 0 && (
+                    <GameStoryRail stories={gameStories} allUrl={"/game-stories/game/" + gameStories[0].game?.slug} />
+                )}
                 {gameVideos.length > 0 && (
                     <section className="mt-8 sm:mt-11">
                         <SectionHeading

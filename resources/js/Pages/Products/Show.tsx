@@ -33,6 +33,7 @@ import Price from "../../Components/Storefront/Commerce/Price";
 import ProductCard from "../../Components/Storefront/Product/ProductCard";
 import ContentCard from "../../Components/Storefront/Video/ContentCard";
 import Seo, { type SeoData } from "../../Components/Seo";
+import GameStoryRail, { type GameStoryCard } from "../../Components/GameStories/GameStoryRail";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import RichText from "../../Components/Storefront/Shared/RichText";
 import type {
@@ -65,6 +66,7 @@ interface Props {
     latestFeed: FeedItemData[];
     latestVideos: StorefrontContent[];
     latestProducts: StorefrontProduct[];
+    gameStories: GameStoryCard[];
     product: {
         id: number;
         title: string;
@@ -267,6 +269,7 @@ export default function ProductShow({
     latestFeed,
     latestVideos,
     latestProducts,
+    gameStories = [],
 }: Props) {
     const { flash } = usePage<SharedPageProps>().props;
     const primary =
@@ -939,6 +942,9 @@ export default function ProductShow({
                                 ))}
                             </dl>
                         </section>
+                    )}
+                    {gameStories.length > 0 && (
+                        <GameStoryRail stories={gameStories} allUrl={"/game-stories/game/" + gameStories[0].game?.slug} />
                     )}
                     {latestFeed.length > 0 && (
                         <RelatedSection href="/feed" title="تازه‌های فید">

@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { GameStoryCardView, gameStoryKindLabels, type GameStoryCard } from "../../Components/GameStories/GameStoryRail";
+import GameStoryEcosystem, { type GameStoryEcosystemData } from "../../Components/GameStories/GameStoryEcosystem";
 import Seo, { type SeoData } from "../../Components/Seo";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import "../../../css/game-story.css";
@@ -22,13 +23,14 @@ interface Props {
     related: GameStoryCard[];
     gameUrl: string;
     gameStoriesUrl: string;
+    ecosystem: GameStoryEcosystemData;
 }
 const persianDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
     day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
 });
 const persianNumber = (value: number) => value.toLocaleString("fa-IR");
 
-export default function GameStoryShow({ seo, story, chapters, related, gameUrl, gameStoriesUrl }: Props) {
+export default function GameStoryShow({ seo, story, chapters, related, gameUrl, gameStoriesUrl, ecosystem }: Props) {
     const articleRef = useRef<HTMLElement>(null);
     const [progress, setProgress] = useState(0);
     const [activeChapter, setActiveChapter] = useState("");
@@ -259,6 +261,8 @@ export default function GameStoryShow({ seo, story, chapters, related, gameUrl, 
                         <Link href="/game-stories"><ArrowRight size={17}/> کتابخانهٔ گیم استوری</Link>
                     </div>
                 </div>
+
+                {!focus && <GameStoryEcosystem data={ecosystem} />}
 
                 {!focus && related.length > 0 && (
                     <section className="gs-related" aria-labelledby="gs-related-title">

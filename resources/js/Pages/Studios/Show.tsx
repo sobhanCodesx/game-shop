@@ -13,6 +13,7 @@ import {
 
 import Pagination from "../../Components/Storefront/Shared/Pagination";
 import Seo, { type SeoData } from "../../Components/Seo";
+import GameStoryRail, { type GameStoryCard } from "../../Components/GameStories/GameStoryRail";
 import StorefrontLayout from "../../Layouts/StorefrontLayout";
 import type { Paginated } from "../../types";
 
@@ -69,12 +70,14 @@ export default function StudioShow({
     storeGames,
     channels,
     collections,
+    gameStories = [],
 }: {
     seo: SeoData;
     studio: Studio;
     storeGames: StoreGame[];
     channels: Paginated<Channel>;
     collections: Paginated<Collection>;
+    gameStories: GameStoryCard[];
 }) {
     return (
         <StorefrontLayout>
@@ -328,6 +331,8 @@ export default function StudioShow({
                         )}
                         <Pagination links={channels.links} />
                     </section>
+
+                    {gameStories.length > 0 && <GameStoryRail stories={gameStories} className="mt-7 border-t border-[var(--store-border)]" />}
 
                     <section className="pn-deferred-zone mt-10">
                         <div className="mb-5 flex items-center gap-2">
