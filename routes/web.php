@@ -269,7 +269,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::patch('products/{product}/exchange', [CatalogController::class, 'toggleExchange'])->name('products.exchange.toggle');
     Route::resource('videos', AdminVideoController::class)->except('show');
     Route::post('game-stories/inline-image', [AdminGameStoryController::class, 'uploadImage'])->middleware('throttle:20,1')->name('game-stories.inline-image');
-    Route::resource('game-stories', AdminGameStoryController::class)->except('show');
+    Route::resource('game-stories', AdminGameStoryController::class)
+        ->parameters(['game-stories' => 'story'])
+        ->except('show');
     Route::resource('feed', AdminFeedPostController::class)
         ->parameters(['feed' => 'post'])
         ->except('show');
