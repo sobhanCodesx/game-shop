@@ -1,8 +1,0 @@
-{
-  "job_id": "rdr2-gang-story-find-game-v1",
-  "tool": "search_games",
-  "arguments": {
-    "query": "Red Dead",
-    "limit": 40
-  }
-}

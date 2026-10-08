@@ -1,8 +1,0 @@
-{
-  "job_id": "rdr2-gang-story-list-existing-v1",
-  "tool": "list_game_stories",
-  "arguments": {
-    "limit": 50,
-    "include_drafts": true
-  }
-}
