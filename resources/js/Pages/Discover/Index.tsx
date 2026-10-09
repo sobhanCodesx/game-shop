@@ -13,6 +13,8 @@ import type { SharedPageProps } from "../../types";
 
 interface ExploreFeedPage {
     data: ExploreItem[];
+    current_page: number;
+    prev_page_url: string | null;
     next_page_url: string | null;
 }
 
@@ -32,6 +34,15 @@ export default function Discover({
     const sentinel = useRef<HTMLDivElement>(null);
     const loadingRef = useRef(false);
     const hasMore = Boolean(nextPageUrl);
+
+    // Inertia retains the component instance across pagination navigation.
+    // Reset the infinite scroll when the server returns a different page.
+    useEffect(() => {
+        setItems(feed.data);
+        setNextPageUrl(feed.next_page_url);
+        setSelected(null);
+        setError("");
+    }, [feed]);
 
     const loadMore = useCallback(async (): Promise<ExploreItem[]> => {
         if (loadingRef.current || !nextPageUrl) return [];
@@ -176,6 +187,32 @@ export default function Discover({
                                 </span>
                             )}
                         </div>
+                        {(feed.prev_page_url || feed.next_page_url) && (
+                            <nav
+                                aria-label="صفحه‌بندی اکسپلور"
+                                className="mx-auto flex w-full max-w-[1080px] items-center justify-center gap-3 px-3 pb-6 text-sm"
+                            >
+                                {feed.prev_page_url && (
+                                    <Link
+                                        className="rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] px-4 py-2 font-bold hover:border-indigo-500"
+                                        href={feed.prev_page_url}
+                                    >
+                                        صفحه قبل
+                                    </Link>
+                                )}
+                                <span aria-current="page" className="text-[var(--store-muted)]">
+                                    صفحه {feed.current_page}
+                                </span>
+                                {feed.next_page_url && (
+                                    <Link
+                                        className="rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] px-4 py-2 font-bold hover:border-indigo-500"
+                                        href={feed.next_page_url}
+                                    >
+                                        صفحه بعد
+                                    </Link>
+                                )}
+                            </nav>
+                        )}
                     </>
                 ) : (
                     <EmptyState
