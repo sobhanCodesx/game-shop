@@ -1,8 +1,0 @@
-{
-  "job_id": "crimson-desert-world-atlas-fast-publish-20261009",
-  "tool": "set_game_story_state",
-  "arguments": {
-    "id": 4,
-    "state": "published"
-  }
-}
