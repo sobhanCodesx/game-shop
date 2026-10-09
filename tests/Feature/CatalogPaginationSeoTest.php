@@ -27,7 +27,7 @@ class CatalogPaginationSeoTest extends TestCase
         $this->get($canonical)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('seo.canonical', $canonical)
             ->where('seo.robots', 'index, follow, max-image-preview:large, max-snippet:-1')
-            ->where('seo.title', 'فروشگاه بازی و محصولات گیمینگ PlayNexus؛ صفحه 2 - پلی نکسوس')
+            ->where('seo.title', 'فروشگاه بازی و محصولات گیمینگ پلی نکسوس؛ صفحه 2 - پلی نکسوس')
             ->where('seo.structuredData.@graph.0.url', $canonical)
             ->where('seo.structuredData.@graph.1.numberOfItems', 2));
 
