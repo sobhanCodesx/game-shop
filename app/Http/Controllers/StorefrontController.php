@@ -41,7 +41,16 @@ class StorefrontController extends Controller
                 ->withQueryString()
                 ->through(fn (Product $product) => $data->product($product, $request->user()))
             : $this->catalogProducts($request, $data);
-        $canonical = route($isOffers ? 'offers.index' : 'shop.index');
+        $routeName = $isOffers ? 'offers.index' : 'shop.index';
+        $baseCanonical = route($routeName);
+        $hasFilters = $request->hasAny(['q', 'category', 'game', 'sort', 'trade']);
+        $pageNumber = $products->currentPage();
+        // Paginated, unfiltered catalog pages show different products and
+        // therefore need their own crawlable URLs instead of pointing to page 1.
+        $isIndexable = ! $hasFilters && $products->isNotEmpty();
+        $canonical = $pageNumber > 1 && $isIndexable
+            ? route($routeName, ['page' => $pageNumber])
+            : $baseCanonical;
         $siteName = (string) config('seo.site_name', 'PlayNexus');
         $description = $isOffers
             ? "تخفیف‌ها و پیشنهادهای ویژه بازی و محصولات گیمینگ در {$siteName}."
@@ -50,14 +59,14 @@ class StorefrontController extends Controller
         $firstProduct = collect($products->items())->first();
         $image = url(data_get($firstProduct, 'cover_url') ?: (string) config('seo.default_image', '/logo.png'));
         $itemListId = $canonical.'#products';
-        $hasFilters = array_intersect(array_keys($request->query()), ['q', 'category', 'game', 'sort', 'trade', 'page']) !== [];
 
         return Inertia::render('Shop/Index', [
             ...Seo::page([
-                'title' => $isOffers ? 'تخفیف‌ها و پیشنهادهای ویژه بازی' : "فروشگاه بازی و محصولات گیمینگ {$siteName}",
-                'description' => $description,
+                'title' => ($isOffers ? 'تخفیف‌ها و پیشنهادهای ویژه بازی' : "فروشگاه بازی و محصولات گیمینگ {$siteName}")
+                    .($pageNumber > 1 && $isIndexable ? "؛ صفحه {$pageNumber}" : ''),
+                'description' => $description.($pageNumber > 1 && $isIndexable ? " صفحه {$pageNumber}." : ''),
                 'canonical' => $canonical,
-                'robots' => $hasFilters
+                'robots' => ! $isIndexable
                     ? 'noindex, follow'
                     : 'index, follow, max-image-preview:large, max-snippet:-1',
                 'type' => 'website',
@@ -109,16 +118,21 @@ class StorefrontController extends Controller
         $products = $this->productQuery($request)->where('trade_enabled', true)
             ->paginate(18)->withQueryString()
             ->through(fn (Product $product) => $data->product($product, $request->user()));
-        $canonical = route('exchange-products.index');
+        $baseCanonical = route('exchange-products.index');
+        $pageNumber = $products->currentPage();
+        $isIndexable = ! $request->hasAny(['q', 'sort']) && $products->isNotEmpty();
+        $canonical = $pageNumber > 1 && $isIndexable
+            ? route('exchange-products.index', ['page' => $pageNumber])
+            : $baseCanonical;
         $description = 'مشاهده و انتخاب بازی‌ها و محصولات قابل معاوضه؛ ثبت درخواست معاوضه سریع و امن در PlayNexus.';
         $firstProduct = collect($products->items())->first();
 
         return Inertia::render('Shop/Index', [
             ...Seo::page([
-                'title' => 'معاوضه بازی و محصولات گیمینگ',
-                'description' => $description,
+                'title' => 'معاوضه بازی و محصولات گیمینگ'.($pageNumber > 1 && $isIndexable ? "؛ صفحه {$pageNumber}" : ''),
+                'description' => $description.($pageNumber > 1 && $isIndexable ? " صفحه {$pageNumber}." : ''),
                 'canonical' => $canonical,
-                'robots' => $request->hasAny(['q', 'sort', 'page']) ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1',
+                'robots' => $isIndexable ? 'index, follow, max-image-preview:large, max-snippet:-1' : 'noindex, follow',
                 'type' => 'website',
                 'image' => url(data_get($firstProduct, 'cover_url') ?: (string) config('seo.default_image', '/logo.png')),
                 'imageAlt' => data_get($firstProduct, 'cover_alt') ?: 'محصولات قابل معاوضه',
@@ -185,7 +199,13 @@ class StorefrontController extends Controller
         );
 
         $categoryData = $data->category($category);
-        $canonical = route('categories.show', $category->slug);
+        $baseCanonical = route('categories.show', $category->slug);
+        $pageNumber = $products->currentPage();
+        $hasFilters = $request->hasAny(['q', 'sort', 'trade', 'filters']);
+        $isIndexable = ! $hasFilters && $products->isNotEmpty();
+        $canonical = $pageNumber > 1 && $isIndexable
+            ? route('categories.show', ['category' => $category->slug, 'page' => $pageNumber])
+            : $baseCanonical;
         $description = Str::limit(
             RichText::plainText($category->description)
                 ?: "محصولات و بازی‌های دسته {$category->name} را در پلی نکسوس ببینید؛ قیمت، موجودی و تازه‌ترین گزینه‌های مرتبط.",
@@ -196,15 +216,14 @@ class StorefrontController extends Controller
         $image = $imagePath !== ''
             ? (Str::startsWith($imagePath, ['http://', 'https://']) ? $imagePath : url($imagePath))
             : url((string) config('seo.default_image', '/logo.png'));
-        $hasFilters = $request->hasAny(['q', 'sort', 'trade', 'filters', 'page']);
         $itemListId = $canonical.'#products';
 
         return Inertia::render('Categories/Show', [
             ...Seo::page([
-                'title' => "{$category->name}؛ محصولات و بازی‌ها",
-                'description' => $description,
+                'title' => "{$category->name}؛ محصولات و بازی‌ها".($pageNumber > 1 && $isIndexable ? "؛ صفحه {$pageNumber}" : ''),
+                'description' => $description.($pageNumber > 1 && $isIndexable ? " صفحه {$pageNumber}." : ''),
                 'canonical' => $canonical,
-                'robots' => $hasFilters
+                'robots' => ! $isIndexable
                     ? 'noindex, follow'
                     : 'index, follow, max-image-preview:large, max-snippet:-1',
                 'type' => 'website',
@@ -342,7 +361,12 @@ class StorefrontController extends Controller
             return response()->json($feed);
         }
 
-        $canonical = route('discover');
+        $baseCanonical = route('discover');
+        $pageNumber = $feed->currentPage();
+        $isIndexable = $feed->isNotEmpty();
+        $canonical = $pageNumber > 1 && $isIndexable
+            ? route('discover', ['page' => $pageNumber])
+            : $baseCanonical;
         $description = 'کشف تازه‌ترین بازی‌ها، ویدیوها و محصولات گیمینگ منتخب در اکسپلور PlayNexus.';
         $firstItem = collect($feed->items())->first();
         $imagePath = data_get($firstItem, 'kind') === 'product_media'
@@ -351,10 +375,12 @@ class StorefrontController extends Controller
 
         return Inertia::render('Discover/Index', [
             ...Seo::page([
-                'title' => 'اکسپلور بازی‌ها و محتوای گیمینگ',
-                'description' => $description,
+                'title' => 'اکسپلور بازی‌ها و محتوای گیمینگ'.($pageNumber > 1 && $isIndexable ? "؛ صفحه {$pageNumber}" : ''),
+                'description' => $description.($pageNumber > 1 && $isIndexable ? " صفحه {$pageNumber}." : ''),
                 'canonical' => $canonical,
-                'robots' => $request->filled('page') ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+                'robots' => $isIndexable
+                    ? 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+                    : 'noindex, follow',
                 'type' => 'website',
                 'image' => url($imagePath ?: (string) config('seo.default_image', '/logo.png')),
                 'imageAlt' => data_get($firstItem, 'data.media_alt') ?: data_get($firstItem, 'data.title') ?: 'اکسپلور PlayNexus',
