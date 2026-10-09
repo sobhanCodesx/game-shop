@@ -1,10 +1,10 @@
 {
-  "job_id": "crimson-desert-image-00-cover-20261009",
+  "job_id": "crimson-desert-image-00-cover-20261009-corrected",
   "tool": "upload_asset",
   "arguments": {
     "resource": "game_story",
     "id": 4,
-    "slot": "cover",
+    "slot": "attachment",
     "source_url": "https://s1.pearlcdn.com/cd/brand/media_GLOBAL/2025/03/19/5c9853d25eb20250319044947138.jpg",
     "name": "crimson-desert-pywel-cover.jpg",
     "alt": "چشم‌انداز سرسبز سرزمین Pywel و سواری که به سوی شهری سنگی حرکت می‌کند",
