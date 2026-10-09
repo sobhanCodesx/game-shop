@@ -1,0 +1,13 @@
+{
+  "job_id": "crimson-desert-image-02-hernand-20261009",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 4,
+    "slot": "attachment",
+    "source_url": "https://s1.pearlcdn.com/cd/brand/media_GLOBAL/2025/03/19/fa31993b81b20250319044803058.jpg",
+    "name": "crimson-desert-hernand-city.jpg",
+    "alt": "خیابان شهری سنگی و رفت‌وآمد ساکنان در دنیای Crimson Desert",
+    "sort_order": 2
+  }
+}

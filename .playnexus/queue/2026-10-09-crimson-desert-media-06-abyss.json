@@ -1,0 +1,13 @@
+{
+  "job_id": "crimson-desert-image-06-abyss-20261009",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 4,
+    "slot": "attachment",
+    "source_url": "https://s1.pearlcdn.com/cd/brand/media_GLOBAL/2026/04/02/4588fa8de6d20260402105335616.png",
+    "name": "crimson-desert-abyss-floating-ruins.png",
+    "alt": "ساختارهای معلق و معماری فراواقعی بخش Abyss در Crimson Desert",
+    "sort_order": 6
+  }
+}

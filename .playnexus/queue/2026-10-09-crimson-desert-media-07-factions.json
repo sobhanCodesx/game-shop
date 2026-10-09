@@ -1,0 +1,13 @@
+{
+  "job_id": "crimson-desert-image-07-factions-20261009",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 4,
+    "slot": "attachment",
+    "source_url": "https://s1.pearlcdn.com/cd/brand/media_GLOBAL/2025/03/19/43dfa67a73420250319043542057.jpg",
+    "name": "crimson-desert-masked-warrior.jpg",
+    "alt": "جنگجوی نقاب‌دار و پوشش متفاوت گروه‌های حاضر در جهان بازی",
+    "sort_order": 7
+  }
+}

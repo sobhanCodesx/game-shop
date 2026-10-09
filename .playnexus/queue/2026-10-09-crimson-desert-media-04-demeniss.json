@@ -1,0 +1,13 @@
+{
+  "job_id": "crimson-desert-image-04-demeniss-20261009",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 4,
+    "slot": "attachment",
+    "source_url": "https://s1.pearlcdn.com/cd/brand/media_GLOBAL/2025/03/19/0366bcaa92b20250319044311656.jpg",
+    "name": "crimson-desert-citizens-assembly.jpg",
+    "alt": "گردهمایی شبانهٔ مردم و نگهبانان در یکی از شهرهای دنیای بازی",
+    "sort_order": 4
+  }
+}

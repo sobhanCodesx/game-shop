@@ -1,0 +1,13 @@
+{
+  "job_id": "crimson-desert-image-09-ruins-20261009",
+  "tool": "upload_asset",
+  "arguments": {
+    "resource": "game_story",
+    "id": 4,
+    "slot": "attachment",
+    "source_url": "https://s1.pearlcdn.com/cd/brand/media_GLOBAL/2025/03/19/ecaff74ca9520250319043955796.jpg",
+    "name": "crimson-desert-ancient-ruins.jpg",
+    "alt": "بناهای سنگی و آثار معماری در میان صخره‌های سرخ Pywel",
+    "sort_order": 9
+  }
+}
