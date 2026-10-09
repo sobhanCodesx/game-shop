@@ -1,0 +1,7 @@
+{
+  "job_id": "crimson-desert-context-20261009",
+  "tool": "query_playnexus_graph",
+  "arguments": {
+    "query": "query CrimsonDesertContext { games(search: \"Crimson Desert\", first: 8) { nodes { id name slug status description developer publisher coverUrl backgroundUrl url studio { id name slug status url } platforms { id name } productCount videoCount products(first: 4) { nodes { id title slug } } content(first: 4) { nodes { id title slug type } } } } }"
+  }
+}
