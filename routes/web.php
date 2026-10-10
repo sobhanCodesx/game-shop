@@ -80,7 +80,7 @@ Route::get('auth/google/callback', [GoogleAuthController::class, 'callback'])
     ->name('auth.google.callback');
 
 Route::middleware('guest')->group(function () {
-    Route::get('login', [AuthController::class, 'login'])->name('login');
+    Route::get('login', [AuthController::class, 'login'])->middleware('noindex')->name('login');
     Route::post('login', [AuthController::class, 'authenticate'])->middleware('throttle:5,1')->name('login.store');
     Route::get('auth/google', [GoogleAuthController::class, 'redirect'])->middleware('throttle:20,1')->name('auth.google.redirect');
     Route::post('login/otp', [AuthController::class, 'sendPasswordlessCode'])->middleware('throttle:3,1')->name('login.otp.send');
@@ -88,15 +88,15 @@ Route::middleware('guest')->group(function () {
     Route::post('login/otp/verify', [AuthController::class, 'confirmPasswordlessLogin'])->middleware('throttle:8,1')->name('login.otp.verify');
     Route::post('login/otp/resend', [AuthController::class, 'resendPasswordless'])->middleware('throttle:2,1')->name('login.otp.resend');
     Route::post('login/otp/telegram', [AuthController::class, 'sendPasswordlessTelegram'])->middleware('throttle:2,1')->name('login.otp.telegram');
-    Route::get('register', [AuthController::class, 'register'])->name('register');
+    Route::get('register', [AuthController::class, 'register'])->middleware('noindex')->name('register');
     Route::post('register', [AuthController::class, 'storeRegistration'])->middleware('throttle:3,1')->name('register.store');
-    Route::get('verify-email', [AuthController::class, 'verifyAccount'])->name('verification.notice');
+    Route::get('verify-email', [AuthController::class, 'verifyAccount'])->middleware('noindex')->name('verification.notice');
     Route::post('verify-email', [AuthController::class, 'confirmAccount'])->middleware('throttle:8,1')->name('verification.verify');
     Route::post('verify-email/resend', [AuthController::class, 'resendVerification'])->middleware('throttle:2,1')->name('verification.resend');
     Route::post('verify-email/telegram', [AuthController::class, 'sendVerificationTelegram'])->middleware('throttle:2,1')->name('verification.telegram');
-    Route::get('forgot-password', [AuthController::class, 'forgotPassword'])->name('password.request');
+    Route::get('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('noindex')->name('password.request');
     Route::post('forgot-password', [AuthController::class, 'sendResetCode'])->middleware('throttle:3,1')->name('password.email');
-    Route::get('reset-password', [AuthController::class, 'resetPassword'])->name('password.reset');
+    Route::get('reset-password', [AuthController::class, 'resetPassword'])->middleware('noindex')->name('password.reset');
     Route::post('reset-password', [AuthController::class, 'updatePassword'])->middleware('throttle:8,1')->name('password.update');
 });
 Route::post('logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
