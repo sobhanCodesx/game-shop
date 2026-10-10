@@ -87,6 +87,7 @@ jobs:
           php -l tests/Feature/StorefrontCachePhaseSixTest.php
           php -l tests/Feature/StorefrontCachePhaseSevenTest.php
           php -l tests/Feature/StorefrontCachePreDeployIntegrationTest.php
+          php -l tests/Feature/CatalogPaginationSeoTest.php
 
       - name: Validate Composer files
         run: composer validate --no-check-publish
@@ -126,6 +127,7 @@ jobs:
           php artisan test \
             tests/Feature/VideoCommunityTest.php \
             tests/Feature/SearchPerformanceSeoTest.php \
+            tests/Feature/CatalogPaginationSeoTest.php \
             tests/Feature/SitemapTest.php \
             tests/Feature/HomeExperienceTest.php
 

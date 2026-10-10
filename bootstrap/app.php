@@ -7,6 +7,7 @@ use App\Http\Middleware\DispatchSmsOutbox;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureUserIsSuperAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\NoIndexResponse;
 use App\Http\Middleware\RejectImpersonatedDeployment;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -46,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'content.agent' => AuthenticateContentAgent::class,
             'deployment.agent' => AuthenticateDeploymentAgent::class,
             'mobile.api' => AuthenticateMobileApi::class,
+            'noindex' => NoIndexResponse::class,
         ]);
 
         $middleware->web(append: [
