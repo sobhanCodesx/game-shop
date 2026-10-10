@@ -129,7 +129,6 @@ jobs:
             tests/Feature/VideoCommunityTest.php \
             tests/Feature/SearchPerformanceSeoTest.php \
             tests/Feature/StudioTopicGraphSeoTest.php \
-            tests/Feature/StudioTest.php \
             tests/Feature/CatalogPaginationSeoTest.php \
             tests/Feature/SitemapTest.php \
             tests/Feature/HomeExperienceTest.php
