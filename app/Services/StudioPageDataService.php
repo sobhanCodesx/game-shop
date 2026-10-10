@@ -197,7 +197,7 @@ final class StudioPageDataService
     private function seo(Studio $studio, array $relatedGames): array
     {
         $canonical = route('studios.show', $studio->slug);
-        $plainDescription = RichText::plainText($studio->description);
+        $plainDescription = (string) RichText::plainText($studio->description);
         $gameNames = collect($relatedGames)->pluck('name')->take(3)->implode('، ');
         $intro = $plainDescription !== ''
             ? Str::limit($plainDescription, $gameNames !== '' ? 65 : 148, '…')
