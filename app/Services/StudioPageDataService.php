@@ -247,8 +247,9 @@ final class StudioPageDataService
                         'name' => $seoTitle,
                         'description' => $description,
                         'about' => ['@id' => $canonical.'#studio'],
+                        'mainEntity' => ['@id' => $canonical.'#studio'],
                         'breadcrumb' => ['@id' => $canonical.'#breadcrumb'],
-                        ...($relatedGames !== [] ? ['hasPart' => ['@id' => $canonical.'#games']] : []),
+                        ...($relatedGames !== [] ? ['mentions' => ['@id' => $canonical.'#games']] : []),
                     ],
                     ...($relatedGames !== [] ? [[
                         '@type' => 'ItemList',
