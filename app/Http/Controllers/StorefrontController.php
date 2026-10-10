@@ -47,7 +47,7 @@ class StorefrontController extends Controller
         $pageNumber = $products->currentPage();
         // Paginated, unfiltered catalog pages show different products and
         // therefore need their own crawlable URLs instead of pointing to page 1.
-        $isIndexable = ! $hasFilters && $products->isNotEmpty();
+        $isIndexable = ! $hasFilters && ($pageNumber === 1 || $products->isNotEmpty());
         $canonical = $pageNumber > 1 && $isIndexable
             ? route($routeName, ['page' => $pageNumber])
             : $baseCanonical;
@@ -120,7 +120,7 @@ class StorefrontController extends Controller
             ->through(fn (Product $product) => $data->product($product, $request->user()));
         $baseCanonical = route('exchange-products.index');
         $pageNumber = $products->currentPage();
-        $isIndexable = ! $request->hasAny(['q', 'sort']) && $products->isNotEmpty();
+        $isIndexable = ! $request->hasAny(['q', 'sort']) && ($pageNumber === 1 || $products->isNotEmpty());
         $canonical = $pageNumber > 1 && $isIndexable
             ? route('exchange-products.index', ['page' => $pageNumber])
             : $baseCanonical;
@@ -202,7 +202,7 @@ class StorefrontController extends Controller
         $baseCanonical = route('categories.show', $category->slug);
         $pageNumber = $products->currentPage();
         $hasFilters = $request->hasAny(['q', 'sort', 'trade', 'filters']);
-        $isIndexable = ! $hasFilters && $products->isNotEmpty();
+        $isIndexable = ! $hasFilters && ($pageNumber === 1 || $products->isNotEmpty());
         $canonical = $pageNumber > 1 && $isIndexable
             ? route('categories.show', ['category' => $category->slug, 'page' => $pageNumber])
             : $baseCanonical;
