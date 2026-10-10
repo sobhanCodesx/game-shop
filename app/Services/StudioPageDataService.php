@@ -81,6 +81,20 @@ final class StudioPageDataService
             ])
             ->toArray();
 
+        // Use real, published game associations for the public studio summary.
+        // Keep this list independent of channels_page to avoid pagination-specific SEO.
+        $relatedGames = Game::query()
+            ->whereBelongsTo($studio)
+            ->whereIn('status', ['active', 'published'])
+            ->orderBy('id')
+            ->limit(6)
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (Game $game) => [
+                'name' => $game->name,
+                'url' => route('channels.show', $game->slug, false),
+            ])
+            ->all();
+
         $studioData = [
             'id' => $studio->id,
             'name' => $studio->name,
@@ -105,8 +119,9 @@ final class StudioPageDataService
         ];
 
         return [
-            ...$this->seo($studio),
+            ...$this->seo($studio, $relatedGames),
             'studio' => $studioData,
+            'relatedGames' => $relatedGames,
             'storeGames' => [],
             'channels' => $channels,
             'collections' => $collections,
@@ -179,16 +194,20 @@ final class StudioPageDataService
         return $payload;
     }
 
-    private function seo(Studio $studio): array
+    private function seo(Studio $studio, array $relatedGames): array
     {
         $canonical = route('studios.show', $studio->slug);
         $plainDescription = RichText::plainText($studio->description);
+        $gameNames = collect($relatedGames)->pluck('name')->take(3)->implode('، ');
+        $intro = $plainDescription !== ''
+            ? Str::limit($plainDescription, $gameNames !== '' ? 65 : 148, '…')
+            : "معرفی {$studio->name} و بازی‌های مرتبط با این استودیو.";
         $description = Str::limit(
-            $plainDescription ?: "معرفی استودیو {$studio->name}، بازی‌های شاخص، تاریخچه و تازه‌ترین محتوای مرتبط در PlayNexus.",
-            148,
+            $intro.($gameNames !== '' ? " بازی‌های مرتبط: {$gameNames}." : ''),
+            150,
             '…',
         );
-        $seoTitle = "استودیو {$studio->name} | بازی‌ها، تاریخچه و اخبار";
+        $seoTitle = "{$studio->name} | معرفی استودیو و بازی‌های مرتبط";
         $image = url(MediaStorage::url($studio->background ?: $studio->logo) ?: (string) config('seo.default_image', '/logo.png'));
 
         return Seo::page([
@@ -221,6 +240,28 @@ final class StudioPageDataService
                             ['@type' => 'ListItem', 'position' => 3, 'name' => $studio->name, 'item' => $canonical],
                         ],
                     ],
+                    [
+                        '@type' => 'WebPage',
+                        '@id' => $canonical.'#webpage',
+                        'url' => $canonical,
+                        'name' => $seoTitle,
+                        'description' => $description,
+                        'about' => ['@id' => $canonical.'#studio'],
+                        'breadcrumb' => ['@id' => $canonical.'#breadcrumb'],
+                        ...($relatedGames !== [] ? ['hasPart' => ['@id' => $canonical.'#games']] : []),
+                    ],
+                    ...($relatedGames !== [] ? [[
+                        '@type' => 'ItemList',
+                        '@id' => $canonical.'#games',
+                        'name' => "بازی‌های مرتبط با {$studio->name}",
+                        'numberOfItems' => count($relatedGames),
+                        'itemListElement' => collect($relatedGames)->values()->map(fn (array $game, int $index) => [
+                            '@type' => 'ListItem',
+                            'position' => $index + 1,
+                            'name' => $game['name'],
+                            'url' => url($game['url']),
+                        ])->all(),
+                    ]] : []),
                 ],
             ],
         ]);
