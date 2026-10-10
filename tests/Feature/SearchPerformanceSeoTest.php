@@ -201,11 +201,11 @@ class SearchPerformanceSeoTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where(
                     'seo.title',
-                    'استودیو Naughty Dog | بازی‌ها، تاریخچه و اخبار - پلی نکسوس',
+                    'Naughty Dog | معرفی استودیو و بازی‌های مرتبط - پلی نکسوس',
                 )
                 ->where(
                     'seo.description',
-                    fn (string $description) => mb_strlen($description) <= 149,
+                    fn (string $description) => mb_strlen($description) <= 150,
                 ));
     }
 

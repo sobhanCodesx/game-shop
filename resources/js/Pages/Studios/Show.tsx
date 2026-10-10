@@ -31,6 +31,11 @@ interface Studio {
     store_games_count: number;
 }
 
+interface RelatedGame {
+    name: string;
+    url: string;
+}
+
 interface StoreGame {
     id: number;
     name: string;
@@ -68,6 +73,7 @@ export default function StudioShow({
     seo,
     studio,
     storeGames,
+    relatedGames = [],
     channels,
     collections,
     gameStories = [],
@@ -75,6 +81,7 @@ export default function StudioShow({
     seo: SeoData;
     studio: Studio;
     storeGames: StoreGame[];
+    relatedGames: RelatedGame[];
     channels: Paginated<Channel>;
     collections: Paginated<Collection>;
     gameStories: GameStoryCard[];
@@ -170,6 +177,39 @@ export default function StudioShow({
                                     __html: studio.description_html,
                                 }}
                             />
+                        </section>
+                    )}
+
+                    {relatedGames.length > 0 && (
+                        <section
+                            aria-labelledby="studio-related-games"
+                            className="mx-auto mt-6 max-w-4xl rounded-3xl border border-[var(--store-border)] bg-[var(--store-panel)] p-5 sm:p-7"
+                        >
+                            <h2
+                                className="text-lg font-black sm:text-xl"
+                                id="studio-related-games"
+                            >
+                                بازی‌های مرتبط با {studio.name}
+                            </h2>
+                            <p className="mt-2 text-sm leading-7 text-[var(--store-muted)]">
+                                برای آشنایی با بازی‌های ثبت‌شده این استودیو، صفحه هر
+                                بازی را ببینید؛ اطلاعات، ویدیوها و محصولات مرتبط
+                                در صورت انتشار در همان صفحه در دسترس‌اند.
+                            </p>
+                            <nav
+                                aria-label={`بازی‌های مرتبط با ${studio.name}`}
+                                className="mt-4 flex flex-wrap gap-2"
+                            >
+                                {relatedGames.map((game) => (
+                                    <Link
+                                        className="rounded-xl border border-[var(--store-border)] bg-[var(--store-surface)] px-3 py-2 text-sm font-semibold transition hover:border-indigo-500 hover:text-indigo-400"
+                                        href={game.url}
+                                        key={game.url}
+                                    >
+                                        {game.name}
+                                    </Link>
+                                ))}
+                            </nav>
                         </section>
                     )}
 
